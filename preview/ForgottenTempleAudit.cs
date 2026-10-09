@@ -4,6 +4,9 @@ using LibreKO.Network;
 using LibreKO.Plugins;
 using System.Reflection;
 using System.Text.Json;
+using KnightOnlineUiClassic;
+using KnightOnlineUiClassic.Windows;
+using Spec = KnightOnlineUiClassic.Layout.ClassicOverlayLayout;
 
 public partial class Preview
 {
@@ -23,6 +26,7 @@ public partial class Preview
         DetailCall(world, "BuildInZoneLeaveUi");
         foreach (var layer in world.GetChildren().OfType<CanvasLayer>().ToArray()) layer.Reparent(this);
         PluginHost.Ui.ReplaceDialogs(request => new KnightOnlineUiClassic.Windows.MessageBox(request));
+        NativeOverlays.Prepare(world);
         var checks = new List<string>();
         var screenshots = new List<object>();
         void Require(bool valid, string message)
@@ -43,6 +47,29 @@ public partial class Preview
                 .Select(c => new { name = c.Name.ToString(), type = c.GetType().Name, x = c.GlobalPosition.X, y = c.GlobalPosition.Y, w = c.Size.X, h = c.Size.Y }).ToArray();
             screenshots.Add(new { file, state, bounds });
         }
+        var viewport = GetViewportRect();
+        bool Whole(Rect2 r) => r.Position == r.Position.Round() && r.Size == r.Size.Round();
+        bool Fits(Label label)
+        {
+            var font = label.GetThemeFont("font"); int size = label.GetThemeFontSize("font_size");
+            if (label.AutowrapMode == TextServer.AutowrapMode.Off)
+                return font.GetStringSize(label.Text, HorizontalAlignment.Left, -1, size).X <= label.Size.X + 0.5f;
+            int lines = label.GetLineCount();
+            return lines * font.GetHeight(size) + (lines - 1) * label.GetThemeConstant("line_spacing") <= label.Size.Y + 0.5f;
+        }
+        void Expected(Control control, Control parent, string what)
+        {
+            var expected = control.GetMeta(ClassicWorldOverlays.ExpectedRect).AsRect2();
+            var actual = new Rect2(control.GlobalPosition - parent.GlobalPosition, control.Size);
+            Require(actual == expected && Whole(control.GetGlobalRect()), $"{what}: rendered bounds {actual} match the declared {expected}");
+        }
+        void Art(Button button, string text, string what)
+        {
+            var caption = button.GetNodeOrNull<Label>("caption");
+            Require(caption != null && caption.Text == text && button.Text == text && Fits(caption), $"{what}: the native '{text}' on the art caption");
+            Require(button.GetThemeStylebox("normal") is StyleBoxTexture && button.GetThemeStylebox("hover") is StyleBoxTexture
+                && button.GetThemeStylebox("pressed") is StyleBoxTexture, $"{what}: original button art in every state");
+        }
         var zone = typeof(World).GetField("_zone", BindingFlags.Instance | BindingFlags.NonPublic)!;
         void SetZone(int value) => zone.SetValue(world, Convert.ChangeType(value, zone.FieldType));
         var banner = (Control)DetailField(world, "_inZoneLeaveBanner")!;
@@ -51,10 +78,50 @@ public partial class Preview
         var join = (Control)DetailField(world, "_joinModal")!;
         var joinTitle = (Label)DetailField(world, "_joinModalTitle")!;
         Require(join.Visible && joinTitle.Text.Contains("FORGOTTEN TEMPLE"), "FT registration uses its event title and existing join UI");
-        await Capture("ft-registration");
+        var countdown = (PanelContainer)DetailField(world, "_bifrostBanner")!;
+        var joinButton = (Button)DetailField(world, "_joinModalBtn")!;
+        var closeButton = (Button)DetailField(world, "_joinModalCloseBtn")!;
+        var timerLabel = (Label)DetailField(world, "_joinModalTimer")!;
+        var statusLabel = (Label)DetailField(world, "_joinModalStatus")!;
+        var bar = (ProgressBar)DetailField(world, "_joinModalBar")!;
+        var countdownTimer = (Label)DetailField(world, "_bifrostTimerLbl")!;
+        var countdownBar = (ProgressBar)DetailField(world, "_bifrostBar")!;
+        async Task Registration(string state, bool urgent, bool registered)
+        {
+            await Frames();
+            countdown.Position = new Vector2(Mathf.Round((viewport.Size.X - countdown.Size.X) / 2), 24);
+            await Frames();
+            var panel = join.GetNode<Control>("classic_registration");
+            Require(!join.GetChildren().OfType<CenterContainer>().Single().Visible, $"{state}: the flat native panel is hidden");
+            Require(panel.Size == Spec.Registration.Size && panel.GlobalPosition == ((viewport.Size - panel.Size) / 2).Round(), $"{state}: centred message box {panel.GetGlobalRect()}");
+            foreach (var label in new[] { joinTitle, timerLabel, statusLabel }) { Expected(label, panel, $"{state} '{label.Text}'"); Require(Fits(label), $"{state}: '{label.Text}' fits"); }
+            Expected(bar, panel, state + " bar"); Expected(joinButton, panel, state + " join"); Expected(closeButton, panel, state + " close");
+            Require(joinButton.Size == Spec.Message.Button && closeButton.Size == Spec.Message.Button, $"{state}: 97 x 29 message buttons");
+            Art(joinButton, registered ? "Cancel" : "Join", state + " join"); Art(closeButton, "Close", state + " close");
+            Require(timerLabel.GetThemeColor("font_color") == (urgent ? ClassicWorldOverlays.UrgentOnMessage : ClassicWorldOverlays.MessageText), $"{state}: {(urgent ? "urgent" : "calm")} countdown ink");
+            Require(((StyleBoxTexture)bar.GetThemeStylebox("fill")).RegionRect.Position.Y == (urgent ? 462 : 389), $"{state}: {(urgent ? "red" : "orange")} original bar fill");
+            Require(statusLabel.GetThemeColor("font_color") == (registered ? ClassicEventPanel.Ready : ClassicDesign.Text), $"{state}: {(registered ? "registered" : "open")} status ink");
+            Require(countdown.Visible && countdown.Size == Spec.Countdown.Size && viewport.Encloses(countdown.GetGlobalRect()), $"{state}: countdown plaque {countdown.Size}");
+            var surface = countdown.GetNode<Control>("classic_countdown");
+            foreach (var control in new Control[] { (Label)DetailField(world, "_bifrostTitleLbl")!, countdownTimer, countdownBar })
+            {
+                Expected(control, surface, $"{state} countdown {control.Name}");
+                if (control is Label label) Require(Fits(label), $"{state}: countdown '{label.Text}' fits");
+            }
+            Require(countdownTimer.GetThemeColor("font_color") == (urgent ? ClassicWorldOverlays.UrgentOnPlaque : ClassicWorldOverlays.PlaqueInk), $"{state}: countdown plaque ink");
+            await Capture(state);
+        }
+        await Registration("ft-registration", false, false);
+        joinButton.EmitSignal(BaseButton.SignalName.Pressed);
+        Require((bool)DetailField(world, "_isEventRegistered")! && joinButton.Text == "Cancel", "Join runs the native registration toggle");
         DetailCall(world, "OnBifrostJoinResult", true, 55);
         Require(((Button)DetailField(world, "_joinModalBtn")!).Text == "Cancel", "Joining FT updates registration state");
-        await Capture("ft-registered");
+        await Registration("ft-registered", false, true);
+        DetailCall(world, "OnBifrostTime", 20, TempleEventType.ForgottenTemple);
+        await Registration("ft-registration-urgent", true, true);
+        closeButton.EmitSignal(BaseButton.SignalName.Pressed);
+        Require(!join.Visible && countdown.Visible, "Close runs the native close and keeps the countdown plaque");
+        await Capture("ft-countdown");
         DetailCall(world, "EndBifrostEvent");
         SetZone(55);
         DetailCall(world, "RefreshInZoneLeaveUi");
@@ -62,12 +129,21 @@ public partial class Preview
         banner.Position = new Vector2(480, 24);
         Require(banner.Visible && title.Text == "Forgotten Temple", "FT leave banner appears after zone readiness refresh");
         Require(GetViewportRect().Encloses(banner.GetGlobalRect()), "FT leave banner fits the viewport");
+        var leaveButton = (Button)DetailField(world, "_inZoneLeaveBtn")!;
+        var leaveSurface = banner.GetNode<Control>("classic_leave");
+        Require(banner.Size == Spec.Leave.Size && banner.GetThemeStylebox("panel") is StyleBoxEmpty, $"FT leave plaque {banner.Size} replaces the flat panel");
+        Expected(title, leaveSurface, "leave title"); Expected(leaveButton, leaveSurface, "leave action");
+        Require(leaveButton.Size == Spec.Plaque.Action, "Leave uses the 55 x 15 chat tab art");
+        Art(leaveButton, "Leave", "leave action");
+        Require(title.GetThemeColor("font_color") == ClassicWorldOverlays.PlaqueInk && title.GetThemeFont("font") == Plugin.Kit.Bold, "Leave plaque caption uses the plaque ink and Arial Bold");
         await Capture("ft-leave-banner");
         foreach (int eventZone in new[] { 55, 84, 85, 86, 87 })
         {
             SetZone(eventZone);
             DetailCall(world, "RefreshInZoneLeaveUi");
             Require(banner.Visible, $"Zone {eventZone} retains an event leave banner");
+            await Frames();
+            Require(Fits(title) && banner.Size == Spec.Leave.Size, $"Zone {eventZone} name '{title.Text}' fits the leave plaque");
             DetailCall(world, "OnInZoneLeavePressed");
             var notice = NativeEvents.LeavePrompt(world)!;
             notice.Reparent(this);

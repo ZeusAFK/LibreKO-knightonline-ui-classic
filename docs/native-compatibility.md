@@ -280,6 +280,22 @@ listed. Preview-only members are listed at the end.
 | `Net.SendPetHatch`, `SendPetTransform` | M | `bool` on fix/familiar-replies, `void` upstream |
 | `HudLayout._moveGripOverlay`; bar recognised by the type names `PetSkillCell` and `HotGrip` | F | Familiar bar grip and default position |
 
+### World overlays
+
+`NativeOverlays` prepares the overlays without a window id once the world is attached (`BecameAvailable`). It names
+the controls below and mirrors the countdown urgency and registration state into metas; the client keeps every
+control, callback, timer and position rule. All members exist on bare upstream.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `_joinModal`, `_joinModalTitle`, `_joinModalTimer`, `_joinModalBar`, `_joinModalStatus`, `_joinModalBtn`, `_joinModalCloseBtn`, `_bifrostBanner`, `_bifrostTitleLbl`, `_bifrostTimerLbl`, `_bifrostBar`, `_bifrostRemaining`, `_isEventRegistered`, const `BifrostUrgentSecs` | F | Temple event registration message box and countdown plaque |
+| `_inZoneLeaveBanner`, `_inZoneLeaveTitleLbl`, `_inZoneLeaveBtn` | F | In-zone leave plaque |
+| `_deathPanel`, `_inviteAskDialog`, `_challengeAskDialog`, `_townRecallDialog` | F | Death notice and confirmation prompts on the message box art |
+| `_upgradeNoticeLabel`, `_shoutLabel`, `_seasonalLabel`, `_battleeventBanner`, `_battleeventResult`, `_clanBattlePanel`, `_lootPrompt` | F | Outlined broadcast lines |
+| `_zoneabilityChip`, `_battleeventBoard`, `_bdwScoreBanner` | F | Zone chip and war score plaques |
+| `_playerMenu`, `_partyCtxMenu` | F | Context menus |
+| `_lootPanel`, `_lootListBox`, `_lootTitle` | F | Loot window on the dropped-item grid (cells click the native rows) |
+
 ### Preview-only members
 
 The preview fixtures also reach client internals that the plugin never touches at runtime. Examples are the
