@@ -49,6 +49,15 @@ public partial class Preview
                     Require(window.GetGlobalRect().Encloses(c.GetGlobalRect()), state + " column fits frame " + c.Name);
                 foreach (var modal in new[] { Find<PanelContainer>("details"), Find<PanelContainer>("gift_box") }.Where(m => m.IsVisibleInTree()))
                     Require(window.GetGlobalRect().Encloses(modal.GetGlobalRect()), state + " active modal stays inside native window " + modal.GetGlobalRect());
+                var giftScroll = Descendants(Find<PanelContainer>("gift_box")).OfType<ScrollContainer>().FirstOrDefault(s => s.IsVisibleInTree());
+                if (giftScroll != null && !touch)
+                {
+                    var giftRows = Descendants(giftScroll).OfType<VBoxContainer>().First(); var giftBar = giftScroll.GetVScrollBar();
+                    Require(giftScroll.Size.Y == 188, state + " gift list shows four whole rows " + giftScroll.Size);
+                    if (giftBar.Visible)
+                        foreach (var row in giftRows.GetChildren().OfType<Control>().Where(c => c.Visible))
+                            Require(row.GetGlobalRect().End.X + 6 <= giftBar.GetGlobalRect().Position.X + .5f, state + " gift row keeps the gap before the scroll bar " + row.GetGlobalRect());
+                }
                 foreach (var c in Descendants(window).OfType<Control>().Where(c => c.IsVisibleInTree() && c.HasMeta("classic_store_control") && c is Label or Button or LineEdit))
                 {
                     Require(c.GetThemeFont("font") == Plugin.Kit.Bold, state + " shared bold font " + c.Name);

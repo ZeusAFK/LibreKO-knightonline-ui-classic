@@ -129,7 +129,12 @@ public partial class ClassicStorePanel : Control
         if (control is ScrollContainer sc)
         {
             // Four whole 44 px recipient rows (4 px apart) on desktop.
-            if (sc.GetParent().Name == "pus_gift_pick") sc.CustomMinimumSize = new Vector2(0, Platform.TouchUi ? 240 : 188);
+            if (sc.GetParent().Name == "pus_gift_pick")
+            {
+                sc.CustomMinimumSize = new Vector2(0, Platform.TouchUi ? 240 : 188);
+                // Desktop: four whole rows that scroll by rows; the Friend/Clan tags keep the Classic gap before the scroll bar.
+                if (!Platform.TouchUi) Callable.From(() => AddChild(new ClassicRowScroll(sc, 188, 48))).CallDeferred();
+            }
             var bar = sc.GetVScrollBar(); bar.CustomMinimumSize = new Vector2(10, 0); bar.AddThemeStyleboxOverride("scroll", ClassicStoreLayout.Box(0));
             foreach (string state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
             {

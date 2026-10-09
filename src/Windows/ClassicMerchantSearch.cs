@@ -7,23 +7,26 @@ public partial class ClassicMerchantSearch : ClassicFrame
 {
     public ClassicMerchantSearch(HudWindow window,Control body)
     {
-        BackgroundColor=Colors.Black;BackgroundAlpha=1;Size=CustomMinimumSize=new Vector2(470,561);TextureFilter=TextureFilterEnum.Nearest;
+        BackgroundColor=Colors.Black;BackgroundAlpha=1;Size=CustomMinimumSize=new Vector2(470,545);TextureFilter=TextureFilterEnum.Nearest;
         var grip=window.Header!.GetChildren().OfType<HBoxContainer>().First();
         var close=grip.GetChildren().OfType<Button>().Single(b=>b.TooltipText=="Close");
         foreach(var child in window.GetChildren().OfType<Control>())child.Visible=false;
         window.AddThemeStyleboxOverride("panel",new StyleBoxEmpty());
         ClassicPartySkin.Drag(this,grip,new Rect2(0,0,470,28));
         var heading=ClassicPartySkin.Caption(this,"Item Search",new Rect2(22,16,426,24),ClassicDesign.FrameTitle);ClassicMerchantSkin.Font(heading);heading.AddThemeFontSizeOverride("font_size",13);
-        ClassicVendorSkin.Move(body,this,new Rect2(20,48,430,444));body.Visible=true;
+        ClassicVendorSkin.Move(body,this,new Rect2(20,48,430,428));body.Visible=true;
         var theme=new Theme {DefaultFont=Plugin.Kit.Bold,DefaultFontSize=12};body.Theme=theme;
         void Style(Node node){if(node.HasMeta("classic_search_control"))return;node.SetMeta("classic_search_control",true);if(node is Control control)ClassicMerchantSkin.Font(control);if(node is VScrollBar rail){
             var track=new StyleBoxFlat {BgColor=new Color("171715"),BorderColor=new Color("bfa777")};track.SetBorderWidthAll(1);track.SetContentMarginAll(0);rail.AddThemeStyleboxOverride("scroll",track);
             foreach(string state in new[]{"grabber","grabber_highlight","grabber_pressed"}){var grab=ClassicDesign.ButtonBox(state=="grabber_highlight"?"hover":state=="grabber_pressed"?"pressed":"normal");grab.SetContentMarginAll(0);rail.AddThemeStyleboxOverride(state,grab);}rail.CustomMinimumSize=new Vector2(12,0);rail.FocusMode=FocusModeEnum.None;
         }if(node is Button button){button.CustomMinimumSize=new Vector2(button is OptionButton?80:button.Text=="Registration"?90:71,25);ClassicVendorSkin.Button(button,Plugin.Kit.Layout("co_tradeprice_us").Find("btn_ok")!);foreach(string state in new[]{"font_color","font_hover_color","font_pressed_color","font_hover_pressed_color","font_focus_color","font_disabled_color"})button.AddThemeColorOverride(state,new Color("efd9b4"));ClassicMerchantSkin.PaletteButton(button,true);}foreach(var child in node.GetChildren())Style(child);node.ChildEnteredTree+=Style;}
         Style(body);
+        // The native 300 px results list shows whole rows, scrolls by rows and keeps a gap before its scroll bar.
+        var results=CharacterDetailsSkin.Tree(body).OfType<ScrollContainer>().First();
+        AddChild(new KnightOnlineUiClassic.Layout.ClassicRowScroll(results,300,41));
         var cancel=new Button {Text="Cancel"};AddChild(cancel);cancel.Pressed+=()=>close.EmitSignal(BaseButton.SignalName.Pressed);
         // Cancel sits 30 px above the frame bottom, clear of the corner curls (original quest-talk inset).
-        ClassicMerchantSkin.Button(cancel,Plugin.Kit.Layout("co_tradeprice_us").Find("btn_cancel")!,this,new Rect2(200,506,71,25));
+        ClassicMerchantSkin.Button(cancel,Plugin.Kit.Layout("co_tradeprice_us").Find("btn_cancel")!,this,new Rect2(200,490,71,25));
         Resized+=()=>Size=CustomMinimumSize;
     }
 }
