@@ -73,6 +73,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("upstream-integration-audit")){await CaptureUpstreamIntegration(game,nation);GetTree().Quit();return;}
             if(OS.GetCmdlineUserArgs().Contains("merchant-palette")){await CaptureMerchantPalette(nation);GetTree().Quit();return;}
             if(OS.GetCmdlineUserArgs().Contains("upstream-npc-audit")){await CaptureUpstreamNpcAudit(game,nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("world-overlays-audit")){await CaptureWorldOverlaysAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("forgotten-temple-audit")){await CaptureForgottenTempleAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("merchant-audit")){await CaptureMerchantAudit(game,nation);GetTree().Quit();return;}
             if(OS.GetCmdlineUserArgs().Contains("trade-audit")) { await CaptureExchangeAudit(game,nation);GetTree().Quit();return; }
