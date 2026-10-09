@@ -255,11 +255,17 @@ public partial class Preview
                 GD.Print($"QUEST_OPEN_SETTLED_OK: {id}, frames={frames}, ms={opened.GetMeta("classic_open_ms").AsInt64()}");
                 GD.Print("QUEST_CENTER_OK "+id+" "+panel.Position+" "+panel.Size);
             }
+            if(composed is ClassicNpcDialogue dialogue)
+            {
+                if(panel.Position!=((GetViewportRect().Size-panel.Size)/2).Floor()) throw new Exception(id+": NPC dialogue did not open at the screen centre");
+                if(dialogue.Modulate.A<1) throw new Exception(id+": NPC dialogue opening did not settle");
+                GD.Print("QUEST_CENTER_OK "+id+" "+panel.Position+" "+panel.Size);
+            }
             var presentedActions=Descendants(body).Concat(Descendants(composed)).OfType<BaseButton>().Select(b=>b.GetInstanceId()).Distinct().Where(originalActions.Contains).ToHashSet();
             int afterButtons=presentedActions.Count;
             if(beforeButtons!=afterButtons) throw new Exception(id+": a live action control was lost");
             if(!originalActions.SetEquals(presentedActions)) throw new Exception(id+": native action instances were replaced");
-            var viewport=composed is CharacterEmbeddedPage embedded?embedded.ContentScroll:((ClassicDetailPanel)composed).ContentScroll;
+            ScrollContainer viewport=composed switch { CharacterEmbeddedPage embedded=>embedded.ContentScroll,ClassicNpcDialogue npc=>npc.QuestScroll,_=>((ClassicDetailPanel)composed).ContentScroll };
             var fixedNodes=Descendants(body).Concat(Descendants(composed)).OfType<Control>().Distinct().Where(c=>c.HasMeta("classic_fixed_rect") || c.HasMeta("embedded_rect")).ToArray();
             var failures=fixedNodes.Where(c=> { var r=c.GetMeta(c.HasMeta("embedded_rect")?"embedded_rect":"classic_fixed_rect").AsRect2();return c.Position!=r.Position || c.Size!=r.Size; }).Select(c=>c.Name.ToString()).ToArray();
             if(failures.Length>0)
@@ -270,6 +276,17 @@ public partial class Preview
                     foreach(var ch in c.GetChildren().OfType<Control>()) GD.Print($"CHILD_MIN {ch.Name} {ch.GetCombinedMinimumSize()}");
                 }
                 throw new Exception(id+": rendered control bounds differ from the composed layout: "+string.Join(", ",failures));
+            }
+            if(id is "userinfo" or "quest_target" && composed is ClassicDetailPanel floating)
+            {
+                float end=body.GetChildren().OfType<Control>().Where(c=>c.Visible && !(c is Label { Text.Length:0 })).Max(c=>c.Position.Y+c.Size.Y);
+                float gap=floating.Size.Y-(floating.ContentScroll.Position.Y+end);
+                if(gap<20 || gap>26) throw new Exception(id+": bottom margin below the content is "+gap);
+                if(floating.ContentScroll.GetVScrollBar().Visible) throw new Exception(id+": fitted content still scrolls: viewport="+floating.ContentScroll.Size+" body="+body.GetCombinedMinimumSize()+" "+string.Join(",",body.GetChildren().OfType<Control>().Select(c=>c.GetType().Name+":"+c.Visible+":"+c.GetRect()+":"+c.GetCombinedMinimumSize())));
+                var title=Descendants(floating).OfType<Label>().First(l=>l.IsVisibleInTree() && l.Text==caption);
+                float centre=title.GetGlobalRect().GetCenter().X-floating.GlobalPosition.X;
+                if(title.HorizontalAlignment!=HorizontalAlignment.Center || Mathf.Abs(centre-floating.Size.X/2)>1) throw new Exception(id+": caption is not centred: "+centre);
+                GD.Print($"DETAIL_FIT_OK {id} height={floating.Size.Y} gap={gap}");
             }
             var overflow=Descendants(composed).OfType<Control>().Where(c=>c.IsVisibleInTree() && c.GetParent()==composed && (c.Position.X<0 || c.Position.Y<0 || c.Position.X+c.Size.X>composed.Size.X+1 || c.Position.Y+c.Size.Y>composed.Size.Y+1)).Select(c=>c.Name.ToString()).ToArray();
             if(overflow.Length>0) throw new Exception(id+": controls escape the shell: "+string.Join(", ",overflow));
@@ -319,8 +336,16 @@ public partial class Preview
                 if((int)DetailField(model,"_questRewardChoice")! !=0 || Descendants(body).OfType<Button>().Single(b=>b.Text=="Confirm").Disabled)
                     throw new Exception("Reopening the quest erased its pending reward choice");
                 DetailCall(model,"OnQuestView",rewardView with { State=QuestViewState.Available,CanClaim=false,CanAccept=true,Counts=[0],Dialogue="Help the guards protect Moradon. Defeat the creatures, then return for your reward." });
-                if(Descendants(body).OfType<Control>().Any(c=>c.TooltipText=="Pick this reward") || Descendants(body).OfType<Label>().Any(l=>l.Text=="Choose one"))
+                // Rebuilt native rows are freed at the end of the frame.
+                var liveRows=Descendants(body).OfType<Control>().Where(c=>!Ancestry(c).Any(n=>n.IsQueuedForDeletion())).ToArray();
+                // Upstream previews the alternatives on the offer page; only pickable rows are forbidden there.
+                if(liveRows.Any(c=>c.TooltipText=="Pick this reward"))
                     throw new Exception("Quest acceptance exposes an uncommitted reward selection");
+                await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+                var cards=Descendants(composed).OfType<ClassicNpcCard>().ToArray();
+                if(cards.Any(c=>!GodotObject.IsInstanceValid(c.Source))) throw new Exception("Composed quest kept cards bound to freed native rows");
+                if(cards.Any(c=>c.Source.HasMeta("quest_reward_selected")))
+                    throw new Exception("Composed quest acceptance exposes a reward picker");
                 await ToSignal(GetTree().CreateTimer(.3),SceneTreeTimer.SignalName.Timeout);
                 await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
                 GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-npc-reward-offer.png"));
@@ -331,12 +356,13 @@ public partial class Preview
                     DetailCall(model,"ShowQuestView",rewardView with { State=state,CanClaim=false,Counts=[state==QuestViewState.Completed?(ushort)10:(ushort)5],Dialogue=state==QuestViewState.Completed?"You have protected Moradon. Your reward has been granted.":"Defeat the remaining creatures, then return to the guard." });
                     await ToSignal(GetTree().CreateTimer(.2),SceneTreeTimer.SignalName.Timeout);
                     var status=Descendants(body).OfType<Label>().Single(l=>l.HasMeta("quest_status"));
-                    if(status.GetThemeColor("font_color")!=ClassicQuestStatus.Ink(state)) throw new Exception("NPC status colour is incorrect");
+                    // The native caption stays hidden; the composed header carries the state ink.
+                    if(((ClassicNpcDialogue)composed).Status is not {} shown || shown.GetThemeColor("font_color")!=ClassicQuestStatus.Ink(state) || shown.Text!=status.Text) throw new Exception("Composed NPC status is missing or uses the wrong ink");
                     await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
                     GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-npc-status-"+state.ToString().ToLowerInvariant()+".png"));
                 }
                 GD.Print("NPC_STATUS_INK_OK: available, in progress, ready, completed");
-                await CaptureNpcFixtures(model,(ClassicDetailPanel)composed,prefix,output,measurements);
+                await CaptureNpcFixtures(model,(ClassicNpcDialogue)composed,prefix,output,measurements);
             }
             if(id=="quest_available")
             {
@@ -500,6 +526,7 @@ public partial class Preview
     private static Control QuestRewardRows(World model) => (Control)((Node)DetailField(model,"_questDetailBody")!).FindChild(NativeQuestLog.RewardBoxName,true,false)!;
     private static QuestRewardSelection<QuestTransfer> QuestRewardChoices(World model) => (QuestRewardSelection<QuestTransfer>)DetailField(model,"_questRewardSelection")!;
     private static void QuestReceived(World model,QuestReceipt receipt) { NativeQuestLog.Record(receipt);DetailCall(model,"OnQuestReceipt",receipt); }
+    private static IEnumerable<Node> Ancestry(Node? node) { for(;node!=null;node=node.GetParent()) yield return node; }
     private static IEnumerable<Node> Descendants(Node node) { yield return node;foreach(var child in node.GetChildren()) foreach(var item in Descendants(child)) yield return item; }
     private static void CheckRewardRows(World model,(int Item,int Count)[] expected)
     {
@@ -511,132 +538,97 @@ public partial class Preview
             if(icon.CustomMinimumSize.X<32 || icon.CustomMinimumSize.Y<32) throw new Exception("Quest reward icon minimum collapsed");
         GD.Print("QUEST_REWARD_ROWS_OK: "+string.Join(",",actual));
     }
-    private async Task CaptureNpcFixtures(World model,ClassicDetailPanel shell,string prefix,string output,List<object> measurements)
+    private async Task CaptureNpcFixtures(World model,ClassicNpcDialogue shell,string prefix,string output,List<object> measurements)
     {
-        var menu=(ScrollContainer)DetailField(model,"_npcMenuScroll")!;
-        var list=(VBoxContainer)DetailField(model,"_npcMenuBox")!;
+        var window=(HudWindow)DetailField(model,"_npcPanel")!;
         async Task Capture(string id)
         {
             await ToSignal(GetTree().CreateTimer(.8),SceneTreeTimer.SignalName.Timeout);
-            var body=((HudWindow)DetailField(model,"_npcPanel")!).Body;
             var rect=new Rect2(Vector2.Zero,shell.Size);
-            var outside=Descendants(shell).OfType<Control>().Where(c=>c.IsVisibleInTree() && c.GetParent()==shell && !rect.Encloses(c.GetRect())).Select(c=>c.Name.ToString()).ToArray();
+            var outside=Descendants(shell).OfType<Control>().Where(c=>c.IsVisibleInTree() && c.GetParent()==shell && !rect.Grow(.5f).Encloses(c.GetRect())).Select(c=>c.Name.ToString()).ToArray();
             if(outside.Length>0) throw new Exception(id+": shell overflow: "+string.Join(",",outside));
-            CheckNpcOwnership(body);
-            measurements.Add(new { id,shellWidth=shell.Size.X,shellHeight=shell.Size.Y,menuHeight=menu.Size.Y,menuMinimum=menu.CustomMinimumSize.Y,listHeight=list.Size.Y,overflow=outside,fixedMismatch=Array.Empty<string>(),buttons=list.GetChildren().OfType<Button>().Count() });
+            if(!new Rect2(Vector2.Zero,GetViewportRect().Size).Encloses(window.GetGlobalRect())) throw new Exception(id+": NPC window escaped the viewport: "+window.GetGlobalRect());
+            if(shell.Modulate.A<1) throw new Exception(id+": NPC dialogue did not settle");
+            if(!shell.Portrait.Visible && shell.Speech.Size!=KnightOnlineUiClassic.Layout.ClassicNpcLayout.SpeechWide.Size) throw new Exception(id+": speech leaves the empty portrait slot");
+            foreach(var arrow in Descendants(shell).OfType<Button>().Where(b=>b.Name.ToString() is "npc_previous_page" or "npc_next_page" && b.IsVisibleInTree()))
+                if(arrow.Disabled && arrow.GetThemeStylebox("disabled") is StyleBoxTexture dim && dim.ModulateColor.R>.6f) throw new Exception(id+": a disabled page arrow looks enabled");
+            CheckNpcOwnership(shell);
+            var actions=Descendants(shell).OfType<ClassicNpcAction>().Where(b=>b.IsVisibleInTree()).ToArray();
+            measurements.Add(new { id,shellWidth=shell.Size.X,shellHeight=shell.Size.Y,page=shell.Page,pageCount=shell.PageCount,overflow=outside,fixedMismatch=Array.Empty<string>(),buttons=actions.Length,
+                actionBounds=actions.Select(b=>b.GetGlobalRect().ToString()).ToArray() });
             await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
             GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-"+id+".png"));
         }
-        if(OS.GetCmdlineUserArgs().Contains("npc-live-mail-audit") || OS.GetCmdlineUserArgs().Contains("npc-portrait-pilot-audit") || OS.GetCmdlineUserArgs().Contains("npc-portraits-all-audit") || OS.GetCmdlineUserArgs().Contains("npc-portrait-fit-audit") || OS.GetCmdlineUserArgs().Contains("npc-portrait-width-audit"))
-        {
-            DetailCall(model,"BeginNpcDialog","[Guard] Patrick","I'm Moradon's Guardian, no still just Sentinel Patrick.\nWhat did you want?");
-            DetailCall(model,"AddNpcMenuButton","1.   Tell me more...",(Action)(()=>{}));
-            DetailCall(model,"AddNpcMenuButton","2.   Close",(Action)(()=>{}));
-            DetailCall(model,"EndNpcDialog",2);
-            // Reproduce the live race: NPC chrome runs before the deferred generic observer.
-            InvokeNpcStyle(list,"StyleContent");
-            foreach(var button in list.GetChildren().OfType<Button>()) InvokeNpcStyle(button,"StyleTree");
-            await Capture("npc-live-greeting");
-            DetailCall(model,"BeginNpcDialog","[Guard] Patrick","What mission are you going to undertake?");
-            for(int i=0;i<17;i++)
-            {
-                DetailCall(model,"AddNpcMenuButton",$"{i+1}.   {(i%3==0?"[In progress] ":i==4?"[Ready] ":"")}Mission {i+1}",(Action)(()=>{}));
-                var added=list.GetChildren().OfType<Button>().Last();
-                InvokeNpcStyle(added,"StyleContent");InvokeNpcStyle(added,"StyleTree");
-                await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
-            }
-            DetailCall(model,"EndNpcDialog",17);
-            await Capture("npc-live-menu");
-            var live=list.GetChildren().OfType<Button>().First();
-            live.EmitSignal(Control.SignalName.MouseEntered);await Capture("npc-live-hover");
-            live.EmitSignal(Control.SignalName.MouseExited);live.Disabled=true;await Capture("npc-live-disabled");
-            ItemData.EnsureLoaded();
-            var itemTable=(Dictionary<int,ItemData.Item>)typeof(ItemData).GetField("_items",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!;
-            string[] helmets={"Half Plate Helmet","Rogue Helmet","Mage Linen Cap","Priest Helmet"};
-            var offeredHelmets=helmets.Select(name=>itemTable.Values.First(i=>i.Name.Equals(name,StringComparison.OrdinalIgnoreCase) && i.Icon>0))
-                .Select(item=>new QuestTransfer(false,0,item.Id+5,1,0)).ToArray();
-            DetailCall(model,"ShowQuestView",new QuestView(65,1,21,true,true,false,false,QuestViewState.Available,0,
-                "Subdual of Gavolt","Hunt Gavolt.","Wheat bread, Moradon's special local product, has killer taste. But since not too long ago, Gavolts raided the harvested mill and as a result, the food supply is running low and the number of citizens suffering from malnutrition rising. Can you wipe those monsters out and help the farmers of Moradon?",
-                new QuestObjectives(65,false,[new QuestKillGroup(5,[1],"Gavolt")]),[0],[new QuestTransfer(false,2,0,6250,0)],[])
-                { Options=offeredHelmets });
-            var liveContent=(VBoxContainer)DetailField(model,"_npcQuestContent")!;
-            foreach(var control in Descendants(liveContent).OfType<Control>().Concat(Descendants(list).OfType<Control>()).ToArray())
-            { InvokeNpcStyle(control,"StyleContent");InvokeNpcStyle(control,"StyleTree"); }
-            await Capture("npc-live-offer");
-            var liveScroll=(ScrollContainer)DetailField(model,"_npcQuestScroll")!;
-            liveScroll.ScrollVertical=(int)liveContent.Size.Y;
-            await Capture("npc-live-offer-bottom");
-            var rewardPanel=liveContent.GetChildren().OfType<PanelContainer>().Last();
-            if(rewardPanel.GetGlobalRect().End.Y>liveScroll.GetGlobalRect().End.Y+.5f) throw new Exception("The last offered reward cannot be reached");
-            GD.Print("NPC_LIVE_STYLE_ORDER_OK: deep late insertion, chrome before deferred skin, 32px actual bounds, original callbacks, hover and disabled states");
-        }
+        ClassicNpcAction Topic(string text) => Descendants(shell).OfType<ClassicNpcAction>().Single(b=>b.IsVisibleInTree() && b.Source?.Text.Contains(text)==true);
         DetailCall(model,"BeginNpcDialog","[Guard] Patrick","What mission are you going to undertake?");
         int selected=-1;
         string[] topics={"[In progress] Orc Watcher hunting","Worm hunt","[In progress] Bandicoot hunting","[Ready] Kecoon hunting","[Completed] Bulcan hunting","Silk bundle delivery","Apples of Moradon","Close"};
         for(int i=0;i<topics.Length;i++) { int index=i;DetailCall(model,"AddNpcMenuButton",$"{i+1}.   {topics[i]}",(Action)(()=>selected=index)); }
         DetailCall(model,"EndNpcDialog",topics.Length);
         await Capture("npc-menu-full");
-        foreach(var button in list.GetChildren().OfType<Button>().Where(b=>b.HasMeta("quest_status")))
-            if(button.GetThemeColor("font_color")!=ClassicQuestStatus.Ink((QuestViewState)button.GetMeta("quest_status").AsInt32())) throw new Exception("NPC menu status colour is incorrect");
-        var hover=list.GetChildren().OfType<Button>().First();
-        hover.EmitSignal(Control.SignalName.MouseEntered);await Capture("npc-menu-hover");
-        hover.ToggleMode=true;hover.SetPressedNoSignal(true);await Capture("npc-menu-pressed");
-        hover.SetPressedNoSignal(false);hover.ToggleMode=false;hover.EmitSignal(Control.SignalName.MouseExited);
-        if(menu.Size.Y+1<list.GetCombinedMinimumSize().Y || menu.GetVScrollBar().Visible) throw new Exception("The full NPC menu is still clipped");
-        list.GetChildren().OfType<Button>().ElementAt(6).EmitSignal(BaseButton.SignalName.Pressed);
+        if(shell.PageCount!=1 || Descendants(shell).OfType<ClassicNpcAction>().Count(b=>b.IsVisibleInTree() && b.Name!="npc_footer_close")!=topics.Length-1) throw new Exception("The full NPC menu is not shown on one page");
+        var states=new Dictionary<string,QuestViewState> { ["Orc Watcher"]=QuestViewState.InProgress,["Kecoon"]=QuestViewState.Claimable,["Bulcan"]=QuestViewState.Completed,["Worm hunt"]=QuestViewState.Available };
+        foreach(var state in states)
+        {
+            var label=Topic(state.Key).GetChildren().OfType<Label>().Single(l=>l.HorizontalAlignment==HorizontalAlignment.Right);
+            if(label.GetThemeColor("font_color")!=ClassicQuestStatus.Ink(state.Value)) throw new Exception("NPC menu status colour is incorrect: "+state.Key);
+        }
+        var hover=Topic("Orc Watcher");
+        var point=hover.GetGlobalRect().GetCenter();
+        Input.ParseInputEvent(new InputEventMouseMotion { Position=point,GlobalPosition=point });await Capture("npc-menu-hover");
+        Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex=MouseButton.Left,Pressed=true,Position=point,GlobalPosition=point });await Capture("npc-menu-pressed");
+        Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex=MouseButton.Left,Pressed=false,Position=point,GlobalPosition=point });
+        await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+        Input.ParseInputEvent(new InputEventMouseMotion { Position=Vector2.Zero,GlobalPosition=Vector2.Zero });
+        await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+        if(selected!=0) throw new Exception("Pointer input on an NPC option lost its native callback");
+        Topic("Apples of Moradon").EmitSignal(BaseButton.SignalName.Pressed);
         if(selected!=6) throw new Exception("The NPC menu lost its original callback index");
+        Descendants(shell).OfType<Button>().Single(b=>b.Name=="npc_footer_close").EmitSignal(BaseButton.SignalName.Pressed);
+        if(selected!=7) throw new Exception("The footer Close lost the server's Close option");
         float menuHeight=shell.Size.Y;
         DetailCall(model,"BeginNpcDialog","[Guard] Patrick","Select a mission.");
         for(int i=0;i<24;i++) { int index=i;DetailCall(model,"AddNpcMenuButton",$"{i+1}.   Mission {i+1}",(Action)(()=>selected=index)); }
         DetailCall(model,"EndNpcDialog",24);
+        if(!window.Visible) window.Visible=true;
         await Capture("npc-menu-overflow");
-        if(!menu.GetVScrollBar().Visible || shell.Size.Y>GetViewportRect().Size.Y-35) throw new Exception("Long NPC lists must scroll inside the screen");
-        menu.ScrollVertical=(int)list.Size.Y;
+        if(shell.PageCount<2 || window.Size.Y>GetViewportRect().Size.Y-24) throw new Exception("Long NPC lists must page inside the screen");
+        var previous=Descendants(shell).OfType<Button>().Single(b=>b.Name=="npc_previous_page");
+        if(!previous.Disabled) throw new Exception("The first NPC page must disable its previous arrow");
+        var frame=window.GetGlobalRect();
+        while(shell.Page<shell.PageCount-1) Descendants(shell).OfType<Button>().Single(b=>b.Name=="npc_next_page").EmitSignal(BaseButton.SignalName.Pressed);
         await Capture("npc-menu-overflow-bottom");
-        var last=list.GetChildren().OfType<Button>().Last();
-        if(last.GetGlobalRect().End.Y>menu.GetGlobalRect().End.Y+1) throw new Exception("The last NPC option cannot be reached");
-        last.EmitSignal(BaseButton.SignalName.Pressed);
+        if(window.GetGlobalRect()!=frame) throw new Exception("NPC menu paging moved the window");
+        if(!Descendants(shell).OfType<Button>().Single(b=>b.Name=="npc_next_page").Disabled) throw new Exception("The last NPC page must disable its next arrow");
+        Topic("Mission 24").EmitSignal(BaseButton.SignalName.Pressed);
         if(selected!=23) throw new Exception("The last NPC callback was lost");
         DetailCall(model,"ShowQuestView",new QuestView(63,1,21,true,true,false,false,QuestViewState.Available,0,
             "Bandicoot Tooth","Collect two Apples of Moradon.","Oh? Nowadays, I am totally preoccupied with the manufacturing of medications learned from my teacher but it is so hard to find the materials for practice. Can you find two Apples of Moradon for me?",
             new QuestObjectives(63,false,[]),[],[new QuestTransfer(true,0,810418000,2,0),new QuestTransfer(false,2,0,850,0),new QuestTransfer(false,1,0,3500,0)],[]));
-        // This isolated fixture does not load the full item table.
-        var content=(VBoxContainer)DetailField(model,"_npcQuestContent")!;
-        var item=Descendants(content).OfType<Label>().FirstOrDefault(l=>l.Text.Contains("810418000"));
-        if(item!=null) item.Text="Apples of Moradon";
+        if(!window.Visible) window.Visible=true;
         await Capture("npc-apple-accept");
-        if(shell.Size.Y>=470 || shell.Size.Y>=menuHeight) throw new Exception("Short quests retain empty fixed-height space");
-        var actions=Descendants(list).OfType<Button>().Select(b=>b.Text).ToArray();
+        if(shell.Size.Y>=menuHeight) throw new Exception("Short quests retain empty fixed-height space");
+        var actions=Descendants(shell).OfType<ClassicNpcAction>().Where(b=>b.IsVisibleInTree()).Select(b=>b.Source?.Text).ToArray();
         if(!actions.Contains("Accept") || !actions.Contains("Reject")) throw new Exception("Quest acceptance actions were lost");
-        Descendants(list).OfType<Button>().Single(b=>b.Text=="Reject").EmitSignal(BaseButton.SignalName.Pressed);
-        if(((HudWindow)DetailField(model,"_npcPanel")!).Visible) throw new Exception("The native Reject callback no longer closes the quest");
-        GD.Print("NPC_QUEST_FIT_OK: full menu, original callback indices, scrolling to last option, dynamic short quest, native Reject, reward selection");
+        Descendants(shell).OfType<ClassicNpcAction>().Single(b=>b.Source?.Text=="Reject").EmitSignal(BaseButton.SignalName.Pressed);
+        if(window.Visible) throw new Exception("The native Reject callback no longer closes the quest");
+        GD.Print("NPC_QUEST_FIT_OK: full menu, status ink, pointer hover/press, original callback indices, paged long menu, dynamic short quest, native Reject, reward selection");
     }
-    private static void InvokeNpcStyle(Node node,string method)
+    private static void CheckNpcOwnership(ClassicNpcDialogue shell)
     {
-        var owner=method=="StyleTree"?typeof(CharacterDetailsSkin):typeof(ClassicNpcQuestChrome);
-        owner.GetMethod(method,BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new object[]{node});
-    }
-    private static void CheckNpcOwnership(Control body)
-    {
-        foreach(var scroll in Descendants(body).OfType<ScrollContainer>().Where(s=>s.IsVisibleInTree()))
-        {
+        foreach(var scroll in Descendants(shell).OfType<ScrollContainer>().Where(s=>s.IsVisibleInTree()))
             if(scroll.GetHScrollBar().Visible) throw new Exception("NPC content needs horizontal scrolling");
-            var content=scroll.GetChildren().OfType<Control>().FirstOrDefault();
-            if(content!=null && scroll.GetVScrollBar().Visible && content.GetRect().End.X>scroll.GetVScrollBar().Position.X+.5f)
-                throw new Exception("The native NPC scrollbar covers content: "+content.Size);
-        }
-        foreach(var button in Descendants(body).OfType<Button>().Where(b=>b.IsVisibleInTree()))
+        foreach(var button in Descendants(shell).OfType<ClassicNpcAction>().Where(b=>b.IsVisibleInTree()))
         {
-            if(!button.HasMeta("classic_npc_plate") || button.CustomMinimumSize.Y!=32 || button.Size.Y!=32 || button.SizeFlagsVertical!=Control.SizeFlags.Fill)
-                throw new Exception("Live NPC button bounds regressed: "+button.Text+" / "+button.Size+" / "+button.CustomMinimumSize);
+            if(button.Size.Y!=32) throw new Exception("NPC action bounds regressed: "+button.Source?.Text+" / "+button.Size);
             foreach(string state in new[]{"normal","hover","pressed","hover_pressed","disabled","focus"})
-                if(button.GetThemeStylebox(state) is not StyleBoxEmpty) throw new Exception("Generic skin overwrote NPC "+state+" art: "+button.Text);
+                if(button.GetThemeStylebox(state) is not StyleBoxEmpty) throw new Exception("Generic skin overwrote NPC "+state+" art: "+button.Source?.Text);
             if(button.GetChildren().OfType<ClassicNpcOptionPlate>().Count()!=1) throw new Exception("Duplicate NPC artwork");
-            if(button.HasMeta("quest_status") && button.GetThemeColor("font_color")!=ClassicQuestStatus.Ink((QuestViewState)button.GetMeta("quest_status").AsInt32()))
-                throw new Exception("Deferred generic skin overwrote NPC status ink");
+            if(!new Rect2(Vector2.Zero,shell.Size).Encloses(new Rect2(button.GlobalPosition-shell.GlobalPosition,button.Size))) throw new Exception("NPC action escaped its frame: "+button.Source?.Text);
         }
-        foreach(var label in Descendants(body).OfType<Label>().Where(l=>l.HasMeta("quest_status")))
-            if(label.GetThemeColor("font_color")!=ClassicQuestStatus.Ink((QuestViewState)label.GetMeta("quest_status").AsInt32())) throw new Exception("NPC status caption lost its ink");
+        if(shell.Status!=null && shell.Status.IsVisibleInTree()
+            && Descendants(shell).OfType<Label>().FirstOrDefault(l=>l.HasMeta("quest_status") && !l.IsQueuedForDeletion()) is {} native
+            && shell.Status.GetThemeColor("font_color")!=ClassicQuestStatus.Ink((QuestViewState)native.GetMeta("quest_status").AsInt32()))
+            throw new Exception("Composed NPC status lost its ink");
     }
 }
