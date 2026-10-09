@@ -48,6 +48,7 @@ public partial class MessageBox : Control
         _view.OnPressed("btn_cancel", request.Cancel);
         if (!request.Dismissable && _view.Get("btn_ok") is { } ok) ok.Visible = false;
         request.MessageChanged += UpdateMessage;
+        FitMessage();
     }
 
     public override void _EnterTree()
@@ -57,7 +58,32 @@ public partial class MessageBox : Control
     }
 
     public override void _ExitTree() { GetViewport().SizeChanged -= Center; _request.MessageChanged-=UpdateMessage; }
-    private void UpdateMessage(string text) => _view.SetText(MessageId,text);
+    private void UpdateMessage(string text) { _view.SetText(MessageId,text); FitMessage(); if(IsInsideTree()) Center(); }
+
+    // A long message lengthens the original frame through its middle band (the rows the
+    // native art already stretches) instead of running over the title or the buttons.
+    private readonly Dictionary<Control,(Vector2 Position,Vector2 Size)> _declared=new();
+    private void FitMessage()
+    {
+        if(_view.Get(MessageId) is not Label message) return;
+        var root=_view.Root;
+        var field=root.Find(MessageId)!;
+        if(_declared.Count==0)
+            foreach(var node in root.Children)
+                if(_view.ControlOf(node) is {} control) _declared[control]=(control.Position,control.Size);
+        message.Size=new Vector2(field.W,field.H);
+        float extra=Mathf.Max(0,Mathf.Ceil(message.GetMinimumSize().Y-field.H));
+        foreach(var node in root.Children)
+        {
+            if(_view.ControlOf(node) is not {} control || !_declared.TryGetValue(control,out var declared)) continue;
+            control.Position=declared.Position;control.Size=declared.Size;
+            if(node.Type=="image" && node.Y==MiddleBandY) control.Size+=new Vector2(0,extra);
+            else if(node.Y>MiddleBandY) control.Position+=new Vector2(0,extra);
+        }
+        message.Size=new Vector2(field.W,field.H+extra);
+        _view.CustomMinimumSize=_view.Size=root.SizeVec+new Vector2(0,extra);
+    }
+    private const int MiddleBandY=64;
 
     private void Center()
     {

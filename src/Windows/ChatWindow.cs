@@ -8,6 +8,7 @@ namespace KnightOnlineUiClassic.Windows;
 public partial class ChatWindow : Control
 {
     private static readonly Vector2 DefaultSize = new(620, 190);
+    public static float DefaultHeight => DefaultSize.Y;
     private static readonly Vector2 Minimum = new(620, 140);
     private static readonly (string Name, string Prefix)[] Channels =
     {

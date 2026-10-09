@@ -48,8 +48,10 @@ public static class HotbarVisuals
     public static Label KeyLabel(string text)
     {
         var label=Label(text,12);
-        // Light lettering with a dark outline stays readable on either native metal rail.
-        label.AddThemeColorOverride("font_color",Plugin.Kit.Nation==1 ? new Color(0.96f,0.94f,0.85f):new Color(0.98f,0.85f,0.17f));
+        // Native numerals: dark ink on the light Karus rail, gold on the dark El Morad rail.
+        bool karus=Plugin.Kit.Nation==1;
+        label.AddThemeColorOverride("font_color",karus ? new Color(0.15f,0.13f,0.11f):new Color(0.98f,0.85f,0.17f));
+        label.AddThemeConstantOverride("outline_size",karus ? 0:1);
         return label;
     }
     public static StyleBoxTexture Cell(LayoutNode layout)
