@@ -149,7 +149,6 @@ public partial class ClassicStorePanel : Control
         _tabsQueued = false; if (!IsInstanceValid(_tabs)) return;
         foreach (var old in _plates) { _tabs.RemoveChild(old); old.QueueFree(); }
         _plates.Clear();
-        float height = Platform.TouchUi ? ClassicStoreLayout.TouchTabHeight : ClassicStoreLayout.TabHeight;
         foreach (var native in _categoryList.GetChildren().OfType<Button>().Where(b => !b.IsQueuedForDeletion()))
         {
             bool selected = native.GetMeta("pus_category_selected", false).AsBool();
