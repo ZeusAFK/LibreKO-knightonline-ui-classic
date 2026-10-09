@@ -119,6 +119,8 @@ public partial class ClassicPartyRoster : Control
             else if (row is Label hint)
             {
                 hint.Text = "No party members"; hint.CustomMinimumSize = new Vector2(131, 24);
+                // Align with the "Party" caption and the member names.
+                hint.AddThemeStyleboxOverride("normal", new StyleBoxEmpty { ContentMarginLeft = Plugin.Kit.Layout("co_party_us").Strings.First().Position.X });
                 hint.AddThemeFontOverride("font", Plugin.Kit.Bold); hint.AddThemeFontSizeOverride("font_size", 11);
             }
         }
@@ -281,10 +283,11 @@ public partial class ClassicPartyBoard : Control
             if(row is PanelContainer panel) panel.AddThemeStyleboxOverride("panel",new StyleBoxEmpty());
             var content = new Control { CustomMinimumSize = new Vector2(292,18), MouseFilter = MouseFilterEnum.Ignore };
             row.AddChild(content); row.CustomMinimumSize = new Vector2(292,18);
-            var name = ClassicPartySkin.Caption(content,row.GetMeta("seek_name").AsString(),new Rect2(0,0,115,18),Colors.White,10);
+            // Cells keep the same 4px inset from the column rules as the header captions' table.
+            var name = ClassicPartySkin.Caption(content,row.GetMeta("seek_name").AsString(),new Rect2(4,0,111,18),Colors.White,10);
             name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             ClassicPartySkin.Caption(content,row.GetMeta("seek_level").AsString(),new Rect2(118,0,60,18),Colors.White,10).HorizontalAlignment=HorizontalAlignment.Center;
-            ClassicPartySkin.Caption(content,row.GetMeta("seek_class").AsString(),new Rect2(182,0,110,18),Colors.White,10);
+            ClassicPartySkin.Caption(content,row.GetMeta("seek_class").AsString(),new Rect2(186,0,106,18),Colors.White,10);
             row.TooltipText=row.GetMeta("seek_name").AsString()+"\n"+row.GetMeta("seek_detail").AsString();
             row.GuiInput += ev => { if(ev is InputEventMouseButton {Pressed:true,ButtonIndex:MouseButton.Left})
             { _selected=row; _invite.Disabled=_private.Disabled=false; _details.Text=row.TooltipText; QueueRedraw(); } };
@@ -296,7 +299,8 @@ public partial class ClassicPartyBoard : Control
         var image=_art.Images.First();
         DrawTextureRectRegion(Plugin.Kit.Texture(image.Texture!),new Rect2(Vector2.Zero,CustomMinimumSize),new Rect2(image.SrcX,image.SrcY,image.SrcW,image.SrcH));
         // The server supplies ten rows per page. Use the remainder for selected-player details.
-        DrawRect(new Rect2(15,276,290,97),Colors.Black);
+        // Cover the table's column rules down to the inner frame line.
+        DrawRect(new Rect2(15,276,290,99),Colors.Black);
         DrawLine(new Vector2(15,276),new Vector2(305,276),new Color("8c7950"),1);
         if(_selected != null && GodotObject.IsInstanceValid(_selected) && _selected.GetParent()==_list)
             DrawRect(new Rect2(_list.Position+_selected.Position,new Vector2(292,18)),new Color("00ff00"),false,1);

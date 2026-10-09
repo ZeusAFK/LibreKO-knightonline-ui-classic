@@ -84,6 +84,7 @@ public partial class ClassicNpcDialogue : Control
             var paragraph=_offer?_questSource.GetChildren().OfType<RichTextLabel>().FirstOrDefault():_nativeSpeech;
             _speech.ShowContent(identity,paragraph?.Text??"");
             _portrait.Visible=npc!=null;if(npc!=null) _portrait.Show(npc);
+            ClassicNpcLayout.Place(_speech,npc!=null?ClassicNpcLayout.Speech:ClassicNpcLayout.SpeechWide);
             _centerPending=true;_settling=2;Modulate=Colors.Transparent;
         }
         var viewport=GetViewportRect().Size;
@@ -188,6 +189,8 @@ public partial class ClassicNpcDialogue : Control
         {
             var view=new Button { Name=next?"npc_next_page":"npc_previous_page",Disabled=next?_page>=PageCount-1:_page==0 };
             ClassicReportDesign.StyleButton(view,false,Plugin.Kit.Layout("{nation}_page_quest_us").Find(next?"btn_page_up":"btn_page_down")!);
+            // The original arrow has no disabled art; dim it so the first and last pages read as ends.
+            if(view.GetThemeStylebox("disabled") is StyleBoxTexture disabled) disabled.ModulateColor=new Color(.45f,.45f,.45f);
             view.Pressed+=()=> { _page+=next?1:-1;ArrangeMenu();Fit(); };
             _footer.AddChild(view);ClassicNpcLayout.Place(view,new Rect2(x,7,32,18));
         }

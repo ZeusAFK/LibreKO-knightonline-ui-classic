@@ -64,7 +64,8 @@ public partial class Preview
             var rect=window.GetGlobalRect();var viewport=new Rect2(Vector2.Zero,GetViewportRect().Size);
             var failures=new List<string>();
             if(rect.Size.X!=363 || !viewport.Encloses(rect)) failures.Add("Window width or viewport containment: "+rect);
-            if(shell.Speech.Size!=new Vector2(228,120) || shell.Speech.Text.Size!=new Vector2(212,shell.Speech.ViewportHeight)) failures.Add("Speech frame grew");
+            var speechRect=shell.Portrait.Visible?KnightOnlineUiClassic.Layout.ClassicNpcLayout.Speech:KnightOnlineUiClassic.Layout.ClassicNpcLayout.SpeechWide;
+            if(shell.Speech.Size!=speechRect.Size || shell.Speech.Text.Size!=new Vector2(speechRect.Size.X-16,shell.Speech.ViewportHeight)) failures.Add("Speech frame grew");
             if(shell.Status!=null)
             {
                 var status=shell.Status.GetGlobalRect();var header=((Control)shell.Status.GetParent()).GetGlobalRect();

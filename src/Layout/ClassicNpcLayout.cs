@@ -12,6 +12,8 @@ public static class ClassicNpcLayout
     public static readonly Rect2 TitleText=new(36,28,281,32);
     public static readonly Rect2 Close=new(TitlePlate.End.X+7,TitlePlate.GetCenter().Y-10,20,20);
     public static readonly Rect2 Speech=new(117,80,228,120);
+    /// <summary>Speech frame when the dialogue has no NPC portrait (quest pages opened away from an NPC).</summary>
+    public static readonly Rect2 SpeechWide=new(Inset,80,InnerWidth,120);
     public static readonly Rect2 Portrait=new(22,86,84,110);
     public static StyleBoxTexture InsetBox(int padding=0)
     {
