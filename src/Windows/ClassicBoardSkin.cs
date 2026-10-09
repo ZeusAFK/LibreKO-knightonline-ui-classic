@@ -270,11 +270,11 @@ public partial class ClassicBoardPanel : Control
         {
             if (child is Label empty && !empty.HasMeta("board_row"))
             {
-                // The client's empty-list line sits in the first row.
+                // The client's empty-list line is centred in the empty table.
                 empty.SetMeta("board_row", true);
                 Style(empty, true, BodySize, Muted);
                 empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center;
-                empty.CustomMinimumSize = new Vector2(ClassicBoardLayout.RowWidth, ClassicBoardLayout.RowHeight);
+                empty.CustomMinimumSize = new Vector2(ClassicBoardLayout.RowWidth, _rowsRect.Size.Y);
                 empty.AddThemeConstantOverride("outline_size", 0);
             }
             if (child is not PanelContainer row || row.HasMeta("board_row") || row.IsQueuedForDeletion()) continue;
