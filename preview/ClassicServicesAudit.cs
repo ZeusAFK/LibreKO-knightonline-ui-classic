@@ -120,6 +120,10 @@ public partial class Preview
         var piece = (HudWindow)DetailField(pieceWorld, "_piecePanel")!; piece.Reparent(this); NativeServices.Prepare(piece, pieceWorld); ClassicServiceSkin.Apply(piece.Body);
         Set(pieceWorld, "_pieceShown", true); Set(pieceWorld, "_pieceNpcId", 300); DetailCall(pieceWorld, "RefreshPieceBackpack"); await Capture(piece, "generator-empty");
         Require(Descendants(piece).Count(c => c.GetType().Name == "UpgradeBackpackCell") == 28, "Classic Generator shows all 28 carried slots with the inventory pitch");
+        {
+            var bag = Descendants(piece).OfType<ScrollContainer>().Single(s => s.Position == new Vector2(9, 282));
+            Require(!bag.GetVScrollBar().Visible, "Generator bag and footer fit above the frame's 14 px bottom margin without scrolling");
+        }
         var rejectedDrop = new Godot.Collections.Dictionary { { "invFrom", Inventory.GridStart } };
         Require(!PieceDropTarget(pieceWorld)._CanDropData(Vector2.Zero, rejectedDrop), "Generator rejects an empty / invalid piece drop");
         var rewards = (Dictionary<int, int[]>)typeof(ItemData).GetField("_pieces", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
@@ -180,6 +184,16 @@ public partial class Preview
             bool confirmed = false, cancelled = false;
             var request = (DialogRequest)Create(typeof(DialogRequest), stat ? "Redistribute stats" : "Redistribute mastery", stat ? "Every one of your stat points goes back into the pool, and it costs 1,200,000 gold.\n\nUnequip every item first." : "Every one of your mastery points goes back into the pool, and it costs 1,200,000 gold.", "Redistribute", "Cancel", true, (Action)(() => confirmed = true), (Action)(() => cancelled = true), () => { });
             var dialog = new ClassicServiceNotice(request); AddChild(dialog); await Frames();
+            {
+                // The confirmation fits its message: title band, 15 px, message, 15 px, actions, 10 px bottom.
+                var box = (Control)typeof(ClassicServiceNotice).GetField("_panel", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(dialog)!;
+                var message = Descendants(box).OfType<Label>().Single(l => l.Position.Y == ClassicServiceNotice.MessageTop);
+                var actions = Descendants(box).OfType<Button>().ToArray();
+                Require(message.GetLineCount() >= 2 && message.GetVisibleLineCount() == message.GetLineCount() && Math.Abs(message.Size.Y - ClassicServiceNotice.MessageHeight(message)) < 1, "Redistribution message keeps exactly its wrapped height");
+                Require(actions.Length == 2 && actions.All(b => Math.Abs(b.Position.Y - message.Position.Y - message.Size.Y - ClassicServiceNotice.Gap) < .5f
+                    && Math.Abs(box.Size.Y - b.Position.Y - b.Size.Y - ClassicServiceNotice.Bottom) < .5f), "Redistribution actions sit 15 px under the message and 10 px above the bottom");
+                Require(actions[0].Position.X == ClassicServiceNotice.Side && Math.Abs(box.Size.X - actions[1].GetRect().End.X - ClassicServiceNotice.Side) < .5f, "Redistribution actions keep even side insets");
+            }
             string file = (nation == 1 ? "karus" : "human") + (stat ? "-redistribute-stats.png" : "-redistribute-mastery.png");
             GetViewport().GetTexture().GetImage().SavePng(output + "/" + file); screens.Add(new { state = stat ? "redistribute-stats" : "redistribute-mastery", file });
             dialog._Input(new InputEventKey { Keycode = Key.Escape, Pressed = true }); Require(cancelled && !confirmed, "Redistribution Escape cancels without spending gold");

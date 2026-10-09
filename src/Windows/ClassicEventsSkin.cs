@@ -7,7 +7,7 @@ namespace KnightOnlineUiClassic.Windows;
 
 /// <summary>
 /// Classic compositions for the native event windows. None has an original UIF; each is built from the
-/// quest frame and title plate, quest insets, inventory cells, service buttons and the original close and
+/// plain Classic frame, even content margins, inventory cells, service buttons and the original close and
 /// hotbar arrow buttons, around the client's own labels, buttons and rows.
 /// </summary>
 public static class ClassicEventsSkin
@@ -121,7 +121,8 @@ public abstract partial class ClassicEventPanel : Control
     protected void SetFullSize(Vector2 size)
     {
         if (size == _full) return;
-        _full = size; _frame.Size = size; Content.Size = size;
+        _full = size; Content.Size = size;
+        if (!_minimized) _frame.Size = size;
         if (!_minimized) { Size = CustomMinimumSize = size; Window.ResetSize(); }
     }
 
@@ -132,7 +133,7 @@ public abstract partial class ClassicEventPanel : Control
         if (_minimized)
         {
             Size = CustomMinimumSize = ClassicEventsLayout.Minimized;
-            Place(TitleLabel, ClassicEventsLayout.MinimizedTitle, this);
+            Place(TitleLabel, ClassicEventsLayout.MinimizedTitle(closable), this);
             Place(_grip, ClassicEventsLayout.MinimizedGrip, this);
             if (MinimizeButton != null) Place(MinimizeButton, ClassicEventsLayout.MinimizedToggle(closable), this);
             if (CloseButton != null) Place(CloseButton, ClassicEventsLayout.MinimizedClose, this);
@@ -145,7 +146,8 @@ public abstract partial class ClassicEventPanel : Control
             if (MinimizeButton != null) Place(MinimizeButton, ClassicEventsLayout.Minimize(width, closable), this);
             if (CloseButton != null) Place(CloseButton, ClassicEventsLayout.Close(width), this);
         }
-        _frame.Visible = Content.Visible = !_minimized;
+        _frame.Size = _minimized ? ClassicEventsLayout.Minimized : _full;
+        Content.Visible = !_minimized;
         // The client resets the title's clipping when it minimizes or restores.
         TitleLabel.CustomMinimumSize = Vector2.Zero;
         TitleLabel.ClipText = true;
@@ -168,11 +170,6 @@ public abstract partial class ClassicEventPanel : Control
 
     /// <summary>Mirrors native state into the Classic composition every visible frame.</summary>
     protected virtual void Refresh() { }
-
-    public override void _Draw()
-    {
-        if (_minimized) ClassicNpcQuestChrome.Plate("normal").Draw(GetCanvasItem(), new Rect2(Vector2.Zero, Size));
-    }
 
     // Component helpers ------------------------------------------------------------------------------
 

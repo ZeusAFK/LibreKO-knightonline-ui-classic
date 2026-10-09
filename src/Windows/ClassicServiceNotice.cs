@@ -4,12 +4,18 @@ using KnightOnlineUiClassic.Layout;
 
 namespace KnightOnlineUiClassic.Windows;
 
-// Original fee-dialog corners and action artwork surround live server-owned confirmations.
+// Live server-owned confirmations in the plain Classic frame with the original fee-dialog actions. The box fits
+// its message with the message-box rhythm: title band, 15 px, the wrapped message, 15 px, the 97 x 29 actions
+// and the original 10 px bottom, so a short message leaves no empty band.
 public partial class ClassicServiceNotice : Control
 {
+    public const float Width = 344, TransferWidth = 420, TitleTop = 10, TitleHeight = 15, Gap = 15, ActionHeight = 29, Bottom = 10, Side = 18;
+    /// <summary>Top of the message: the title band plus the even gap.</summary>
+    public const float MessageTop = TitleTop + TitleHeight + Gap;
     private readonly DialogRequest _request;
-    private readonly Control _panel = new() { Size = new Vector2(344, 196) };
+    private readonly Control _panel = new() { Size = new Vector2(Width, 196) };
     private readonly Label _message;
+    private readonly List<Button> _actions = new();
     private readonly bool _transfer;
     private bool _positioned, _dragging;
     private Vector2 _dragOffset;
@@ -17,25 +23,23 @@ public partial class ClassicServiceNotice : Control
     {
         _request = request; SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _transfer = request.Title == "Nation Transfer";
-        if (_transfer) _panel.Size = new Vector2(420, 244);
+        if (_transfer) _panel.Size = new Vector2(TransferWidth, 244);
         var blocker = new ColorRect { Color = new Color(0, 0, 0, .35f), MouseFilter = MouseFilterEnum.Stop };
         blocker.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); AddChild(blocker); AddChild(_panel);
-        _panel.Draw += DrawFrame;
-        var title = new Label { Text = request.Title, Position = new Vector2(16, 14), Size = new Vector2(_panel.Size.X - 32, 20), HorizontalAlignment = HorizontalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
+        var frame = new ClassicFrame { Name = "service_notice_frame", Size = _panel.Size, BackgroundColor = Colors.Black, BackgroundAlpha = 1 };
+        _panel.AddChild(frame); _panel.Resized += () => frame.Size = _panel.Size;
+        var title = new Label { Text = request.Title, Position = new Vector2(Side, TitleTop), Size = new Vector2(_panel.Size.X - Side * 2, TitleHeight), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
         _panel.AddChild(title); ClassicVendorSkin.Font(title); title.AddThemeColorOverride("font_color", new Color("e4c58b"));
-        var messageSize = new Vector2(_panel.Size.X - 36, _panel.Size.Y - 95);
-        _message = new Label { Text = request.Message, Position = new Vector2(18, 42), Size = messageSize,
-            AutowrapMode = TextServer.AutowrapMode.WordSmart, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        _message = new Label { Text = request.Message, Position = new Vector2(Side, MessageTop), Size = new Vector2(_panel.Size.X - Side * 2, 1),
+            AutowrapMode = TextServer.AutowrapMode.WordSmart, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
         _panel.AddChild(_message); ClassicVendorSkin.Font(_message); _message.AddThemeColorOverride("font_color", new Color("e4d9bf"));
-        _message.Size = messageSize;
-        _message.CustomMaximumSize = messageSize;
         _message.ClipContents = true;
         var art = Plugin.Kit.Layout("co_change_bill_us");
         foreach (bool accept in request.CancelText == null ? new[] { true } : new[] { true, false })
         {
-            var button = new Button(); _panel.AddChild(button);
+            var button = new Button(); _panel.AddChild(button); _actions.Add(button);
             ClassicMerchantSkin.Button(button, art.Find(accept ? "btn_ok" : "btn_cancel")!, _panel,
-                new Rect2(request.CancelText == null ? (_panel.Size.X - 97) / 2 : accept ? 18 : _panel.Size.X - 115, _panel.Size.Y - 43, 97, 29), accept ? request.ConfirmText : request.CancelText ?? "Cancel");
+                new Rect2(request.CancelText == null ? (_panel.Size.X - 97) / 2 : accept ? Side : _panel.Size.X - Side - 97, 0, 97, ActionHeight), accept ? request.ConfirmText : request.CancelText ?? "Cancel");
             ClassicVendorSkin.Font(button);
             foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" }) button.AddThemeColorOverride(state, new Color("efd9b4"));
             if (accept) button.Pressed += request.Confirm; else button.Pressed += request.Cancel;
@@ -47,28 +51,35 @@ public partial class ClassicServiceNotice : Control
             control.AddThemeFontOverride("font", Plugin.Kit.Bold);
             control.AddThemeFontSizeOverride("font_size", 13);
         }
+        Fit();
         if (_transfer || request.Title is "Rebirth" or "Clan Cape" or "Familiar Hatching" or "Familiar Transformation") _panel.GuiInput += ev =>
         {
-            if (ev is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouse || mouse.Position.Y > 38) return;
+            if (ev is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouse || mouse.Position.Y > MessageTop - 4) return;
             _dragging = true; _dragOffset = mouse.Position; _positioned = true; _panel.AcceptEvent();
         };
     }
-    private void DrawFrame()
+    /// <summary>Height of a box whose wrapped message is <paramref name="message"/> pixels high.</summary>
+    public static float HeightFor(float message) => Mathf.Ceil(MessageTop + message + Gap + ActionHeight + Bottom);
+    // The message keeps its wrapped height; the box and its actions follow it. Very long text is bounded by the
+    // viewport and clipped inside the message band.
+    private void Fit()
     {
-        var texture = Plugin.Kit.Texture("ui_message_us.png");
-        var size = _panel.Size;
-        _panel.DrawRect(new Rect2(4, 4, size.X - 8, size.Y - 8), Colors.Black);
-        void Slice(Rect2 dest, Rect2 source) => _panel.DrawTextureRectRegion(texture, dest, source);
-        Slice(new Rect2(0, 0, 64, 64), new Rect2(330, 2, 64, 64));
-        Slice(new Rect2(size.X - 64, 0, 64, 64), new Rect2(395, 2, 64, 64));
-        Slice(new Rect2(0, size.Y - 64, 64, 64), new Rect2(330, 67, 64, 64));
-        Slice(new Rect2(size.X - 64, size.Y - 64, 64, 64), new Rect2(395, 67, 64, 64));
-        Slice(new Rect2(64, 0, size.X - 128, 64), new Rect2(334, 2, 60, 64));
-        Slice(new Rect2(64, size.Y - 64, size.X - 128, 64), new Rect2(334, 67, 60, 64));
-        Slice(new Rect2(0, 64, 64, size.Y - 128), new Rect2(330, 6, 64, 60));
-        Slice(new Rect2(size.X - 64, 64, 64, size.Y - 128), new Rect2(395, 6, 64, 60));
+        _message.Size = new Vector2(_panel.Size.X - Side * 2, 1);
+        float text = MessageHeight(_message);
+        float room = IsInsideTree() ? GetViewportRect().Size.Y - 40 : 4096;
+        text = Math.Min(text, Math.Max(17, room - HeightFor(0)));
+        _message.Size = new Vector2(_panel.Size.X - Side * 2, text);
+        _panel.Size = new Vector2(_panel.Size.X, HeightFor(text));
+        foreach (var button in _actions) button.Position = new Vector2(button.Position.X, _panel.Size.Y - Bottom - ActionHeight);
     }
-    private void UpdateMessage(string text) => _message.Text = text;
+    /// <summary>Wrapped height of an autowrapping label at its current width (Godot reports no minimum height for it).</summary>
+    public static float MessageHeight(Label label)
+    {
+        int lines = Math.Max(1, label.GetLineCount());
+        return Mathf.Ceil(lines * label.GetLineHeight() + (lines - 1) * label.GetThemeConstant("line_spacing"));
+    }
+    private void UpdateMessage(string text) { _message.Text = text; Fit(); }
+    public override void _Ready() => Fit();
     public override void _ExitTree() => _request.MessageChanged -= UpdateMessage;
     public override void _Process(double delta)
     {

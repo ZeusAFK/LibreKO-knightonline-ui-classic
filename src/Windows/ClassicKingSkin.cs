@@ -413,7 +413,19 @@ public partial class ClassicKingPanel : Control
 
     public override void _Draw()
     {
+        // List and board windows straighten the curls of their silver frame; NPC talk windows keep their art.
+        var straight = ClassicStraightArt.For(ClassicKingLayout.Art(Window.Id));
+        if (straight != null)
+        {
+            DrawTexture(ClassicStraightArt.Compose(ClassicKingLayout.Art(Window.Id), (Vector2I)Size, ClassicKingLayout.Backing(Window.Id), Pieces(), straight), Vector2.Zero);
+            return;
+        }
         DrawRect(ClassicKingLayout.Backing(Window.Id), Colors.Black);
+        foreach (var (texture, rect, source) in Pieces()) DrawTextureRectRegion(texture, rect, source);
+    }
+
+    private IEnumerable<(Texture2D Texture, Rect2 Rect, Rect2 Source)> Pieces()
+    {
         bool karus = Plugin.Kit.Nation == 1;
         foreach (var part in Images(_art))
         {
@@ -425,7 +437,7 @@ public partial class ClassicKingPanel : Control
                 if (part.Y >= ClassicKingLayout.TreasurySplit) rect.Position += new Vector2(0, ClassicKingLayout.TreasuryExtra);
                 else if (part.Y + part.H == ClassicKingLayout.TreasurySplit && (part.W != part.SrcW || part.H != part.SrcH)) rect.Size += new Vector2(0, ClassicKingLayout.TreasuryExtra);
             }
-            DrawTextureRectRegion(Plugin.Kit.Texture(part.Texture!), rect, new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH));
+            yield return (Plugin.Kit.Texture(part.Texture!)!, rect, new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH));
         }
     }
 

@@ -4,8 +4,8 @@ namespace KnightOnlineUiClassic.Layout;
 
 public static class ClassicMerchantSearchLayout
 {
-    // The lowest row keeps the original quest-talk insets: 20 px from the sides, 30 px above the frame bottom.
-    public static readonly Vector2 Size = new(780, 536);
+    // Every row keeps the plain frame's even 16 px inset, the lowest one 16 px above the frame bottom.
+    public static readonly Vector2 Size = new(780, 522);
     public static readonly Rect2 List = new(16, 160, 748, 300);
     public static Rect2 Row(int index, int column) => column switch
     {

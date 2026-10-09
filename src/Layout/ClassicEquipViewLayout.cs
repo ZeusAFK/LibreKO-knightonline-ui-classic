@@ -4,7 +4,8 @@ namespace KnightOnlineUiClassic.Layout;
 // Inventory socket spacing and Report typography, without local inventory actions.
 public static class ClassicEquipViewLayout
 {
-    public static readonly Vector2 Size = new(640, 550);
+    // The state column ends 16 px above the plain frame's bottom edge, as on the other sides.
+    public static readonly Vector2 Size = new(640, 515);
     public static readonly Rect2 Name = new(16, 52, 608, 24);
     public static readonly Rect2 Summary = new(16, 80, 608, 20);
     public static readonly Rect2 Gear = new(20, 137, 147, 241);

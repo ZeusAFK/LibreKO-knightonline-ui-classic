@@ -63,21 +63,23 @@ public partial class ClassicServicePanel : Control
         var close = grip.GetChildren().OfType<Button>().Single(b => b.TooltipText == "Close");
         foreach (var child in window.GetChildren().OfType<Control>()) child.Visible = false;
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-        if (window.Id is not ("warp" or "class_change"))
+        // The redistribution menu uses the same plain frame, fitted to its options instead of the fixed message art.
+        if (window.Id != "warp")
         {
             AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black });
         }
         ClassicPartySkin.Drag(this, grip, new Rect2(14, 8, Size.X - 50, 30));
-        if (window.Id != "class_change") Place(title, new Rect2(22, window.Id == "warp" ? 6 : 16, Size.X - 70, 24));
+        // Frame windows keep their 14 px content margin for the title and the close button as on every other side.
+        if (window.Id != "class_change") Place(title, new Rect2(14, window.Id == "warp" ? 6 : 14, Size.X - 66, 24));
         title.HorizontalAlignment = HorizontalAlignment.Left;
-        // The quest frame is the same dark art for both nations, so its title keeps one colour.
+        // The plain Classic frame is the same dark art for both nations, so its title keeps one colour.
         if (window.Id is not ("warp" or "class_change" or "repair")) title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         if (window.Id != "seal") title.Text = Title(window.Id);
         if (window.Id != "class_change")
         {
             ClassicMerchantSkin.Button(close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this,
-                new Rect2(Size.X - 40, 15, 24, 24), "");
-            close.SetMeta("service_expected_rect", new Rect2(Size.X - 40, 15, 24, 24));
+                new Rect2(Size.X - 38, 14, 24, 24), "");
+            close.SetMeta("service_expected_rect", new Rect2(Size.X - 38, 14, 24, 24));
         }
         if (window.Id == "warp")
         {
@@ -245,7 +247,8 @@ public partial class ClassicServicePanel : Control
         Button(Find<Button>("piece_talk"), new Rect2(250, 213, 102, 29));
         Caption("Exchange pieces", new Rect2(14, 256, 338, 20));
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled }; AddChild(scroll);
-        scroll.Position = new Vector2(9, 282); scroll.Size = new Vector2(348, 236); Scroll(scroll);
+        // The bag and its footer fit without scrolling; the frame closes 14 px under the footer.
+        scroll.Position = new Vector2(9, 282); scroll.Size = new Vector2(348, Size.Y - 14 - 282); Scroll(scroll);
         // Inventory borders extend outside their hit rectangles, so leave room inside the clipping viewport.
         var inset = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         inset.AddThemeConstantOverride("margin_left", 4); inset.AddThemeConstantOverride("margin_right", 4);
@@ -389,8 +392,8 @@ public partial class ClassicServicePanel : Control
     }
     public override void _Draw()
     {
-        if (Window.Id is not ("warp" or "class_change")) return;
-        var art = Plugin.Kit.Layout(Window.Id == "warp" ? "{nation}_warp_us" : "co_change_us");
+        if (Window.Id != "warp") return;
+        var art = Plugin.Kit.Layout("{nation}_warp_us");
         DrawRect(new Rect2(3, 3, Size.X - 6, Size.Y - 6), Colors.Black);
         foreach (var piece in art.Children.Where(n => n.IsImage))
             DrawTextureRectRegion(Plugin.Kit.Texture(piece.Texture!), new Rect2(piece.Position, piece.SizeVec), new Rect2(piece.SrcX, piece.SrcY, piece.SrcW, piece.SrcH));

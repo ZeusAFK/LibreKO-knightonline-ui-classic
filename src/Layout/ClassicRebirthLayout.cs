@@ -4,13 +4,13 @@ namespace KnightOnlineUiClassic.Layout;
 // Original service artwork surrounds the native five-stat allocation controls.
 public static class ClassicRebirthLayout
 {
-    public static readonly Vector2 Size = new(380, 447);
+    public static readonly Vector2 Size = new(380, 433);
     public static readonly Rect2 Level = new(16, 52, 348, 22);
     public static readonly Rect2 Points = new(16, 80, 348, 22);
     public static readonly Rect2 Status = new(16, 326, 348, 50);
-    // Actions stay 20 px from the sides and 30 px from the bottom, clear of the quest-frame flourishes.
-    public static readonly Rect2 Accept = new(20, 388, 163, 29);
-    public static readonly Rect2 Cancel = new(197, 388, 163, 29);
+    // Actions span the 16 px content inset and keep the same 16 px to the plain frame's bottom edge.
+    public static readonly Rect2 Accept = new(16, 388, 166, 29);
+    public static readonly Rect2 Cancel = new(198, 388, 166, 29);
     public static Rect2 Stat(int row) => new(16, 144 + row * 34, 74, 26);
     public static Rect2 Current(int row) => new(104, 144 + row * 34, 66, 26);
     public static Rect2 Remove(int row) => new(206, 148 + row * 34, 19, 19);

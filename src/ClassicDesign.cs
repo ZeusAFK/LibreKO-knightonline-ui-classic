@@ -12,7 +12,7 @@ public static class ClassicDesign
     public static bool Karus => Plugin.Kit.Nation == 1;
     public static Color Text => new("eee9dd");
     public static Color Heading => new(Karus ? "dedbd4" : "f2ce75");
-    // The quest frame is the same dark art for both nations, so its window title keeps one colour.
+    // The plain Classic frame is the same dark art for both nations, so its window title keeps one colour.
     public static Color FrameTitle => new("f2ce75");
     public static Color Muted => new("b4aea1");
     public static Color Accent => new(Karus ? "ffaaa0" : "9cd8f0");

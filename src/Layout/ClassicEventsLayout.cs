@@ -2,23 +2,23 @@ using Godot;
 
 namespace KnightOnlineUiClassic.Layout;
 
-// Event windows without an original UIF: the quest frame, inventory cells, quest insets and service
-// buttons composed with the same 14-pixel margins, 22-pixel rows and 49-pixel cell pitch as the
-// reviewed Classic service windows. Rows keep the 14-pixel margin down to the lowest row, so content ends
-// 36 pixels above the frame's lower edge: the corner curls rise to 29 pixels and reach 19 pixels in, and this
-// leaves the same 7-pixel clearance as the quest-talk window's 20-pixel side / 30-pixel bottom action row.
+// Event windows without an original UIF: the plain Classic frame, inventory cells and service buttons
+// composed with the same 14-pixel margins, 22-pixel rows and 49-pixel cell pitch as the reviewed Classic
+// service windows. The plain frame has no corner art, so the 14-pixel margin holds on every side: the
+// title starts on the content edge, the close button keeps 14 pixels to the right edge and the lowest row
+// ends 14 pixels above the bottom edge.
 public static class ClassicEventsLayout
 {
-    public const int Margin = 14, Row = 24, CellPitch = 49, CardHeight = 42, CardGap = 6, Bottom = 36;
+    public const int Margin = 14, Row = 24, CellPitch = 49, CardHeight = 42, CardGap = 6, Bottom = Margin;
     public static readonly Vector2 Cell = new(45, 45);
-    public static Rect2 Title(float width) => new(22, 14, width - 80, 24);
-    public static Rect2 Close(float width) => new(width - 38, 14, 24, 24);
+    public static Rect2 Title(float width) => new(Margin, 14, width - 72, 24);
+    public static Rect2 Close(float width) => new(width - Margin - 24, 14, 24, 24);
     public static Rect2 Minimize(float width, bool closable) => new(width - (closable ? 66 : 40), 20, 19, 12);
     public static Rect2 Grip(float width) => new(14, 8, width - (width > 200 ? 84 : 50), 32);
 
-    // Minimized windows keep the original quest title plate.
+    // Minimized windows collapse to a title strip in the same plain frame.
     public static readonly Vector2 Minimized = new(232, 32);
-    public static readonly Rect2 MinimizedTitle = new(18, 4, 170, 24);
+    public static Rect2 MinimizedTitle(bool closable) => new(12, 4, closable ? 156 : 182, 24);
     public static Rect2 MinimizedToggle(bool closable) => new(closable ? 172 : 198, 10, 19, 12);
     public static readonly Rect2 MinimizedClose = new(200, 6, 20, 20);
     public static readonly Rect2 MinimizedGrip = new(8, 2, 160, 28);

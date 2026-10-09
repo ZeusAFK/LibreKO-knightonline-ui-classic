@@ -5,9 +5,11 @@ namespace KnightOnlineUiClassic.Layout;
 // No compatible mail UIF is present in the exported reference set. Reuse the simple service composition.
 public static class ClassicMailLayout
 {
-    // The lowest row keeps the original quest-talk insets: 20 px from the sides, 30 px above the frame bottom.
-    public static Vector2 Size(string id) => new(420, id == "mail" ? 406 : id == "mailread" ? 531 : 578);
-    public static Rect2 Action(int index, float y) => new(20 + index * 198, y, 182, 26);
+    // Every row keeps the plain frame's even 16 px inset, the lowest one 16 px above the frame bottom.
+    public static Vector2 Size(string id) => new(420, id == "mail" ? 392 : id == "mailread" ? 517 : 564);
+    public const float ReadActions = 475, ComposeActions = 522;
+    public static Rect2 Action(int index, float y) => new(16 + index * 202, y, 186, 26);
+    public static Rect2 InboxStatus => new(16, 352, 388, 24);
     // Nine whole 26 px inbox rows.
     public static Rect2 Inbox => new(16, 112, 388, 234);
     public static Rect2 Message => new(16, 124, 388, 146);

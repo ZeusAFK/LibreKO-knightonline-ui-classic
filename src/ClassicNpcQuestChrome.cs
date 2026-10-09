@@ -6,7 +6,7 @@ namespace KnightOnlineUiClassic;
 /// <summary>Original quest-menu plates and matching upper and lower filigree.</summary>
 public partial class ClassicNpcQuestChrome : ClassicFrame
 {
-    public ClassicNpcQuestChrome() { BackgroundColor=Colors.Black;BackgroundAlpha=1;TextureFilter=TextureFilterEnum.Nearest; }
+    public ClassicNpcQuestChrome() { Ornate=true;BackgroundColor=Colors.Black;BackgroundAlpha=1;TextureFilter=TextureFilterEnum.Nearest; }
     public override void _Draw()
     {
         base._Draw();

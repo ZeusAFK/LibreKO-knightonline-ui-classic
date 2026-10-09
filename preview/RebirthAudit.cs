@@ -83,7 +83,12 @@ public partial class Preview
             {
                 var dialog = notice.GetChildren().OfType<ClassicServiceNotice>().Single();
                 var frame = (Control)typeof(ClassicServiceNotice).GetField("_panel", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(dialog)!;
-                Require(frame.Size == new Vector2(344, 196), state + " original shared fee-frame dimensions");
+                Require(frame.Size.X == ClassicServiceNotice.Width, state + " shared fee-frame width");
+                // The box fits its message: the actions keep the original 10 px bottom and the message ends 15 px above them.
+                var actions = Descendants(frame).OfType<Button>().ToArray();
+                Require(actions.Length > 0 && actions.All(b => Math.Abs(frame.Size.Y - b.Position.Y - b.Size.Y - ClassicServiceNotice.Bottom) < .5f), state + " fee-frame actions on the 10 px bottom");
+                var message = Descendants(frame).OfType<Label>().Single(l => l.Position.Y == ClassicServiceNotice.MessageTop);
+                Require(Math.Abs(actions[0].Position.Y - message.Position.Y - message.Size.Y - ClassicServiceNotice.Gap) < .5f, state + " fee-frame message fits its text");
                 Require(GetViewportRect().Encloses(frame.GetGlobalRect()), state + " modal fits viewport");
                 foreach (var label in Descendants(frame).OfType<Label>())
                 { Require(frame.GetGlobalRect().Encloses(label.GetGlobalRect()), state + " modal text inside frame"); Require(label.GetThemeFont("font") == Plugin.Kit.Bold, state + " modal shared font"); }
