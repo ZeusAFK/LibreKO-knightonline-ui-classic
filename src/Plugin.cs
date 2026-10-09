@@ -30,7 +30,7 @@ public sealed class Plugin : IPlugin
         ui.ReplaceWindow("skills", host => new SkillWindow(host));
         // Keep native modern windows functional and apply the classic frame theme.
         foreach(var id in ui.WindowIds)
-            if(id is not ("inventory" or "character_info" or "skills" or "vendor" or "party" or "seek_party" or "exchange" or "anvil" or "vipwarehouse_pin" or "chat_colors" or "merchantsearch" or "marketprice" or "shoppingmall" or "specialauction" or "equipview" or "genderchange" or "changehair" or "nationtransfer" or "rebirth" or "cape" or "pet" or "pethatch") && !ClassicCommunicationSkin.WindowIds.Contains(id) && !ClassicMailSkin.WindowIds.Contains(id) && !ClassicCouncilRate.WindowIds.Contains(id) && !ClassicSiegeSkin.WindowIds.Contains(id) && !ClassicIdentitySkin.WindowIds.Contains(id) && !ClassicServiceSkin.WindowIds.Contains(id) && !ClassicStorageSkin.WindowIds.Contains(id) && !ClassicMerchantSkin.WindowIds.Contains(id) && !CharacterDetailsSkin.WindowIds.Contains(id) && !ClassicKingSkin.WindowIds.Contains(id) && !ClassicEventsSkin.WindowIds.Contains(id) && !ClassicProgressionSkin.WindowIds.Contains(id) && !ClassicMapFortuneSkin.WindowIds.Contains(id))
+            if(id is not ("inventory" or "character_info" or "skills" or "vendor" or "party" or "seek_party" or "exchange" or "anvil" or "vipwarehouse_pin" or "chat_colors" or "merchantsearch" or "marketprice" or "shoppingmall" or "specialauction" or "equipview" or "genderchange" or "changehair" or "nationtransfer" or "rebirth" or "cape" or "pet" or "pethatch") && !ClassicCommunicationSkin.WindowIds.Contains(id) && !ClassicMailSkin.WindowIds.Contains(id) && !ClassicCouncilRate.WindowIds.Contains(id) && !ClassicSiegeSkin.WindowIds.Contains(id) && !ClassicIdentitySkin.WindowIds.Contains(id) && !ClassicServiceSkin.WindowIds.Contains(id) && !ClassicStorageSkin.WindowIds.Contains(id) && !ClassicMerchantSkin.WindowIds.Contains(id) && !CharacterDetailsSkin.WindowIds.Contains(id) && !ClassicKingSkin.WindowIds.Contains(id) && !ClassicEventsSkin.WindowIds.Contains(id) && !ClassicProgressionSkin.WindowIds.Contains(id) && !ClassicMapFortuneSkin.WindowIds.Contains(id) && !ClassicBoardSkin.WindowIds.Contains(id))
                 ui.ExtendWindow(id, ClassicSkin.ExtendWindow);
         ui.ExtendWindow("chat_colors", ClassicChatColoursSkin.Extend);
         ui.ExtendWindow("merchantsearch", ClassicMerchantSearchSkin.Extend);
@@ -52,6 +52,7 @@ public sealed class Plugin : IPlugin
         foreach(var id in ClassicSiegeSkin.WindowIds)ui.ExtendWindow(id,ClassicSiegeSkin.Extend);
         foreach(var id in ClassicKingSkin.WindowIds)ui.ExtendWindow(id,ClassicKingSkin.Extend);
         foreach(var id in ClassicMapFortuneSkin.WindowIds)ui.ExtendWindow(id,ClassicMapFortuneSkin.Extend);
+        foreach(var id in ClassicBoardSkin.WindowIds)ui.ExtendWindow(id,ClassicBoardSkin.Extend);
         foreach(var id in ClassicIdentitySkin.WindowIds)ui.ExtendWindow(id,ClassicIdentitySkin.Extend);
         foreach(var id in ClassicServiceSkin.WindowIds)ui.ExtendWindow(id,ClassicServiceSkin.Extend);
         foreach(var id in ClassicEventsSkin.WindowIds)ui.ExtendWindow(id,ClassicEventsSkin.Extend);
