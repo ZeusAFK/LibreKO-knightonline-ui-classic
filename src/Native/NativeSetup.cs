@@ -31,6 +31,7 @@ public static partial class NativeSetup
         RegisterRebirth(context);
         RegisterPet(context);
         RegisterSiege(context);
+        RegisterKing(context);
         NativeWindows.Register(context.Ui);
     }
 
@@ -55,4 +56,5 @@ public static partial class NativeSetup
     static partial void RegisterRebirth(PluginContext context);
     static partial void RegisterPet(PluginContext context);
     static partial void RegisterSiege(PluginContext context);
+    static partial void RegisterKing(PluginContext context);
 }
