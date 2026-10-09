@@ -39,6 +39,13 @@ public partial class ClassicServicePanel : Control
     private readonly StyleBoxTexture _cell;
     private ScrollContainer? _warpList;
     private readonly StyleBoxEmpty _warpEmpty = new();
+    // Arial Bold at the Character Report body size; the native emboldened fallback font is not Classic.
+    private static void Font(Control control, int size = 12)
+    {
+        control.AddThemeFontOverride("font", Plugin.Kit.Bold); control.AddThemeFontSizeOverride("font_size", size);
+        control.AddThemeConstantOverride("outline_size", 0);
+        if (control is Label label) { label.VerticalAlignment = VerticalAlignment.Center; label.ClipText = true; }
+    }
     private static void WarpFont(Control control, bool bold = false, int size = 13)
     {
         control.AddThemeFontOverride("font", bold ? Plugin.Kit.Bold : Plugin.Kit.Regular);
@@ -116,21 +123,21 @@ public partial class ClassicServicePanel : Control
     private void Place(Control control, Rect2 rect, bool keepVisibility = false)
     {
         bool visible = control.Visible;
-        ClassicVendorSkin.Move(control, this, rect); ClassicVendorSkin.Font(control);
+        ClassicVendorSkin.Move(control, this, rect); Font(control);
         if (keepVisibility) control.Visible = visible;
         control.SetMeta("service_expected_rect", rect);
     }
     private Label Caption(string text, Rect2 rect)
     {
         var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore }; AddChild(label);
-        label.Position = rect.Position; label.Size = rect.Size; ClassicVendorSkin.Font(label);
+        label.Position = rect.Position; label.Size = rect.Size; Font(label);
         label.AddThemeColorOverride("font_color", new Color("e2c68b")); return label;
     }
     private void Button(Button button, Rect2 rect, string? text = null)
     {
         ClassicMerchantSkin.Button(button, Plugin.Kit.Layout("co_change_bill_us").Find("btn_ok")!, this, rect, text ?? button.Text);
         button.FocusMode = FocusModeEnum.None;
-        ClassicVendorSkin.Font(button);
+        Font(button);
         foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" }) button.AddThemeColorOverride(state, new Color("efd9b4"));
         button.AddThemeColorOverride("font_disabled_color", new Color("918576"));
         button.SetMeta("service_expected_rect", rect);
@@ -213,14 +220,14 @@ public partial class ClassicServicePanel : Control
         _secretRow = Find<Control>("seal_code_row"); _secretField = Find<Control>("seal_code");
         _secretCaption = Caption("Secret answer", new Rect2(14, 142, 160, 22));
         Place(_secretField, new Rect2(183, 141, 169, 26)); ClassicVendorSkin.Input((LineEdit)_secretField);
-        var pad = Find<Control>("seal_keypad"); Place(pad, new Rect2(65, 177, 236, 173), true);
+        var pad = Find<Control>("seal_keypad"); Place(pad, new Rect2(65, 177, 236, 154), true);
         pad.ZIndex = 2; Watch(pad, StyleDynamic);
         Button(Find<Button>("seal_confirm"), new Rect2(14, 180, 156, 29));
         Button(_native.OfType<Button>().Single(b => b.Text == "Cancel"), new Rect2(196, 180, 156, 29));
         Caption("Inventory", new Rect2(14, 225, 338, 20));
         for (int i = 0; i < 28; i++) Slot(Find<Control>("seal_bag_" + i), ClassicServiceLayout.Cell(i, 7, 13, 253));
         Place(Find<Label>("seal_gold"), new Rect2(183, 464, 169, 24));
-        Caption("Right-click an item to select it.", new Rect2(14, 503, 338, 22));
+        Caption("Right-click an item to select it.", new Rect2(14, 496, 338, 22));
     }
     private void Piece()
     {
@@ -283,7 +290,7 @@ public partial class ClassicServicePanel : Control
     {
         if (control is Label label && label.HorizontalAlignment != HorizontalAlignment.Right)
         {
-            ClassicVendorSkin.Font(label);
+            Font(label);
             label.ClipText = false;
             if (label.GetParent() is HBoxContainer)
             {
@@ -294,13 +301,28 @@ public partial class ClassicServicePanel : Control
         }
         if (control is Button button)
         {
-            ClassicVendorSkin.Button(button);
+            ClassicVendorSkin.Button(button); Font(button);
             if (button.HasMeta("service_selected") && button.GetMeta("service_selected").AsBool() && button.GetThemeStylebox("normal") is StyleBoxTexture source)
             {
                 var selected = (StyleBoxTexture)source.Duplicate(); selected.ModulateColor = new Color(1, .78f, .45f);
                 button.AddThemeStyleboxOverride("normal", selected);
+                // Karus light art keeps its dark ink; the warm tint marks the selection there.
+                if (!ClassicDesign.Karus) foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" }) button.AddThemeColorOverride(state, new Color("ffe094"));
+            }
+            if (button.Alignment == HorizontalAlignment.Left)
+            {
+                button.CustomMinimumSize = new Vector2(button.CustomMinimumSize.X, 20);
+                foreach (string state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled" })
+                    if (button.GetThemeStylebox(state) is StyleBoxTexture box) { box = (StyleBoxTexture)box.Duplicate(); box.ContentMarginLeft = 6; button.AddThemeStyleboxOverride(state, box); }
             }
         }
+        if (control is PanelContainer pad && pad.Name == "seal_keypad")
+        {
+            var box = new StyleBoxFlat { BgColor = Colors.Black, BorderColor = new Color("a08a5c") };
+            box.SetBorderWidthAll(1); box.SetContentMarginAll(0); pad.AddThemeStyleboxOverride("panel", box);
+        }
+        if (control is PanelContainer pill && pill.GetThemeStylebox("panel") is StyleBoxFlat { CornerRadiusTopLeft: > 0 })
+            pill.AddThemeStyleboxOverride("panel", new StyleBoxEmpty { ContentMarginRight = 10 });
         if (control is PanelContainer panel && control.GetType().Name == "UpgradeBackpackCell")
         {
             panel.CustomMinimumSize = new Vector2(45, 45); panel.AddThemeStyleboxOverride("panel", _cell);

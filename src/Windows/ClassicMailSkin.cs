@@ -58,7 +58,7 @@ public partial class ClassicMailPanel : Control
     }
     private Label Caption(string text, Rect2 rect)
     {
-        var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore }; AddChild(label); Place(label, rect);
+        var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore, VerticalAlignment = VerticalAlignment.Center }; AddChild(label); Place(label, rect);
         label.AddThemeColorOverride("font_color", ClassicDesign.Heading); return label;
     }
     private void Action(Button button, Rect2 rect, string text)
@@ -71,10 +71,11 @@ public partial class ClassicMailPanel : Control
         button.AddThemeColorOverride("font_disabled_color", new Color("887e70"));
         button.FocusMode = FocusModeEnum.All;
     }
-    private void Scroll(ScrollContainer scroll, Rect2 rect, bool keepVisibility = false)
+    private void Scroll(ScrollContainer scroll, Rect2 rect, bool keepVisibility = false, float inset = 0)
     {
+        _sections.Add(rect.Grow(1)); rect = rect.GrowSide(Side.Left, -inset);
         Place(scroll, rect, keepVisibility); scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        StyleScroll(scroll); _sections.Add(rect.Grow(1)); _fixedScrolls.Add((scroll, rect));
+        StyleScroll(scroll); _fixedScrolls.Add((scroll, rect));
     }
     private static void StyleScroll(ScrollContainer scroll)
     {
@@ -132,14 +133,16 @@ public partial class ClassicMailPanel : Control
         var subject = Find<Label>("mail_read_subject"); Place(subject, new Rect2(16, 60, 388, 34)); subject.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         subject.AddThemeColorOverride("font_color", ClassicDesign.Heading);
         Place(Find<Label>("mail_read_meta"), new Rect2(16, 96, 388, 20)); Font(Find<Label>("mail_read_meta"), false, 12);
-        var scroll = new ScrollContainer(); AddChild(scroll); Scroll(scroll, ClassicMailLayout.Message);
-        var text = Find<Label>("mail_read_body"); text.Reparent(scroll, false); text.Visible = true; text.CustomMinimumSize = new Vector2(1, 0); text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var scroll = new ScrollContainer(); AddChild(scroll); Scroll(scroll, ClassicMailLayout.Message, inset: 4);
+        // Keep wrapped text clear of the scroll bar.
+        var gutter = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }; gutter.AddThemeConstantOverride("margin_right", 16); gutter.AddThemeConstantOverride("margin_top", 2); scroll.AddChild(gutter);
+        var text = Find<Label>("mail_read_body"); text.Reparent(gutter, false); text.Visible = true; text.CustomMinimumSize = new Vector2(1, 0); text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         Font(text, false); text.AutowrapMode = TextServer.AutowrapMode.WordSmart; text.AddThemeColorOverride("font_color", ClassicDesign.Text);
         Place(Find<Label>("mail_read_attachment_title"), new Rect2(16, 278, 388, 34), true); Font(Find<Label>("mail_read_attachment_title"), true, 12);
-        Scroll(Find<ScrollContainer>("mail_read_attachment_scroll"), ClassicMailLayout.ReadAttachments, true);
+        Scroll(Find<ScrollContainer>("mail_read_attachment_scroll"), ClassicMailLayout.ReadAttachments, true, 4);
         Watch(Find<VBoxContainer>("mail_read_attachments"), StyleAttachment);
-        Action(Find<Button>("mail_claim"), new Rect2(16, 468, 186, 26), "Claim attachments");
-        Action(Find<Button>("mail_delete"), new Rect2(218, 468, 186, 26), "Delete");
+        Action(Find<Button>("mail_claim"), new Rect2(16, 475, 186, 26), "Claim attachments");
+        Action(Find<Button>("mail_delete"), new Rect2(218, 475, 186, 26), "Delete");
     }
     private void Edit(LineEdit input, Rect2 rect)
     {
