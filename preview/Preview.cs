@@ -57,6 +57,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("chat-colours-audit")){await CaptureChatColoursAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("communication-audit")){await CaptureCommunicationAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("mail-classic-audit")){await CaptureMailClassicAudit(nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("progression-audit")){await CaptureProgressionAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("council-rate-audit")){await CaptureCouncilRateAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("siege-audit")){await CaptureSiegeAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("king-nation-audit")){await CaptureKingNationAudit(nation);await FinishManagedAudit();return;}

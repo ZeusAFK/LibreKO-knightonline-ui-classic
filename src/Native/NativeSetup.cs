@@ -33,6 +33,7 @@ public static partial class NativeSetup
         RegisterSiege(context);
         RegisterKing(context);
         RegisterEventsA(context);
+        RegisterProgression(context);
         NativeWindows.Register(context.Ui);
     }
 
@@ -59,4 +60,5 @@ public static partial class NativeSetup
     static partial void RegisterSiege(PluginContext context);
     static partial void RegisterKing(PluginContext context);
     static partial void RegisterEventsA(PluginContext context);
+    static partial void RegisterProgression(PluginContext context);
 }

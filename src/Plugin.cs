@@ -30,7 +30,7 @@ public sealed class Plugin : IPlugin
         ui.ReplaceWindow("skills", host => new SkillWindow(host));
         // Keep native modern windows functional and apply the classic frame theme.
         foreach(var id in ui.WindowIds)
-            if(id is not ("inventory" or "character_info" or "skills" or "vendor" or "party" or "seek_party" or "exchange" or "anvil" or "vipwarehouse_pin" or "chat_colors" or "merchantsearch" or "marketprice" or "shoppingmall" or "specialauction" or "equipview" or "genderchange" or "changehair" or "nationtransfer" or "rebirth" or "cape" or "pet" or "pethatch") && !ClassicCommunicationSkin.WindowIds.Contains(id) && !ClassicMailSkin.WindowIds.Contains(id) && !ClassicCouncilRate.WindowIds.Contains(id) && !ClassicSiegeSkin.WindowIds.Contains(id) && !ClassicIdentitySkin.WindowIds.Contains(id) && !ClassicServiceSkin.WindowIds.Contains(id) && !ClassicStorageSkin.WindowIds.Contains(id) && !ClassicMerchantSkin.WindowIds.Contains(id) && !CharacterDetailsSkin.WindowIds.Contains(id) && !ClassicKingSkin.WindowIds.Contains(id) && !ClassicEventsSkin.WindowIds.Contains(id))
+            if(id is not ("inventory" or "character_info" or "skills" or "vendor" or "party" or "seek_party" or "exchange" or "anvil" or "vipwarehouse_pin" or "chat_colors" or "merchantsearch" or "marketprice" or "shoppingmall" or "specialauction" or "equipview" or "genderchange" or "changehair" or "nationtransfer" or "rebirth" or "cape" or "pet" or "pethatch") && !ClassicCommunicationSkin.WindowIds.Contains(id) && !ClassicMailSkin.WindowIds.Contains(id) && !ClassicCouncilRate.WindowIds.Contains(id) && !ClassicSiegeSkin.WindowIds.Contains(id) && !ClassicIdentitySkin.WindowIds.Contains(id) && !ClassicServiceSkin.WindowIds.Contains(id) && !ClassicStorageSkin.WindowIds.Contains(id) && !ClassicMerchantSkin.WindowIds.Contains(id) && !CharacterDetailsSkin.WindowIds.Contains(id) && !ClassicKingSkin.WindowIds.Contains(id) && !ClassicEventsSkin.WindowIds.Contains(id) && !ClassicProgressionSkin.WindowIds.Contains(id))
                 ui.ExtendWindow(id, ClassicSkin.ExtendWindow);
         ui.ExtendWindow("chat_colors", ClassicChatColoursSkin.Extend);
         ui.ExtendWindow("merchantsearch", ClassicMerchantSearchSkin.Extend);
@@ -63,6 +63,7 @@ public sealed class Plugin : IPlugin
         ui.ExtendWindow("anvil_choice", ClassicAnvilChoice.Extend);
         ui.ExtendWindow("party", ClassicPartySkin.Extend);
         ui.ExtendWindow("seek_party", ClassicPartySkin.Extend);
+        foreach(var id in ClassicProgressionSkin.WindowIds)ui.ExtendWindow(id,ClassicProgressionSkin.Extend);
         foreach (var id in CharacterDetailsSkin.WindowIds)
             ui.ExtendWindow(id, CharacterDetailsSkin.Extend);
         ui.ReplaceDialogs(request=>request.Title=="Magic Anvil"?new ClassicAnvilNotice(request):request.Title=="Merchant"?new ClassicMerchantNotice(request):request.Title is "Item Seal" or "Redistribute stats" or "Redistribute mastery" or "Create a Clan" or "Transformation" or "Akara's Altar" or "Nation Transfer" or "Rebirth" or "Clan Cape" or "Familiar Hatching" or "Familiar Transformation"?new ClassicServiceNotice(request):new MessageBox(request));
