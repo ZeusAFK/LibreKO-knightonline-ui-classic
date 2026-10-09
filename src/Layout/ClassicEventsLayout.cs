@@ -4,11 +4,12 @@ namespace KnightOnlineUiClassic.Layout;
 
 // Event windows without an original UIF: the quest frame, inventory cells, quest insets and service
 // buttons composed with the same 14-pixel margins, 22-pixel rows and 49-pixel cell pitch as the
-// reviewed Classic service windows. Content ends 30 pixels above the frame's lower edge, clear of the
-// quest frame's bottom corner curls (they reach 16 pixels in from the sides up to that height).
+// reviewed Classic service windows. Rows keep the 14-pixel margin down to the lowest row, so content ends
+// 36 pixels above the frame's lower edge: the corner curls rise to 29 pixels and reach 19 pixels in, and this
+// leaves the same 7-pixel clearance as the quest-talk window's 20-pixel side / 30-pixel bottom action row.
 public static class ClassicEventsLayout
 {
-    public const int Margin = 14, Row = 24, CellPitch = 49, CardHeight = 42, CardGap = 6, Bottom = 30;
+    public const int Margin = 14, Row = 24, CellPitch = 49, CardHeight = 42, CardGap = 6, Bottom = 36;
     public static readonly Vector2 Cell = new(45, 45);
     public static Rect2 Title(float width) => new(22, 14, width - 80, 24);
     public static Rect2 Close(float width) => new(width - 38, 14, 24, 24);
