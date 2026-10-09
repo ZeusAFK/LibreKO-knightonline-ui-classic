@@ -4,10 +4,11 @@ namespace KnightOnlineUiClassic.Layout;
 
 // Event windows without an original UIF: the quest frame, inventory cells, quest insets and service
 // buttons composed with the same 14-pixel margins, 22-pixel rows and 49-pixel cell pitch as the
-// reviewed Classic service windows.
+// reviewed Classic service windows. Content ends 30 pixels above the frame's lower edge, clear of the
+// quest frame's bottom corner curls (they reach 16 pixels in from the sides up to that height).
 public static class ClassicEventsLayout
 {
-    public const int Margin = 14, Row = 24, CellPitch = 49, CardHeight = 42, CardGap = 6;
+    public const int Margin = 14, Row = 24, CellPitch = 49, CardHeight = 42, CardGap = 6, Bottom = 30;
     public static readonly Vector2 Cell = new(45, 45);
     public static Rect2 Title(float width) => new(22, 14, width - 80, 24);
     public static Rect2 Close(float width) => new(width - 38, 14, 24, 24);
@@ -23,16 +24,16 @@ public static class ClassicEventsLayout
 
     public static class CollectionRace
     {
-        public const float Width = 330, MaxHeight = 520, Top = 48, Bottom = 24;
+        public const float Width = 330, MaxHeight = 520, Top = 48, Bottom = ClassicEventsLayout.Bottom;
         public static readonly Rect2 Content = new(Margin, Top, Width - Margin * 2, 0);
         public const int InfoCaption = 150;
     }
 
     public static class Lottery
     {
-        // The frame ends 24 pixels below the prize area, which fits its cells (plus a scroll bar when they
-        // overflow) or a whole number of winner rows.
-        public const float Width = 344, Bottom = 24, PrizeCells = 52, PrizeBar = 14;
+        // The frame ends below the prize area, which fits its cells (plus a scroll bar when they overflow) or a
+        // whole number of winner rows.
+        public const float Width = 344, Bottom = ClassicEventsLayout.Bottom, PrizeCells = 52, PrizeBar = 14;
         public const int WinnerPitch = 26, WinnerRows = 4;
         public static readonly Vector2 Size = new(Width, 324 + PrizeCells + Bottom);
         public static readonly Rect2 Info = new(14, 50, 316, 80);
@@ -53,7 +54,7 @@ public static class ClassicEventsLayout
 
     public static class Roulette
     {
-        public static readonly Vector2 Size = new(330, 396);
+        public static readonly Vector2 Size = new(330, 272 + 102 + Bottom);
         public static readonly Rect2 ReelCaption = new(14, 48, 302, Row);
         public const int ReelCells = 5, ReelGap = 12;
         public static Rect2 ReelCell(int index) => new(28 + index * (45 + ReelGap), 78, 45, 45);
@@ -64,13 +65,14 @@ public static class ClassicEventsLayout
         public static readonly Rect2 Spin = new(92, 202, 146, 29);
         public static readonly Rect2 LogCaption = new(14, 242, 302, Row);
         public const float LogRule = 266;
-        public static readonly Rect2 Log = new(14, 272, 302, 100);
+        /// <summary>Four whole 24-pixel prize rows at a 26-pixel pitch.</summary>
+        public static readonly Rect2 Log = new(14, 272, 302, 102);
         public static Rect2 LogRow(int index) => new(0, index * 26, 286, 24);
     }
 
     public static class Tournament
     {
-        public static readonly Vector2 Size = new(330, 204);
+        public static readonly Vector2 Size = new(330, 181 + Bottom);
         public static readonly Rect2 Info = new(14, 50, 302, 84);
         public static Rect2 Caption(int row) => new(24, 56 + row * 26, 130, Row);
         public static Rect2 Value(int row) => new(154, 56 + row * 26, 152, Row);

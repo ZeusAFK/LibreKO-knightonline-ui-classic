@@ -4,10 +4,12 @@ using KnightOnlineUiClassic.Windows;
 namespace KnightOnlineUiClassic.Layout;
 
 /// <summary>
-/// Achievements, attendance, rankings and genie have no original UIF. They are composed as Various-family
-/// windows (outside close ornament, detail header rails, Friend surface, Clan list insets, nation tabs and
-/// buttons) on the Character window's grid: 8-pixel margins, 36-pixel tabs, 22-pixel rows and 45-pixel item
-/// cells. Every live native control is placed at one of the named rectangles below.
+/// Achievements, attendance, rankings and genie have no original UIF. They are composed as Character-window
+/// family windows: the outside close ornament, the Character header rails carrying the window's tabs at the
+/// Character tab geometry (85-pixel plates at an 87-pixel pitch), the window title as the centred page heading
+/// under the rails, the Friend surface, Clan list insets, nation buttons, 8-pixel margins, 22-pixel rows and
+/// 45-pixel item cells. Attendance has no tabs; its rails carry the centred title as the detail windows do.
+/// Every live native control is placed at one of the named rectangles below.
 /// </summary>
 public static class ClassicProgressionLayout
 {
@@ -15,23 +17,33 @@ public static class ClassicProgressionLayout
 
     public static Vector2 Size(string id) => id switch
     {
-        "achievements" => new(530, 560),
+        "achievements" => new(530, 540),
         "attendance" => new(492, 552),
-        "rank" => new(360, 550),
-        "genie" => new(530, 570),
+        "rank" => new(360, 504),
+        "genie" => new(530, 550),
         _ => throw new ArgumentOutOfRangeException(nameof(id)),
     };
 
-    public static Rect2 Tab(int index, int width = 84) => new(Margin + index * (width + 2), ContentTop, width, TabHeight);
+    /// <summary>Top of the header rails' tab plates, as in the Character window.</summary>
+    public static int TabTop => ClassicDesign.Karus ? 44 : 48;
+
+    /// <summary>A tab plate on the header rails, at the Character window's tab geometry.</summary>
+    public static Rect2 Tab(int index) => new(6 + index * 87, TabTop, 85, TabHeight);
+
+    /// <summary>Number of tab plates on the rails of a window.</summary>
+    public static int Tabs(string id) => id switch { "achievements" => 6, "attendance" => 0, _ => 2 };
+
+    /// <summary>The window title: the centred page heading under the rails (Character page headings), or the rails themselves without tabs.</summary>
+    public static Rect2 Heading(string id) => Tabs(id) > 0 ? new(12, 86, Size(id).X - 24, 24) : new(48, TabTop, Size(id).X - 96, TabHeight);
 
     private static readonly Dictionary<string, Dictionary<string, Rect2>> Controls = new()
     {
         ["achievements"] = new()
         {
-            ["ach_summary"] = new(14, 136, 380, Row),
-            ["ach_hide_claimed"] = new(398, 136, 124, Row),
-            ["ach_scroll"] = new(12, 166, 506, 362),
-            ["ach_summary_page"] = new(12, 136, 506, 392),
+            ["ach_summary"] = new(14, 116, 380, Row),
+            ["ach_hide_claimed"] = new(398, 116, 124, Row),
+            ["ach_scroll"] = new(12, 146, 506, 362),
+            ["ach_summary_page"] = new(12, 116, 506, 392),
         },
         ["attendance"] = new()
         {
@@ -47,17 +59,16 @@ public static class ClassicProgressionLayout
         },
         ["rank"] = new()
         {
-            ["rank_title"] = new(Margin, ContentTop, 344, Row),
-            ["rank_tab_karus"] = new(Margin, 118, 110, TabHeight),
-            ["rank_tab_elmorad"] = new(120, 118, 110, TabHeight),
-            ["rank_refresh"] = new(262, 125, 90, Row),
-            ["rank_header_0"] = new(12, 163, 30, Row),
-            ["rank_header_1"] = new(46, 163, 136, Row),
-            ["rank_header_2"] = new(186, 163, 98, Row),
-            ["rank_header_3"] = new(288, 163, 48, Row),
-            ["rank_scroll"] = new(12, 188, 336, 286),
-            ["rank_mine"] = new(12, 484, 336, Row),
-            ["rank_status"] = new(12, 506, 336, 20),
+            // The native ladder heading is the page heading; the window title stays on the drag strip unseen.
+            ["rank_title"] = new(12, 86, 336, 24),
+            ["rank_header_0"] = new(12, 117, 30, Row),
+            ["rank_header_1"] = new(46, 117, 136, Row),
+            ["rank_header_2"] = new(186, 117, 98, Row),
+            ["rank_header_3"] = new(288, 117, 48, Row),
+            ["rank_scroll"] = new(12, 142, 336, 286),
+            ["rank_mine"] = new(12, 438, 240, Row),
+            ["rank_status"] = new(12, 460, 240, 20),
+            ["rank_refresh"] = new(262, 449, 90, Row),
         },
         ["genie"] = Genie(),
     };
@@ -70,61 +81,59 @@ public static class ClassicProgressionLayout
     {
         var rects = new Dictionary<string, Rect2>
         {
-            ["genie_tab_main"] = Tab(0),
-            ["genie_tab_misc"] = Tab(1),
-            ["genie_potion_title"] = new(14, 296, 240, 20),
-            ["genie_mode_6"] = new(12, 318, 246, 20),
-            ["genie_hp_item"] = new(14, 340, 242, 26),
-            ["genie_hp_label"] = new(14, 368, 160, 22),
-            ["genie_hp"] = new(176, 368, 80, 22),
-            ["genie_mode_7"] = new(12, 392, 246, 20),
-            ["genie_mp_item"] = new(14, 414, 242, 26),
-            ["genie_mp_label"] = new(14, 442, 160, 22),
-            ["genie_mp"] = new(176, 442, 80, 22),
-            ["genie_monster_title"] = new(274, 296, 240, 20),
-            ["genie_monster_list"] = new(274, 318, 242, 118),
-            ["genie_monster_add"] = new(274, 442, 119, Row),
-            ["genie_monster_remove"] = new(397, 442, 119, Row),
-            ["genie_hint"] = new(12, 478, 506, 18),
-            ["genie_run"] = new(12, 498, 506, 20),
-            ["genie_start"] = new(12, 520, 96, Row),
-            ["genie_save"] = new(112, 520, 120, Row),
-            ["genie_spirit"] = new(372, 520, 150, Row),
+            ["genie_potion_title"] = new(14, 276, 240, 20),
+            ["genie_mode_6"] = new(12, 298, 246, 20),
+            ["genie_hp_item"] = new(14, 320, 242, 26),
+            ["genie_hp_label"] = new(14, 348, 160, 22),
+            ["genie_hp"] = new(176, 348, 80, 22),
+            ["genie_mode_7"] = new(12, 372, 246, 20),
+            ["genie_mp_item"] = new(14, 394, 242, 26),
+            ["genie_mp_label"] = new(14, 422, 160, 22),
+            ["genie_mp"] = new(176, 422, 80, 22),
+            ["genie_monster_title"] = new(274, 276, 240, 20),
+            ["genie_monster_list"] = new(274, 298, 242, 118),
+            ["genie_monster_add"] = new(274, 422, 119, Row),
+            ["genie_monster_remove"] = new(397, 422, 119, Row),
+            ["genie_hint"] = new(12, 458, 506, 18),
+            ["genie_run"] = new(12, 478, 506, 20),
+            ["genie_start"] = new(12, 500, 120, Row),
+            ["genie_save"] = new(136, 500, 120, Row),
+            ["genie_spirit"] = new(372, 500, 150, Row),
 
-            ["genie_settings_title"] = new(14, 140, 240, 20),
-            ["genie_range_label"] = new(14, 162, 160, 22),
-            ["genie_range"] = new(176, 162, 80, 22),
-            ["genie_auto_party"] = new(12, 188, 246, 20),
-            ["genie_ptcode_title"] = new(14, 212, 240, 20),
-            ["genie_ptcode"] = new(14, 234, 242, Row),
-            ["genie_ptcode_hint"] = new(14, 260, 242, 34),
-            ["genie_combo_hint"] = new(14, 294, 242, 34),
-            ["genie_leader_hint"] = new(14, 328, 242, 34),
-            ["genie_daily_title"] = new(14, 376, 240, 20),
-            ["genie_tip"] = new(14, 398, 242, 58),
-            ["genie_daily_status"] = new(14, 458, 242, 34),
-            ["genie_claim"] = new(14, 496, 160, Row),
-            ["genie_scrolls_title"] = new(274, 140, 240, 20),
-            ["genie_auto_scrolls"] = new(272, 162, 246, 20),
-            ["genie_scroll_hint"] = new(274, 236, 242, 34),
-            ["genie_scroll_status"] = new(274, 272, 242, 34),
-            ["genie_hammer_title"] = new(274, 318, 240, 20),
-            ["genie_auto_hammer"] = new(272, 340, 246, 20),
-            ["genie_hammer_threshold_label"] = new(274, 364, 160, 22),
-            ["genie_hammer_threshold"] = new(436, 364, 80, 22),
-            ["genie_hammer_status"] = new(274, 390, 242, 34),
+            ["genie_settings_title"] = new(14, 120, 240, 20),
+            ["genie_range_label"] = new(14, 142, 160, 22),
+            ["genie_range"] = new(176, 142, 80, 22),
+            ["genie_auto_party"] = new(12, 168, 246, 20),
+            ["genie_ptcode_title"] = new(14, 192, 240, 20),
+            ["genie_ptcode"] = new(14, 214, 242, Row),
+            ["genie_ptcode_hint"] = new(14, 240, 242, 34),
+            ["genie_combo_hint"] = new(14, 274, 242, 34),
+            ["genie_leader_hint"] = new(14, 308, 242, 34),
+            ["genie_daily_title"] = new(14, 356, 240, 20),
+            ["genie_tip"] = new(14, 378, 242, 58),
+            ["genie_daily_status"] = new(14, 438, 242, 34),
+            ["genie_claim"] = new(14, 476, 160, Row),
+            ["genie_scrolls_title"] = new(274, 120, 240, 20),
+            ["genie_auto_scrolls"] = new(272, 142, 246, 20),
+            ["genie_scroll_hint"] = new(274, 216, 242, 34),
+            ["genie_scroll_status"] = new(274, 252, 242, 34),
+            ["genie_hammer_title"] = new(274, 298, 240, 20),
+            ["genie_auto_hammer"] = new(272, 320, 246, 20),
+            ["genie_hammer_threshold_label"] = new(274, 344, 160, 22),
+            ["genie_hammer_threshold"] = new(436, 344, 80, 22),
+            ["genie_hammer_status"] = new(274, 370, 242, 34),
         };
         for (int group = 0; group < 3; group++)
         {
             int x = Margin + group * 172;
-            rects["genie_skill_title_" + group] = new(x + 6, 140, 158, 20);
+            rects["genie_skill_title_" + group] = new(x + 6, 120, 158, 20);
             for (int cell = 0; cell < 8; cell++)
-                rects["genie_slot_" + (group * 8 + cell)] = new(x + 7 + cell % 4 * 40, 162 + cell / 4 * 40, 36, 36);
+                rects["genie_slot_" + (group * 8 + cell)] = new(x + 7 + cell % 4 * 40, 142 + cell / 4 * 40, 36, 36);
             int[] modes = { new[] { 0, 1, 2 }[group], new[] { 3, 4, 5 }[group] };
-            rects["genie_mode_" + modes[0]] = new(x + 4, 242, 162, 20);
-            rects["genie_mode_" + modes[1]] = new(x + 4, 262, 162, 20);
+            rects["genie_mode_" + modes[0]] = new(x + 4, 222, 162, 20);
+            rects["genie_mode_" + modes[1]] = new(x + 4, 242, 162, 20);
         }
-        for (int i = 0; i < 4; i++) rects["genie_scroll_" + i] = new(278 + i * 49, 186, Cell, Cell);
+        for (int i = 0; i < 4; i++) rects["genie_scroll_" + i] = new(278 + i * 49, 166, Cell, Cell);
         return rects;
     }
 
@@ -150,14 +159,17 @@ public static class ClassicProgressionLayout
         root.Id = "progression_" + id; root.W = (int)size.X; root.H = (int)size.Y;
         root.Children.RemoveAll(n => n.Type == "classic_tab");
         int top = ClassicDesign.Karus ? 40 : 44;
-        var surface = root.Find("surface")!; surface.W = root.W; surface.Y = top; surface.H = root.H - top;
-        var rails = root.Find("header_rails")!; rails.Type = "classic_detail_header"; rails.Y = top; rails.W = root.W;
+        var surface = root.Find("surface")!; surface.W = root.W;
+        if (Tabs(id) == 0) surface.Y = top;
+        surface.H = root.H - surface.Y;
+        var rails = root.Find("header_rails")!; rails.W = root.W;
+        if (Tabs(id) == 0) { rails.Type = "classic_detail_header"; rails.Y = top; }
         void Section(string name, Rect2 rect) => root.Children.Add(Node("classic_section", name, rect));
         void Rule(string name, Rect2 rect) => root.Children.Add(Node("classic_rule", name, rect));
         switch (id)
         {
             case "achievements":
-                Section("ach_list_frame", new(Margin, 162, 514, 370));
+                Section("ach_list_frame", new(Margin, 142, 514, 370));
                 break;
             case "attendance":
                 Section("attendance_daily_frame", new(Margin, 120, 334, 404));
@@ -165,19 +177,19 @@ public static class ClassicProgressionLayout
                 Rule("attendance_legend_rule", new(354, 442, 126, 2));
                 break;
             case "rank":
-                Section("rank_table_frame", new(Margin, 160, 344, 318));
-                Rule("rank_header_rule", new(12, 186, 336, 2));
+                Section("rank_table_frame", new(Margin, 114, 344, 318));
+                Rule("rank_header_rule", new(12, 140, 336, 2));
                 int x = 12;
-                for (int i = 0; i < RankColumns.Length - 1; i++) { x += RankColumns[i] + RankGap; Rule("rank_divider_" + i, new(x - 3, 164, 2, 310)); }
+                for (int i = 0; i < RankColumns.Length - 1; i++) { x += RankColumns[i] + RankGap; Rule("rank_divider_" + i, new(x - 3, 118, 2, 310)); }
                 break;
             case "genie":
-                for (int group = 0; group < 3; group++) Section("genie_skill_frame_" + group, new(Margin + group * 172, 136, 170, 150));
-                Section("genie_potion_frame", new(Margin, 292, 254, 180));
-                Section("genie_monster_frame", new(268, 292, 254, 180));
-                Section("genie_settings_frame", new(Margin, 136, 254, 232));
-                Section("genie_daily_frame", new(Margin, 372, 254, 156));
-                Section("genie_scrolls_frame", new(268, 136, 254, 174));
-                Section("genie_hammer_frame", new(268, 314, 254, 118));
+                for (int group = 0; group < 3; group++) Section("genie_skill_frame_" + group, new(Margin + group * 172, 116, 170, 150));
+                Section("genie_potion_frame", new(Margin, 272, 254, 180));
+                Section("genie_monster_frame", new(268, 272, 254, 180));
+                Section("genie_settings_frame", new(Margin, 116, 254, 232));
+                Section("genie_daily_frame", new(Margin, 352, 254, 156));
+                Section("genie_scrolls_frame", new(268, 116, 254, 174));
+                Section("genie_hammer_frame", new(268, 294, 254, 118));
                 break;
         }
         return root;

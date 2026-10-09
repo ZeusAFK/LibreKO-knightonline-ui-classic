@@ -47,14 +47,22 @@ public partial class ClassicProgressionPanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         Frame = new LayoutView(Plugin.Kit, ClassicProgressionLayout.Frame(_id)); AddChild(Frame);
         if (Frame.Get("btn_close") is BaseButton ornament) ornament.Pressed += () => close?.EmitSignal(BaseButton.SignalName.Pressed);
-        // The native header bar keeps native dragging and the window title.
-        int top = ClassicDesign.Karus ? 40 : 44;
-        bar.Reparent(this); bar.Position = new Vector2(48, top + 4); bar.Size = new Vector2(Size.X - 60, 36);
-        bar.SetMeta("progression_expected_rect", new Rect2(48, top + 4, Size.X - 60, 36));
+        // The rails carry the window's tabs; separators close each plate unless the last one meets the rail's end.
+        int tabs = ClassicProgressionLayout.Tabs(_id);
+        if (tabs > 0 && Frame.Get("header_rails") is ClassicReportHeader rails)
+            rails.Separators = 4 + tabs * 87 >= Size.X - 4 ? tabs - 1 : tabs;
+        // The native header bar keeps native dragging and shows the window title as the centred heading.
+        var heading = ClassicProgressionLayout.Heading(_id);
+        bar.Reparent(this); bar.Position = heading.Position; bar.Size = heading.Size;
+        bar.SetMeta("progression_expected_rect", heading);
         foreach (var control in bar.GetChildren().OfType<Control>())
         {
-            control.Visible = control is Label { Text.Length: > 1 };
-            if (control is Label title && title.Visible) { Caption(title); title.ClipText = true; }
+            control.Visible = control is Label { Text.Length: > 1 } && _id != "rank";
+            if (control is Label title && title.Visible)
+            {
+                Caption(title); title.ClipText = true; title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+                title.SizeFlagsHorizontal = SizeFlags.ExpandFill; title.HorizontalAlignment = HorizontalAlignment.Center;
+            }
         }
         switch (_id)
         {
@@ -440,7 +448,13 @@ public partial class ClassicProgressionPanel : Control
     private void Rank()
     {
         var title = Find<Label>("rank_title"); Place(title); Caption(title); if (title != null) title.HorizontalAlignment = HorizontalAlignment.Center;
-        foreach (var name in new[] { "rank_tab_karus", "rank_tab_elmorad" }) if (Find<Button>(name) is { } tab) { Place(tab); StyleTab(tab, false); }
+        string[] tabs = { "rank_tab_karus", "rank_tab_elmorad" };
+        for (int i = 0; i < tabs.Length; i++)
+            if (Find<Button>(tabs[i]) is { } tab)
+            {
+                var rect = ClassicProgressionLayout.Tab(i);
+                ClassicVendorSkin.Move(tab, this, rect); tab.SetMeta("progression_expected_rect", rect); StyleTab(tab, false);
+            }
         var refresh = Find<Button>("rank_refresh"); Place(refresh); StyleButton(refresh);
         for (int i = 0; i < 4; i++)
         {
@@ -495,7 +509,7 @@ public partial class ClassicProgressionPanel : Control
         _genieMiscTab = new ClassicReportButton { Name = "genie_tab_misc", Text = "Misc" }; AddChild(_genieMiscTab);
         foreach (var (tab, misc) in new[] { (_genieMainTab, false), (_genieMiscTab, true) })
         {
-            var rect = ClassicProgressionLayout.Rect("genie", tab.Name)!.Value; tab.Position = rect.Position; tab.Size = rect.Size;
+            var rect = ClassicProgressionLayout.Tab(misc ? 1 : 0); tab.Position = rect.Position; tab.Size = rect.Size;
             tab.SetMeta("progression_expected_rect", rect); bool page = misc; tab.Pressed += () => GeniePage(page);
         }
         var controls = _native.Where(c => ClassicProgressionLayout.Rect("genie", c.Name) != null && !c.Name.ToString().StartsWith("genie_tab_")).ToArray();

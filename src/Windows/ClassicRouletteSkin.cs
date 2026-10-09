@@ -54,6 +54,7 @@ public partial class ClassicRoulettePanel : ClassicEventPanel
         log.Position = Spec.Log.Position; log.Size = Spec.Log.Size;
         log.SetMeta(ExpectedRect, Spec.Log);
         Scroll(log);
+        log.GetVScrollBar().CustomStep = 26;
         _logRows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _logRows.AddThemeConstantOverride("separation", 2);
         log.AddChild(_logRows);

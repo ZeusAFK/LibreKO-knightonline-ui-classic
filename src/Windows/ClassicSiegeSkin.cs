@@ -80,6 +80,9 @@ public partial class ClassicSiegePanel : Control
         {
             var head = Find<Label>("siege_head_" + i);
             Text(head, layout.Heads[i], Plugin.Kit.Bold, 13, Heading, HorizontalAlignment.Center);
+            // The original 31 px Members string cannot hold the word at the headings' 13 px; the short form keeps
+            // every heading at one size and the full word on hover.
+            if (head.Text == "Members") { head.Text = "Mem."; head.TooltipText = "Members"; head.MouseFilter = MouseFilterEnum.Pass; }
             // System fonts measure reliably once the heading is in the tree.
             Callable.From(() => Fit(head, 13, 10)).CallDeferred();
         }
@@ -219,9 +222,18 @@ public partial class ClassicSiegePanel : Control
             var cells = columns.Where(c => c.Length > i).Select(c => c[i]).ToArray();
             if (cells.Length == 0) continue;
             int size = cells.Min(c => Fitting(c, 13, 10, _table.Columns[i] - 2));
+            if (size < 12 && cells.All(c => Weekdays.Contains(c.Text) || c.Text.Length <= 3))
+            {
+                // "Wednesday" cannot stay readable in the original 57 px day column; every day takes its short form.
+                foreach (var cell in cells.Where(c => c.Text.Length > 3))
+                { cell.TooltipText = cell.Text; cell.Text = cell.Text[..3]; cell.MouseFilter = MouseFilterEnum.Pass; }
+                size = cells.Min(c => Fitting(c, 13, 10, _table.Columns[i] - 2));
+            }
             foreach (var cell in cells) cell.AddThemeFontSizeOverride("font_size", size);
         }
     }
+
+    private static readonly HashSet<string> Weekdays = new() { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
 
     public override void _Process(double delta) => StyleRows();
 

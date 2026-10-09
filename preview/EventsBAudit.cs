@@ -48,7 +48,9 @@ public partial class Preview
                 foreach (var row in visible)
                 {
                     var rect = row.GetGlobalRect();
-                    Require(rect.Size == new Vector2(ClassicBoardLayout.RowWidth, ClassicBoardLayout.RowHeight) && rect.Position.X == list.Position.X, tag + " row spans the table " + rect);
+                    // The empty-list line fills the table so it reads centred; real rows keep the row pitch.
+                    var expected = new Vector2(ClassicBoardLayout.RowWidth, row is Label ? list.Size.Y : ClassicBoardLayout.RowHeight);
+                    Require(rect.Size == expected && rect.Position.X == list.Position.X, tag + " row spans the table " + rect);
                     Require(list.Encloses(rect), tag + " row contained in the list " + rect);
                     foreach (var cell in Descendants(row).OfType<Label>().Where(l => l.IsVisibleInTree() && l.HasMeta("board_cell")))
                     {

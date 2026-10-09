@@ -60,6 +60,8 @@ public partial class ClassicReportButton : Button
 public partial class ClassicReportHeader : Control
 {
     private readonly bool _separators;
+    /// <summary>Tab separators after the first plates; the Character window's four tabs need three.</summary>
+    public int Separators { get; set; } = 3;
     public ClassicReportHeader(bool separators=true) { _separators=separators; MouseFilter=MouseFilterEnum.Ignore; TextureFilter=TextureFilterEnum.Nearest; Resized+=QueueRedraw; }
     public override void _Draw()
     {
@@ -80,7 +82,7 @@ public partial class ClassicReportHeader : Control
         Tile(new Rect2(4,40,Size.X-8,2),new Rect2(part.SrcX+56,part.SrcY+part.SrcH-2,16,2));
         Tile(new Rect2(0,0,6,42),new Rect2(part.SrcX,sourceTop,6,42));
         Tile(new Rect2(Size.X-4,0,4,42),new Rect2(part.SrcX+part.SrcW-4,sourceTop,4,42));
-        for(int i=1;_separators && i<4;i++)
+        for(int i=1;_separators && i<=Separators;i++)
             Tile(new Rect2(4+i*87,4,2,36),new Rect2(part.SrcX+(ClassicDesign.Karus?72:71),sourceTop+4,2,36));
     }
 }

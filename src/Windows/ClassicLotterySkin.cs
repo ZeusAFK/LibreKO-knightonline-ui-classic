@@ -14,14 +14,14 @@ namespace KnightOnlineUiClassic.Windows;
 /// </summary>
 public partial class ClassicLotteryPanel : ClassicEventPanel
 {
-    private readonly Label _time, _status, _prizeCaption;
+    private readonly Label _time, _status, _prizeCaption, _noPrizes;
     private readonly TextureRect _coin;
     private readonly ScrollContainer _prizes, _winners;
     private readonly HBoxContainer _rewards;
     private readonly VBoxContainer _winnerRows;
     private int _winnersRevision = -1;
 
-    public ClassicLotteryPanel(HudWindow window, Control body, World world) : base(window, body, world, Spec.Size, 0.86f)
+    public ClassicLotteryPanel(HudWindow window, Control body, World world) : base(window, body, world, Spec.Size)
     {
         AddClose(() => NativeApi.Call(World, "CloseLottery"));
         Inset(Spec.Info);
@@ -78,6 +78,8 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         _rewards.AddThemeConstantOverride("separation", ClassicEventsLayout.CellPitch - 45);
         _rewards.Visible = true;
 
+        _noPrizes = Text("No prizes announced.", new Rect2(Spec.Prizes(0).Position, new Vector2(Spec.Prizes(0).Size.X, Spec.PrizeCells)), Muted, HorizontalAlignment.Center);
+        _noPrizes.Name = "lottery_no_prizes";
         _winners = new ScrollContainer { Name = "lottery_winner_list", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false };
         Content.AddChild(_winners);
         _winners.Position = Spec.Prizes(0).Position; _winners.Size = Spec.Prizes(Spec.Winners(1)).Size;
@@ -108,6 +110,7 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         var view = NativeEventWindows.Lottery(World);
         bool results = !active && view.Winners.Count > 0;
         _prizes.Visible = !results;
+        _noPrizes.Visible = !results && !_rewards.GetChildren().OfType<Control>().Any(c => !c.IsQueuedForDeletion());
         _winners.Visible = results;
         _prizeCaption.Text = results ? "Winners" : "Prize";
         // The frame follows its content: one row of prize cells or up to four whole winner rows.
