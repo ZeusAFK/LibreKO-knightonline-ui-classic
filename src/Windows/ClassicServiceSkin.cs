@@ -70,6 +70,8 @@ public partial class ClassicServicePanel : Control
         ClassicPartySkin.Drag(this, grip, new Rect2(14, 8, Size.X - 50, 30));
         if (window.Id != "class_change") Place(title, new Rect2(22, window.Id == "warp" ? 6 : 16, Size.X - 70, 24));
         title.HorizontalAlignment = HorizontalAlignment.Left;
+        // The quest frame is the same dark art for both nations, so its title keeps one colour.
+        if (window.Id is not ("warp" or "class_change" or "repair")) title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         if (window.Id != "seal") title.Text = Title(window.Id);
         if (window.Id != "class_change")
         {

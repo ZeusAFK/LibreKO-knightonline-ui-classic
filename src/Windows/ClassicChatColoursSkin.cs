@@ -34,7 +34,7 @@ public partial class ClassicChatColoursPanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
         ClassicPartySkin.Drag(this, header, new Rect2(14, 8, 296, 32));
-        Place(title, new Rect2(22, 16, 276, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.Heading);
+        Place(title, new Rect2(22, 16, 276, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(320, 15, 24, 24), "");
         _close.SetMeta("chat_colours_expected_rect", new Rect2(320, 15, 24, 24));
         for (int slot = 0; slot < ChatColors.SlotCount; slot++)

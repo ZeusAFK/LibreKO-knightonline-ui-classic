@@ -80,7 +80,7 @@ public abstract partial class ClassicEventPanel : Control
         AddChild(_grip);
         _grip.GuiInput += ev => bar.EmitSignal(Control.SignalName.GuiInput, ev);
         ClassicVendorSkin.Move(TitleLabel, this, ClassicEventsLayout.Title(size.X));
-        Bold(TitleLabel, ClassicDesign.Heading);
+        Bold(TitleLabel, ClassicDesign.FrameTitle);
         TitleLabel.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         TitleLabel.MouseFilter = MouseFilterEnum.Ignore;
         if (CloseButton != null) SkinClose(CloseButton);

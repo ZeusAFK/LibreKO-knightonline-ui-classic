@@ -58,7 +58,12 @@ public partial class ClassicStorePanel : Control
         foreach (var modal in _modals)
         {
             modal.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+            // The content keeps the quest-talk insets: 20 px from the sides and 30 px above the frame bottom.
+            var inset = modal.GetChildren().OfType<MarginContainer>().First();
+            inset.AddThemeConstantOverride("margin_left", 20); inset.AddThemeConstantOverride("margin_top", 16);
+            inset.AddThemeConstantOverride("margin_right", 20); inset.AddThemeConstantOverride("margin_bottom", 30);
             modal.AddChild(new ClassicFrame { Name = "pus_modal_frame", BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
+            CharacterDetailsSkin.Tree(modal).OfType<HBoxContainer>().First().GetChildren().OfType<Label>().FirstOrDefault()?.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         }
         body.MinimumSizeChanged += UpdateMinimumSize; Resized += Arrange;
         window.VisibilityChanged += () => { if (!window.Visible) foreach (var option in CharacterDetailsSkin.Tree(this).Concat(CharacterDetailsSkin.Tree(_overlay)).OfType<OptionButton>()) option.GetPopup().Hide(); };
@@ -123,7 +128,8 @@ public partial class ClassicStorePanel : Control
         }
         if (control is ScrollContainer sc)
         {
-            if (sc.GetParent().Name == "pus_gift_pick") sc.CustomMinimumSize = new Vector2(0, Platform.TouchUi ? 240 : 160);
+            // Four whole 44 px recipient rows (4 px apart) on desktop.
+            if (sc.GetParent().Name == "pus_gift_pick") sc.CustomMinimumSize = new Vector2(0, Platform.TouchUi ? 240 : 188);
             var bar = sc.GetVScrollBar(); bar.CustomMinimumSize = new Vector2(10, 0); bar.AddThemeStyleboxOverride("scroll", ClassicStoreLayout.Box(0));
             foreach (string state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
             {

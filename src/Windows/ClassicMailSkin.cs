@@ -38,7 +38,7 @@ public partial class ClassicMailPanel : Control
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
         ClassicPartySkin.Drag(this, header, new Rect2(14, 8, 352, 32));
         Place(title, new Rect2(22, 16, 332, 24)); Font(title, true); title.Text = window.Id == "mailcompose" ? "Write a Letter" : window.Id == "mailread" ? "Read a Letter" : "Mail";
-        title.AddThemeColorOverride("font_color", ClassicDesign.Heading);
+        title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(380, 15, 24, 24), "");
         _close.SetMeta("mail_expected_rect", new Rect2(380, 15, 24, 24));
         if (window.Id == "mail") Inbox(); else if (window.Id == "mailread") Read(); else Compose();
@@ -98,7 +98,7 @@ public partial class ClassicMailPanel : Control
         Scroll(Find<ScrollContainer>("mail_list_scroll"), ClassicMailLayout.Inbox);
         var rows = Find<VBoxContainer>("mail_list"); rows.AddThemeConstantOverride("separation", 0); rows.CustomMinimumSize = new Vector2(1, 0);
         Watch(rows, StyleInboxRow);
-        Place(Find<Label>("mail_status"), new Rect2(16, 356, 388, 28)); Find<Label>("mail_status").AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        Place(Find<Label>("mail_status"), new Rect2(20, 352, 380, 24)); Find<Label>("mail_status").AutowrapMode = TextServer.AutowrapMode.WordSmart;
     }
     private static void StyleInboxRow(Control control)
     {
@@ -141,8 +141,8 @@ public partial class ClassicMailPanel : Control
         Place(Find<Label>("mail_read_attachment_title"), new Rect2(16, 278, 388, 34), true); Font(Find<Label>("mail_read_attachment_title"), true, 12);
         Scroll(Find<ScrollContainer>("mail_read_attachment_scroll"), ClassicMailLayout.ReadAttachments, true, 4);
         Watch(Find<VBoxContainer>("mail_read_attachments"), StyleAttachment);
-        Action(Find<Button>("mail_claim"), new Rect2(16, 475, 186, 26), "Claim attachments");
-        Action(Find<Button>("mail_delete"), new Rect2(218, 475, 186, 26), "Delete");
+        Action(Find<Button>("mail_claim"), ClassicMailLayout.Action(0, 475), "Claim attachments");
+        Action(Find<Button>("mail_delete"), ClassicMailLayout.Action(1, 475), "Delete");
     }
     private void Edit(LineEdit input, Rect2 rect)
     {
@@ -175,8 +175,8 @@ public partial class ClassicMailPanel : Control
         drop.SetMeta("classic_mail_idle", inset); drop.SetMeta("classic_mail_hot", hot); drop.TooltipText = "Drag items here from your inventory";
         var rows = Find<VBoxContainer>("mail_attach_rows"); rows.AddThemeConstantOverride("separation", 2); Watch(stack, c => { StyleAttachment(c); FocusedEscape(c); });
         Place(Find<Label>("mail_compose_status"), new Rect2(16, 488, 388, 26));
-        Action(Find<Button>("mail_send"), new Rect2(16, 522, 186, 26), "Send");
-        _cancel = Find<Button>("mail_cancel"); Action(_cancel, new Rect2(218, 522, 186, 26), "Cancel");
+        Action(Find<Button>("mail_send"), ClassicMailLayout.Action(0, 522), "Send");
+        _cancel = Find<Button>("mail_cancel"); Action(_cancel, ClassicMailLayout.Action(1, 522), "Cancel");
         var suggestions = Find<VBoxContainer>("mail_to_suggest");
         var suggestScroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false }; AddChild(suggestScroll);
         var popup = new PanelContainer { Position = new Vector2(88, 84), Size = new Vector2(316, 142), ZIndex = 10, Visible = false };
