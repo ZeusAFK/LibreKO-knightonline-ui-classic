@@ -76,8 +76,10 @@ public partial class Preview
             else if (view is "read" or "store")
             {
                 var text = (Label)DetailField(world, "_mailReadBody")!;
-                Require(text.GetParent() is ScrollContainer, "Read body is contained in a scroll viewport");
-                if (view == "read") Require(((ScrollContainer)text.GetParent()).GetVScrollBar().Visible, "Long read body scrolls without changing frame size");
+                var bodyScroll = text.GetParent()?.GetParent() as ScrollContainer;
+                Require(bodyScroll != null, "Read body is contained in a scroll viewport");
+                Require(text.GetGlobalRect().End.X + 6 <= bodyScroll!.GetVScrollBar().GetGlobalRect().Position.X || !bodyScroll.GetVScrollBar().Visible, "Read body text keeps a gutter before the scroll bar " + text.GetGlobalRect() + " " + bodyScroll.GetVScrollBar().GetGlobalRect());
+                if (view == "read") Require(bodyScroll.GetVScrollBar().Visible, "Long read body scrolls without changing frame size");
                 else Require(((ScrollContainer)DetailField(world, "_mailReadAttachmentScroll")!).GetVScrollBar().Visible, "Store attachments remain accessible inside the fixed attachment area");
                 var mails = (List<MailEntry>)DetailField(world, "_mails")!;
                 int id = (int)DetailField(world, "_mailSelectedId")!; var selected = mails.Single(m => m.Id == id);

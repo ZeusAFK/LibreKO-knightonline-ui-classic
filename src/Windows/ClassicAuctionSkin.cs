@@ -121,6 +121,7 @@ public partial class ClassicAuctionPanel : Control
             {
                 ClassicVendorSkin.Button(button, Plugin.Kit.Layout("co_change_bill_us").Find("btn_ok")!); Font(button);
                 foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color" }) button.AddThemeColorOverride(state, ClassicDesign.Heading);
+                if (button.Name.ToString().StartsWith("auction_tab_")) button.AddThemeColorOverride("font_hover_color", Colors.White);
                 button.AddThemeColorOverride("font_disabled_color", ClassicDesign.Muted); button.FocusMode = FocusModeEnum.All; button.Shortcut = null;
                 button.CustomMinimumSize = new Vector2(button.HasMeta("auction_row_action") ? 112 : button.CustomMinimumSize.X, 28);
             }

@@ -21,7 +21,7 @@ public partial class Preview
         const BindingFlags flags=BindingFlags.Instance|BindingFlags.NonPublic;
         var screens=new List<object>();var checks=new List<string>();
         async Task Frames(){for(int i=0;i<12;i++)await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);}
-        foreach(var spec in new[]{("gender","BuildGenderChangeUiPreview","_genderShown",12),("nation","BuildNationTransferUiPreview","_transferShown",13),("search","BuildMerchantSearchUiPreview","_merchantSearchShown",14)})
+        foreach(var spec in new[]{("gender","BuildGenderChangeUiPreview","_genderShown"),("nation","BuildNationTransferUiPreview","_transferShown"),("search","BuildMerchantSearchUiPreview","_merchantSearchShown")})
         {
             var world=new World();
             var panel=(Control)typeof(World).GetMethod(spec.Item2,flags)!.Invoke(world,null)!;
@@ -32,8 +32,13 @@ public partial class Preview
             GetViewport().GetTexture().GetImage().SavePng(output+"/"+file);screens.Add(new{state=spec.Item1,file});
             typeof(World).GetMethod("BuildEscapeStack",flags)!.Invoke(world,null);
             var entries=(List<(Func<bool>,Action)>)typeof(World).GetField("_escapeStack",flags)!.GetValue(world)!;
-            var entry=entries[spec.Item4];
-            if(!entry.Item1())throw new Exception(spec.Item1+" not registered as open in Escape stack");
+            // Locate the entry by its own visibility flag; upstream inserts entries by precedence, so indices drift.
+            var shown=typeof(World).GetField(spec.Item3,flags)!;
+            bool Open((Func<bool>,Action) e){try{return e.Item1();}catch(NullReferenceException){return false;}}
+            var open=entries.Where(Open).ToList();shown.SetValue(world,false);
+            var owned=open.Where(e=>!Open(e)).ToList();shown.SetValue(world,true);
+            if(owned.Count!=1)throw new Exception(spec.Item1+" not registered as open in Escape stack");
+            var entry=owned[0];
             entry.Item2();
             if(entry.Item1()||panel.Visible)throw new Exception(spec.Item1+" Escape callback failed to close");
             checks.Add(spec.Item1+" existing Escape stack closes its native panel");

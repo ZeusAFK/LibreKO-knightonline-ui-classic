@@ -45,6 +45,8 @@ public partial class ClassicMerchantSearchPanel : Control
         Action(Find<Button>("all"), new Rect2(416, 74, 80, 28));
         Place(Find<Label>("scope_label"), new Rect2(504, 76, 48, 24));
         _scope = Find<OptionButton>("scope"); Action(_scope, new Rect2(560, 74, 204, 28));
+        foreach (var state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" })
+            if (_scope.GetThemeStylebox(state) is StyleBoxTexture box) { box = (StyleBoxTexture)box.Duplicate(); box.ContentMarginLeft = 6; _scope.AddThemeStyleboxOverride(state, box); }
         var popup = _scope.GetPopup(); popup.AddThemeFontOverride("font", Plugin.Kit.Bold); popup.AddThemeFontSizeOverride("font_size", 13);
         var popupBox = ClassicDesign.InputBox(); popupBox.BgColor = Colors.Black;
         popup.AddThemeStyleboxOverride("panel", popupBox); popup.AddThemeColorOverride("font_color", ClassicDesign.Text);

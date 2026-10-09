@@ -60,7 +60,7 @@ public partial class ClassicCommunicationPanel : Control
     }
     private void Caption(string text, Rect2 rect)
     {
-        var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore }; AddChild(label); Place(label, rect);
+        var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore, VerticalAlignment = VerticalAlignment.Center }; AddChild(label); Place(label, rect);
         label.AddThemeColorOverride("font_color", ClassicDesign.Heading);
     }
     private static void Action(Button button, Control owner, Rect2 rect)
@@ -77,9 +77,10 @@ public partial class ClassicCommunicationPanel : Control
         input.AddThemeColorOverride("font_color", ClassicDesign.Text); input.AddThemeColorOverride("font_placeholder_color", ClassicDesign.Muted);
         input.GuiInput += ev => { if (ev is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) { Close(); input.AcceptEvent(); } };
     }
-    private void Scroll(ScrollContainer scroll, Rect2 rect)
+    private void Scroll(ScrollContainer scroll, Rect2 rect, float inset = 0)
     {
-        Place(scroll, rect); scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled; _scrolls.Add((scroll, rect)); _sections.Add(rect.Grow(1));
+        _sections.Add(rect.Grow(1)); rect = rect.GrowSide(Side.Left, -inset);
+        Place(scroll, rect); scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled; _scrolls.Add((scroll, rect));
         var bar = scroll.GetVScrollBar(); bar.CustomMinimumSize = new Vector2(10, 0); bar.FocusMode = FocusModeEnum.None;
         var track = new StyleBoxFlat { BgColor = new Color("17130e"), BorderColor = new Color("8b795c") }; track.SetBorderWidthAll(1); bar.AddThemeStyleboxOverride("scroll", track);
         foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
@@ -103,13 +104,13 @@ public partial class ClassicCommunicationPanel : Control
         Caption("Room", new Rect2(22, 64, 234, 20)); Caption("Members", new Rect2(262, 64, 72, 20));
         Scroll(Find<ScrollContainer>("rooms_scroll"), ClassicCommunicationLayout.RoomList);
         Watch(Find<VBoxContainer>("rooms_list"), StyleRow);
-        Input(Find<LineEdit>("rooms_name"), new Rect2(16, 266, 244, 26));
-        Action(Find<Button>("rooms_create"), this, new Rect2(268, 266, 84, 26)); Action(Find<Button>("rooms_refresh"), this, new Rect2(360, 266, 84, 26));
-        Place(Find<Label>("rooms_status"), new Rect2(16, 302, 428, 22)); Find<Label>("rooms_status").AddThemeColorOverride("font_color", ClassicDesign.Heading);
-        Caption("Chat", new Rect2(16, 326, 428, 20)); Scroll(Find<ScrollContainer>("rooms_log_scroll"), ClassicCommunicationLayout.RoomLog);
+        Input(Find<LineEdit>("rooms_name"), new Rect2(16, 254, 244, 26));
+        Action(Find<Button>("rooms_create"), this, new Rect2(268, 254, 84, 26)); Action(Find<Button>("rooms_refresh"), this, new Rect2(360, 254, 84, 26));
+        Place(Find<Label>("rooms_status"), new Rect2(16, 290, 428, 22)); Find<Label>("rooms_status").AddThemeColorOverride("font_color", ClassicDesign.Heading);
+        Caption("Chat", new Rect2(16, 314, 428, 20)); Scroll(Find<ScrollContainer>("rooms_log_scroll"), ClassicCommunicationLayout.RoomLog, 4);
         Watch(Find<VBoxContainer>("rooms_log"), StyleLog);
-        Input(Find<LineEdit>("rooms_message"), new Rect2(16, 530, 244, 26));
-        Action(Find<Button>("rooms_send"), this, new Rect2(268, 530, 84, 26)); Action(Find<Button>("rooms_leave"), this, new Rect2(360, 530, 84, 26));
+        Input(Find<LineEdit>("rooms_message"), new Rect2(16, 518, 244, 26));
+        Action(Find<Button>("rooms_send"), this, new Rect2(268, 518, 84, 26)); Action(Find<Button>("rooms_leave"), this, new Rect2(360, 518, 84, 26));
     }
     private static void Watch(VBoxContainer rows, Action<Control> style)
     {

@@ -9,8 +9,9 @@ public static class ClassicServiceLayout
     {
         "warp" => new(320, 482),
         "repair" => new(366, 488),
-        "seal" => new(366, 538),
-        "piecechange" => new(366, 538),
+        // The last row stays above the frame's bottom curls (original quest frames keep ~30 px).
+        "seal" => new(366, 556),
+        "piecechange" => new(366, 556),
         "itemcombine" => new(366, 414),
         "combinerecipes" => new(790, 490),
         "class_change" => new(327, 240),

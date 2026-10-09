@@ -41,7 +41,8 @@ public partial class ClassicServiceNotice : Control
             if (accept) button.Pressed += request.Confirm; else button.Pressed += request.Cancel;
         }
         request.MessageChanged += UpdateMessage;
-        if (request.Title is "Akara's Altar" or "Nation Transfer" or "Rebirth" or "Clan Cape" or "Familiar Hatching" or "Familiar Transformation")
+        if (request.Title is "Akara's Altar" or "Nation Transfer" or "Rebirth" or "Clan Cape" or "Familiar Hatching" or "Familiar Transformation"
+            or "Item Seal" or "Redistribute stats" or "Redistribute mastery" or "Transformation")
             foreach (var control in CharacterDetailsSkin.Tree(_panel).OfType<Control>().Where(c => c is Label or Button))
             {
                 control.AddThemeFontOverride("font", Plugin.Kit.Bold);

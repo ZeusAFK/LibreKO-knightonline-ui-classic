@@ -307,8 +307,21 @@ public static class NativeMarket
         foreach (var field in new[] { "_pusCartEmpty", "_pusShortfall", "_pusCartStatus" })
             if (Native.Get<Control>(world, field) is { } label) label.CustomMinimumSize = new Vector2((compact ? CompactCartWidth : cartWidth) - 2 * margin, 0);
         tools.Vertical = compact;
-        Native.Call(world, "FitPowerUpStore");
+        window.GetTree().CreateTimer(0).Timeout += () => RefitStore(window, world);
         return compact;
+    }
+
+    /// <summary>
+    /// Refits on a later frame: the client's own deferred fit connects a one-shot centring to process_frame,
+    /// and connecting it twice in one frame logs an error.
+    /// </summary>
+    private static void RefitStore(HudWindow window, World world)
+    {
+        if (!GodotObject.IsInstanceValid(window) || !window.IsInsideTree()) return;
+        var tree = window.GetTree();
+        var centre = Callable.From((Action)Delegate.CreateDelegate(typeof(Action), world, "CentrePowerUpStore"));
+        if (tree.IsConnected(SceneTree.SignalName.ProcessFrame, centre)) { tree.CreateTimer(0).Timeout += () => RefitStore(window, world); return; }
+        Native.Call(world, "FitPowerUpStore");
     }
 
     /// <summary>On touch screens the full-screen store is centred without the pointer layout's screen margin.</summary>
@@ -416,7 +429,8 @@ public static class NativeMarket
         try
         {
             button.AddThemeStyleboxOverride("normal", button.GetThemeStylebox(on ? "auction_tab_selected" : "auction_tab_normal"));
-            button.AddThemeStyleboxOverride("hover", button.GetThemeStylebox("auction_tab_hover"));
+            // The original hover art is the selected blue; an unselected tab keeps its own art while hovered.
+            button.AddThemeStyleboxOverride("hover", button.GetThemeStylebox(on ? "auction_tab_selected" : "auction_tab_normal"));
             button.AddThemeStyleboxOverride("pressed", button.GetThemeStylebox("auction_tab_selected"));
         }
         finally { _stylingTab = false; }

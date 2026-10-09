@@ -3,6 +3,7 @@ using LibreKO;
 using LibreKO.Network;
 using LibreKO.Plugins;
 using KnightOnlineUiClassic;
+using KnightOnlineUiClassic.Windows;
 using System.Reflection;
 using System.Text.Json;
 
@@ -11,6 +12,8 @@ public partial class Preview
     private async Task CaptureUpstreamIntegration(PluginGame game, int nation)
     {
         string output=ProjectSettings.GlobalizePath("res://../../research/upstream-20261006-audit");
+        if(OS.GetEnvironment("LIBREKO_AUDIT_OUTPUT_DIR") is {Length:>0} directory)output=directory;
+        System.IO.Directory.CreateDirectory(output);
         foreach(string pack in new[]{"build/client/LibreKO.pck","build/client/source-content/knightonline.pck"})
             if(!ProjectSettings.LoadResourcePack(ProjectSettings.GlobalizePath("res://../../"+pack),false))throw new Exception("Missing pack "+pack);
         GetWindow().ContentScaleMode=Window.ContentScaleModeEnum.Disabled;
@@ -34,8 +37,15 @@ public partial class Preview
                 : (Node)typeof(World).GetMethod(state=="mail-store"?"BuildMailStoreUiPreview":"BuildMailReadManyUiPreview",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(world,null)!;
             var windows=Descendants(surface).OfType<HudWindow>().ToArray();
             if(surface is HudWindow own)windows=windows.Append(own).ToArray();
-            foreach(var window in windows){NativeMarket.Prepare(window,world);ClassicSkin.ExtendWindow(window.Body);}
-            AddChild(surface);await Frames();
+            AddChild(surface);
+            // Apply the skins the plugin registers for these ids in the game (Plugin.cs), not the generic frame.
+            foreach(var window in windows)
+            {
+                if(ClassicMailSkin.WindowIds.Contains(window.Id)){NativeCommunication.Prepare(window,world);ClassicMailSkin.Apply(window.Body);}
+                else if(window.Id=="shoppingmall"){NativeMarket.Prepare(window,world);ClassicStoreSkin.Apply(window.Body);}
+                else{NativeMarket.Prepare(window,world);ClassicSkin.Apply(window);}
+            }
+            await Frames();
             foreach(var window in windows.Where(w=>w.Visible))window.Position=((GetViewportRect().Size-window.Size)/2).Round();
             await Frames();
             foreach(var window in windows.Where(w=>w.Visible))Require(GetViewportRect().Grow(.1f).Encloses(window.GetGlobalRect()),state+" window fits viewport: "+window.GetGlobalRect());
