@@ -25,6 +25,7 @@ public static class ClassicWorldOverlays
         NativeOverlays.Extend(NativeOverlay.Leave, node => Once(node, () => Leave((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Death, node => Once(node, () => Death((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Prompt, node => Once(node, () => Prompt((AcceptDialog)node)));
+        NativeOverlays.Extend(NativeOverlay.NamePrompt, node => Once(node, () => NamePrompt((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Announcement, node => Once(node, () => Announcement((Control)node)));
         NativeOverlays.Extend(NativeOverlay.Chip, node => Once(node, () => Chip((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Score, node => Once(node, () => Score((PanelContainer)node)));
@@ -271,6 +272,41 @@ public static class ClassicWorldOverlays
         }) { Name = "classic_prompt_sync" });
     }
 
+    private static void NamePrompt(PanelContainer native)
+    {
+        if (native.GetChildren().OfType<MarginContainer>().FirstOrDefault() is not { } content
+            || Find<LineEdit>(native, "invite_name_input") is not { } input) return;
+        var label = Descendants(content).OfType<Label>().FirstOrDefault();
+        var buttons = Descendants(content).OfType<Button>().ToArray();
+        if (label == null || buttons.Length < 2) return;
+        native.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        native.CustomMinimumSize = Spec.NamePrompt.Size;
+        var panel = new ClassicMessagePanel(Spec.NamePrompt.Size, centre: false) { Name = "classic_invite_name" };
+        native.AddChild(panel);
+        content.Visible = false;
+        // The party window's own title names the prompt; the native label is its message.
+        var title = new Label { Name = "invite_name_title", Text = "Party", HorizontalAlignment = HorizontalAlignment.Center, MouseFilter = Control.MouseFilterEnum.Ignore };
+        panel.AddChild(title); Place(title, panel, Spec.NamePrompt.Title); Text(title, 13, MessageTitle);
+        Place(label, panel, Spec.NamePrompt.Text); Text(label, 15, MessageText);
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        Place(input, panel, Spec.NamePrompt.Edit);
+        var field = ClassicDesign.InputBox(); field.ContentMarginTop = field.ContentMarginBottom = 2;
+        input.AddThemeStyleboxOverride("normal", field); input.AddThemeStyleboxOverride("focus", field);
+        input.AddThemeFontOverride("font", Plugin.Kit.Bold); input.AddThemeFontSizeOverride("font_size", 13);
+        input.AddThemeColorOverride("font_color", MessageText); input.AddThemeColorOverride("font_placeholder_color", ClassicDesign.Muted);
+        input.AddThemeColorOverride("caret_color", MessageText); input.Alignment = HorizontalAlignment.Center;
+        Place(buttons[0], panel, Spec.NamePrompt.Send); MessageButton(buttons[0]);
+        Place(buttons[1], panel, Spec.NamePrompt.Cancel); MessageButton(buttons[1], cancel: true);
+        native.ResetSize();
+        // A message box: centred on the screen instead of the client's fixed corner.
+        Keep(native, () =>
+        {
+            var at = ((native.GetViewportRect().Size - Spec.NamePrompt.Size) / 2).Round();
+            if (native.Size != Spec.NamePrompt.Size) native.Size = Spec.NamePrompt.Size;
+            if (native.Position != at) native.Position = at;
+        });
+    }
+
     // ---- Plates, chips and strips -------------------------------------------------------------------
 
     private static void Countdown(PanelContainer plate)
@@ -320,7 +356,13 @@ public static class ClassicWorldOverlays
         // The chip hangs from its top offset; drop the flat panel's taller padding.
         chip.OffsetBottom = chip.OffsetTop + Spec.Plaque.Height;
         var labels = Descendants(chip).OfType<Label>().ToArray();
-        foreach (var label in labels) { Text(label, 13, PlaqueInk, shadow: PlaqueShadow); label.VerticalAlignment = VerticalAlignment.Center; }
+        // The chip keeps its width from zone to zone; the name stays centred on the plaque.
+        foreach (var label in labels)
+        {
+            Text(label, 13, PlaqueInk, shadow: PlaqueShadow);
+            label.VerticalAlignment = VerticalAlignment.Center; label.HorizontalAlignment = HorizontalAlignment.Center;
+            label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        }
         // The zone name carries the zone type; the native per-type tint has no place on the plaque.
         Keep(chip, () => { foreach (var label in labels) Ink(label, PlaqueInk); });
     }

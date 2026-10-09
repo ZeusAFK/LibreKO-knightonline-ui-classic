@@ -44,6 +44,17 @@ public static class ClassicOverlayLayout
         public static Rect2 Ok => Message.Single(Size.Y);
     }
 
+    /// <summary>Invite by name: the message box with its original edit field (<c>Edit_Common</c>).</summary>
+    public static class NamePrompt
+    {
+        public static readonly Vector2 Size = new(Message.Width, Message.Height);
+        public static readonly Rect2 Title = Message.Title;
+        public static readonly Rect2 Text = new(21, 46, 285, 20);
+        public static readonly Rect2 Edit = new(81, 79, 173, 23);
+        public static Rect2 Send => Message.Left(Size.Y);
+        public static Rect2 Cancel => Message.Right(Size.Y);
+    }
+
     /// <summary>The information plaque: 22 pixels high, 4-pixel caps, captions inset like the original.</summary>
     public static class Plaque
     {

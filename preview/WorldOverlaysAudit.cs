@@ -129,6 +129,8 @@ public partial class Preview
         }
         invite.DialogText = "Guardian invites you to a party.\nJoin?"; invite.PopupCentered();
         await Shot("native-prompt"); invite.Hide();
+        Call("OpenInvitePrompt"); Field<LineEdit>("_inviteNameInput").Text = "Longestcharactername";
+        await Shot("native-invite-name"); Field<PanelContainer>("_inviteNamePanel").Visible = false;
         Call("OnDeathExpLoss", 1_234_567L); Call("ShowDeathDialog");
         await Shot("native-death"); Call("HideDeathDialog");
         ShowBanners(); await Frames(); PlaceBanners();
@@ -191,6 +193,28 @@ public partial class Preview
         recall.PopupCentered();
         await Prompt(recall, "town-recall", "Town Recall", true);
 
+        // Invite by name from the party window: the message box with its edit field; Cancel and Send stay native.
+        var namePanel = Field<PanelContainer>("_inviteNamePanel"); var nameInput = Field<LineEdit>("_inviteNameInput");
+        Require(namePanel.HasMeta("classic_overlay"), "invite by name has the Classic skin");
+        Call("OpenInvitePrompt"); nameInput.Text = "Longestcharactername";
+        await Frames();
+        var nameBox = namePanel.GetNode<Control>("classic_invite_name");
+        Require(namePanel.Visible && nameBox.Size == Spec.NamePrompt.Size && Global(nameBox).Position == ((viewport.Size - Spec.NamePrompt.Size) / 2).Round(), $"invite by name: centred message box {Global(nameBox)}");
+        foreach (var control in nameBox.GetChildren().OfType<Control>().Where(c => c.HasMeta(ClassicWorldOverlays.ExpectedRect)))
+        {
+            Expected(control, nameBox, "invite by name " + control.Name);
+            if (control is Label label) Require(Fits(label), $"invite by name: '{label.Text}' fits");
+            if (control is Button button) ButtonArt(button, "invite by name " + button.Text);
+        }
+        Require(nameInput.GetThemeFont("font").GetStringSize(nameInput.Text, HorizontalAlignment.Left, -1, nameInput.GetThemeFontSize("font_size")).X <= nameInput.Size.X - 12,
+            "invite by name: a name at the native 20-character limit fits the edit field");
+        await Shot("party-invite-name", ("box", Global(nameBox)), ("input", Global(nameInput)));
+        nameBox.GetChildren().OfType<Button>().Single(b => b.Text == "Cancel").EmitSignal(BaseButton.SignalName.Pressed);
+        Require(!namePanel.Visible, "invite by name: Cancel runs the native close");
+        Call("OpenInvitePrompt"); nameInput.Text = "Guardian";
+        nameBox.GetChildren().OfType<Button>().Single(b => b.Text == "Send").EmitSignal(BaseButton.SignalName.Pressed);
+        Require(!namePanel.Visible, "invite by name: Send runs the native invite");
+
         // Death notice: experience loss, the pending (disabled) state and the native OK.
         Call("OnDeathExpLoss", 1_234_567_890L); Call("ShowDeathDialog");
         await Frames();
@@ -228,6 +252,9 @@ public partial class Preview
             Require(plate.GetThemeStylebox("panel") is StyleBoxEmpty, $"banner {plate.Name}: no flat panel");
         Require(chipLabel.GetThemeColor("font_color") == ClassicWorldOverlays.PlaqueInk && chip.Size.Y == Spec.Plaque.Height && Inside(viewport, Global(chip)),
             $"zone chip: plaque height {chip.Size.Y} (label {chipLabel.GetCombinedMinimumSize()}) and plaque ink over the native tint");
+        var chipText = chipLabel.GetThemeFont("font").GetStringSize(chipLabel.Text, HorizontalAlignment.Left, -1, chipLabel.GetThemeFontSize("font_size")).X;
+        float left = Global(chipLabel).Position.X + (chipLabel.Size.X - chipText) / 2 - Global(chip).Position.X, right = Global(chip).End.X - (Global(chipLabel).Position.X + (chipLabel.Size.X + chipText) / 2);
+        Require(Math.Abs(left - right) <= 1, $"zone chip: name centred on the plaque ({left:0.#} / {right:0.#})");
         foreach (var strip in new[] { board, bdw })
         {
             Require(Inside(viewport, Global(strip)), $"{strip.Name}: inside the viewport");

@@ -17,6 +17,8 @@ public enum NativeOverlay
     Death,
     /// <summary>A native confirmation dialog (party invite, duel challenge, town recall).</summary>
     Prompt,
+    /// <summary>The party window's invite-by-name panel (label, name field, Send and Cancel).</summary>
+    NamePrompt,
     /// <summary>A centre-screen broadcast banner or prompt line.</summary>
     Announcement,
     /// <summary>The zone type chip.</summary>
@@ -58,6 +60,8 @@ public static class NativeOverlays
         Apply(NativeOverlay.Death, Named(world, "_deathPanel", "death_notice"));
         foreach (var (field, name) in new[] { ("_inviteAskDialog", "party_invite_prompt"), ("_challengeAskDialog", "duel_prompt"), ("_townRecallDialog", "town_recall_prompt") })
             Apply(NativeOverlay.Prompt, Named(world, field, name));
+        Named(world, "_inviteNameInput", "invite_name_input");
+        Apply(NativeOverlay.NamePrompt, Named(world, "_inviteNamePanel", "party_invite_name"));
         foreach (var (field, name) in new[] { ("_upgradeNoticeLabel", "upgrade_announcement"), ("_shoutLabel", "shout_announcement"), ("_seasonalLabel", "seasonal_announcement") })
             if (Native.Get<Label>(world, field)?.GetParent()?.GetParent() is PanelContainer panel) Apply(NativeOverlay.Announcement, Named(panel, name));
         Apply(NativeOverlay.Announcement, Named(world, "_battleeventBanner", "battle_announcement"));
