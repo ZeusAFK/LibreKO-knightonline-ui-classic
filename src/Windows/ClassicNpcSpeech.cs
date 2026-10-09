@@ -36,6 +36,7 @@ public partial class ClassicNpcSpeech : Control
             grab.SetContentMarginAll(0);bar.AddThemeStyleboxOverride(state,grab);
         }
         bar.CustomMinimumSize=new Vector2(12,0);bar.Step=LineHeight;bar.FocusMode=FocusModeEnum.None;
+        Resized+=()=> { Identity.Size=new Vector2(Size.X-16,Identity.Size.Y);Text.Size=new Vector2(Size.X-16,Text.Size.Y); };
         Text.GuiInput+=input=>
         {
             if(input is not InputEventMouseButton { Pressed:true } wheel || wheel.ButtonIndex is not (MouseButton.WheelUp or MouseButton.WheelDown)) return;

@@ -6,7 +6,10 @@ namespace KnightOnlineUiClassic.Windows;
 public partial class ClassicDetailPanel : Control
 {
     private readonly Control _body;
-    private readonly LayoutView _frame;
+    private LayoutView _frame;
+    private readonly Button? _nativeClose;
+    private readonly Vector2 _declared;
+    private readonly int _top;
     private double _elapsed;
     private bool _centerOnOpen=true;
     private int _openingFrames,_stableOpeningFrames;
@@ -29,25 +32,13 @@ public partial class ClassicDetailPanel : Control
         bool questShell=id is "npc_dialog" or "quest_available" or "quest_receipt";
         var size=id switch { "userinfo"=>new Vector2(360,440),"quest_target"=>new Vector2(360,500),
             "quest_receipt"=>new Vector2(363,330),"quest_available" or "npc_dialog"=>new Vector2(363,470),_=>new Vector2(360,550) };
-        CustomMinimumSize=size;Size=size;
+        CustomMinimumSize=size;Size=size;_declared=size;_nativeClose=nativeClose;
         if(questShell) Modulate=Colors.Transparent;
-        var root=CharacterLayout.Frame();root.W=(int)size.X;root.H=(int)size.Y;
-        root.Children.RemoveAll(n=>n.Type=="classic_tab");
-        int top=ClassicDesign.Karus?40:44;
-        var surface=root.Find("surface")!;surface.W=root.W;surface.Y=top;surface.H=root.H-top;
-        var rails=root.Find("header_rails")!;rails.Type="classic_detail_header";rails.Y=top;rails.W=root.W;
-        if(questShell)
-        {
-            root.Children.Clear();
-            root.Children.Add(new LayoutNode { Type="npc_quest_frame_component",W=root.W,H=root.H });
-            var closeSource=Plugin.Kit.Layout("co_questmenu_us").Find("btn_close")!;
-            root.Children.Add(CharacterLayout.CopyImage(closeSource,0,32-closeSource.Y));
-        }
-        _frame=new LayoutView(Plugin.Kit,root);AddChild(_frame);
-        if(_frame.Where(n=>n.Id=="btn_close").First().Control is BaseButton close)
-            close.Pressed+=()=>nativeClose?.EmitSignal(BaseButton.SignalName.Pressed);
-        nativeBar.Reparent(this);nativeBar.Position=questShell?new Vector2(36,28):new Vector2(48,top+4);
-        nativeBar.Size=new Vector2(size.X-(questShell?82:60),questShell?32:36);
+        int top=ClassicDesign.Karus?40:44;_top=top;
+        _frame=BuildFrame(size,questShell);
+        // Floating detail windows centre their caption across the full header rail.
+        nativeBar.Reparent(this);nativeBar.Position=questShell?new Vector2(36,28):new Vector2(8,top+4);
+        nativeBar.Size=new Vector2(size.X-(questShell?82:16),questShell?32:36);
         nativeBar.AddThemeConstantOverride("separation",0);
         foreach(var control in nativeBar.GetChildren().OfType<Control>())
         {
@@ -58,6 +49,7 @@ public partial class ClassicDetailPanel : Control
                 title.AddThemeFontOverride("font",Plugin.Kit.Bold);title.AddThemeFontSizeOverride("font_size",13);
                 title.AddThemeColorOverride("font_color",ClassicReportDesign.Caption);
                 title.VerticalAlignment=VerticalAlignment.Center;title.ClipText=true;
+                if(!questShell) { title.HorizontalAlignment=HorizontalAlignment.Center;title.SizeFlagsHorizontal=SizeFlags.ExpandFill; }
                 if(id=="npc_dialog") title.TextOverrunBehavior=TextServer.OverrunBehavior.TrimEllipsis;
             }
         }
@@ -102,6 +94,44 @@ public partial class ClassicDetailPanel : Control
             foreach(var rows in body.GetChildren().OfType<Container>()) rows.ChildEnteredTree+=child=>Callable.From(()=> { if(child is HBoxContainer row && GodotObject.IsInstanceValid(row)) StyleInformationRow(row); }).CallDeferred();
         }
     }
+    private LayoutView BuildFrame(Vector2 size,bool questShell)
+    {
+        var root=CharacterLayout.Frame();root.W=(int)size.X;root.H=(int)size.Y;
+        root.Children.RemoveAll(n=>n.Type=="classic_tab");
+        var surface=root.Find("surface")!;surface.W=root.W;surface.Y=_top;surface.H=root.H-_top;
+        var rails=root.Find("header_rails")!;rails.Type="classic_detail_header";rails.Y=_top;rails.W=root.W;
+        if(questShell)
+        {
+            root.Children.Clear();
+            root.Children.Add(new LayoutNode { Type="npc_quest_frame_component",W=root.W,H=root.H });
+            var closeSource=Plugin.Kit.Layout("co_questmenu_us").Find("btn_close")!;
+            root.Children.Add(CharacterLayout.CopyImage(closeSource,0,32-closeSource.Y));
+        }
+        var frame=new LayoutView(Plugin.Kit,root);AddChild(frame);MoveChild(frame,0);
+        if(frame.Where(n=>n.Id=="btn_close").First().Control is BaseButton close)
+            close.Pressed+=()=>_nativeClose?.EmitSignal(BaseButton.SignalName.Pressed);
+        return frame;
+    }
+    private const int DetailBottomInset=23;
+    /// <summary>Floating information windows end a fixed margin below their live content.</summary>
+    private void FitDetailHeight()
+    {
+        if(WindowId is not ("userinfo" or "quest_target")) return;
+        // An empty native status line takes no room; it reappears as soon as the client writes to it.
+        foreach(var status in _body.GetChildren().OfType<Label>()) status.Visible=status.Text.Length>0;
+        float end=0;
+        foreach(var child in _body.GetChildren().OfType<Control>())
+            if(child.Visible) end=Math.Max(end,child.Position.Y+child.Size.Y);
+        if(end<=0) return;
+        float needed=Mathf.Ceil(ContentScroll.Position.Y+end+DetailBottomInset);
+        needed=Mathf.Clamp(needed,ContentScroll.Position.Y+84,_declared.Y);
+        if(Mathf.Abs(needed-Size.Y)<.5f) return;
+        var size=new Vector2(Size.X,needed);
+        CustomMinimumSize=size;Size=size;ContentScroll.Size=new Vector2(ContentScroll.Size.X,needed-ContentScroll.Position.Y-15);
+        var old=_frame;_frame=BuildFrame(size,false);RemoveChild(old);old.QueueFree();
+        if(IsInsideTree()) _frame.ApplyDeclaredBounds();
+        if(GetParent() is LibreKO.HudWindow window) window.ResetSize();
+    }
     private static void StyleQuestContent(Control content)
     {
         CharacterDetailsSkin.StyleTree(content);
@@ -117,6 +147,8 @@ public partial class ClassicDetailPanel : Control
     {
         var labels=row.GetChildren().OfType<Label>().ToArray();if(labels.Length!=2) return;
         row.CustomMinimumSize=new Vector2(1,28);labels[0].CustomMinimumSize=new Vector2(124,28);
+        // Equal text insets from both ends of the row rule.
+        labels[0].AddThemeStyleboxOverride("normal",new StyleBoxEmpty { ContentMarginLeft=8 });
         labels[0].SizeFlagsHorizontal=SizeFlags.Fill;labels[1].SizeFlagsHorizontal=SizeFlags.ExpandFill;
         labels[1].HorizontalAlignment=HorizontalAlignment.Right;
         row.AddChild(new TitleRowRule(row));
@@ -154,6 +186,7 @@ public partial class ClassicDetailPanel : Control
     {
         if(!IsVisibleInTree()) return;
         _elapsed+=delta;if(!QuestShell && _elapsed<.15) return;_elapsed=0;
+        if(!QuestShell) FitDetailHeight();
         if(QuestShell)
         {
             if(WindowId=="npc_dialog")

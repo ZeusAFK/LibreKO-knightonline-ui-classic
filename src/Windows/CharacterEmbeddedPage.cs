@@ -42,6 +42,12 @@ public partial class CharacterEmbeddedPage : Control
             Move(body,ContentScroll);
             CharacterDetailsSkin.ConstrainWidth(body);
             if(WindowId=="presets") ClassicDetailPanel.ComposePresets(body);
+            if(WindowId=="clanpoint")
+            {
+                // Same text insets as the Titles and Clan Management pages; the native body keeps a narrower minimum.
+                ContentScroll.Position=new Vector2(12,118);ContentScroll.Size=new Vector2(336,406);
+                body.SizeFlagsHorizontal=SizeFlags.ExpandFill;body.CustomMinimumSize=new Vector2(1,body.CustomMinimumSize.Y);
+            }
             if(WindowId=="presets")
             {
                 ContentScroll.VerticalScrollMode=ScrollContainer.ScrollMode.Disabled;
@@ -51,7 +57,8 @@ public partial class CharacterEmbeddedPage : Control
         foreach(var control in _moved) CharacterDetailsSkin.ConstrainWidth(control);
         body.Visible=body.GetParent()==ContentScroll;
         CharacterDetailsSkin.StyleTree(ContentScroll);
-        foreach(var tab in CharacterDetailsSkin.Tree(this).OfType<Button>().Where(b=>b.ToggleMode).ToArray()) tab.AddChild(new EmbeddedTabSelection(tab));
+        // Radio and check boxes show their state with their own socket art.
+        foreach(var tab in CharacterDetailsSkin.Tree(this).OfType<Button>().Where(b=>b.ToggleMode && b is not CheckBox).ToArray()) tab.AddChild(new EmbeddedTabSelection(tab));
     }
     private void Move(Control control,Node parent)
     {
@@ -199,6 +206,10 @@ public partial class CharacterEmbeddedPage : Control
         if(_notice.GetMeta("notice_scroll").AsGodotObject() is Control scroll) scroll.Visible=notice;
         _clanList.Visible=!notice;
         if(_clanHint!=null && notice) _clanHint.Visible=false;
+        // Without a hint above it the list starts at the top of the frame instead of leaving an empty band.
+        bool hint=_clanHint is Label { Visible:true } label && label.Text.Trim().Length>0;
+        var list=CharacterEmbeddedLayout.Slots[hint?"clan_list":"clan_list_full"];
+        if(_clanList.GetMeta("embedded_rect").AsRect2()!=list) { _clanList.SetMeta("embedded_rect",list);_clanList.Position=list.Position;_clanList.Size=list.Size; }
         if(_noticeEdit!=null) _noticeEdit.Visible=notice && Plugin.Kit.Game.Windows.CharacterPanel?.Clan.IsChief==true;
     }
 }
@@ -215,7 +226,8 @@ public partial class EmbeddedTabSelection : Control
     }
     public override void _Draw()
     {
-        if(_selected) DrawLine(new Vector2(5,Size.Y-3),new Vector2(Size.X-5,Size.Y-3),new Color(ClassicDesign.Karus?"534038":"e7d3a0"),1);
+        // The line sits on the dark lower bevel of both nations' tab art, so it needs light ink there.
+        if(_selected) DrawLine(new Vector2(5,Size.Y-3),new Vector2(Size.X-5,Size.Y-3),new Color(ClassicDesign.Karus?"ebe6da":"e7d3a0"),1);
     }
 }
 

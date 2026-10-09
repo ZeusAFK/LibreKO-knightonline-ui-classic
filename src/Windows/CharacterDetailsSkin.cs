@@ -49,6 +49,7 @@ public static class CharacterDetailsSkin
             }
         }
     }
+    private const int ClassicCheckIndent=22;
     internal static void StyleTree(Node node)
     {
         if(!GodotObject.IsInstanceValid(node) || node.HasMeta("classic_detail_control")) return;
@@ -105,13 +106,21 @@ public static class CharacterDetailsSkin
                     var art=socket.Images.FirstOrDefault(i=>i.Tag==(state.Contains("unchecked")?0:1));
                     if(art?.Texture is {} texture) check.AddThemeIconOverride(state,new AtlasTexture { Atlas=Plugin.Kit.Texture(texture),Region=new Rect2(art.SrcX,art.SrcY,art.SrcW,art.SrcH),FilterClip=true });
                 }
-            if(check.Text.Length>55)
+            // Both accumulation modes get a short caption with their explanation underneath.
+            if((check.Text.StartsWith("Automatic: ") || check.Text.StartsWith("Free: ")) && check.GetParent() is Container options)
             {
                 string description=check.Text;check.TooltipText=description;
-                check.Text=description.StartsWith("Automatic")?"Automatic accumulation":"Free accumulation";
-                var hint=new Label { Text=description,AutowrapMode=TextServer.AutowrapMode.WordSmart,CustomMinimumSize=new Vector2(1,0) };
-                hint.AddThemeFontSizeOverride("font_size",13);hint.AddThemeColorOverride("font_color",ClassicReportDesign.Value);
-                check.GetParent().AddChild(hint);check.GetParent().MoveChild(hint,check.GetIndex()+1);
+                int colon=description.IndexOf(": ");string detail=description[(colon+2)..];
+                check.Text=description[..colon]+" accumulation";
+                var hint=new Label { Text=char.ToUpperInvariant(detail[0])+detail[1..],AutowrapMode=TextServer.AutowrapMode.WordSmart,
+                    CustomMinimumSize=new Vector2(1,0),MouseFilter=Control.MouseFilterEnum.Ignore };
+                hint.SetMeta("classic_detail_control",true);
+                hint.AddThemeFontOverride("font",Plugin.Kit.Regular);hint.AddThemeFontSizeOverride("font_size",13);
+                hint.AddThemeColorOverride("font_color",ClassicReportDesign.Value);
+                hint.AddThemeColorOverride("font_shadow_color",Colors.Black);hint.AddThemeConstantOverride("shadow_offset_x",1);hint.AddThemeConstantOverride("shadow_offset_y",1);
+                var indent=new MarginContainer { MouseFilter=Control.MouseFilterEnum.Ignore };
+                indent.SetMeta("classic_detail_control",true);indent.AddThemeConstantOverride("margin_left",ClassicCheckIndent);
+                indent.AddChild(hint);options.AddChild(indent);options.MoveChild(indent,check.GetIndex()+1);
             }
         }
         if(node is Label label && !(npc && label.HasMeta("quest_status")))
