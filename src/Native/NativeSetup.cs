@@ -30,6 +30,7 @@ public static partial class NativeSetup
         RegisterCape(context);
         RegisterRebirth(context);
         RegisterPet(context);
+        RegisterMapFortune(context);
         NativeWindows.Register(context.Ui);
     }
 
@@ -53,4 +54,5 @@ public static partial class NativeSetup
     static partial void RegisterCape(PluginContext context);
     static partial void RegisterRebirth(PluginContext context);
     static partial void RegisterPet(PluginContext context);
+    static partial void RegisterMapFortune(PluginContext context);
 }
