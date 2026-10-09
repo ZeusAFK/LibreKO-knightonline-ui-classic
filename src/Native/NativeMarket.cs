@@ -25,7 +25,9 @@ public static class NativeMarket
     public static readonly string[] WindowIds = { "marketprice", "merchantsearch", "shoppingmall", "specialauction" };
 
     private const string NoMatchingItems = "No matching items.";
-    private const float CompactStoreWidth = 960;
+    // The Classic store shows its categories as tabs over the item well; the narrower cart keeps them on one row
+    // at the usual 960-pixel store width.
+    private const float CompactStoreWidth = 1100;
     private const float CompactCategoryWidth = 180;
     private const float CompactCartWidth = 264;
 
@@ -306,7 +308,8 @@ public static class NativeMarket
         cart.CustomMinimumSize = new Vector2(compact ? CompactCartWidth : cartWidth, 0);
         foreach (var field in new[] { "_pusCartEmpty", "_pusShortfall", "_pusCartStatus" })
             if (Native.Get<Control>(world, field) is { } label) label.CustomMinimumSize = new Vector2((compact ? CompactCartWidth : cartWidth) - 2 * margin, 0);
-        tools.Vertical = compact;
+        // The Classic store moves the search row into its own header, where it always has room for one line.
+        tools.Vertical = compact && !tools.HasMeta("pus_header_row");
         window.GetTree().CreateTimer(0).Timeout += () => RefitStore(window, world);
         return compact;
     }

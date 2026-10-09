@@ -16,13 +16,42 @@ public static class ClassicStoreSkin
     }
 }
 
+/// <summary>The plain straight Classic frame on an opaque black ground (used by the store and its modals).</summary>
+public partial class ClassicStoreFrame : Control
+{
+    public ClassicStoreFrame() { MouseFilter = MouseFilterEnum.Ignore; TextureFilter = TextureFilterEnum.Nearest; Resized += QueueRedraw; }
+    public override void _Draw() => Paint(this, Size);
+    public static void Paint(CanvasItem canvas, Vector2 size)
+    {
+        canvas.DrawRect(new Rect2(Vector2.Zero, size), Colors.Black);
+        var texture = Plugin.Kit.Texture("ui_message_us.png"); if (texture == null) return;
+        foreach (var (source, target, horizontal) in ClassicStoreLayout.FrameParts(size))
+        {
+            float run = horizontal ? source.Size.X : source.Size.Y, length = horizontal ? target.Size.X : target.Size.Y;
+            for (float at = 0; at < length; at += run)
+            {
+                float step = Math.Min(run, length - at);
+                var from = horizontal ? new Rect2(source.Position, new Vector2(step, source.Size.Y)) : new Rect2(source.Position, new Vector2(source.Size.X, step));
+                var to = horizontal ? new Rect2(target.Position + new Vector2(at, 0), new Vector2(step, target.Size.Y)) : new Rect2(target.Position + new Vector2(0, at), new Vector2(target.Size.X, step));
+                canvas.DrawTextureRectRegion(texture, to, from);
+            }
+        }
+    }
+}
+
 public partial class ClassicStorePanel : Control
 {
     public HudWindow Window { get; }
-    private readonly Control _body, _overlay, _grip;
+    private readonly Control _body, _overlay, _grip, _tools, _wallet;
+    private readonly VBoxContainer _categoryList;
+    private readonly Control _tabs;
+    private readonly PanelContainer _well;
+    private readonly List<Button> _plates = new();
     private readonly Label _title;
     private readonly Button _close;
     private readonly PanelContainer[] _modals;
+    private bool _tabsQueued;
+    private static LayoutNode TabArt => Plugin.Kit.Layout("{nation}_various_frame_us").All().First(n => n.IsButton && n.Id == "btn_quest");
     public ClassicStorePanel(HudWindow window, Control body)
     {
         Window = window; _body = body; Name = "classic_store"; TextureFilter = TextureFilterEnum.Nearest;
@@ -44,38 +73,131 @@ public partial class ClassicStorePanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         body.Reparent(this); body.Visible = true;
         _title.Reparent(this); _title.MouseFilter = MouseFilterEnum.Ignore; _title.CustomMinimumSize = Vector2.Zero;
-        _title.VerticalAlignment = VerticalAlignment.Center; _title.AddThemeColorOverride("font_color", new Color("ead7a6")); Font(_title, 13);
-        _title.AddThemeColorOverride("font_shadow_color", Colors.Black); _title.AddThemeConstantOverride("shadow_offset_x", 1); _title.AddThemeConstantOverride("shadow_offset_y", 1);
-        ClassicPartySkin.Drag(this, header, new Rect2(10, 4, 700, 31)); _grip = GetChildren().OfType<Control>().Single(c => c.Name == "party_drag");
+        _title.HorizontalAlignment = HorizontalAlignment.Center; _title.VerticalAlignment = VerticalAlignment.Center;
+        _title.ClipText = true; _title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        _title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle); Font(_title, 13);
+        ClassicPartySkin.Drag(this, header, ClassicStoreLayout.Drag(1024)); _grip = GetChildren().OfType<Control>().Single(c => c.Name == "party_drag");
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_shoppingmall_us").Find("btn_close")!, this, ClassicStoreLayout.Close(1024), "");
         _close.FocusMode = FocusModeEnum.All;
         var description = CharacterDetailsSkin.Tree(_overlay).OfType<Label>().Single(c => c.Name == "pus_details_description");
         var parent = description.GetParent(); int index = description.GetIndex();
-        var scroll = new ScrollContainer { Name = "pus_description_scroll", CustomMinimumSize = new Vector2(0, 84), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = description.Visible };
-        parent.AddChild(scroll); parent.MoveChild(scroll, index); description.Reparent(scroll); description.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var scroll = new ScrollContainer { Name = "pus_description_scroll", CustomMinimumSize = new Vector2(0, ClassicStoreLayout.DescriptionHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = description.Visible };
+        // The text keeps the Classic six-pixel gap before the scroll bar.
+        var gap = new MarginContainer { Name = "pus_description_inset", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        gap.AddThemeConstantOverride("margin_right", 6 + 10); gap.AddThemeConstantOverride("margin_left", 6 + 10);
+        parent.AddChild(scroll); parent.MoveChild(scroll, index); scroll.AddChild(gap); description.Reparent(gap); description.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         description.VisibilityChanged += () => scroll.Visible = description.Visible;
         Watch(body); Watch(_overlay);
+        T Part<T>(string name) where T : Node => CharacterDetailsSkin.Tree(body).OfType<T>().Single(c => c.Name == "pus_" + name);
+        // The original store keeps the search row at the top of the window and the cash display at the top of the sidebar.
+        _tools = Part<BoxContainer>("tools"); _tools.SetMeta("pus_header_row", true); ((BoxContainer)_tools).Vertical = false;
+        foreach (var spacer in _tools.GetChildren().OfType<Control>().Where(c => c is not Container && c is not Button)) spacer.Visible = false;
+        _tools.Reparent(this);
+        _wallet = (Control)Part<Label>("cash").GetParent().GetParent().GetParent(); _wallet.Name = "pus_wallet"; _wallet.Reparent(this);
+        // Categories become the original tab strip over the item well; the native list stays the source of truth.
+        _categoryList = Part<VBoxContainer>("category_list"); Part<Control>("categories").Visible = false;
+        var column = (Control)Part<ScrollContainer>("grid_scroll").GetParent(); var columns = column.GetParent();
+        var main = Owned(new VBoxContainer { Name = "pus_main", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill });
+        main.AddThemeConstantOverride("separation", 0);
+        columns.AddChild(main); columns.MoveChild(main, column.GetIndex());
+        // A plain control: the tab rows follow the well width and never widen the store themselves.
+        _tabs = Owned(new Control { Name = "pus_tabs", MouseFilter = MouseFilterEnum.Ignore });
+        main.AddChild(_tabs); _tabs.Resized += PlaceTabs;
+        var well = _well = Owned(new PanelContainer { Name = "pus_well", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill });
+        well.AddThemeStyleboxOverride("panel", ClassicStoreLayout.Box(ClassicStoreLayout.WellMargin)); main.AddChild(well);
+        column.Reparent(well); well.Draw += OpenSelectedTab;
+        _categoryList.ChildEnteredTree += _ => QueueTabs(); _categoryList.ChildExitingTree += _ => QueueTabs(); QueueTabs();
         foreach (var modal in _modals)
         {
             modal.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-            // The content keeps the quest-talk insets: 20 px from the sides and 30 px above the frame bottom.
             var inset = modal.GetChildren().OfType<MarginContainer>().First();
-            inset.AddThemeConstantOverride("margin_left", 20); inset.AddThemeConstantOverride("margin_top", 16);
-            inset.AddThemeConstantOverride("margin_right", 20); inset.AddThemeConstantOverride("margin_bottom", 30);
-            modal.AddChild(new ClassicFrame { Name = "pus_modal_frame", BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
+            inset.AddThemeConstantOverride("margin_left", 16); inset.AddThemeConstantOverride("margin_top", 14);
+            inset.AddThemeConstantOverride("margin_right", 16); inset.AddThemeConstantOverride("margin_bottom", 16);
+            modal.AddChild(new ClassicStoreFrame { Name = "pus_modal_frame", ShowBehindParent = true });
             CharacterDetailsSkin.Tree(modal).OfType<HBoxContainer>().First().GetChildren().OfType<Label>().FirstOrDefault()?.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         }
-        body.MinimumSizeChanged += UpdateMinimumSize; Resized += Arrange;
+        body.MinimumSizeChanged += UpdateMinimumSize; _tools.MinimumSizeChanged += Arrange; _wallet.MinimumSizeChanged += Arrange; Resized += Arrange;
         window.VisibilityChanged += () => { if (!window.Visible) foreach (var option in CharacterDetailsSkin.Tree(this).Concat(CharacterDetailsSkin.Tree(_overlay)).OfType<OptionButton>()) option.GetPopup().Hide(); };
     }
-    public override Vector2 _GetMinimumSize() => (_body?.GetCombinedMinimumSize() ?? Vector2.Zero) + ClassicStoreLayout.Chrome;
+    /// <summary>Plugin-owned controls carry the store marker so the native restyling pass leaves them alone.</summary>
+    private static T Owned<T>(T control) where T : Control { control.SetMeta("classic_store_control", true); return control; }
+    public override Vector2 _GetMinimumSize()
+    {
+        var size = (_body?.GetCombinedMinimumSize() ?? Vector2.Zero) + ClassicStoreLayout.Chrome;
+        if (_tools == null || _wallet == null) return size;
+        return new Vector2(Math.Max(size.X, 2 * ClassicStoreLayout.Inset + _tools.GetCombinedMinimumSize().X + 16 + _wallet.GetCombinedMinimumSize().X), size.Y);
+    }
     public override void _Ready() => Arrange();
     private void Arrange()
     {
         var rect = ClassicStoreLayout.Body(Size); _body.Position = rect.Position; _body.Size = rect.Size;
         _close.Position = ClassicStoreLayout.Close(Size.X).Position; _close.Size = ClassicStoreLayout.Close(Size.X).Size;
-        _title.Position = new Vector2(22, 9); _title.Size = new Vector2(Size.X - 190, 24);
-        _grip.Size = new Vector2(Size.X - 174, 31); QueueRedraw();
+        var title = ClassicStoreLayout.Title(Size.X); _title.Position = title.Position; _title.Size = title.Size;
+        var drag = ClassicStoreLayout.Drag(Size.X); _grip.Position = drag.Position; _grip.Size = drag.Size;
+        _tools.Position = ClassicStoreLayout.Tools; _tools.Size = new Vector2(_tools.GetCombinedMinimumSize().X, ClassicStoreLayout.ToolsHeight);
+        var wallet = ClassicStoreLayout.Wallet(Size.X, _wallet.GetCombinedMinimumSize()); _wallet.Position = wallet.Position; _wallet.Size = wallet.Size;
+        QueueRedraw();
+    }
+    private void QueueTabs()
+    {
+        if (_tabsQueued) return; _tabsQueued = true;
+        Callable.From(BuildTabs).CallDeferred();
+    }
+    /// <summary>Mirrors the native category buttons as Classic tabs; a tab press is the native button's press.</summary>
+    private void BuildTabs()
+    {
+        _tabsQueued = false; if (!IsInstanceValid(_tabs)) return;
+        foreach (var old in _plates) { _tabs.RemoveChild(old); old.QueueFree(); }
+        _plates.Clear();
+        foreach (var native in _categoryList.GetChildren().OfType<Button>().Where(b => !b.IsQueuedForDeletion()))
+        {
+            bool selected = native.GetMeta("pus_category_selected", false).AsBool();
+            var tab = Owned(new Button
+            {
+                Name = native.Name.ToString().Replace("pus_category_", "pus_tab_"), Text = native.Text, TooltipText = native.TooltipText,
+                ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis, FocusMode = FocusModeEnum.None,
+                Icon = native.Icon, IconAlignment = HorizontalAlignment.Right, Alignment = HorizontalAlignment.Center,
+            });
+            tab.SetMeta("pus_tab_selected", selected);
+            ClassicReportDesign.StyleButton(tab, true, TabArt); tab.AddThemeFontSizeOverride("font_size", ClassicStoreLayout.TabFont);
+            foreach (string state in new[] { "normal", "hover", "pressed", "hover_pressed" })
+            {
+                var box = (StyleBox)tab.GetThemeStylebox(state).Duplicate(); box.ContentMarginLeft = box.ContentMarginRight = ClassicStoreLayout.TabPadding; tab.AddThemeStyleboxOverride(state, box);
+            }
+            if (selected)
+            {
+                var open = tab.GetThemeStylebox("pressed"); tab.AddThemeStyleboxOverride("normal", open); tab.AddThemeStyleboxOverride("hover", open);
+            }
+            // The open tab carries the strong ink; the others step back so the selection reads on both nations' art.
+            foreach (string state in new[] { "font_color", "font_pressed_color", "font_hover_pressed_color" }) tab.AddThemeColorOverride(state, ClassicStoreLayout.TabInk(selected));
+            tab.AddThemeColorOverride("font_hover_color", ClassicStoreLayout.TabInk(true));
+            if (tab.Icon != null)
+            {
+                tab.AddThemeConstantOverride("icon_max_width", ClassicStoreLayout.TabIcon); tab.AddThemeConstantOverride("h_separation", 4);
+                var clock = new Color(ClassicDesign.Karus ? "7a4c00" : "f2c94c");
+                foreach (string state in new[] { "icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color", "icon_focus_color" }) tab.AddThemeColorOverride(state, clock);
+            }
+            float caption = Plugin.Kit.Bold.GetStringSize(tab.Text, HorizontalAlignment.Left, -1, ClassicStoreLayout.TabFont).X;
+            tab.SetMeta("pus_tab_width", ClassicStoreLayout.TabWidth(caption, tab.Icon != null));
+            tab.Pressed += () => { if (IsInstanceValid(native)) native.EmitSignal(BaseButton.SignalName.Pressed); };
+            _tabs.AddChild(tab); _plates.Add(tab);
+        }
+        PlaceTabs();
+    }
+    private void PlaceTabs()
+    {
+        float height = Platform.TouchUi ? ClassicStoreLayout.TouchTabHeight : ClassicStoreLayout.TabHeight;
+        var (rects, total) = ClassicStoreLayout.TabRects(_plates.Select(p => (float)p.GetMeta("pus_tab_width").AsInt32()).ToArray(), _tabs.Size.X > 0 ? _tabs.Size.X : float.MaxValue, height);
+        for (int i = 0; i < _plates.Count; i++) { _plates[i].Position = rects[i].Position; _plates[i].Size = rects[i].Size; }
+        if (_tabs.CustomMinimumSize.Y != total) _tabs.CustomMinimumSize = new Vector2(0, total);
+        _well.QueueRedraw();
+    }
+    /// <summary>Opens the well's top edge under a selected tab of the bottom row, so the tab joins the item well.</summary>
+    private void OpenSelectedTab()
+    {
+        var tab = _plates.FirstOrDefault(p => p.GetMeta("pus_tab_selected").AsBool());
+        if (tab == null || tab.GetRect().End.Y < _tabs.Size.Y - 0.5f) return;
+        _well.DrawRect(new Rect2(tab.Position.X + 1, 0, tab.Size.X - 2, 1), Colors.Black);
     }
     private static void Font(Control control, int size = 13)
     {
@@ -169,18 +291,5 @@ public partial class ClassicStorePanel : Control
         if (!Window.IsVisibleInTree() || ev is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) return;
         Escape(); GetViewport().SetInputAsHandled();
     }
-    public override void _Draw()
-    {
-        var texture = Plugin.Kit.Texture("ui_message_us.png"); if (texture == null || Size.X < 400) return;
-        DrawTextureRectRegion(texture, new Rect2(Vector2.Zero, Size), new Rect2(45, 122, 37, 34));
-        DrawRect(new Rect2(1, 39, Size.X - 2, Size.Y - 40), Colors.Black);
-        DrawTextureRectRegion(texture, new Rect2(0, 0, 328, 39), new Rect2(0, 80, 328, 39));
-        for (float x = 327; x < Size.X - 43; x += 327)
-        {
-            float width = Math.Min(328, Size.X - 43 - x); int y = ((int)x / 327) % 2 == 1 ? 40 : 0;
-            DrawTextureRectRegion(texture, new Rect2(x, 0, width, 39), new Rect2(0, y, width, 39));
-        }
-        DrawTextureRectRegion(texture, new Rect2(Size.X - 43, 0, 43, 39), new Rect2(0, 120, 43, 39));
-        DrawTextureRectRegion(texture, ClassicStoreLayout.CloseBacking(Size.X), new Rect2(0, 161, 133, 30));
-    }
+    public override void _Draw() { if (Size.X >= 400) ClassicStoreFrame.Paint(this, Size); }
 }

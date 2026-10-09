@@ -45,8 +45,9 @@ public partial class Preview
                 Require(window.Body.GetRect() == ClassicStoreLayout.Body(panel.Size), state + " native body matches declarative rectangle " + window.Body.GetRect());
                 var close = Descendants(panel).OfType<Button>().Single(b => b.TooltipText == "Close");
                 Require(close.GetRect() == ClassicStoreLayout.Close(panel.Size.X), state + " original CLOSE actual bounds");
-                foreach (var c in new[] { Find<Control>("categories"), Find<Control>("cart"), Find<Control>("grid_scroll") }.Where(c => c.IsVisibleInTree()))
+                foreach (var c in new[] { Find<Control>("tabs"), Find<Control>("well"), Find<Control>("cart"), Find<Control>("grid_scroll"), Find<Control>("tools"), Find<Control>("wallet") }.Where(c => c.IsVisibleInTree()))
                     Require(window.GetGlobalRect().Encloses(c.GetGlobalRect()), state + " column fits frame " + c.Name);
+                StoreGeometry(state, window, panel, touch, Require);
                 foreach (var modal in new[] { Find<PanelContainer>("details"), Find<PanelContainer>("gift_box") }.Where(m => m.IsVisibleInTree()))
                     Require(window.GetGlobalRect().Encloses(modal.GetGlobalRect()), state + " active modal stays inside native window " + modal.GetGlobalRect());
                 var giftScroll = Descendants(Find<PanelContainer>("gift_box")).OfType<ScrollContainer>().FirstOrDefault(s => s.IsVisibleInTree());
@@ -63,7 +64,11 @@ public partial class Preview
                     Require(c.GetThemeFont("font") == Plugin.Kit.Bold, state + " shared bold font " + c.Name);
                     if (c is Button b && b is not OptionButton && b.Text.Length > 0)
                     {
-                        if (b.HasMeta("pus_category_selected")) Require(b.ClipText && b.TextOverrunBehavior == TextServer.OverrunBehavior.TrimEllipsis && b.TooltipText.StartsWith(b.Text), state + " category retains native ellipsis and full caption tooltip " + b.Text);
+                        float room = b.Size.X - 2 * ClassicStoreLayout.TabPadding - (b.Icon != null ? ClassicStoreLayout.TabIcon + 4 : 0);
+                        if (b.HasMeta("pus_tab_selected") && b.GetThemeFont("font").GetStringSize(b.Text, HorizontalAlignment.Left, -1, b.GetThemeFontSize("font_size")).X > room)
+                            Require(b.ClipText && b.TextOverrunBehavior == TextServer.OverrunBehavior.TrimEllipsis && b.TooltipText.StartsWith(b.Text), state + " long category tab keeps ellipsis and full caption tooltip " + b.Text);
+                        else if (b.HasMeta("pus_tab_selected")) Require(b.ClipText && b.TooltipText.StartsWith(b.Text), state + " category tab caption fits its plate " + b.Text + " " + b.Size);
+                        else if (b.HasMeta("pus_category_selected")) Require(b.ClipText && b.TextOverrunBehavior == TextServer.OverrunBehavior.TrimEllipsis && b.TooltipText.StartsWith(b.Text), state + " category retains native ellipsis and full caption tooltip " + b.Text);
                         else Require(b.GetThemeFont("font").GetStringSize(b.Text, HorizontalAlignment.Left, -1, b.GetThemeFontSize("font_size")).X + 4 <= b.Size.X, state + " button caption fits " + b.Text + " " + b.Size);
                     }
                 }
@@ -82,7 +87,8 @@ public partial class Preview
                 if (variant == "pus-details")
                 {
                     var description = Find<Label>("details_description"); description.Text = string.Join(" ", Enumerable.Repeat("This item can be used during your adventures in Moradon and other zones.", 20)); description.Visible = true;
-                    await Frames(); var scroll = Find<ScrollContainer>("description_scroll"); Require(scroll.GetVScrollBar().MaxValue > scroll.GetVScrollBar().Page && scroll.Size.Y == 84, "Long details scroll inside fixed eighty-four-pixel area"); await Capture("pus-long-description");
+                    await Frames(); var scroll = Find<ScrollContainer>("description_scroll"); Require(scroll.GetVScrollBar().MaxValue > scroll.GetVScrollBar().Page && scroll.Size.Y == ClassicStoreLayout.DescriptionHeight, "Long details scroll inside five whole description lines");
+                    Require(description.GetGlobalRect().End.X + 6 <= scroll.GetVScrollBar().GetGlobalRect().Position.X + .5f && Math.Abs(description.GetGlobalRect().GetCenter().X - scroll.GetGlobalRect().GetCenter().X) < 1, "Description keeps the gap before the scroll bar and stays centred " + description.GetGlobalRect()); await Capture("pus-long-description");
                     int oldUnits = cart.Units; await Click(Find<Button>("details_buy"));
                     Require(DetailField(world, "_pusPending")!.ToString() == "BuyNow" && Find<Button>("details_buy").Disabled && Find<Button>("details_add").Disabled, "Actual Buy now enters native pending state and disables duplicate actions");
                     await KeyInput(Key.Escape); Require(Find<Control>("overlay").Visible && window.Visible, "Pending Buy now Escape retains protected native details"); await Capture("pus-buy-now-pending");
@@ -108,7 +114,12 @@ public partial class Preview
                 await Click(query); foreach (char c in "zzmissing") await KeyInput(Key.None, c);
                 Require(query.Text == "zzmissing" && Find<GridContainer>("grid").GetChildCount() == 0 && Find<Label>("grid_empty").Visible, "Actual typed query updates native empty catalogue"); await Capture("pus-no-match");
                 await KeyInput(Key.Enter); Require(DetailField(world, "_pusPending")!.ToString() == "None", "Query Enter never buys");
-                await Click(Find<Button>("category_1")); Require(query.Text == "" && Find<GridContainer>("grid").GetChildCount() > 0, "Actual category click clears query and restores native catalogue");
+                await Click(Find<Button>("tab_1")); Require(query.Text == "" && Find<GridContainer>("grid").GetChildCount() > 0, "Actual category tab click clears query and restores native catalogue");
+                Require(Find<Button>("tab_1").GetMeta("pus_tab_selected").AsBool() && (int)DetailField(world, "_pusCategory")! == 1, "Category tab press selects the native category and the tab shows it");
+                var other = Descendants(Find<Control>("tabs")).OfType<Button>().First(b => b.Name != "pus_tab_1"); string otherId = other.Name.ToString()["pus_tab_".Length..];
+                await Click(other); Require(DetailField(world, "_pusCategory")!.ToString() == otherId && Find<Button>("tab_" + otherId).GetMeta("pus_tab_selected").AsBool() && !Find<Button>("tab_1").GetMeta("pus_tab_selected").AsBool(), "Second category tab moves the native selection " + otherId);
+                await Capture("pus-tab-selected");
+                await Click(Find<Button>("tab_1"));
                 var sort = Find<OptionButton>("sort"); await Click(sort); Require(sort.GetPopup().Visible, "Native sort popup opens"); await Capture("pus-sort-menu");
                 await KeyInput(Key.Escape); Require(!sort.GetPopup().Visible && window.Visible, "Sort popup Escape closes only popup"); await Click(sort);
                 await KeyInput(Key.Down); if (sort.GetPopup().GetFocusedItem() != 1) await KeyInput(Key.Down); await KeyInput(Key.Enter);
@@ -157,5 +168,63 @@ public partial class Preview
         net.Free();
         System.IO.File.WriteAllText(output + "/" + (nation == 1 ? "karus" : "human") + "-store.json", JsonSerializer.Serialize(new { nation, checks, screens }, new JsonSerializerOptions { WriteIndented = true }));
         GD.Print("Classic store audit: " + checks.Count + " checks / " + screens.Count + " screens");
+    }
+
+    /// <summary>Actual rendered bounds of the store composition against <see cref="ClassicStoreLayout"/>.</summary>
+    private static void StoreGeometry(string state, HudWindow window, ClassicStorePanel panel, bool touch, Action<bool, string> require)
+    {
+        T Part<T>(string name) where T : Control => Descendants(panel).OfType<T>().Single(c => c.Name == "pus_" + name);
+        const int inset = ClassicStoreLayout.Inset;
+        var size = panel.Size; var body = window.Body.GetRect();
+        require(panel.GetGlobalRect() == window.GetGlobalRect(), state + " plain frame covers the whole window " + panel.GetGlobalRect());
+        require(body.Position.X == inset && size.X - body.End.X == inset && size.Y - body.End.Y == inset, state + " equal side and bottom insets inside the frame " + body);
+        var title = Descendants(panel).OfType<Label>().Single(l => l.Text == "Power-Up Store");
+        require(title.GetRect() == ClassicStoreLayout.Title(size.X) && Math.Abs(title.GetRect().GetCenter().X - size.X / 2) < .5f, state + " title centred in the title bar " + title.GetRect());
+        var close = Descendants(panel).OfType<Button>().Single(b => b.TooltipText == "Close");
+        require(size.X - close.GetRect().End.X == inset && close.Position.Y == ClassicStoreLayout.TitleTop && !close.GetRect().Intersects(title.GetRect()), state + " CLOSE plate keeps the frame inset " + close.GetRect());
+        var tools = Part<BoxContainer>("tools"); var wallet = Part<Control>("wallet");
+        require(tools.Position == ClassicStoreLayout.Tools && tools.Size.Y == ClassicStoreLayout.ToolsHeight && !tools.Vertical, state + " search row at the top of the window " + tools.GetRect());
+        foreach (var c in tools.GetChildren().OfType<Control>().Where(c => c.Visible))
+            require(c.Size.Y == ClassicStoreLayout.ToolsHeight && tools.GetGlobalRect().Encloses(c.GetGlobalRect()), state + " search row control at full height " + c.GetType().Name + " " + c.GetRect());
+        require(wallet.GetRect() == ClassicStoreLayout.Wallet(size.X, wallet.GetCombinedMinimumSize()) && wallet.GetRect().End.X == body.End.X, state + " cash display right-aligned with the sidebar " + wallet.GetRect());
+        require(tools.GetRect().End.X + 16 <= wallet.Position.X && tools.GetRect().End.Y <= ClassicStoreLayout.BodyTop - 8 && wallet.GetRect().End.Y <= ClassicStoreLayout.BodyTop, state + " search row and cash display never overlap " + tools.GetRect() + " " + wallet.GetRect());
+        var tabs = Part<Control>("tabs"); var well = Part<PanelContainer>("well"); var cart = Part<Control>("cart");
+        require(tabs.GetGlobalRect().Position.X == well.GetGlobalRect().Position.X && tabs.GetGlobalRect().End.Y == well.GetGlobalRect().Position.Y, state + " category tabs stand on the item well " + tabs.GetGlobalRect() + " " + well.GetGlobalRect());
+        require(cart.GetGlobalRect().Position.Y == tabs.GetGlobalRect().Position.Y && cart.GetGlobalRect().End.Y == well.GetGlobalRect().End.Y, state + " sidebar spans the tab row and the item well " + cart.GetGlobalRect());
+        require(well.GetGlobalRect().End.X + 10 == cart.GetGlobalRect().Position.X, state + " native column gap between well and sidebar " + well.GetGlobalRect());
+        var plates = tabs.GetChildren().OfType<Button>().ToArray();
+        var native = Part<VBoxContainer>("category_list").GetChildren().OfType<Button>().ToArray();
+        require(plates.Length == native.Length && !Part<Control>("categories").Visible, state + " one tab per native category " + plates.Length);
+        float height = touch ? ClassicStoreLayout.TouchTabHeight : ClassicStoreLayout.TabHeight;
+        for (int i = 0; i < plates.Length; i++)
+        {
+            var plate = plates[i];
+            require(plate.Size.Y == height && plate.Size.X >= plate.GetMeta("pus_tab_width").AsInt32() - 1 && tabs.GetGlobalRect().Encloses(plate.GetGlobalRect()), state + " tab plate keeps its caption width " + plate.Text + " " + plate.GetRect());
+            bool rowEnd = i == plates.Length - 1 || plates[i + 1].Position.Y != plate.Position.Y;
+            if (rowEnd && plates.Select(p => p.Position.Y).Distinct().Count() > 1) require(plate.GetRect().End.X == tabs.Size.X, state + " wrapped tab rows are justified to the well " + plate.Text + " " + plate.GetRect());
+            if (plates.All(p => p.Position.Y == 0)) require(plate.Size.X == plate.GetMeta("pus_tab_width").AsInt32(), state + " single tab row keeps natural plates " + plate.Text);
+            require(plate.Text == native[i].Text && plate.GetMeta("pus_tab_selected").AsBool() == native[i].GetMeta("pus_category_selected", false).AsBool(), state + " tab mirrors native category state " + plate.Text);
+            for (int j = i + 1; j < plates.Length; j++) require(!plate.GetGlobalRect().Intersects(plates[j].GetGlobalRect()), state + " tabs never overlap " + plate.Text + " " + plates[j].Text);
+        }
+        int rows = plates.Select(p => p.Position.Y).Distinct().Count();
+        require(rows <= 2 && (touch || window.Size.X < 960 || rows <= 1) && tabs.Size.Y == rows * height + Math.Max(0, rows - 1) * ClassicStoreLayout.TabGap, state + " tab rows " + rows + " at " + window.Size);
+        require(plates.Count(p => p.GetMeta("pus_tab_selected").AsBool()) <= 1, state + " at most one selected tab");
+        foreach (var plate in plates)
+            require(plate.GetThemeColor("font_color") == ClassicStoreLayout.TabInk(plate.GetMeta("pus_tab_selected").AsBool()) && plate.GetThemeColor("font_hover_color") == ClassicStoreLayout.TabInk(true), state + " tab ink marks the selection " + plate.Text);
+        var open = plates.FirstOrDefault(p => p.GetMeta("pus_tab_selected").AsBool());
+        if (open != null && open.GetRect().End.Y == tabs.Size.Y && !Descendants(window).OfType<Control>().Single(c => c.Name == "pus_overlay").Visible && !Descendants(panel).OfType<OptionButton>().Any(o => o.GetPopup().Visible))
+        {
+            var image = panel.GetViewport().GetTexture().GetImage(); int edge = (int)well.GetGlobalRect().Position.Y;
+            var under = image.GetPixel((int)open.GetGlobalRect().GetCenter().X, edge);
+            var closed = plates.Where(p => p != open && p.GetRect().End.Y == tabs.Size.Y).Select(p => image.GetPixel((int)p.GetGlobalRect().GetCenter().X, edge)).ToArray();
+            require(under.R < .05f && under.G < .05f && under.B < .05f && closed.All(c => c.R > .3f), state + " selected tab opens into the item well " + under + " " + string.Join(",", closed));
+        }
+        foreach (var card in Part<GridContainer>("grid").GetChildren().OfType<Control>())
+            require(card.GetGlobalRect().Position.X >= well.GetGlobalRect().Position.X + ClassicStoreLayout.WellMargin && card.GetGlobalRect().End.X <= well.GetGlobalRect().End.X - ClassicStoreLayout.WellMargin, state + " card inside the item well " + card.GetGlobalRect());
+        foreach (var modal in Descendants(window).OfType<PanelContainer>().Where(m => m.Name.ToString() is "pus_details" or "pus_gift_box" && m.IsVisibleInTree()))
+        {
+            var frame = modal.GetChildren().OfType<Control>().Single(c => c.Name == "pus_modal_frame");
+            require(frame.GetGlobalRect() == modal.GetGlobalRect() && frame is ClassicStoreFrame, state + " modal uses the plain store frame " + modal.GetGlobalRect());
+        }
     }
 }
