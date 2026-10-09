@@ -30,7 +30,11 @@ public static class ClassicEventsLayout
 
     public static class Lottery
     {
-        public static readonly Vector2 Size = new(344, 440);
+        // The frame ends 24 pixels below the prize area, which fits its cells (plus a scroll bar when they
+        // overflow) or a whole number of winner rows.
+        public const float Width = 344, Bottom = 24, PrizeCells = 52, PrizeBar = 14;
+        public const int WinnerPitch = 26, WinnerRows = 4;
+        public static readonly Vector2 Size = new(Width, 324 + PrizeCells + Bottom);
         public static readonly Rect2 Info = new(14, 50, 316, 80);
         public static Rect2 InfoRow(int row) => new(22, 54 + row * Row, 300, Row);
         public static readonly Rect2 Tickets = new(14, 136, 316, 32);
@@ -43,8 +47,8 @@ public static class ClassicEventsLayout
         public static readonly Rect2 Status = new(14, 266, 316, Row);
         public static readonly Rect2 PrizeCaption = new(14, 294, 316, Row);
         public const float PrizeRule = 318;
-        public static readonly Rect2 Prizes = new(14, 324, 316, 92);
-        public static Rect2 Winner(int index) => new(0, index * 26, 300, 24);
+        public static Rect2 Prizes(float height) => new(14, 324, 316, height);
+        public static float Winners(int count) => Math.Clamp(count, 1, WinnerRows) * WinnerPitch - 2;
     }
 
     public static class Roulette

@@ -29,6 +29,7 @@ public partial class ClassicProgressionPanel : Control
     private Control? _genieMain, _genieMisc;
     private Button? _genieMainTab, _genieMiscTab;
     private TabContainer? _genieTabs;
+    private float _achTop;
 
     private static Color Gold => new("ffe094");
     private static Color Claimed => new("8ff099");
@@ -263,8 +264,40 @@ public partial class ClassicProgressionPanel : Control
                 else if (child is PanelContainer row && row.HasMeta("ach_row")) StyleAchievementRow(row);
             }
         if (Find<VBoxContainer>("ach_summary_page") is { } page) StyleSummary(page);
+        if (Find<ScrollContainer>("ach_scroll") is { Visible: true } rowsScroll && Find<VBoxContainer>("ach_list") is { } rowsList) WholeRows(rowsScroll, rowsList);
         // The list inset belongs to the category pages; the summary draws its own sections.
         if (Frame.Get("ach_list_frame") is { } frame && Find<ScrollContainer>("ach_scroll") is { } scroll) frame.Visible = scroll.Visible;
+    }
+
+    /// <summary>
+    /// Shows whole achievement rows only. Rows differ in height, so the list steps from row top to row top,
+    /// hides a row cut by either edge and pads its end until the last row can scroll fully into view.
+    /// </summary>
+    private void WholeRows(ScrollContainer scroll, VBoxContainer list)
+    {
+        var rows = list.GetChildren().OfType<Control>().Where(c => c.Visible && !c.IsQueuedForDeletion()).ToArray();
+        // Rows are laid out a frame after a native rebuild.
+        if (rows.Length == 0 || rows.Any(r => r.Size.Y <= 0)) return;
+        float page = scroll.Size.Y, height = rows[^1].Position.Y + rows[^1].Size.Y;
+        var tops = rows.Select(r => r.Position.Y).ToArray();
+        float end = height > page ? tops.Where(t => height - t <= page + .5f).DefaultIfEmpty(tops[^1]).First() : 0;
+        float minimum = height > page ? end + page : 0;
+        if (Math.Abs(list.CustomMinimumSize.Y - minimum) > .5f) list.CustomMinimumSize = new Vector2(0, minimum);
+        var bar = scroll.GetVScrollBar();
+        float value = (float)bar.Value;
+        if (!Input.IsMouseButtonPressed(MouseButton.Left))
+        {
+            float target = value >= _achTop ? tops.Where(t => t >= value - .5f).DefaultIfEmpty(end).First() : tops.Where(t => t <= value + .5f).DefaultIfEmpty(0).Last();
+            target = Math.Min(target, end);
+            if (Math.Abs(value - target) > .01f) bar.Value = value = target;
+            _achTop = target;
+        }
+        foreach (var row in rows)
+        {
+            bool whole = row.Position.Y >= value - .5f && row.Position.Y + row.Size.Y <= value + page + .5f;
+            row.Modulate = whole ? Colors.White : Colors.Transparent;
+            foreach (var button in CharacterDetailsSkin.Tree(row).OfType<BaseButton>()) button.MouseFilter = whole ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        }
     }
 
     private static void StyleAchievementRow(PanelContainer row)

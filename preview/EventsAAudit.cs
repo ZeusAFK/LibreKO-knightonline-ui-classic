@@ -132,6 +132,9 @@ public partial class Preview
             Require(window.Visible && !buy.Disabled && Find<Control>(panel, "lottery_coin").Visible, "Active lottery opens with gold price plaque and Buy enabled");
             var cells = Find<HBoxContainer>(panel, "lottery_rewards").GetChildren().OfType<PanelContainer>().ToArray();
             Require(cells.Length == 4 && cells.All(c => (c.Size - ClassicEventsLayout.Cell).Length() < .6f), "Prize cards use the original 45-pixel inventory cell");
+            var prizeArea = Find<ScrollContainer>(panel, "lottery_prizes");
+            Require(prizeArea.Size.Y == ClassicEventsLayout.Lottery.PrizeCells && panel.Size.Y == prizeArea.Position.Y + prizeArea.Size.Y + ClassicEventsLayout.Lottery.Bottom,
+                $"Lottery frame ends one bottom margin below its prize cells {panel.Size}");
             await Capture(window, panel, "lottery", "active");
             await Hover(buy); Require(buy.GetDrawMode() == BaseButton.DrawMode.Hover, "Buy button receives real hover");
             await Capture(window, panel, "lottery", "buy-hover");
@@ -159,6 +162,9 @@ public partial class Preview
             Raise("LotteryEndedEvent", "The lottery draw has ended.", winners); await Frames();
             Require(Find<ScrollContainer>(panel, "lottery_winner_list").Visible && Find<Label>(panel, "lottery_prize_caption").Text == "Winners", "Drawn winners replace the prize cells");
             Require(Find<Control>(panel, "lottery_winner_1").GetIndex() == 0, "Winners are listed by place");
+            var winnerList = Find<ScrollContainer>(panel, "lottery_winner_list");
+            Require(winnerList.Size.Y == ClassicEventsLayout.Lottery.WinnerRows * ClassicEventsLayout.Lottery.WinnerPitch - 2 && winnerList.GetVScrollBar().Visible
+                && panel.Size.Y == winnerList.Position.Y + winnerList.Size.Y + ClassicEventsLayout.Lottery.Bottom, $"Winners show four whole rows, scroll the rest and the frame follows {panel.Size}");
             await Capture(window, panel, "lottery", "winners");
             Raise("LotteryStateEvent", PreviewFixtures.LotteryEventsState(false, 3600, 0)); await Frames();
             Require(!Find<ScrollContainer>(panel, "lottery_winner_list").Visible, "A new lottery clears the previous draw");

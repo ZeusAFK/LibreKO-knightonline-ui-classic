@@ -67,7 +67,7 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         Rule(Spec.PrizeRule);
         _prizes = new ScrollContainer { Name = "lottery_prizes", VerticalScrollMode = ScrollContainer.ScrollMode.Disabled };
         Content.AddChild(_prizes);
-        _prizes.Position = Spec.Prizes.Position; _prizes.Size = Spec.Prizes.Size;
+        _prizes.Position = Spec.Prizes(0).Position; _prizes.Size = Spec.Prizes(Spec.PrizeCells).Size;
         Scroll(_prizes);
         var inset = new MarginContainer();
         inset.AddThemeConstantOverride("margin_left", 4); inset.AddThemeConstantOverride("margin_top", 3);
@@ -80,11 +80,12 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
 
         _winners = new ScrollContainer { Name = "lottery_winner_list", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false };
         Content.AddChild(_winners);
-        _winners.Position = Spec.Prizes.Position; _winners.Size = Spec.Prizes.Size;
+        _winners.Position = Spec.Prizes(0).Position; _winners.Size = Spec.Prizes(Spec.Winners(1)).Size;
         Scroll(_winners);
         _winnerRows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _winnerRows.AddThemeConstantOverride("separation", 2);
         _winners.AddChild(_winnerRows);
+        _winners.GetVScrollBar().CustomStep = Spec.WinnerPitch;
         Refresh();
     }
 
@@ -109,6 +110,12 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         _prizes.Visible = !results;
         _winners.Visible = results;
         _prizeCaption.Text = results ? "Winners" : "Prize";
+        // The frame follows its content: one row of prize cells or up to four whole winner rows.
+        bool overflow = _rewards.GetCombinedMinimumSize().X + 4 > Spec.Prizes(0).Size.X;
+        float area = results ? Spec.Winners(view.Winners.Count) : Spec.PrizeCells + (overflow ? Spec.PrizeBar : 0);
+        var shown = results ? _winners : _prizes;
+        if (Math.Abs(shown.Size.Y - area) > .5f) shown.Size = Spec.Prizes(area).Size;
+        SetFullSize(new Vector2(Spec.Width, Spec.Prizes(area).End.Y + Spec.Bottom));
         if (_winnersRevision == view.WinnersRevision) return;
         _winnersRevision = view.WinnersRevision;
         foreach (var old in _winnerRows.GetChildren()) { _winnerRows.RemoveChild(old); old.QueueFree(); }

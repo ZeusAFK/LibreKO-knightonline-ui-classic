@@ -93,6 +93,24 @@ public partial class Preview
                 var claim = Descendants(list).OfType<Button>().First(b => b.Name == "ach_claim");
                 Require(Connected(claim) && claim.Size.X >= 76 && claim.GetThemeStylebox("normal") is StyleBoxTexture, "Claim keeps its native callback on a Classic button");
                 Require(rows.First().GetMeta("ach_claimable").AsBool(), "Claimable achievements are listed first, as natively sorted");
+                void WholeRowsOnly(string state)
+                {
+                    var view = scroll.GetGlobalRect().Grow(.5f);
+                    var shown = rows.Where(r => r.Modulate.A > 0).ToArray();
+                    Require(shown.Length > 0 && shown.All(r => view.Encloses(r.GetGlobalRect())), state + " shows whole achievement rows only");
+                    Require(rows.Where(r => r.Modulate.A == 0).All(r => !view.Encloses(r.GetGlobalRect())
+                        && Descendants(r).OfType<BaseButton>().All(b => b.MouseFilter == MouseFilterEnum.Ignore)), state + " hides and disables rows cut by the list edge");
+                    Require(shown.Any(r => Math.Abs(r.GlobalPosition.Y - scroll.GlobalPosition.Y) < .5f), state + " starts the list at a whole row");
+                }
+                WholeRowsOnly("list");
+                var bar = scroll.GetVScrollBar();
+                bar.Value = rows[1].Position.Y - 10; await Frames();
+                Require(Math.Abs(bar.Value - rows[1].Position.Y) < .5f, "Scrolling down steps to the next whole row");
+                WholeRowsOnly("list scrolled");
+                bar.Value = bar.MaxValue; await Frames();
+                Require(rows[^1].Modulate.A > 0, "The last achievement row scrolls fully into view");
+                WholeRowsOnly("list end");
+                bar.Value = 0; await Frames();
                 await Hover(claim); await Capture(window, "claim-hover"); Leave();
             }
             if (view == "claimed")
