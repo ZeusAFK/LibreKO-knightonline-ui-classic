@@ -451,9 +451,17 @@ public partial class Preview
         }
         character.Visible=false;
         var confirmation=new ConfirmationDialog { Title="Hand over leadership",DialogText="Hand the clan over to Guardian? You will no longer be its chief.",Exclusive=false };
-        AddChild(confirmation);CharacterDetailsSkin.StyleDialog(confirmation);confirmation.PopupCentered(new Vector2I(360,230));
+        AddChild(confirmation);CharacterDetailsSkin.StyleDialog(confirmation);confirmation.PopupCentered();
         await ToSignal(GetTree().CreateTimer(.5),SceneTreeTimer.SignalName.Timeout);
         GD.Print("CONFIRM_OK "+confirmation.GetOkButton().Text+" size="+confirmation.GetOkButton().Size+" min="+confirmation.GetOkButton().CustomMinimumSize+" parent="+confirmation.GetOkButton().GetParent<Control>().Size);
+        {
+            // Like the native clan prompts (PopupCentered without a size), the box fits its message: no empty band.
+            var label=confirmation.GetLabel();var ok=confirmation.GetOkButton();
+            float gap=ok.GetGlobalRect().Position.Y-label.GetGlobalRect().End.Y;
+            if(confirmation.Size.X!=360 || label.Position.Y!=102 || Mathf.Abs(label.Size.Y-label.GetMinimumSize().Y)>1 || gap!=16)
+                throw new Exception($"Clan confirmation must fit its message: size={confirmation.Size} label={label.GetRect()} gap={gap}");
+            GD.Print("CONFIRM_FIT size="+confirmation.Size+" label="+label.GetRect()+" gap="+gap);
+        }
         GD.Print("CONFIRM_CANCEL "+confirmation.GetCancelButton().Text+" size="+confirmation.GetCancelButton().Size+" min="+confirmation.GetCancelButton().CustomMinimumSize);
         await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
         GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-confirmation.png"));
@@ -461,7 +469,7 @@ public partial class Preview
         CharacterDetailsSkin.StyleDialog(confirmation);
         confirmation.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);
         if(accepted!=1 || confirmation.Visible) throw new Exception("Native confirmation callback failed");
-        confirmation.PopupCentered(new Vector2I(360,230));confirmation.GetCancelButton().EmitSignal(BaseButton.SignalName.Pressed);
+        confirmation.PopupCentered();confirmation.GetCancelButton().EmitSignal(BaseButton.SignalName.Pressed);
         await ToSignal(GetTree().CreateTimer(.1),SceneTreeTimer.SignalName.Timeout);
         if(canceled!=1 || confirmation.Visible) throw new Exception("Native cancel callback failed");
         confirmation.QueueFree();

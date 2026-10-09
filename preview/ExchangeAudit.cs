@@ -81,6 +81,17 @@ public partial class Preview
         void Require(bool value,string message) {if(!value)throw new Exception("TRADE_AUDIT: "+message);checks.Add(message);}
 
         async Task Frames(int count=6) {for(int i=0;i<count;i++)await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);}
+        // The box fits its message: the shared message-box rhythm, no empty band between text and buttons.
+        void NoticeRhythm(ClassicExchangeNoticePanel panel,Label text,Button[] buttons,string what)
+        {
+            var box=KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message.Button;
+            Require(text.GetLineCount()*text.GetLineHeight()+(text.GetLineCount()-1)*text.GetThemeConstant("line_spacing")<=text.Size.Y+.5f && text.Size.Y<=text.GetLineCount()*(text.GetLineHeight()+text.GetThemeConstant("line_spacing")),what+": message rectangle is its wrapped lines "+text.GetRect());
+            foreach(var button in buttons)
+            {
+                Require(button.Size==box && button.Position.Y==text.GetRect().End.Y+KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message.ActionGap,what+": "+button.Name+" sits the common gap under the message "+button.GetRect());
+                Require(panel.Size.Y-button.GetRect().End.Y==KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message.ButtonBottom,what+": "+button.Name+" keeps the bottom margin");
+            }
+        }
 
         async Task KeyPress(Key key,bool echo=false) {
 
@@ -236,7 +247,8 @@ public partial class Preview
         Click((Button)DetailField(world,"_exConfirmBtn")!);await Capture("final-approval");
         var finalPanel=Descendants(finalLayer).OfType<ClassicExchangeNoticePanel>().Single();
         var prompt=finalPanel.GetNode<Label>("final_prompt");
-        Require(prompt.GetRect()==new Rect2(24,35,279,64),"Final approval prompt matches actual pixel bounds");
+        Require(prompt.GetRect()==KnightOnlineUiClassic.Layout.ClassicExchangeNoticeLayout.Message(true,prompt.Size.Y) && prompt.GetLineCount()*prompt.GetLineHeight()<=prompt.Size.Y+.5f,"Final approval prompt matches actual pixel bounds: "+prompt.GetRect());
+        NoticeRhythm(finalPanel,prompt,new[]{finalAccept,finalDecline},"final approval");
         Require(prompt.Text=="Are you sure you want to trade?","Approval contains only a question without coin details");
         foreach(var control in new Control[]{prompt,finalAccept,finalDecline}) {
             Require(control.GetThemeFont("font")==Plugin.Kit.Bold && control.GetThemeFontSize("font_size")==12,"Approval uses the same Arial Bold 12px skill font: "+control.Name);
@@ -276,6 +288,7 @@ public partial class Preview
         var decline=Descendants(request).OfType<Button>().Single(b=>b.Name=="exchange_decline");
 
         DetailCall(world,"OnExchangeRequest",123);await Capture("request");
+        NoticeRhythm(request,request.Message,new[]{accept,decline},"trade request");
 
         Require(requestLayer.Visible && !((ConfirmationDialog)DetailField(world,"_exAskDialog")!).Visible,"Incoming request uses original message art instead of native desktop dialog");
 
@@ -294,6 +307,7 @@ public partial class Preview
         DetailCall(world,"OnExchangeRequest",123);Click(accept);await Frames();Require((bool)DetailField(world,"_exShown")! && !requestLayer.Visible,"Yes opens trade exactly once");await Capture("request-accepted");
 
         DetailCall(world,"AbortExchange",true);DetailCall(world,"ShowExchangeWait","Waiting for Knight Online to accept the trade…");await Capture("waiting");
+        {var wait=Descendants((CanvasLayer)DetailField(world,"_exWaitLayer")!).OfType<ClassicExchangeNoticePanel>().Single();NoticeRhythm(wait,wait.Message,new[]{wait.Cancel},"trade waiting");}
 
         var waitLayer=(CanvasLayer)DetailField(world,"_exWaitLayer")!;
 

@@ -181,19 +181,29 @@ public static class CharacterDetailsSkin
         {
             accept.AddThemeConstantOverride("buttons_min_width",80);
             accept.AddThemeConstantOverride("buttons_min_height",22);
-            accept.AddThemeConstantOverride("buttons_separation",12);
+            accept.AddThemeConstantOverride("buttons_separation",16);
             accept.DialogAutowrap=true;
             StyleTree(accept.GetLabel());StyleTree(accept.GetOkButton());
+            accept.GetLabel().HorizontalAlignment=HorizontalAlignment.Center;
             if(accept is ConfirmationDialog confirmation) StyleTree(confirmation.GetCancelButton());
             if(!accept.HasMeta("classic_confirmation_frame"))
             {
                 accept.SetMeta("classic_confirmation_frame",true);accept.Borderless=true;accept.Transparent=true;accept.TransparentBg=true;
-                var empty=new StyleBoxEmpty();empty.SetContentMargin(Side.Top,88);empty.SetContentMargin(Side.Bottom,24);
+                // The box fits its message: an even gap under the header rule and above the buttons.
+                var empty=new StyleBoxEmpty();empty.SetContentMargin(Side.Top,102);empty.SetContentMargin(Side.Bottom,24);
                 empty.SetContentMargin(Side.Left,12);empty.SetContentMargin(Side.Right,12);
-                accept.AddThemeStyleboxOverride("panel",empty);accept.MinSize=new Vector2I(360,230);
+                accept.AddThemeStyleboxOverride("panel",empty);accept.MinSize=new Vector2I(360,1);accept.MaxSize=new Vector2I(360,4096);
                 // Keep decorative controls outside AcceptDialog's direct child layout.
                 var decoration=new Node();accept.AddChild(decoration);
                 var frame=new ClassicConfirmationFrame(accept) { ZIndex=-1 };decoration.AddChild(frame);
+                // A popup keeps the size measured before its label wrapped at the final width; shrink it to the
+                // contents while keeping the native centre.
+                decoration.AddChild(new NativeEventWatcher(()=>{
+                    if(!accept.Visible)return;
+                    int height=(int)accept.GetContentsMinimumSize().Y,before=accept.Size.Y;
+                    if(before<=height)return;
+                    accept.Size=new Vector2I(accept.Size.X,height);accept.Position+=new Vector2I(0,(before-accept.Size.Y)/2);
+                }){Name="classic_confirmation_fit"});
             }
         }
         else foreach(var child in dialog.GetChildren()) StyleTree(child);

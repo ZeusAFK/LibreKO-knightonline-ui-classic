@@ -194,42 +194,62 @@ public static class ClassicWorldOverlays
         var labels = Descendants(content).OfType<Label>().ToArray();
         if (labels.Length < 2 || Descendants(content).OfType<Button>().FirstOrDefault() is not { } ok) return;
         native.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-        native.CustomMinimumSize = Spec.Death.Size;
-        var panel = new ClassicMessagePanel(Spec.Death.Size, centre: false) { Name = "classic_death" };
+        var panel = new ClassicMessagePanel(Spec.Death.Size(0), centre: false) { Name = "classic_death" };
         native.AddChild(panel);
         content.Visible = false;
         var (loss, hint) = (labels[0], labels[1]);
         Place(loss, panel, Spec.Death.Loss); Text(loss, 13, MessageTitle);
         loss.AutowrapMode = TextServer.AutowrapMode.Off; loss.HorizontalAlignment = HorizontalAlignment.Center; loss.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-        Place(hint, panel, Spec.Death.Hint); Text(hint, 15, MessageText);
+        Place(hint, panel, Spec.Death.Hint(0)); Text(hint, 15, MessageText);
         hint.ClipText = false; hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         hint.HorizontalAlignment = HorizontalAlignment.Center; hint.VerticalAlignment = VerticalAlignment.Center;
-        Place(ok, panel, Spec.Death.Ok); MessageButton(ok);
-        // The native panel centres on its anchors; the box keeps the original size on whole pixels.
-        void Centre()
+        Place(ok, panel, Spec.Death.Ok(0)); MessageButton(ok);
+        // The box fits the hint's wrapped lines (the pending hint is shorter) and stays centred.
+        float fitted = -1;
+        void Fit()
         {
-            native.OffsetLeft = -Mathf.Ceil(Spec.Death.Size.X / 2); native.OffsetRight = native.OffsetLeft + Spec.Death.Size.X;
-            native.OffsetTop = -Mathf.Ceil(Spec.Death.Size.Y / 2); native.OffsetBottom = native.OffsetTop + Spec.Death.Size.Y;
-            var at = native.Position.Round(); if (at != native.Position) native.Position = at;
+            float height = Wrapped(hint, Spec.Message.Text.Size.X);
+            if (height == fitted && native.Size == panel.Size) return;
+            fitted = height;
+            var size = Spec.Death.Size(fitted);
+            panel.Size = panel.CustomMinimumSize = size; panel.GetNode<Control>("message_art").Size = size;
+            native.CustomMinimumSize = size;
+            foreach (var (control, rect) in new (Control, Rect2)[] { (hint, Spec.Death.Hint(fitted)), (ok, Spec.Death.Ok(fitted)) })
+            { control.Position = rect.Position; control.Size = rect.Size; control.SetMeta(ExpectedRect, rect); }
+            // The native panel centres on its anchors; the box sits on whole pixels.
+            native.OffsetLeft = -Mathf.Ceil(size.X / 2); native.OffsetRight = native.OffsetLeft + size.X;
+            native.OffsetTop = -Mathf.Ceil(size.Y / 2); native.OffsetBottom = native.OffsetTop + size.Y;
         }
-        Keep(native, () => { if (native.Size != Spec.Death.Size || native.Position != native.Position.Round()) Centre(); });
+        Fit();
+        Keep(native, () => { Fit(); var at = native.Position.Round(); if (at != native.Position) native.Position = at; });
+    }
+
+    /// <summary>The height a word-wrapped label needs at <paramref name="width"/>.</summary>
+    internal static float Wrapped(Label label, float width)
+    {
+        var font = label.GetThemeFont("font"); int size = label.GetThemeFontSize("font_size");
+        // The label's own word-smart breaking: mandatory breaks, word bounds, and adaptive splits of long words.
+        const TextServer.LineBreakFlag smart = TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound | TextServer.LineBreakFlag.Adaptive;
+        float line = font.GetHeight(size);
+        int lines = Math.Max(1, Mathf.RoundToInt(font.GetMultilineStringSize(label.Text, HorizontalAlignment.Left, width, size, -1, smart).Y / line));
+        return Mathf.Ceil(lines * line + (lines - 1) * label.GetThemeConstant("line_spacing"));
     }
 
     private static void Prompt(AcceptDialog dialog)
     {
         dialog.Borderless = true; dialog.Transparent = true; dialog.TransparentBg = true;
         var box = new StyleBoxEmpty();
-        box.SetContentMargin(Side.Top, Spec.Message.Text.Position.Y);
+        box.SetContentMargin(Side.Top, Spec.Message.TextTop);
         box.SetContentMargin(Side.Left, Spec.Message.Text.Position.X);
         box.SetContentMargin(Side.Right, Spec.Message.Width - Spec.Message.Text.End.X);
         box.SetContentMargin(Side.Bottom, Spec.Message.ButtonBottom);
         dialog.AddThemeStyleboxOverride("panel", box);
         dialog.AddThemeConstantOverride("buttons_min_width", (int)Spec.Message.Button.X);
         dialog.AddThemeConstantOverride("buttons_min_height", (int)Spec.Message.Button.Y);
-        // The dialog's button separation is the vertical gap under the message: the original message band ends at 86.
-        dialog.AddThemeConstantOverride("buttons_separation", (int)(Spec.Message.Height - Spec.Message.ButtonBottom - Spec.Message.Button.Y - Spec.Message.Text.End.Y));
+        // The dialog's button separation is the vertical gap under the message, so the box fits its wrapped lines.
+        dialog.AddThemeConstantOverride("buttons_separation", (int)Spec.Message.ActionGap);
         dialog.DialogAutowrap = true;
-        dialog.MinSize = new Vector2I((int)Spec.Message.Width, (int)Spec.Message.Height);
+        dialog.MinSize = new Vector2I((int)Spec.Message.Width, 1);
         dialog.MaxSize = new Vector2I((int)Spec.Message.Width, 4096);
         dialog.Size = dialog.MinSize;
         var label = dialog.GetLabel();
@@ -269,8 +289,17 @@ public static class ClassicWorldOverlays
         art.AddChild(new NativeEventWatcher(() =>
         {
             if (!dialog.Visible) return;
+            // The dialog grows to its contents but keeps a stale larger size after the native text changes;
+            // fit it to the wrapped message and keep it centred where the native popup placed it.
+            int fitted = (int)Spec.Message.HeightFor(Wrapped(label, Spec.Message.Text.Size.X));
+            if (dialog.Size.Y != fitted)
+            {
+                int before = dialog.Size.Y;
+                dialog.Size = new Vector2I(dialog.Size.X, fitted);
+                dialog.Position += new Vector2I(0, (before - dialog.Size.Y) / 2);
+            }
             art.Position = Vector2.Zero;
-            art.Size = new Vector2(Spec.Message.Width, Math.Max(Spec.Message.Height, dialog.Size.Y));
+            art.Size = new Vector2(Spec.Message.Width, dialog.Size.Y);
             title.Text = dialog.Title;
         }) { Name = "classic_prompt_sync" });
     }
@@ -462,22 +491,37 @@ public static class ClassicWorldOverlays
     }
 }
 
-/// <summary>The original common message box art at its 327-pixel width; the middle band takes any extra height.</summary>
+/// <summary>The original common message box art at its 327-pixel width and any height.</summary>
 public partial class ClassicMessageArt : Control
 {
     public ClassicMessageArt() { MouseFilter = MouseFilterEnum.Ignore; TextureFilter = TextureFilterEnum.Nearest; Resized += QueueRedraw; }
 
-    public override void _Draw()
+    public override void _Draw() => Draw(this, Size.Y);
+
+    /// <summary>
+    /// Draws the nine original pieces. A taller box stretches the middle band (y 64); a box shorter than the two
+    /// 64-pixel halves trims their inner rows, which are plain frame sides, so the corners stay intact.
+    /// </summary>
+    public static void Draw(CanvasItem item, float height)
     {
         var root = Plugin.Kit.Layout("{nation}_messagebox_us");
-        float extra = Math.Max(0, Size.Y - root.H), band = ClassicOverlayLayout.Message.MiddleBand;
+        // Both halves are 64 pixels high, as is the band's offset.
+        float band = ClassicOverlayLayout.Message.MiddleBand;
+        float top = Math.Min(band, Mathf.Ceil(height / 2)), under = Math.Min(band, height - top);
         foreach (var image in root.Images)
         {
             if (image.Texture == null) continue;
-            var rect = new Rect2(image.Position, image.SizeVec);
-            if (image.Y == band) rect.Size += new Vector2(0, extra);
-            else if (image.Y > band) rect.Position += new Vector2(0, extra);
-            DrawTextureRectRegion(Plugin.Kit.Texture(image.Texture)!, rect, new Rect2(image.SrcX, image.SrcY, image.SrcW, image.SrcH));
+            var texture = Plugin.Kit.Texture(image.Texture)!;
+            if (image.Y == band)
+            {
+                float stretch = height - top - under;
+                if (stretch > 0) item.DrawTextureRectRegion(texture, new Rect2(image.X, top, image.W, stretch), new Rect2(image.SrcX, image.SrcY, image.SrcW, image.SrcH));
+            }
+            else if (image.Y < band)
+                item.DrawTextureRectRegion(texture, new Rect2(image.X, 0, image.W, top), new Rect2(image.SrcX, image.SrcY, image.SrcW, top));
+            else
+                item.DrawTextureRectRegion(texture, new Rect2(image.X, height - under, image.W, under),
+                    new Rect2(image.SrcX, image.SrcY + image.SrcH - under, image.SrcW, under));
         }
     }
 }

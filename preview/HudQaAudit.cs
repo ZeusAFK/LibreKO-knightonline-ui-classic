@@ -154,6 +154,17 @@ public partial class Preview
                 var f = caption[0].GetThemeFont("font"); int fs = caption[0].GetThemeFontSize("font_size");
                 Require(f.GetStringSize(caption[0].Text, HorizontalAlignment.Left, -1, fs).X <= caption[0].Size.X, b.State + " caption fits " + caption[0].Text);
             }
+            // Content-sized box: the shared rhythm (title band, message lines, buttons) with no empty band.
+            float spacing = message.GetThemeConstant("line_spacing");
+            Require(message.Position.Y == KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message.TextTop
+                && Mathf.Abs(message.Size.Y - (lines * lineHeight + (lines - 1) * spacing)) < 1f, $"{b.State} message rectangle is its {lines} wrapped lines at the common top ({message.GetRect()})");
+            foreach (var button in buttons)
+                Require(button.Position.Y == message.GetRect().End.Y + KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message.ActionGap
+                    && view.Size.Y - button.GetRect().End.Y == KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message.ButtonBottom, $"{b.State} {button.Name} sits the common gap under the message ({button.GetRect()} in {view.Size})");
+            if (buttons.Length == 0)
+                Require(view.Size.Y - message.GetRect().End.Y == KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message.TextBottom, $"{b.State} frame closes the common gap under the message ({view.Size})");
+            var art = view.GetNode<Control>("message_art");
+            Require(art.Size == view.Size && art.Position == Vector2.Zero, $"{b.State} frame art covers the fitted box");
             if (buttons.Length == 1) Require(Mathf.Abs(buttons[0].GetGlobalRect().GetCenter().X - view.GetGlobalRect().GetCenter().X) <= 1, b.State + " single button is centred");
             if (buttons.Length == 2)
             {

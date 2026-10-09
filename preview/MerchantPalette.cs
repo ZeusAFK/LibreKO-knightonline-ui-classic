@@ -20,12 +20,15 @@ public partial class Preview
         var ids=groups.Values.SelectMany(g=>g).Select(e=>e.Id).Distinct().Where(id=>ItemData.Get(id)!=null && ItemData.IsSellable(id)).ToArray();
         int stack=ids.First(id=>ItemData.Get(id)!.Countable!=0);var singles=ids.Where(id=>ItemData.Get(id)!.Countable==0).Take(7).ToArray();
         var cellType=typeof(World).GetNestedType("MerchantCell",BindingFlags.NonPublic)!;
-        var palettes=new[]{("01-crimson","01 · Crimson",new Color(.92f,.42f,.48f),"f0a1aa","9d6268"),
-            ("02-burgundy","02 · Burgundy",new Color(.73f,.43f,.58f),"ddafcb","83647c"),
-            ("03-copper","03 · Copper",new Color(1,.72f,.49f),"efcaa6","a88764"),
-            ("04-blue","04 · Royal Blue",new Color(.52f,.71f,1),"a7c8f5","6387b6"),
-            ("05-teal","05 · Teal",new Color(.45f,.91f,.82f),"96ded3","609b91"),
-            ("06-silver","06 · Silver",new Color(.88f,.90f,.94f),"dce0e6","929aa7")};
+        // Buying alternatives, each beside the accepted Silver SELLING sign; the first is the shipped Buying palette.
+        var buying=(ClassicMerchantSkin.MerchantAccent(true),ClassicMerchantSkin.MerchantHeading(true).ToHtml(false),ClassicMerchantSkin.MerchantDivider(true).ToHtml(false));
+        var palettes=new[]{("00-shipped","Shipped Buying",buying.Item1,buying.Item2,buying.Item3),
+            ("07-gold","07 · Antique Gold",new Color(1,.86f,.56f),"f7d179","a88a4c"),
+            ("08-pale-gold","08 · Pale Gold",new Color(1,.94f,.72f),"ffe8a3","b9a26c"),
+            ("09-bronze","09 · Bronze",new Color(.84f,.72f,.52f),"e2c48a","8a7050"),
+            ("10-ivory","10 · Ivory Gold",new Color(1,.97f,.84f),"f7d179","b8a77c"),
+            ("03-copper","03 · Copper (rejected)",new Color(1,.72f,.49f),"efcaa6","a88764"),
+            ("04-blue","04 · Royal Blue",new Color(.52f,.71f,1),"a7c8f5","6387b6")};
         var styler=new ClassicMerchantSigns();AddChild(styler);
         var title=new Label {Position=new Vector2(20,8),Size=new Vector2(380,24)};title.AddThemeFontOverride("font",KnightOnlineUiClassic.Plugin.Kit.Bold);title.AddThemeFontSizeOverride("font_size",14);title.AddThemeColorOverride("font_color",new Color("e4d7bc"));AddChild(title);
         var checks=new List<string>();var records=new List<object>();
@@ -34,9 +37,10 @@ public partial class Preview
         foreach(var palette in palettes)
         {
             title.Text=palette.Item2;var signs=new List<PanelContainer>();
-            foreach(int count in new[]{4,8})
+            foreach(bool buy in new[]{false,true})
             {
-                var sign=new PanelContainer {Position=new Vector2(count==4?20:220,44)};sign.SetMeta("merchant_buying",true);sign.AddToGroup("merchant_signs");AddChild(sign);signs.Add(sign);
+                int count=8;
+                var sign=new PanelContainer {Position=new Vector2(buy?220:20,44)};sign.SetMeta("merchant_buying",buy);sign.AddToGroup("merchant_signs");AddChild(sign);signs.Add(sign);
                 var grid=new GridContainer {Columns=4};sign.AddChild(grid);
                 for(int i=0;i<count;i++)
                 {
@@ -45,18 +49,18 @@ public partial class Preview
                 }
             }
             styler._Process(.3);await Frames();
-            foreach(var sign in signs)
             {
+                var sign=signs[1];
                 ((StyleBoxTexture)sign.GetThemeStylebox("panel")).ModulateColor=palette.Item3;
-                var caption=Descendants(sign).OfType<Label>().Single(l=>l.Text=="BUYING");caption.Text="SELLING";caption.AddThemeColorOverride("font_color",new Color(palette.Item4));
+                var caption=Descendants(sign).OfType<Label>().Single(l=>l.Text=="BUYING");caption.AddThemeColorOverride("font_color",new Color(palette.Item4));
                 ((StyleBoxFlat)caption.GetThemeStylebox("normal")).BorderColor=new Color(palette.Item5);
             }
             await Frames();
             foreach(var sign in signs)
             {
-                var caption=Descendants(sign).OfType<Label>().Single(l=>l.Text=="SELLING");var grid=Descendants(sign).OfType<GridContainer>().Single();
-                Require(sign.Size==new Vector2(180,grid.GetChildCount()==4?71:107),palette.Item1+" / shared Buying-template dimensions");
-                Require(Mathf.Abs(caption.GetGlobalRect().GetCenter().X-sign.GetGlobalRect().GetCenter().X)<.1f,palette.Item1+" / centered Selling heading");
+                var caption=Descendants(sign).OfType<Label>().Single(l=>l.Text is "SELLING" or "BUYING");var grid=Descendants(sign).OfType<GridContainer>().Single();
+                Require(sign.Size==new Vector2(180,grid.GetChildCount()==4?71:107),palette.Item1+" / shared sign dimensions");
+                Require(Mathf.Abs(caption.GetGlobalRect().GetCenter().X-sign.GetGlobalRect().GetCenter().X)<.1f,palette.Item1+" / centered "+caption.Text+" heading");
                 Require(caption.GetGlobalRect().End.Y+4==grid.GetGlobalRect().Position.Y,palette.Item1+" / heading separates from icons");
                 Require(GetViewportRect().Encloses(sign.GetGlobalRect()),palette.Item1+" / sign contained");
                 foreach(var cell in grid.GetChildren().OfType<Control>())Require(cell.Modulate==Colors.White,palette.Item1+" / native icon color retained");

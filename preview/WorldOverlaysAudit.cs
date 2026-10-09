@@ -158,7 +158,7 @@ public partial class Preview
             var art = dialog.GetNode<Control>("classic_prompt/message_art");
             var heading = dialog.GetNode<Label>("classic_prompt/prompt_title");
             var rect = Win(dialog);
-            Require(dialog.Visible && dialog.Borderless && rect.Size.X == Spec.Message.Width && rect.Size.Y >= Spec.Message.Height, $"{state}: borderless message box {rect.Size}");
+            Require(dialog.Visible && dialog.Borderless && rect.Size.X == Spec.Message.Width, $"{state}: borderless message box {rect.Size}");
             Require(Inside(viewport, rect), $"{state}: inside the viewport");
             Require(art.Size == new Vector2(Spec.Message.Width, rect.Size.Y) && art.Position == Vector2.Zero, $"{state}: message art covers the box");
             Require(heading.Text == title && heading.Position == Spec.Message.Title.Position && Fits(heading), $"{state}: native title '{title}' in the title band");
@@ -167,7 +167,11 @@ public partial class Preview
             Require(Inside(new Rect2(Spec.Message.Text.Position, new Vector2(Spec.Message.Text.Size.X, rect.Size.Y - Spec.Message.Text.Position.Y - Spec.Message.ButtonBottom - Spec.Message.Button.Y)), text),
                 $"{state}: message {text} inside the message band");
             Require(Fits(label), $"{state}: message wraps inside its band");
-            if (rect.Size.Y == Spec.Message.Height) Require(text == Spec.Message.Text, $"{state}: message band {text} is the original {Spec.Message.Text}");
+            // Content-sized: the message is its wrapped lines at the common top, the buttons the common gap under it.
+            int lines = label.GetLineCount();
+            float wrapped = lines * label.GetLineHeight() + (lines - 1) * label.GetThemeConstant("line_spacing");
+            Require(text.Position == new Vector2(Spec.Message.Text.Position.X, Spec.Message.TextTop) && Mathf.Abs(text.Size.Y - wrapped) < 1f
+                && Mathf.Abs(rect.Size.Y - Spec.Message.HeightFor(text.Size.Y)) <= 1, $"{state}: the box fits its {lines} lines ({text} in {rect.Size})");
             var ok = dialog.GetOkButton(); var cancel = dialog.GetCancelButton();
             // Controls of an embedded window report global rectangles in window space.
             var okRect = ok.GetGlobalRect(); var cancelRect = cancel.GetGlobalRect();
@@ -225,8 +229,11 @@ public partial class Preview
         async Task DeathState(string state)
         {
             await Frames();
-            var centre = (viewport.Size - Spec.Death.Size) / 2;
-            Require(death.Size == Spec.Death.Size && Math.Abs(Global(death).Position.X - centre.X) <= 1 && Math.Abs(Global(death).Position.Y - centre.Y) <= 1 && Whole(Global(death)),
+            var hint = deathLabels[1];
+            var centre = (viewport.Size - Spec.Death.Size(hint.Size.Y)) / 2;
+            Require(hint.Position.Y == Spec.Message.TextTop && hint.Size.Y >= hint.GetLineCount() * hint.GetLineHeight() && deathOk.Position.Y == hint.GetRect().End.Y + Spec.Message.ActionGap,
+                $"{state}: the box fits the hint ({hint.GetRect()}, OK {deathOk.GetRect()})");
+            Require(death.Size == Spec.Death.Size(hint.Size.Y) && Math.Abs(Global(death).Position.X - centre.X) <= 1 && Math.Abs(Global(death).Position.Y - centre.Y) <= 1 && Whole(Global(death)),
                 $"{state}: centred original message box on whole pixels {Global(death)}");
             foreach (var label in deathLabels) { Expected(label, death, $"{state} '{label.Text}'"); Require(Fits(label), $"{state}: '{label.Text}' fits ({Measure(label)} in {label.Size})"); }
             Expected(deathOk, death, state + " OK"); ButtonArt(deathOk, state + " OK");

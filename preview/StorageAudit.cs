@@ -56,7 +56,21 @@ public partial class Preview
             var controls = Descendants(panels[index]).OfType<Control>().Where(c => c.IsVisibleInTree()).ToArray();
             foreach (var c in controls.Where(c => c.HasMeta("storage_expected_rect")))
                 Require(c.GetRect() == c.GetMeta("storage_expected_rect").AsRect2(), "Measured control bounds: " + c.Name + " / " + name + " actual=" + c.GetRect() + " expected=" + c.GetMeta("storage_expected_rect").AsRect2());
-            Require(windows[index].Size == new Vector2(366, 553), "Original storage window proportions / " + name);
+            Require(windows[index].Size == KnightOnlineUiClassic.Windows.ClassicStorageLayout.Size(index == 1), "Original storage window proportions / " + name + " " + windows[index].Size);
+            if (index == 1)
+            {
+                // VIP: the PIN row and the expiry row close the upper part with the warehouse rhythm, no empty band.
+                var pins = controls.OfType<Button>().Where(b => b.Text is "Change PIN" or "Clear PIN").OrderBy(b => b.Position.X).ToArray();
+                var cells = controls.OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_cell_")).ToArray();
+                var expiry = controls.OfType<Label>().Single(l => l.Name == "storage_expiry");
+                var weight = controls.OfType<Label>().Where(l => l.Text.StartsWith("Weight")).ToArray();
+                Require(pins.Length == 2 && pins[0].Size == pins[1].Size && pins[0].Position.Y == pins[1].Position.Y, "VIP PIN buttons are equal and on one row / " + name);
+                Require(pins[0].Position.X == cells.Min(c => c.Position.X) && pins[1].GetRect().End.X == expiry.GetRect().End.X, "VIP PIN row spans the expiry row / " + name);
+                Require(pins[0].Position.Y - cells.Max(c => c.GetRect().End.Y) == 31 && KnightOnlineUiClassic.Windows.ClassicStorageLayout.FieldTop - KnightOnlineUiClassic.Windows.ClassicStorageLayout.VipCut - pins[0].GetRect().End.Y == 12,
+                    "VIP PIN row sits in the status band and 12 pixels above the expiry field / " + name);
+                Require(expiry.Position.Y == KnightOnlineUiClassic.Windows.ClassicStorageLayout.StoredGold.Position.Y - KnightOnlineUiClassic.Windows.ClassicStorageLayout.VipCut, "VIP expiry uses the stored-coins row / " + name);
+                Require(weight.Length == 0 || weight[0].Position.Y == KnightOnlineUiClassic.Windows.ClassicStorageLayout.Weight(true).Position.Y, "VIP carried inventory follows the shortened upper part / " + name);
+            }
             Require(GetViewportRect().Encloses(windows[index].GetGlobalRect()), "Complete storage window fits viewport / " + name);
             var bag = controls.OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_bag_")).ToArray();
             Require(bag.Length == 28, "All 28 inventory slots visible / " + name);

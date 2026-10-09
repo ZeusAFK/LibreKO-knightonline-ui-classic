@@ -1,15 +1,21 @@
 using Godot;
+using Box = KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message;
 namespace KnightOnlineUiClassic.Layout;
-/// <summary>Editable nation message-box composition used by the original trade permission flow.</summary>
+/// <summary>
+/// Editable nation message-box composition used by the original trade permission flow. The box fits its
+/// message with the common message rhythm; the request keeps the original Yes/No places at the sides.
+/// </summary>
 public static class ClassicExchangeNoticeLayout
 {
-    public static Vector2 Size(bool request)=>new(327,156);
-    public static Rect2 Message(bool request)=>new(21,28,283,58);
     public static readonly Rect2 Title=new(12,10,297,16);
-    public static Rect2 Accept=>ClassicDesign.Karus?new(11,117,97,29):new(9,116,97,29);
-    public static Rect2 Decline=>ClassicDesign.Karus?new(219,116,97,29):new(220,116,97,29);
-    public static readonly Rect2 FinalPrompt=new(24,35,279,64);
-    public static readonly Rect2 FinalAccept=new(58,116,97,29);
-    public static readonly Rect2 FinalDecline=new(172,116,97,29);
-    public static Rect2 WaitCancel=>new(115,ClassicDesign.Karus?117:116,97,29);
+    /// <summary>The final question has no title: its message starts where the glyphs sit as far from the frame as the buttons.</summary>
+    public static float MessageTop(bool final)=>final?Box.UntitledTop:Box.TextTop;
+    public static Rect2 Message(bool final,float text)=>Box.TextAt(MessageTop(final),text);
+    public static Vector2 Size(bool final,float text)=>new(Box.Width,Box.HeightFor(text,true,MessageTop(final)));
+    private static float ButtonTop(float height)=>height-Box.ButtonBottom-Box.Button.Y;
+    public static Rect2 Accept(float height)=>new(ClassicDesign.Karus?11:9,ButtonTop(height),97,29);
+    public static Rect2 Decline(float height)=>new(ClassicDesign.Karus?219:220,ButtonTop(height),97,29);
+    public static Rect2 FinalAccept(float height)=>Box.Left(height);
+    public static Rect2 FinalDecline(float height)=>Box.Right(height);
+    public static Rect2 WaitCancel(float height)=>Box.Single(height);
 }
