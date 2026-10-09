@@ -99,6 +99,24 @@ public partial class Preview
             GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-"+state+".png"));
         }
         await Shot("hud");
+        if(OS.GetCmdlineUserArgs().Contains("hud-audit") && !OS.GetCmdlineUserArgs().Contains("upstream-chat-audit"))
+        {
+            // Chat Settings and Nearby Players sit in the plain Classic frame: title row, even 22 px body inset.
+            foreach(bool nearbyPanel in new[]{false,true})
+            {
+                if(nearbyPanel) chat.OpenNearby(); else chat.OpenSettings();
+                await ToSignal(GetTree().CreateTimer(.1),SceneTreeTimer.SignalName.Timeout);
+                var panel=(ClassicChatPanel)typeof(ChatWindow).GetField(nearbyPanel?"_nearbyPanel":"_settingsPanel",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(chat)!;
+                var body=panel.Body.GetRect();
+                if(body.Position!=new Vector2(ClassicChatPanel.Side,ClassicChatPanel.BodyTop) || Math.Abs(panel.Size.X-body.End.X-ClassicChatPanel.Side)>.5f || Math.Abs(panel.Size.Y-body.End.Y-ClassicChatPanel.Side)>.5f)
+                    throw new Exception("Chat panel body keeps the plain frame's even inset: "+body+" in "+panel.Size);
+                if(Descendants(panel).OfType<ClassicNpcQuestChrome>().Any() || !Descendants(panel).OfType<ClassicFrame>().Any(f=>!f.Ornate)) throw new Exception("Chat panels use the plain Classic frame");
+                foreach(var button in Descendants(panel.Body).OfType<Button>().Where(b=>b.Visible))
+                    if(!new Rect2(Vector2.Zero,panel.Body.Size).Encloses(button.GetRect())) throw new Exception("Chat panel button exceeds the body: "+button.Text);
+                await Shot(nearbyPanel?"chat-nearby":"chat-settings");
+                panel.Visible=false;
+            }
+        }
         if(responseAudit)
         {
             foreach(var shortcut in letters) shortcut.EmitSignal(Control.SignalName.MouseEntered);

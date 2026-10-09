@@ -32,10 +32,10 @@ public partial class ClassicMerchantSearchPanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
         ClassicPartySkin.Drag(this, header, new Rect2(14, 8, 706, 32));
-        Place(title, new Rect2(22, 16, 696, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
+        Place(title, ClassicFrame.Title(Size.X)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         if (string.IsNullOrWhiteSpace(title.Text)) title.Text = "Merchant Search";
-        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(740, 15, 24, 24), "");
-        _close.SetMeta("merchant_search_expected_rect", new Rect2(740, 15, 24, 24));
+        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, ClassicFrame.Close(Size.X), "");
+        _close.SetMeta("merchant_search_expected_rect", ClassicFrame.Close(Size.X));
         Place(Find<Label>("tip"), new Rect2(16, 48, 748, 20));
         Place(Find<Label>("query_label"), new Rect2(16, 76, 52, 24));
         var query = Find<LineEdit>("query"); Place(query, new Rect2(76, 74, 244, 28));
@@ -75,7 +75,7 @@ public partial class ClassicMerchantSearchPanel : Control
             }
         }
         Place(Find<Label>("status"), new Rect2(104, 480, 188, 26)); Font(Find<Label>("status"), 12);
-        var refresh = Find<Button>("refresh"); refresh.Text = "Refresh"; Action(refresh, new Rect2(20, 480, 80, 26));
+        var refresh = Find<Button>("refresh"); refresh.Text = "Refresh"; Action(refresh, new Rect2(16, 480, 84, 26));
         var previous = Find<Button>("previous"); previous.TooltipText = "Previous page"; Action(previous, new Rect2(300, 480, 26, 26));
         var next = Find<Button>("next"); next.TooltipText = "Next page"; Action(next, new Rect2(604, 480, 26, 26));
         var pages = Find<HBoxContainer>("pages"); Place(pages, new Rect2(334, 480, 262, 26)); pages.Alignment = BoxContainer.AlignmentMode.Center;
@@ -86,7 +86,7 @@ public partial class ClassicMerchantSearchPanel : Control
         }
         foreach (var node in pages.GetChildren()) Page(node); pages.ChildEnteredTree += Page;
         var cancel = new Button { Name = "merchant_search_cancel", Text = "Cancel" }; AddChild(cancel); cancel.Pressed += Close;
-        Action(cancel, new Rect2(664, 480, 96, 26));
+        Action(cancel, new Rect2(668, 480, 96, 26));
         window.VisibilityChanged += () => { if (!window.Visible) popup.Hide(); };
     }
     private void Close() { _scope.GetPopup().Hide(); _close.EmitSignal(BaseButton.SignalName.Pressed); }

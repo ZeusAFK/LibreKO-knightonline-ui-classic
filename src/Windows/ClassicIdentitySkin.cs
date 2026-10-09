@@ -43,7 +43,15 @@ public partial class ClassicIdentityPanel : Control
         _title = bar.GetChildren().OfType<Label>().Last();
         foreach (var child in window.GetChildren().OfType<Control>()) child.Visible = false;
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-        ClassicPartySkin.Drag(this, bar, new Rect2(4, 2, Size.X - 8, window.Id == "disguise" ? 43 : window.Id == "namechange" ? 13 : 23));
+        if (ClassicIdentityLayout.Plain(window.Id))
+        {
+            AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
+            Place(_title, ClassicIdentityLayout.Title(window.Id)); Font(_title, 13, true);
+            _title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
+            _title.HorizontalAlignment = HorizontalAlignment.Left; _title.VerticalAlignment = VerticalAlignment.Center;
+            _title.ClipText = true; _title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        }
+        ClassicPartySkin.Drag(this, bar, new Rect2(4, 2, Size.X - 8, ClassicIdentityLayout.Plain(window.Id) ? 36 : 23));
         switch (window.Id)
         {
             case "creat_clan": Clan(); break;
@@ -73,6 +81,14 @@ public partial class ClassicIdentityPanel : Control
     private void Action(Button button, string field, string text)
     {
         var rect = ClassicIdentityLayout.Field(Window.Id, field);
+        if (Window.Id == "namechange")
+        {
+            // The rename buttons were plain hot spots on the ornamented plate; use the plain-frame service actions.
+            ClassicMerchantSkin.Button(button, Plugin.Kit.Layout("co_change_bill_us").Find(field)!, this, rect, text);
+            Font(button, 13, true); ClassicServiceAction.Disabled(button);
+            button.SetMeta("identity_expected_rect", rect);
+            return;
+        }
         ClassicMerchantSkin.Button(button, _art.Find(field)!, this, rect, text);
         Font(button, Window.Id == "disguise" ? 13 : 15, true);
         button.AddThemeColorOverride("font_shadow_color", Colors.Black);
@@ -117,9 +133,9 @@ public partial class ClassicIdentityPanel : Control
         hint.Text = "Enter your new name. Requires a Scroll of Identity.\nYour old name will no longer be valid after the change. Choose carefully. Names must have 3-20 characters.";
         hint.AutowrapMode = TextServer.AutowrapMode.WordSmart; hint.ClipText = false;
         var label = new Label { Text = "ID", MouseFilter = MouseFilterEnum.Ignore }; AddChild(label);
-        Place(label, new Rect2(28, 80, 31, 22)); Font(label, 16, true);
+        Place(label, ClassicIdentityLayout.RenameId); Font(label, 16, true);
         Input(Native<LineEdit>("name_change_name"), "edit_id");
-        var status = Native<Label>("name_change_status"); Place(status, new Rect2(25, 101, 326, 18)); Font(status, 12);
+        var status = Native<Label>("name_change_status"); Place(status, ClassicIdentityLayout.RenameStatus); Font(status, 12);
         status.HorizontalAlignment = HorizontalAlignment.Center;
         Action(Native<Button>("name_change_accept"), "btn_ok", "OK");
         Action(Native<Button>("name_change_cancel"), "btn_cancel", "Cancel");
@@ -232,6 +248,25 @@ public partial class ClassicIdentityPanel : Control
     }
     public override void _Draw()
     {
+        if (Window.Id == "namechange")
+        {
+            // Only the original ID bar and the field art remain; the plain frame replaces the quest-frame bands.
+            var bar = _art.Children.First(n => n.IsImage && n.SrcY == 379);
+            DrawTextureRectRegion(Plugin.Kit.Texture(bar.Texture!), ClassicIdentityLayout.RenameBar, new Rect2(bar.SrcX, bar.SrcY, bar.SrcW, bar.SrcH));
+            var edit = _art.Find("edit_id")!.Children.First(n => n.IsImage);
+            DrawTextureRectRegion(Plugin.Kit.Texture(edit.Texture!), ClassicIdentityLayout.Field(Window.Id, "edit_id"), new Rect2(edit.SrcX, edit.SrcY, edit.SrcW, edit.SrcH));
+            return;
+        }
+        if (Window.Id == "disguise")
+        {
+            // The original list boxes without the crest and curls of the outer art.
+            var ring = Plugin.Kit.Texture("disguise_ring_us.png")!;
+            DrawTextureRectRegion(ring, ClassicIdentityLayout.DisguiseGroupBox, new Rect2(15, 59, 148, 205));
+            var form = ClassicIdentityLayout.DisguiseFormBox;
+            DrawTextureRectRegion(ring, new Rect2(form.Position, new Vector2(form.Size.X, 243)), new Rect2(15, 269, 148, 243));
+            DrawTextureRectRegion(ring, new Rect2(form.Position.X, form.Position.Y + 243, form.Size.X, 1), new Rect2(192, 2, 148, 1));
+            return;
+        }
         var artworkBounds = _art.Children.Where(n => n.IsImage)
             .Select(n => new Rect2(n.Position - _art.Position, n.SizeVec)).Aggregate((a, b) => a.Merge(b));
         DrawRect(artworkBounds.Grow(-4), Colors.Black);

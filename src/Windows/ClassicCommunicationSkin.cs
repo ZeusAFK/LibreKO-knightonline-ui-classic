@@ -36,9 +36,9 @@ public partial class ClassicCommunicationPanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
         ClassicPartySkin.Drag(this, header, new Rect2(14, 8, Size.X - 64, 32));
-        Place(title, new Rect2(22, 16, Size.X - 80, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
-        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(Size.X - 40, 15, 24, 24), "");
-        _close.SetMeta("communication_expected_rect", new Rect2(Size.X - 40, 15, 24, 24));
+        Place(title, ClassicFrame.Title(Size.X)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
+        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, ClassicFrame.Close(Size.X), "");
+        _close.SetMeta("communication_expected_rect", ClassicFrame.Close(Size.X));
         if (window.Id == "messenger") Messenger(); else Rooms();
     }
     private T Find<T>(string name) where T : Control => _native.OfType<T>().Single(c => GodotObject.IsInstanceValid(c) && !c.IsQueuedForDeletion() && c.Name == name);
@@ -93,10 +93,10 @@ public partial class ClassicCommunicationPanel : Control
         Caption("Character", new Rect2(22, 64, 178, 20)); Caption("Status", new Rect2(216, 64, 80, 20));
         Scroll(Find<ScrollContainer>("messenger_scroll"), ClassicCommunicationLayout.BuddyList);
         Watch(Find<VBoxContainer>("messenger_list"), StyleRow);
-        Caption("Quick Whisper", new Rect2(20, 350, 380, 20));
-        Caption("To", new Rect2(20, 378, 44, 26)); Input(Find<LineEdit>("messenger_to"), new Rect2(72, 378, 328, 26));
-        Input(Find<LineEdit>("messenger_message"), new Rect2(20, 416, 284, 26));
-        Action(Find<Button>("messenger_send"), this, new Rect2(312, 416, 88, 26));
+        Caption("Quick Whisper", new Rect2(16, 350, 388, 20));
+        Caption("To", new Rect2(16, 378, 44, 26)); Input(Find<LineEdit>("messenger_to"), new Rect2(68, 378, 336, 26));
+        Input(Find<LineEdit>("messenger_message"), new Rect2(16, 416, 292, 26));
+        Action(Find<Button>("messenger_send"), this, new Rect2(316, 416, 88, 26));
         Find<LineEdit>("messenger_to").TextSubmitted += _ => Find<LineEdit>("messenger_message").GrabFocus();
     }
     private void Rooms()
@@ -104,13 +104,13 @@ public partial class ClassicCommunicationPanel : Control
         Caption("Room", new Rect2(22, 64, 234, 20)); Caption("Members", new Rect2(262, 64, 72, 20));
         Scroll(Find<ScrollContainer>("rooms_scroll"), ClassicCommunicationLayout.RoomList);
         Watch(Find<VBoxContainer>("rooms_list"), StyleRow);
-        Input(Find<LineEdit>("rooms_name"), new Rect2(20, 254, 236, 26));
-        Action(Find<Button>("rooms_create"), this, new Rect2(264, 254, 84, 26)); Action(Find<Button>("rooms_refresh"), this, new Rect2(356, 254, 84, 26));
+        Input(Find<LineEdit>("rooms_name"), new Rect2(16, 254, 244, 26));
+        Action(Find<Button>("rooms_create"), this, new Rect2(268, 254, 84, 26)); Action(Find<Button>("rooms_refresh"), this, new Rect2(360, 254, 84, 26));
         Place(Find<Label>("rooms_status"), new Rect2(16, 290, 428, 22)); Find<Label>("rooms_status").AddThemeColorOverride("font_color", ClassicDesign.Heading);
         Caption("Chat", new Rect2(16, 314, 428, 20)); Scroll(Find<ScrollContainer>("rooms_log_scroll"), ClassicCommunicationLayout.RoomLog, 4);
         Watch(Find<VBoxContainer>("rooms_log"), StyleLog);
-        Input(Find<LineEdit>("rooms_message"), new Rect2(20, 518, 236, 26));
-        Action(Find<Button>("rooms_send"), this, new Rect2(264, 518, 84, 26)); Action(Find<Button>("rooms_leave"), this, new Rect2(356, 518, 84, 26));
+        Input(Find<LineEdit>("rooms_message"), new Rect2(16, 518, 244, 26));
+        Action(Find<Button>("rooms_send"), this, new Rect2(268, 518, 84, 26)); Action(Find<Button>("rooms_leave"), this, new Rect2(360, 518, 84, 26));
     }
     private static void Watch(VBoxContainer rows, Action<Control> style)
     {

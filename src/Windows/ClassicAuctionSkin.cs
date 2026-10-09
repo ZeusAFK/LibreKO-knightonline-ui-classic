@@ -43,9 +43,9 @@ public partial class ClassicAuctionPanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
         ClassicPartySkin.Drag(this, header, new Rect2(14, 8, 816, 32));
-        Place(title, this, new Rect2(22, 16, 808, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
-        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(840, 15, 24, 24), "");
-        _close.SetMeta("auction_expected_rect", new Rect2(840, 15, 24, 24));
+        Place(title, this, ClassicFrame.Title(Size.X)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
+        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, ClassicFrame.Close(Size.X), "");
+        _close.SetMeta("auction_expected_rect", ClassicFrame.Close(Size.X));
         Place(body, this, ClassicAuctionLayout.Body);
         var today = Find<VBoxContainer>("auction_page_Today");
         var canvas = new Control { Name = "auction_today_composition", CustomMinimumSize = new Vector2(0, 430), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };

@@ -97,7 +97,7 @@ public partial class Preview
             }
             foreach (var notice in layer.GetChildren().OfType<Notice>())
             {
-                foreach (var label in Descendants(notice).OfType<Label>().Where(c => c.IsVisibleInTree())) Require(label.GetLineCount() * 17 <= label.Size.Y, state + " confirmation text fits: " + label.Text);
+                foreach (var label in Descendants(notice).OfType<Label>().Where(c => c.IsVisibleInTree())) Require(label.GetVisibleLineCount() >= label.GetLineCount() && label.Size.Y + .5f >= ClassicServiceNotice.MessageHeight(label), state + " confirmation text fits: " + label.Text + $" ({label.GetVisibleLineCount()}/{label.GetLineCount()} lines, {label.Size.Y} px)");
                 foreach (var c in Descendants(notice).OfType<Control>().Where(c => c.IsVisibleInTree() && (c is Label or Button)))
                     Require(c.GetThemeFont("font") == Plugin.Kit.Bold && c.GetThemeFontSize("font_size") == 13, state + " confirmation shared bold type " + c.Name + " " + c.GetThemeFontSize("font_size"));
             }

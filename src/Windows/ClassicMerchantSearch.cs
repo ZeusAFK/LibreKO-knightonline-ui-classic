@@ -2,18 +2,18 @@ using Godot;
 using LibreKO;
 namespace KnightOnlineUiClassic.Windows;
 
-/// <summary>LibreKO item search inside the Classic quest-frame artwork family.</summary>
+/// <summary>LibreKO item search inside the plain Classic frame family.</summary>
 public partial class ClassicMerchantSearch : ClassicFrame
 {
     public ClassicMerchantSearch(HudWindow window,Control body)
     {
-        BackgroundColor=Colors.Black;BackgroundAlpha=1;Size=CustomMinimumSize=new Vector2(470,545);TextureFilter=TextureFilterEnum.Nearest;
+        BackgroundColor=Colors.Black;BackgroundAlpha=1;Size=CustomMinimumSize=new Vector2(470,531);TextureFilter=TextureFilterEnum.Nearest;
         var grip=window.Header!.GetChildren().OfType<HBoxContainer>().First();
         var close=grip.GetChildren().OfType<Button>().Single(b=>b.TooltipText=="Close");
         foreach(var child in window.GetChildren().OfType<Control>())child.Visible=false;
         window.AddThemeStyleboxOverride("panel",new StyleBoxEmpty());
         ClassicPartySkin.Drag(this,grip,new Rect2(0,0,470,28));
-        var heading=ClassicPartySkin.Caption(this,"Item Search",new Rect2(22,16,426,24),ClassicDesign.FrameTitle);ClassicMerchantSkin.Font(heading);heading.AddThemeFontSizeOverride("font_size",13);
+        var heading=ClassicPartySkin.Caption(this,"Item Search",new Rect2(20,14,430,24),ClassicDesign.FrameTitle);ClassicMerchantSkin.Font(heading);heading.AddThemeFontSizeOverride("font_size",13);
         ClassicVendorSkin.Move(body,this,new Rect2(20,48,430,428));body.Visible=true;
         var theme=new Theme {DefaultFont=Plugin.Kit.Bold,DefaultFontSize=12};body.Theme=theme;
         void Style(Node node){if(node.HasMeta("classic_search_control"))return;node.SetMeta("classic_search_control",true);if(node is Control control)ClassicMerchantSkin.Font(control);if(node is VScrollBar rail){
@@ -25,7 +25,7 @@ public partial class ClassicMerchantSearch : ClassicFrame
         var results=CharacterDetailsSkin.Tree(body).OfType<ScrollContainer>().First();
         AddChild(new KnightOnlineUiClassic.Layout.ClassicRowScroll(results,300,41));
         var cancel=new Button {Text="Cancel"};AddChild(cancel);cancel.Pressed+=()=>close.EmitSignal(BaseButton.SignalName.Pressed);
-        // Cancel sits 30 px above the frame bottom, clear of the corner curls (original quest-talk inset).
+        // Cancel keeps the plain frame's 16 px inset to the bottom edge.
         ClassicMerchantSkin.Button(cancel,Plugin.Kit.Layout("co_tradeprice_us").Find("btn_cancel")!,this,new Rect2(200,490,71,25));
         Resized+=()=>Size=CustomMinimumSize;
     }

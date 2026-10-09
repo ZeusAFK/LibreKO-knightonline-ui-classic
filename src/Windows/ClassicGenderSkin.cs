@@ -39,8 +39,8 @@ public partial class ClassicGenderPanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black });
         ClassicPartySkin.Drag(this, bar, new Rect2(14, 8, Size.X - 62, 32));
-        Place(title, new Rect2(22, 14, Size.X - 76, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
-        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(Size.X - 38, 14, 24, 24), "");
+        Place(title, ClassicFrame.Title(Size.X)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
+        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, ClassicFrame.Close(Size.X), "");
         Place(Find<LookPreview>("look_preview"), _transfer ? ClassicNationTransferLayout.Preview : ClassicGenderLayout.Preview);
         if (_transfer)
         {

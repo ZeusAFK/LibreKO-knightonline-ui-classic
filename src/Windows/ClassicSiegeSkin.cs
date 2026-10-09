@@ -25,6 +25,7 @@ public partial class ClassicSiegePanel : Control
     public static readonly Color Heading = new("e2d9c9"), Menu = new("80ffff"), MenuHover = new("ffe094"), Muted = new("c0c0c0");
     public HudWindow Window { get; }
     private readonly LayoutNode _art;
+    private readonly string _artName;
     private readonly ClassicSiegeLayout.Table? _table;
     private readonly VBoxContainer? _rows;
     private readonly Control[] _controls;
@@ -34,7 +35,8 @@ public partial class ClassicSiegePanel : Control
         Window = window; Name = "classic_siege"; TextureFilter = TextureFilterEnum.Nearest;
         var speech = ClassicSiegeLayout.SpeechFor(window.Id);
         _table = ClassicSiegeLayout.TableFor(window.Id);
-        _art = Plugin.Kit.Layout(speech?.Art ?? _table!.Art);
+        _artName = speech?.Art ?? _table!.Art;
+        _art = Plugin.Kit.Layout(_artName);
         Size = CustomMinimumSize = speech?.Size ?? ClassicSiegeLayout.Table.Size;
         _controls = CharacterDetailsSkin.Tree(window).OfType<Control>().ToArray();
         var bar = window.Header!.GetChildren().OfType<HBoxContainer>().Single();
@@ -239,9 +241,14 @@ public partial class ClassicSiegePanel : Control
 
     public override void _Draw()
     {
-        DrawRect(new Rect2(3, 3, Size.X - 6, Size.Y - 6), Colors.Black);
-        foreach (var part in _art.Children.Where(n => n.IsImage))
-            DrawTextureRectRegion(Plugin.Kit.Texture(part.Texture!), new Rect2(part.Position, part.SizeVec), new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH));
+        var backing = new Rect2(3, 3, Size.X - 6, Size.Y - 6);
+        var pieces = _art.Children.Where(n => n.IsImage)
+            .Select(part => (Plugin.Kit.Texture(part.Texture!)!, new Rect2(part.Position, part.SizeVec), new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH)));
+        // The list windows straighten the crest and curls around the close button; talk windows keep their art.
+        var straight = ClassicStraightArt.For(_artName);
+        if (straight != null) { DrawTexture(ClassicStraightArt.Compose(_artName, (Vector2I)Size, backing, pieces, straight), Vector2.Zero); return; }
+        DrawRect(backing, Colors.Black);
+        foreach (var (texture, rect, source) in pieces) DrawTextureRectRegion(texture, rect, source);
     }
 }
 

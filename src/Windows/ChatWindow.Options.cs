@@ -9,7 +9,7 @@ public partial class ChatWindow
     public void OpenSettings()
     {
         if(_settingsPanel!=null) {_settingsPanel.Visible=true;_settingsPanel.MoveToFront();return;}
-        _settingsPanel=new ClassicChatPanel("Chat Settings",516);GetParent().AddChild(_settingsPanel);
+        _settingsPanel=new ClassicChatPanel("Chat Settings",ClassicChatPanel.Height(390));GetParent().AddChild(_settingsPanel);
         var body=_settingsPanel.Body;
         var hint=ClassicNpcLayout.Text("Right-click a chat tab to open settings.",12);
         hint.Position=Vector2.Zero;hint.Size=new Vector2(319,24);body.AddChild(hint);
@@ -47,7 +47,7 @@ public partial class ChatWindow
     public void OpenNearby()
     {
         if(_nearbyPanel!=null) {_nearbyPanel.Visible=true;_nearbyPanel.MoveToFront();return;}
-        _nearbyPanel=new ClassicChatPanel("Nearby Players",356);GetParent().AddChild(_nearbyPanel);
+        _nearbyPanel=new ClassicChatPanel("Nearby Players",ClassicChatPanel.Height(8*28+28));GetParent().AddChild(_nearbyPanel);
         var list=new VBoxContainer {Position=Vector2.Zero,Size=new Vector2(319,234)};
         list.AddThemeConstantOverride("separation",3);_nearbyPanel.Body.AddChild(list);
         var previousButton=ClassicChatPanel.Button("Previous");var nextButton=ClassicChatPanel.Button("Next");
@@ -64,7 +64,7 @@ public partial class ChatWindow
             previous=players.ToArray();lastPage=page;
             var visible=players.Skip(page*8).Take(8).ToArray();
             bool first=list.GetChildCount()==0;
-            int height=140+Math.Max(1,visible.Length)*28;
+            int height=ClassicChatPanel.Height(Math.Max(1,visible.Length)*28+28);
             _nearbyPanel.CustomMinimumSize=new Vector2(363,height);_nearbyPanel.Size=new Vector2(363,height);
             list.Size=new Vector2(319,Math.Max(1,visible.Length)*28);
             if(first) _nearbyPanel.Position=new Vector2(Mathf.Round((GetViewportRect().Size.X-363)/2),Mathf.Round((GetViewportRect().Size.Y-height)/2));

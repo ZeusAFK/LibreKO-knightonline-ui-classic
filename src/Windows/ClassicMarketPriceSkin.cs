@@ -33,9 +33,9 @@ public partial class ClassicMarketPricePanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black, ShowBehindParent = true });
         ClassicPartySkin.Drag(this, header, new Rect2(14, 8, 770, 32));
-        Place(title, new Rect2(22, 16, 760, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
-        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(800, 15, 24, 24), "");
-        _close.SetMeta("market_price_expected_rect", new Rect2(800, 15, 24, 24));
+        Place(title, ClassicFrame.Title(Size.X)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
+        ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, ClassicFrame.Close(Size.X), "");
+        _close.SetMeta("market_price_expected_rect", ClassicFrame.Close(Size.X));
         var heading = Find<HBoxContainer>("item_search_heading");
         var caption = heading.GetChildren().OfType<Label>().Last(); Place(caption, new Rect2(16, 48, 316, 20)); caption.AddThemeColorOverride("font_color", ClassicDesign.Heading);
         var query = Find<LineEdit>("item_search_query"); Place(query, new Rect2(16, 76, 220, 28)); ClassicVendorSkin.Input(query); Font(query); query.TextDirection = TextDirection.Ltr;
