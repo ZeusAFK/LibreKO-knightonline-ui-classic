@@ -196,7 +196,7 @@ public partial class Preview
             && CountLabel(cell).HorizontalAlignment==HorizontalAlignment.Right
             && CountLabel(cell).GetGlobalRect()==new Rect2(cell.GlobalPosition,cell.Size-new Vector2(2,2))),
             "All 24 store quantity labels use the same two-pixel right/bottom inset as the Inventory overlay, independent of socket padding");
-        Require(shell!.BagCells.Count==28 && shell.BagCells.All(c=>c.Size==new Vector2(44,44)),"Original 28-slot trading inventory is embedded beneath the catalogue");
+        Require(shell!.BagCells.Count==28 && shell.BagCells.All(c=>c.Size==new Vector2(45,45)),"Original 28-slot trading inventory is embedded beneath the catalogue on the Inventory 45 px grid");
         Require(!invWindow.Visible,"Separate inventory stays hidden during the transaction");
         Require(!((Button)DetailField(world,"_vendorBuy")!).IsVisibleInTree(),"Trade is driven by item drag instead of a separate Buy action");
         var pager=(ServicePager)DetailField(world,"_vendorPager")!;pager.Step(1);await Capture("page-2");

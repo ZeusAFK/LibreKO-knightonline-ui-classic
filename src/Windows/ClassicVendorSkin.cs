@@ -61,21 +61,27 @@ public static class ClassicVendorSkin
 
 public partial class ClassicVendorFrame : Control
 {
+    private static readonly string[] Signs = { "img_blacksmith", "img_store", "img_inn" };
     public ClassicVendorFrame() { MouseFilter = MouseFilterEnum.Ignore; TextureFilter = TextureFilterEnum.Nearest; }
     public override void _Draw()
     {
-        var atlas = Plugin.Kit.Texture(ClassicDesign.Karus ? "ui_ka_transaction_person trade_us.png" : "ui_el_transaction_person trade_us.png");
-        if (atlas == null) return;
-        // Karus has a two-pixel atlas gutter; sampling it would erase the right rail.
-        var box = new StyleBoxTexture { Texture = atlas, RegionRect = ClassicDesign.Karus ? new Rect2(147, 0, 362, 227) : new Rect2(149, 1, 362, 228), DrawCenter = false };
-        foreach (var side in new[] { Side.Top, Side.Left, Side.Right, Side.Bottom }) box.SetTextureMargin(side, 3);
-        DrawRect(new Rect2(3, 39, Size.X - 6, Size.Y - 42), Colors.Black);
-        DrawStyleBox(box, new Rect2(1, 39, Size.X - 1, Size.Y - 42));
-        // The atlas contains gaps between socket rows; continuous rails use clean artwork strips.
-        DrawTextureRectRegion(atlas, new Rect2(1, 42, 3, Size.Y - 48), new Rect2(ClassicDesign.Karus ? 147 : 149, 50, 3, 1));
-        DrawTextureRectRegion(atlas, new Rect2(Size.X - 3, 42, 3, Size.Y - 48), new Rect2(ClassicDesign.Karus ? 506 : 508, 50, 3, 1));
-        var cap = Plugin.Kit.Layout("{nation}_transaction_us").Children.First(n => n.IsImage && n.Y < 10);
-        DrawTextureRectRegion(Plugin.Kit.Texture(cap.Texture!), new Rect2(cap.X, cap.Y, cap.W, cap.H), new Rect2(cap.SrcX, cap.SrcY, cap.SrcW, cap.SrcH));
+        bool karus = ClassicDesign.Karus;
+        var art = Plugin.Kit.Layout("{nation}_transaction_us");
+        // The original transaction composition: catalogue artwork above the Inventory lower part.
+        DrawRect(new Rect2(4, 41, 357, 515), Colors.Black);
+        foreach (var image in art.Images.Where(n => !Signs.Contains(n.Id)))
+            DrawTextureRectRegion(Plugin.Kit.Texture(image.Texture!), new Rect2(image.Position, image.SizeVec), new Rect2(image.SrcX, image.SrcY, image.SrcW, image.SrcH));
+        // Clear the baked sockets and compose the same cell frames as Inventory and Warehouse.
+        DrawRect(new Rect2(8, 92, 306, 202), Colors.Black);
+        DrawRect(new Rect2(9, 345, 348, 199), Colors.Black);
+        var inventory = Plugin.Kit.Texture(karus ? "ui_ka_inven_us.png" : "ui_el_inven_us.png");
+        void Frame(Rect2 rect)
+        {
+            DrawTextureRectRegion(inventory, new Rect2(rect.Position - new Vector2(4, 3), new Vector2(51, 52)),
+                new Rect2(karus ? 159 : 157, karus ? 326 : 333, 51, 52));
+        }
+        for (int i = 0; i < 24; i++) Frame(ClassicVendorLayout.CatalogueCell(i));
+        for (int i = 0; i < 28; i++) Frame(ClassicVendorLayout.BagCell(i));
     }
 }
 
@@ -86,19 +92,24 @@ public partial class ClassicVendorSlot : Control
     private SlotLook _look;
     private bool _hover;
     public ItemSlotView OwnerCell => _owner;
-    public ClassicVendorSlot(ItemSlotView owner)
+    private readonly StyleBox _panel;
+    public ClassicVendorSlot(ItemSlotView owner, bool socket = true)
     {
         _owner = owner; MouseFilter = MouseFilterEnum.Ignore; ShowBehindParent = true;
         _box = new StyleBoxTexture { Texture = Plugin.Kit.Texture(ClassicDesign.Karus ? "ui_ka_transaction_person trade_us.png" : "ui_el_transaction_person trade_us.png"),
             RegionRect = ClassicDesign.Karus ? new Rect2(169, 57, 50, 50) : new Rect2(170, 58, 50, 50), DrawCenter = false };
         foreach (var side in new[] { Side.Top, Side.Left, Side.Right, Side.Bottom }) { _box.SetTextureMargin(side, 1); _box.SetContentMargin(side, 3); }
+        // Without a socket the frame is painted by the window; the icon keeps the Inventory 2 px inset.
+        var plain = new StyleBoxEmpty();
+        foreach (var side in new[] { Side.Top, Side.Left, Side.Right, Side.Bottom }) plain.SetContentMargin(side, ItemCountStyle.Inset);
+        _panel = socket ? _box : plain;
         Resized += QueueRedraw;
         owner.MouseEntered += () => { _hover = true; UpdateFrame(); QueueRedraw(); }; owner.MouseExited += () => { _hover = false; UpdateFrame(); QueueRedraw(); };
         UpdateFrame();
     }
     public void UpdateFrame()
     {
-        if (_owner.GetThemeStylebox("panel") != _box) _owner.AddThemeStyleboxOverride("panel", _box);
+        if (_owner.GetThemeStylebox("panel") != _panel) _owner.AddThemeStyleboxOverride("panel", _panel);
         Position = Vector2.Zero; Size = _owner.Size;
         if (_look != _owner.Look) { _look = _owner.Look; QueueRedraw(); }
     }

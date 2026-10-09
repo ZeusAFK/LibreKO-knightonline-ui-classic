@@ -69,7 +69,9 @@ public partial class ClassicMerchantAmountPanel : Control
         _message.Size=_stage==2?new Vector2(209,48):_stage==0?new Vector2(224,16):new Vector2(240,18);
         ClassicMerchantSkin.Button(_ok,_art.Find("btn_ok")!,this,new Rect2(18,_marketVisible?124:72,71,25),_stage==2?"Yes":"OK",_buying);
         ClassicMerchantSkin.Button(_cancel,_art.Find("btn_cancel")!,this,new Rect2(171,_marketVisible?124:72,71,25),_stage==2?"No":"Cancel",_buying);
-        if(_stage==0){_price.GrabFocus();_price.SelectAll();}else if(_stage==1){_count.GrabFocus();_count.SelectAll();}
+        // Select after the native prompt has written its initial amount; otherwise only its first digit stays selected.
+        var edit=_stage==0?_price:_stage==1?_count:null;
+        if(edit!=null){edit.GrabFocus();Callable.From(()=>{if(IsInstanceValid(edit) && edit.IsVisibleInTree())edit.SelectAll();}).CallDeferred();}
         QueueRedraw();
     }
     private void Error(string text){_message.Text=text;_message.AddThemeColorOverride("font_color",new Color("ff6a6a"));}
