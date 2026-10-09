@@ -174,6 +174,7 @@ public partial class Preview
             Require(okRect.Size == Spec.Message.Button && cancelRect.Size == Spec.Message.Button, $"{state}: buttons use the 97 x 29 art ({okRect.Size}, {cancelRect.Size})");
             Require(okRect == Spec.Message.Left(rect.Size.Y) && cancelRect == Spec.Message.Right(rect.Size.Y), $"{state}: buttons at the original two-button places ({okRect}, {cancelRect})");
             ButtonArt(ok, state + " confirm"); ButtonArt(cancel, state + " cancel");
+            Require(ok.HasFocus() && ok.GetThemeStylebox("focus") is StyleBoxEmpty, $"{state}: the confirm button keeps the native keyboard focus without a focus frame");
             await Shot(state, ("box", rect), ("ok", okRect), ("cancel", cancelRect), ("message", text));
             bool confirmed = false, cancelled = false;
             dialog.Confirmed += () => confirmed = true; dialog.Canceled += () => cancelled = true;

@@ -236,10 +236,13 @@ public static class ClassicWorldOverlays
         Text(label, 15, MessageText);
         label.HorizontalAlignment = HorizontalAlignment.Center; label.VerticalAlignment = VerticalAlignment.Center;
         MessageButton(dialog.GetOkButton());
+        // The dialog focuses its confirm button on popup, which keeps Enter and Tab working as before.
+        dialog.GetOkButton().FocusMode = Control.FocusModeEnum.All;
         if (dialog is ConfirmationDialog confirmation)
         {
             var cancel = confirmation.GetCancelButton();
             MessageButton(cancel, cancel: true);
+            cancel.FocusMode = Control.FocusModeEnum.All;
             // The original two buttons sit 19 pixels apart, centred. The dialog keeps a spacer between them (and
             // re-shows it with the buttons), so it becomes a fixed 1-pixel gap between two 9-pixel separations.
             if (cancel.GetParent() is HBoxContainer row)
