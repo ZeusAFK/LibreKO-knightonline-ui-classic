@@ -61,6 +61,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("council-rate-audit")){await CaptureCouncilRateAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("siege-audit")){await CaptureSiegeAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("king-nation-audit")){await CaptureKingNationAudit(nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("map-fortune-audit")){await CaptureMapFortuneAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("identity-audit")){await CaptureIdentityAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("classic-services-audit")){await CaptureClassicServices(game,nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("storage-audit")){await CaptureStorageAudit(game,nation);await FinishManagedAudit();return;}
