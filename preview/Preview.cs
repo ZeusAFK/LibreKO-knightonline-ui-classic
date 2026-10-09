@@ -45,6 +45,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("pet-audit")){await CapturePetAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("cape-audit")){await CaptureCapeAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("rebirth-audit")){await CaptureRebirthAudit(nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("events-a-audit")){await CaptureEventsAAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("gender-audit")){await CaptureGenderAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("beauty-audit")){await CaptureBeautyAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("nationtransfer-audit")){await CaptureNationTransferAudit(nation);await FinishManagedAudit();return;}
