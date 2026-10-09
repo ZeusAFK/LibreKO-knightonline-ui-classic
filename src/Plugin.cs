@@ -30,7 +30,7 @@ public sealed class Plugin : IPlugin
         ui.ReplaceWindow("skills", host => new SkillWindow(host));
         // Keep native modern windows functional and apply the classic frame theme.
         foreach(var id in ui.WindowIds)
-            if(id is not ("inventory" or "character_info" or "skills" or "vendor" or "party" or "seek_party" or "exchange" or "anvil" or "vipwarehouse_pin" or "chat_colors" or "merchantsearch" or "marketprice" or "shoppingmall" or "specialauction" or "equipview" or "genderchange" or "changehair" or "nationtransfer" or "rebirth" or "cape" or "pet" or "pethatch") && !ClassicCommunicationSkin.WindowIds.Contains(id) && !ClassicMailSkin.WindowIds.Contains(id) && !ClassicCouncilRate.WindowIds.Contains(id) && !ClassicIdentitySkin.WindowIds.Contains(id) && !ClassicServiceSkin.WindowIds.Contains(id) && !ClassicStorageSkin.WindowIds.Contains(id) && !ClassicMerchantSkin.WindowIds.Contains(id) && !CharacterDetailsSkin.WindowIds.Contains(id))
+            if(id is not ("inventory" or "character_info" or "skills" or "vendor" or "party" or "seek_party" or "exchange" or "anvil" or "vipwarehouse_pin" or "chat_colors" or "merchantsearch" or "marketprice" or "shoppingmall" or "specialauction" or "equipview" or "genderchange" or "changehair" or "nationtransfer" or "rebirth" or "cape" or "pet" or "pethatch") && !ClassicCommunicationSkin.WindowIds.Contains(id) && !ClassicMailSkin.WindowIds.Contains(id) && !ClassicCouncilRate.WindowIds.Contains(id) && !ClassicBoardSkin.WindowIds.Contains(id) && !ClassicIdentitySkin.WindowIds.Contains(id) && !ClassicServiceSkin.WindowIds.Contains(id) && !ClassicStorageSkin.WindowIds.Contains(id) && !ClassicMerchantSkin.WindowIds.Contains(id) && !CharacterDetailsSkin.WindowIds.Contains(id))
                 ui.ExtendWindow(id, ClassicSkin.ExtendWindow);
         ui.ExtendWindow("chat_colors", ClassicChatColoursSkin.Extend);
         ui.ExtendWindow("merchantsearch", ClassicMerchantSearchSkin.Extend);
@@ -49,6 +49,7 @@ public sealed class Plugin : IPlugin
         foreach(var id in ClassicCommunicationSkin.WindowIds)ui.ExtendWindow(id,ClassicCommunicationSkin.Extend);
         foreach(var id in ClassicMailSkin.WindowIds)ui.ExtendWindow(id,ClassicMailSkin.Extend);
         foreach(var id in ClassicCouncilRate.WindowIds)ui.ExtendWindow(id,ClassicCouncilRate.Extend);
+        foreach(var id in ClassicBoardSkin.WindowIds)ui.ExtendWindow(id,ClassicBoardSkin.Extend);
         foreach(var id in ClassicIdentitySkin.WindowIds)ui.ExtendWindow(id,ClassicIdentitySkin.Extend);
         foreach(var id in ClassicServiceSkin.WindowIds)ui.ExtendWindow(id,ClassicServiceSkin.Extend);
         ui.ExtendWindow("vipwarehouse_pin", ClassicStoragePin.Extend);
