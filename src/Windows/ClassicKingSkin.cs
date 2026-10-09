@@ -194,12 +194,6 @@ public partial class ClassicKingPanel : Control
             foreach (string state in new[] { "font_hover_color", "font_pressed_color", "font_hover_pressed_color" }) option.AddThemeColorOverride(state, Colors.White);
             option.AddThemeColorOverride("font_focus_color", Navy);
             option.AddThemeColorOverride("font_disabled_color", new Color("4a4a58"));
-            foreach (string state in new[] { "normal", "hover", "pressed", "disabled" })
-            {
-                // Tile the stone face so the wider row keeps the original grain instead of smearing it.
-                var box = (StyleBoxTexture)option.GetThemeStylebox(state);
-                box.AxisStretchHorizontal = StyleBoxTexture.AxisStretchMode.TileFit; box.SetTextureMargin(Side.Left, 4); box.SetTextureMargin(Side.Right, 4);
-            }
             _pendingButtons.Add(option);
         }
         CloseButton(ClassicKingLayout.ElectionClose);
@@ -347,6 +341,7 @@ public partial class ClassicKingPanel : Control
         {
             case "kingelection":
             {
+                for (int i = 0; i < NativeKing.ElectionRows; i++) FitOption(Find<Button>("king_option_" + i));
                 var upper = Find<Label>("king_speech_upper");
                 bool senators = Find<ScrollContainer>("king_senators").Visible, lower = Find<Label>("king_speech_lower").Visible;
                 Move(upper, senators ? ClassicKingLayout.ElectionSenatorsCaption : lower ? ClassicKingLayout.ElectionSpeechUpper : ClassicKingLayout.ElectionSpeechFull);
@@ -386,6 +381,21 @@ public partial class ClassicKingPanel : Control
             if (Window.Id == "nationintro") _count.Text = $"{length} / {_limit}";
             _count.AddThemeColorOverride("font_color", length > _limit ? Refused : Plain);
         }
+    }
+
+    /// <summary>Display captions for native option texts longer than the original button string.</summary>
+    private static readonly Dictionary<string, string> ShortCaptions = new()
+    {
+        ["List of users in favor of impeachment"] = "Impeachment supporters",
+    };
+
+    /// <summary>Keeps an option caption inside the original 154 px button string; the full text stays as a tooltip.</summary>
+    private static void FitOption(Button option)
+    {
+        if (!ShortCaptions.TryGetValue(option.Text, out var caption)) return;
+        if (Plugin.Kit.Bold.GetStringSize(option.Text, HorizontalAlignment.Left, -1, 12).X <= ClassicKingLayout.ElectionCaption) return;
+        option.TooltipText = option.Text;
+        option.Text = caption;
     }
 
     private static void Disable(Button button, bool disabled)

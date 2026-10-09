@@ -46,9 +46,10 @@ public static class ClassicKingLayout
     public static readonly Rect2 ElectionSpeechLower = new(140, 102, 266, 40);
     public static readonly Rect2 ElectionSenatorsCaption = new(140, 20, 266, 36);
     public static readonly Rect2 ElectionSenators = new(140, 58, 266, 82);
-    /// <summary>Option rows keep the original x, pitch and height; LibreKO's longer impeachment captions need
-    /// the row to run across the speech column instead of the original 165 px.</summary>
-    public static Rect2 ElectionOption(int index) => new(140, 149 + 31 * index, 252, 22);
+    /// <summary>Option rows keep the original button art rectangles (165 x 22 at a 31 px pitch).</summary>
+    public static Rect2 ElectionOption(int index) => new(140, 149 + 31 * index, 165, 22);
+    /// <summary>Caption width of an option row: the original button string (154 px).</summary>
+    public const float ElectionCaption = 154;
 
     // Nomination (co_king_memberrecommend_us).
     public static readonly Rect2 NominateDrag = new(0, 0, 440, 145);
@@ -66,7 +67,7 @@ public static class ClassicKingLayout
     public static readonly Rect2 BoardText = new(40, 46, 329, 172);
     public static readonly Rect2 BoardCount = new(40, 220, 329, 16);
     public static readonly Rect2 BoardLeft = new(82, 266, 74, 21);
-    public static readonly Rect2 BoardRight = new(231, 265, 74, 21);
+    public static readonly Rect2 BoardRight = new(231, 266, 74, 21);
 
     // Candidate list (co_king_electionlist_us).
     public const int VoteRows = 10;
@@ -99,7 +100,7 @@ public static class ClassicKingLayout
     public static readonly Rect2 TreasuryDrag = new(0, 0, 279, 140);
     public static readonly Rect2 TreasuryHeading = new(101, 78, 166, 17);
     public static readonly Rect2 TreasuryNotice = new(81, 100, 186, 40);
-    public static readonly Rect2 TreasuryCitizenNotice = new(24, 104, 236, 150);
+    public static readonly Rect2 TreasuryCitizenNotice = new(24, 118, 236, 136);
     public static Rect2 TreasuryOption(int row) => new(62, 144 + 24 * row, 159, 20);
     public const int TreasuryOptionRows = 6;
 }
