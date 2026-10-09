@@ -20,6 +20,8 @@ public static class ClassicStoragePin
         window.AddChild(panel); panel.AddChild(new ClassicStoragePinFrame { Size = panel.Size, DrawAmountField = false });
         var message = nodes.OfType<Label>().Single();
         ClassicVendorSkin.Move(message, panel, ClassicQuantityLayout.Message); ClassicMerchantSkin.Font(message);
+        // Same message type as the quantity prompt that shares this frame.
+        message.AddThemeFontSizeOverride("font_size", 13); message.AddThemeColorOverride("font_color", new Color("c0c0c0"));
         message.HorizontalAlignment = HorizontalAlignment.Center; message.AutowrapMode = TextServer.AutowrapMode.Off;
         message.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         var input = nodes.OfType<LineEdit>().Single();
@@ -34,7 +36,7 @@ public static class ClassicStoragePin
         {
             var button = nodes.OfType<Button>().Single(b => b.Name == name);
             ClassicVendorSkin.Move(button, panel, rect); ClassicTradeQuantity.StyleButton(button, art);
-            if (art == "ok") button.Text = "OK";
+            if (art == "ok") button.Text = ClassicDesign.Karus ? "O K" : "O  K";
         }
         if (window.GetParent() is VipVaultPinPrompt prompt)
         {

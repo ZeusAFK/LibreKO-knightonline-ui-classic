@@ -45,8 +45,9 @@ public partial class ClassicVendorPanel : Control
         var empty = nodes.OfType<Label>().Single(l => l.GetParent() is VBoxContainer v && v.GetParent() == _nativeWell);
         var walletLabels = CharacterDetailsSkin.Tree(nodes.OfType<MoneyPlaque>().Single()).OfType<Label>().ToArray(); _currency = walletLabels[0];
         AddChild(new ClassicVendorFrame { Size = Size });
-        var banner = Plugin.Kit.Layout("{nation}_transaction_us").Find("img_store")!;
-        _banner = new TextureRect { Position = ClassicVendorLayout.Banner.Position, Size = ClassicVendorLayout.Banner.Size,
+        var art = Plugin.Kit.Layout("{nation}_transaction_us");
+        var banner = art.Find("img_store")!;
+        _banner = new TextureRect { Position = banner.Position, Size = banner.SizeVec,
             Texture = new AtlasTexture { Atlas = Plugin.Kit.Texture(banner.Texture!), Region = new Rect2(banner.SrcX, banner.SrcY, banner.SrcW, banner.SrcH) },
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, MouseFilter = MouseFilterEnum.Ignore };
         AddChild(_banner);
@@ -57,8 +58,9 @@ public partial class ClassicVendorPanel : Control
         var drag = header.GetChildren().OfType<HBoxContainer>().Single();
         foreach (var child in drag.GetChildren().OfType<Control>()) child.Visible = false;
         ClassicVendorSkin.Move(drag, this, ClassicVendorLayout.DragHandle);
-        ClassicVendorSkin.Move(title, this, ClassicVendorLayout.Title); ClassicVendorSkin.Font(title, 13);
-        title.AddThemeColorOverride("font_color", ClassicDesign.Heading);
+        ClassicVendorSkin.Move(title, this, ClassicVendorLayout.Title); ClassicVendorSkin.Font(title); ClassicMerchantSkin.Font(title);
+        title.AddThemeColorOverride("font_color", new Color("efd9b4"));
+        title.HorizontalAlignment = HorizontalAlignment.Center; title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         title.MouseFilter = MouseFilterEnum.Ignore;
         _close = close; ClassicVendorSkin.Move(close, this, ClassicVendorLayout.Close);
         ClassicVendorSkin.Button(close, Plugin.Kit.Layout("{nation}_transaction_us").Find("btn_close")); close.Text = "";
@@ -67,7 +69,7 @@ public partial class ClassicVendorPanel : Control
         {
             ClassicVendorSkin.Move(cell, this, ClassicVendorLayout.CatalogueCell(i));
             cell.MouseFilter = MouseFilterEnum.Ignore;
-            var frame = new ClassicVendorSlot(cell); cell.AddChild(frame); _frames.Add(frame);
+            var frame = new ClassicVendorSlot(cell, false); cell.AddChild(frame); _frames.Add(frame);
             var hit = new ClassicTradeCatalogueSlot(cell, this) { Name = $"trade_catalogue_{i}" }; cell.AddChild(hit);
             var countOverlay = new Control { Name = $"trade_count_overlay_{i}", MouseFilter = MouseFilterEnum.Ignore,
                 Position = ClassicVendorLayout.CatalogueCell(i).Position, Size = ClassicVendorLayout.CatalogueCell(i).Size };
@@ -76,31 +78,37 @@ public partial class ClassicVendorPanel : Control
             hit.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); i++;
         }
         bool visible = empty.Visible; ClassicVendorSkin.Move(empty, this, ClassicVendorLayout.Empty); empty.Visible = visible;
-        ClassicVendorSkin.Font(empty); empty.HorizontalAlignment = HorizontalAlignment.Center;
+        ClassicVendorSkin.Font(empty); ClassicMerchantSkin.Font(empty); empty.HorizontalAlignment = HorizontalAlignment.Center;
+        // A black plate keeps the empty message off the socket rails it is centred over.
+        empty.AddThemeStyleboxOverride("normal", new StyleBoxFlat { BgColor = Colors.Black });
+        empty.AddThemeColorOverride("font_color", new Color("c0c0c0"));
+        var arrowArt = new[] { art.Find("btn_page_up")!, art.Find("btn_page_down")! };
         var pageLabel = _pager.GetChildren().OfType<Label>().Single(); _pageCaption = pageLabel;
-        ClassicVendorSkin.Move(pageLabel, this, ClassicVendorLayout.PageLabel); ClassicVendorSkin.Font(pageLabel, 11);
+        ClassicVendorSkin.Move(pageLabel, this, ClassicVendorLayout.PageLabel(new Rect2(arrowArt[0].Position, arrowArt[0].SizeVec), new Rect2(arrowArt[1].Position, arrowArt[1].SizeVec)));
+        ClassicVendorSkin.Font(pageLabel); ClassicMerchantSkin.Font(pageLabel); pageLabel.AddThemeColorOverride("font_color", new Color("c0c0c0"));
         pageLabel.HorizontalAlignment = HorizontalAlignment.Center;
         var arrows = _pager.GetChildren().OfType<Button>().ToArray();
         _arrows = arrows;
         for (i = 0; i < 2; i++)
         {
-            ClassicVendorSkin.Move(arrows[i], this, ClassicVendorLayout.PageArrow(i));
-            ClassicVendorSkin.Button(arrows[i], Plugin.Kit.Layout("{nation}_transaction_us").Find(i == 0 ? "btn_page_up" : "btn_page_down")); arrows[i].Text = "";
+            ClassicVendorSkin.Move(arrows[i], this, new Rect2(arrowArt[i].Position, arrowArt[i].SizeVec));
+            ClassicVendorSkin.Button(arrows[i], arrowArt[i]); arrows[i].Text = "";
         }
         var coinArt = Plugin.Kit.Layout("{nation}_transaction_us").Find("btn_gold")!.Images.First(n => n.Tag == 0);
         _coin = new TextureRect { Name = "trade_coin", Texture = new AtlasTexture { Atlas = Plugin.Kit.Texture(coinArt.Texture!),
             Region = new Rect2(coinArt.SrcX, coinArt.SrcY, coinArt.SrcW, coinArt.SrcH) }, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             MouseFilter = MouseFilterEnum.Ignore, Position = ClassicVendorLayout.Coin.Position, Size = ClassicVendorLayout.Coin.Size };
         AddChild(_coin);
-        _walletCaption = ClassicNpcLayout.Text("NP", 11, false, ClassicDesign.Heading); AddChild(_walletCaption);
-        ClassicNpcLayout.Place(_walletCaption, ClassicVendorLayout.WalletCaption);
-        ClassicVendorSkin.Move(walletLabels[1], this, ClassicVendorLayout.WalletValue); ClassicVendorSkin.Font(walletLabels[1], 12);
-        walletLabels[1].HorizontalAlignment = HorizontalAlignment.Right;
-        _capacity = ClassicNpcLayout.Text("", 11, false, ClassicDesign.Heading); AddChild(_capacity);
-        ClassicNpcLayout.Place(_capacity, ClassicVendorLayout.Capacity);
-        AddChild(new ClassicSurface(true) { Position = ClassicVendorLayout.Divider.Position, Size = ClassicVendorLayout.Divider.Size });
-        var bagHeading = ClassicNpcLayout.Text("Inventory", 12, true, ClassicDesign.Heading); AddChild(bagHeading);
-        ClassicNpcLayout.Place(bagHeading, ClassicVendorLayout.InventoryHeading);
+        // Coin row typography follows Inventory and Warehouse.
+        Label Caption(Label label, Rect2 rect)
+        {
+            if (label.GetParent() == null) AddChild(label);
+            ClassicVendorSkin.Move(label, this, rect); ClassicVendorSkin.Font(label); ClassicMerchantSkin.Font(label);
+            label.AddThemeColorOverride("font_color", new Color("c0c0c0")); label.AutowrapMode = TextServer.AutowrapMode.Off; return label;
+        }
+        _walletCaption = Caption(new Label { Text = "NP", MouseFilter = MouseFilterEnum.Ignore }, ClassicVendorLayout.WalletCaption);
+        Caption(walletLabels[1], ClassicVendorLayout.WalletValue).HorizontalAlignment = HorizontalAlignment.Right;
+        _capacity = Caption(new Label { MouseFilter = MouseFilterEnum.Ignore }, ClassicVendorLayout.Capacity);
         for (i = 0; i < Plugin.Kit.Game.Inventory.GridCount; i++)
         {
             int slot = Plugin.Kit.Game.Inventory.GridStart + i;
@@ -112,8 +120,9 @@ public partial class ClassicVendorPanel : Control
                 OnHover = (s, over) => { if (over) Plugin.Kit.Game.Inventory.ShowTooltip(s); else Plugin.Kit.Game.Inventory.HideTooltip(); } };
             AddChild(cell); _bag.Add(cell);
         }
-        ClassicVendorSkin.Move(_status, this, ClassicVendorLayout.Status); ClassicVendorSkin.Font(_status, 10);
-        _status.HorizontalAlignment = HorizontalAlignment.Center; _footer.Hint = "Right-click or drag to buy / sell";
+        ClassicVendorSkin.Move(_status, this, ClassicVendorLayout.Status); ClassicVendorSkin.Font(_status); ClassicMerchantSkin.Font(_status);
+        // Only real refusals and results occupy the band below the catalogue; no explanatory hint.
+        _status.HorizontalAlignment = HorizontalAlignment.Center; _footer.Hint = "";
         _window.SetMeta("vendor_confirmation", Callable.From<Godot.Collections.Dictionary, Callable, Callable>((details, accept, cancel) =>
         {
             CancelHeldItem(); Plugin.Kit.Game.Inventory.HideTooltip();
@@ -226,7 +235,7 @@ public partial class ClassicVendorPanel : Control
             changed |= _shownIds[i] != id; _shownIds[i] = id;
         }
         if (changed) CancelHeldItem();
-        _pageCaption.Text = $"{_pager.Page + 1}/{_pager.Pages}";
+        _pageCaption.Text = $"{_pager.Page + 1} / {_pager.Pages}";
         _status.TooltipText = _status.Text;
         _coin.Visible = _currency.Text.Length == 0;
         _walletCaption.Visible = !_coin.Visible;
@@ -239,7 +248,7 @@ public partial class ClassicVendorPanel : Control
             _bagDirty = false; _refreshClock = 0;
             foreach (var cell in _bag) cell.Refresh();
             var who = Plugin.Kit.Game.Character;
-            _capacity.Text = $"Weight {who.Weight / 10f:0.0} / {who.MaxWeight / 10f:0.0}";
+            _capacity.Text = $"Weight : {who.Weight / 10f:0.0}/{who.MaxWeight / 10f:0.0}";
         }
     }
     public override void _Input(InputEvent ev)
@@ -285,13 +294,9 @@ public partial class ClassicTradeCatalogueSlot : Control
 public partial class ClassicTradeBagSlot : BagSlot
 {
     private readonly ClassicVendorPanel _owner;
-    private readonly StyleBoxTexture _socket;
     public ClassicTradeBagSlot(int slot, ClassicVendorPanel owner) : base(slot)
     {
         _owner = owner;
-        _socket = new StyleBoxTexture { Texture = Plugin.Kit.Texture(ClassicDesign.Karus ? "ui_ka_transaction_person trade_us.png" : "ui_el_transaction_person trade_us.png"),
-            RegionRect = ClassicDesign.Karus ? new Rect2(169,57,50,50) : new Rect2(170,58,50,50), DrawCenter = false };
-        foreach(var side in new[]{Side.Left,Side.Top,Side.Right,Side.Bottom}) _socket.SetTextureMargin(side,1);
         foreach(var label in CharacterDetailsSkin.Tree(this).OfType<Label>()) label.AddThemeFontOverride("font",ClassicNpcLayout.BodyFont);
     }
     public override void _GuiInput(InputEvent ev)
@@ -306,10 +311,6 @@ public partial class ClassicTradeBagSlot : BagSlot
     public override bool _CanDropData(Vector2 position, Variant data) => !_owner.ModalOpen && !_owner.TradeBlocked &&
         (data.VariantType == Variant.Type.Dictionary && data.AsGodotDictionary().ContainsKey("companionFrom") || _owner.ValidBagItem(data)) && base._CanDropData(position, data);
     public override void _DropData(Vector2 position, Variant data) { if (_CanDropData(position, data)) base._DropData(position, data); }
-    public override void _Draw()
-    {
-        DrawStyleBox(_socket, new Rect2(Vector2.Zero, Size));
-    }
 }
 
 internal static class ClassicTradeDrag

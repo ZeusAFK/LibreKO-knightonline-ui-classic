@@ -66,7 +66,9 @@ internal static class InventoryLayout
         root.Children.Add(new LayoutNode {Type="inventory_backing",Id="drawer_backing",X=9,Y=6,W=156,H=root.H-11});
         root.Children.Add(new LayoutNode {Type="inventory_frame_component",Id="drawer_frame",X=3,W=166,H=root.H});
         root.Children.Add(new LayoutNode {Type="inventory_backing",Id="costume_grid_backing",X=12,Y=8,W=149,H=158});
-        root.Children.Add(new LayoutNode {Type="inventory_backing",Id="bag_equipment_backing",X=12,Y=213,W=149,H=52});
+        // The bag row shares the fifth equipment row; selectors sit centred between it and the grid.
+        int bagY=(Plugin.Kit.Nation==1?264:262)-DrawerTop;
+        root.Children.Add(new LayoutNode {Type="inventory_backing",Id="bag_equipment_backing",X=12,Y=bagY-3,W=149,H=52});
         root.Children.Add(new LayoutNode {Type="inventory_backing",Id="bag_grid_backing",X=12,Y=346-DrawerTop,W=149,H=199});
         foreach(var slot in CostumeSlots)
         {
@@ -75,8 +77,8 @@ internal static class InventoryLayout
         }
         for(int bag=0;bag<InventoryConstants.BagSlotMax;bag++)
         {
-            Slot(root,bag.ToString(),BagItemArea,16+bag*49,216);
-            root.Children.Add(new LayoutNode {Type="classic_button",Id="bag_tab_"+bag,Text=(bag+1).ToString(),X=12+bag*49,Y=276,W=51,H=24});
+            Slot(root,bag.ToString(),BagItemArea,16+bag*49,bagY);
+            root.Children.Add(new LayoutNode {Type="classic_button",Id="bag_tab_"+bag,Text=(bag+1).ToString(),X=14+bag*49,Y=(bagY+49+346-DrawerTop-24)/2,W=47,H=24});
         }
         for(int i=0;i<InventoryConstants.MagicBagMax;i++) Slot(root,i.ToString(),BagContentArea,16+i%3*49,349-DrawerTop+i/3*49);
         return root;

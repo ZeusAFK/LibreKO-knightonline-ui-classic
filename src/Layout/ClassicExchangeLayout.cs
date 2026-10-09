@@ -5,7 +5,7 @@ namespace KnightOnlineUiClassic.Layout;
 public static class ClassicExchangeLayout
 {
     public static readonly Vector2 Size = new(365,627);
-    public static readonly Rect2 Title = new(16,10,292,26), Drag = new(2,0,328,48);
+    public static readonly Rect2 Title = new(14,16,338,24), Drag = new(2,0,328,48);
     public static readonly Rect2 Mine = new(21,99,149,198), Theirs = new(206,99,149,198);
     public static readonly Rect2 MyName = new(22,52,146,38), TheirName = new(206,53,146,38);
     public static readonly Rect2 MyGold = new(56,307,108,20), TheirGold = new(240,307,108,20);

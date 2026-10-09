@@ -102,7 +102,8 @@ public partial class ClassicExchangePanel : Control
 
         ClassicPartySkin.Drag(this,grip,ClassicExchangeLayout.Drag);
 
-        Text("Trade",ClassicExchangeLayout.Title,13).HorizontalAlignment=HorizontalAlignment.Center;
+        var title=Text("Trade",ClassicExchangeLayout.Title,13); title.HorizontalAlignment=HorizontalAlignment.Center;
+        title.AddThemeColorOverride("font_color",new Color("efd9b4"));
 
         _myName=Text("You",ClassicExchangeLayout.MyName,13); _theirName=Text("Player",ClassicExchangeLayout.TheirName,13);
 
@@ -128,6 +129,8 @@ public partial class ClassicExchangePanel : Control
 
         foreach(var button in new[]{_confirm,_otherConfirm,_gold}) {
             button.AddThemeFontOverride("font",Plugin.Kit.Bold);button.AddThemeFontSizeOverride("font_size",12);
+            // A confirmed side stays legible on the Human blue artwork; Karus keeps its dark ink.
+            if(!ClassicDesign.Karus) button.AddThemeColorOverride("font_disabled_color",new Color("d8c58c"));
         }
         var status=nodes.OfType<Label>().Last();
 
@@ -290,7 +293,8 @@ public partial class ClassicExchangePanel : Control
 
     {
 
-        DrawRect(new Rect2(1,39,362,584),Colors.Black);
+        // Fill only behind the opaque artwork; the lower corners of the Inventory part are transparent.
+        DrawRect(new Rect2(1,39,362,(ClassicDesign.Karus?559:555)+49-39),Colors.Black);
 
         foreach(var image in _art.Images.Where(n=>!n.Id.Contains("gold")))
 

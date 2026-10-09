@@ -21,8 +21,18 @@ public partial class ClassicInventoryDestroy : CanvasLayer
         foreach(var child in original.Children)
         {
             var copy=CharacterLayout.CopyImage(child,-frame.X,-frame.Y);
-            if(copy.Type=="string") {copy.Text=child.Text;copy.Color=child.Color;copy.Font=child.Font;copy.Size=child.Size;copy.Bold=child.Bold;}
+            if(copy.Type=="string") {copy.Text=child.Text.Trim();copy.Color=child.Color;copy.Font=child.Font;copy.Size=child.Size;copy.Bold=child.Bold;
+                // The question is one line in both nations; Karus' narrower rectangle must not wrap it.
+                copy.Style=child.Style|TextStyle.SingleLine|TextStyle.AlignVCenter;}
             layout.Children.Add(copy);
+        }
+        // Karus Cancel artwork sits 2 px above OK; share the OK baseline.
+        var ok=layout.Children.FirstOrDefault(n=>n.Id=="btn_Destroy_ok");
+        var cancel=layout.Children.FirstOrDefault(n=>n.Id=="btn_Destroy_cancel");
+        if(ok!=null && cancel!=null && cancel.Y!=ok.Y)
+        {
+            int dy=ok.Y-cancel.Y;
+            foreach(var node in cancel.All()) node.Y+=dy;
         }
         _view=new LayoutView(Plugin.Kit,layout);AddChild(_view);
         _view.Position=inventory.GlobalPosition+new Vector2(frame.X-source.X,frame.Y-source.Y);
