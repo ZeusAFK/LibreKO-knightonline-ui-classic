@@ -41,13 +41,12 @@ public partial class ClassicServiceNotice : Control
             if (accept) button.Pressed += request.Confirm; else button.Pressed += request.Cancel;
         }
         request.MessageChanged += UpdateMessage;
-        if (request.Title is "Akara's Altar" or "Nation Transfer" or "Rebirth" or "Clan Cape" or "Familiar Hatching" or "Familiar Transformation"
-            or "Item Seal" or "Redistribute stats" or "Redistribute mastery" or "Transformation")
-            foreach (var control in CharacterDetailsSkin.Tree(_panel).OfType<Control>().Where(c => c is Label or Button))
-            {
-                control.AddThemeFontOverride("font", Plugin.Kit.Bold);
-                control.AddThemeFontSizeOverride("font_size", 13);
-            }
+        // Every service confirmation uses the Classic Arial Bold; the NPC body font is not part of this family.
+        foreach (var control in CharacterDetailsSkin.Tree(_panel).OfType<Control>().Where(c => c is Label or Button))
+        {
+            control.AddThemeFontOverride("font", Plugin.Kit.Bold);
+            control.AddThemeFontSizeOverride("font_size", 13);
+        }
         if (_transfer || request.Title is "Rebirth" or "Clan Cape" or "Familiar Hatching" or "Familiar Transformation") _panel.GuiInput += ev =>
         {
             if (ev is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouse || mouse.Position.Y > 38) return;

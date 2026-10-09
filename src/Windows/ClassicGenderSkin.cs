@@ -39,7 +39,7 @@ public partial class ClassicGenderPanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black });
         ClassicPartySkin.Drag(this, bar, new Rect2(14, 8, Size.X - 62, 32));
-        Place(title, new Rect2(22, 14, Size.X - 76, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.Heading);
+        Place(title, new Rect2(22, 14, Size.X - 76, 24)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(Size.X - 38, 14, 24, 24), "");
         Place(Find<LookPreview>("look_preview"), _transfer ? ClassicNationTransferLayout.Preview : ClassicGenderLayout.Preview);
         if (_transfer)
@@ -112,7 +112,7 @@ public partial class ClassicGenderPanel : Control
         {
             var button = Find<Button>(entry.Item1);
             ClassicMerchantSkin.Button(button, Plugin.Kit.Layout("co_change_bill_us").Find(entry.Item3)!, this, entry.Item2);
-            Font(button); button.SetMeta("look_expected_rect", entry.Item2);
+            Font(button); ClassicServiceAction.Disabled(button); button.SetMeta("look_expected_rect", entry.Item2);
         }
         foreach (var entry in new[] { ("look_turn_left", _transfer ? ClassicNationTransferLayout.TurnLeft : ClassicGenderLayout.TurnLeft, true), ("look_turn_right", _transfer ? ClassicNationTransferLayout.TurnRight : ClassicGenderLayout.TurnRight, false) })
         {
@@ -150,6 +150,9 @@ public partial class ClassicGenderPanel : Control
         ClassicPartySkin.KarusButtonContrast(button);
         foreach (var state in new[] { "pressed", "hover_pressed" })
             if (button.GetThemeStylebox(state) is StyleBoxTexture texture) texture.ModulateColor = new Color(1, .88f, .62f);
+        // The warm tint alone turns the blue Human art olive; a bright caption marks it as the selection.
+        if (!ClassicDesign.Karus)
+            foreach (var state in new[] { "font_pressed_color", "font_hover_pressed_color" }) button.AddThemeColorOverride(state, new Color("fff5c5"));
     }
     private static void StyleCandidate(Node node)
     {

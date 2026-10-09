@@ -9,7 +9,7 @@ public static class ClassicPetLayout
     public static readonly Rect2 Name = new(132, 94, 137, 23);
     public static readonly Rect2 Level = new(134, 130, 120, 20);
     public static readonly Rect2 Status = new(17, 467, 252, 46);
-    public static Rect2 Bar(int row) => new(113, 165 + row * 15, 156, 14);
+    public static Rect2 Bar(int row) => new(113, 165 + row * 15, 152, 14);
     public static Rect2 Tab(int page) => new(18 + page * 83, 234, 80, 24);
     public static Rect2 Mode(int mode) => new(18 + mode * 83, 266, 80, 24);
     public static Rect2 Detail(int index) => new(22 + index % 2 * 124, 311 + index / 2 * 24, 120, 22);

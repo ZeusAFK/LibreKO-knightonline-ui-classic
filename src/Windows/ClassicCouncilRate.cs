@@ -65,10 +65,10 @@ public partial class ClassicCouncilRatePanel : Control
         var source = _art.Find(field)!; var rect = new Rect2(source.Position, source.SizeVec);
         ClassicMerchantSkin.Button(button, source, this, rect, text);
         button.AddThemeFontOverride("font", Plugin.Kit.Bold); button.AddThemeFontSizeOverride("font_size", 13);
-        button.AddThemeColorOverride("font_shadow_color", Colors.Black);
-        button.AddThemeConstantOverride("shadow_offset_x", 1); button.AddThemeConstantOverride("shadow_offset_y", 1);
         foreach (string state in new[] { "normal", "hover", "pressed", "disabled", "focus" }) button.GetThemeStylebox(state).SetContentMarginAll(0);
-        foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" }) button.AddThemeColorOverride(state, new Color("ffffc6"));
+        foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" }) button.AddThemeColorOverride(state, Colors.Black);
+        // The original captions are black on the light stone; pending dims the whole button.
+        button.AddThemeColorOverride("font_disabled_color", Colors.Black);
         button.SetMeta("council_expected_rect", rect);
     }
     public override void _Process(double delta)

@@ -37,7 +37,7 @@ public partial class ClassicRebirthPanel : Control
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black });
         ClassicPartySkin.Drag(this, header, new Rect2(14, 8, Size.X - 62, 32));
         Place(title, new Rect2(22, 14, Size.X - 76, 24));
-        title.AddThemeColorOverride("font_color", ClassicDesign.Heading);
+        title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, new Rect2(Size.X - 38, 14, 24, 24), "");
         Place(Native<Label>("rebirth_level"), ClassicRebirthLayout.Level);
         Place(Native<Label>("rebirth_points"), ClassicRebirthLayout.Points);
@@ -93,7 +93,7 @@ public partial class ClassicRebirthPanel : Control
         Place(button, rect);
         foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
             button.AddThemeColorOverride(state, new Color("efd9b4"));
-        button.AddThemeColorOverride("font_disabled_color", ClassicDesign.Muted);
+        ClassicServiceAction.Disabled(button);
     }
     private void Arrow(Button button, Rect2 rect, bool previous)
     {

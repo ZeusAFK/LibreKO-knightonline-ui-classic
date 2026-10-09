@@ -131,7 +131,10 @@ public partial class Preview
             var first = Picks()[0]; await Click(Find<Button>("look_face_next")); await Capture("first-edited"); var editedFirst = Picks()[0];
             await Click(Find<Button>("transfer_character_2")); await Capture("character-selected");
             Require(editor.Hair == Picks()[2].Hair && Picks()[0] == editedFirst, "Switching preserves separate character drafts");
-            await Click(Find<Button>("look_colour")); Require(colour.GetPopup().Visible, "Native arbitrary RGB colour picker opens"); await Capture("colour-popup", true);
+            await Click(Find<Button>("look_colour"));
+            // The picker popup is built on its first opening and can appear a few frames after the click.
+            for (int wait = 0; wait < 20 && !colour.GetPopup().Visible; wait++) await Frames(2);
+            Require(colour.GetPopup().Visible, "Native arbitrary RGB colour picker opens"); await Capture("colour-popup", true);
             IEnumerable<Node> PickerTree(Node n) { yield return n; foreach (var child in n.GetChildren(true)) foreach (var item in PickerTree(child)) yield return item; }
             var hex = PickerTree(colour.GetPicker()).OfType<LineEdit>().Single(l => l.IsVisibleInTree() && l.Editable);
             hex.GrabFocus(); colour.GetPopup().PushInput(new InputEventKey { Keycode = Key.A, CtrlPressed = true, Pressed = true });
