@@ -28,6 +28,9 @@ public partial class ClassicIdentityPanel : Control
     private readonly LayoutNode _art;
     private readonly Label _title;
     private ScrollContainer? _forms;
+    private ClassicIdentityScrollRail? _formsRail;
+    // The original transformation lists use dense 19-pixel one-line rows.
+    public const float DisguiseRow = 19;
     private Label? _note;
     public ClassicIdentityPanel(HudWindow window, Control body)
     {
@@ -76,7 +79,9 @@ public partial class ClassicIdentityPanel : Control
         button.AddThemeConstantOverride("shadow_offset_x", 1); button.AddThemeConstantOverride("shadow_offset_y", 1);
         foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
             button.AddThemeColorOverride(state, new Color(Window.Id == "namechange" ? "80ffff" : Window.Id == "disguise" ? "ffddfe" : "f9e9b0"));
-        button.AddThemeColorOverride("font_disabled_color", new Color("8b8175"));
+        // The light disguise stone needs dark ink once dimmed; the message-frame buttons keep the muted caption.
+        ClassicServiceAction.Disabled(button, Window.Id == "disguise" ? new Color("2e2924") : null);
+        if (Window.Id == "disguise") button.AddThemeColorOverride("font_shadow_color", Colors.Transparent);
         button.SetMeta("identity_expected_rect", rect);
     }
     private void Input(LineEdit input, string field)
@@ -125,8 +130,8 @@ public partial class ClassicIdentityPanel : Control
         var formRows = Native<VBoxContainer>("disguise_forms");
         var groups = (ScrollContainer)groupRows.GetParent();
         _forms = (ScrollContainer)formRows.GetParent();
-        Place(groups, ClassicIdentityLayout.Field(Window.Id, "list_group")); Scroll(groups);
-        Place(_forms, ClassicIdentityLayout.Field(Window.Id, "list_monster")); Scroll(_forms);
+        Place(groups, Rows("list_group")); Rail(groups, "list_group");
+        Place(_forms, Rows("list_monster")); _formsRail = Rail(_forms, "list_monster");
         foreach (var rows in new[] { groupRows, formRows })
         {
             rows.CustomMinimumSize = new Vector2(1, 0); rows.AddThemeConstantOverride("separation", 0);
@@ -138,6 +143,24 @@ public partial class ClassicIdentityPanel : Control
         _note.CustomMaximumSize = new Vector2(141, 40);
         Action(Native<Button>("disguise_accept"), "btn_ok", "OK");
         Action(Native<Button>("disguise_cancel"), "btn_close", "Close");
+    }
+    // Whole rows only: the visible list height is trimmed to a multiple of the row, beside the original scroll art.
+    private Rect2 Rows(string field, float reserved = 0)
+    {
+        var list = ClassicIdentityLayout.Field(Window.Id, field);
+        var bar = _art.Find(field)!.Children.First(n => n.Type == "scrollbar");
+        float height = Mathf.Floor((list.Size.Y - reserved) / DisguiseRow) * DisguiseRow;
+        return new Rect2(list.Position, new Vector2(bar.X - _art.X - list.Position.X, height));
+    }
+    private ClassicIdentityScrollRail Rail(ScrollContainer scroll, string field)
+    {
+        scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        scroll.VerticalScrollMode = ScrollContainer.ScrollMode.ShowNever;
+        var source = _art.Find(field)!.Children.First(n => n.Type == "scrollbar");
+        var rail = new ClassicIdentityScrollRail(scroll, source, DisguiseRow) { Name = field + "_rail" };
+        AddChild(rail); rail.Position = source.Position - _art.Position; rail.Size = source.SizeVec;
+        rail.SetMeta("identity_expected_rect", new Rect2(rail.Position, rail.Size));
+        return rail;
     }
     private static void Scroll(ScrollContainer scroll)
     {
@@ -182,9 +205,14 @@ public partial class ClassicIdentityPanel : Control
         if (_forms == null || _note == null) return;
         bool note = _note.Text.Length > 0; _note.Visible = note;
         _note.TooltipText = _note.Text;
-        var bounds = ClassicIdentityLayout.Field(Window.Id, "list_monster");
-        if (note) bounds.Size = new Vector2(bounds.Size.X, bounds.Size.Y - 44);
+        var bounds = Rows("list_monster", note ? 44 : 0);
         _forms.Size = bounds.Size; _forms.SetMeta("identity_expected_rect", bounds);
+        if (_formsRail != null)
+        {
+            var source = _art.Find("list_monster")!.Children.First(n => n.Type == "scrollbar");
+            _formsRail.Size = new Vector2(source.W, source.H - (note ? 44 : 0));
+            _formsRail.SetMeta("identity_expected_rect", new Rect2(_formsRail.Position, _formsRail.Size));
+        }
         var accept = Native<Button>("disguise_accept");
         accept.Disabled = !Native<VBoxContainer>("disguise_forms").GetChildren().OfType<Button>().Any(b => !b.IsQueuedForDeletion());
     }
@@ -212,5 +240,53 @@ public partial class ClassicIdentityPanel : Control
         foreach (var field in _art.All().Where(n => n.Type == "edit"))
             foreach (var piece in field.Children.Where(n => n.IsImage))
                 DrawTextureRectRegion(Plugin.Kit.Texture(piece.Texture!), new Rect2(piece.Position - _art.Position, piece.SizeVec), new Rect2(piece.SrcX, piece.SrcY, piece.SrcW, piece.SrcH));
+    }
+}
+
+/// <summary>Original co_disguisering arrows and track bound to a native list; it scrolls by whole rows.</summary>
+public partial class ClassicIdentityScrollRail : Control
+{
+    private readonly ScrollContainer _scroll;
+    private readonly TextureButton _up, _down;
+    private readonly ClassicScrollTrack _track;
+    private readonly Vector2 _upSize, _downSize;
+    private readonly float _row;
+    public VScrollBar Bar => _scroll.GetVScrollBar();
+    public ClassicIdentityScrollRail(ScrollContainer scroll, LayoutNode source, float row)
+    {
+        _scroll = scroll; _row = row; MouseFilter = MouseFilterEnum.Stop;
+        var arrows = source.Children.Where(n => n.IsButton).OrderBy(n => n.Y).ToArray();
+        _up = Arrow(arrows[0]); _down = Arrow(arrows[1]);
+        _upSize = arrows[0].SizeVec; _downSize = arrows[1].SizeVec;
+        _up.Pressed += () => Bar.Value -= _row; _down.Pressed += () => Bar.Value += _row;
+        _track = new ClassicScrollTrack(Bar, source.Children.First(n => n.Type == "trackbar"), 16, false, row);
+        AddChild(_up); AddChild(_down); AddChild(_track);
+        Resized += Arrange;
+    }
+    private static TextureButton Arrow(LayoutNode source) => new()
+    {
+        TextureNormal = ClassicChatControls.Atlas(source.Images.First(n => n.Tag == 0)),
+        TextureDisabled = ClassicChatControls.Atlas(source.Images.First(n => n.Tag == 0)),
+        TexturePressed = ClassicChatControls.Atlas(source.Images.First(n => n.Tag == 1)),
+        TextureHover = ClassicChatControls.Atlas(source.Images.First(n => n.Tag == 2)),
+        FocusMode = FocusModeEnum.None, IgnoreTextureSize = true, StretchMode = TextureButton.StretchModeEnum.Scale,
+    };
+    private void Arrange()
+    {
+        _up.Position = Vector2.Zero; _up.Size = _upSize;
+        _down.Position = new Vector2(0, Size.Y - _downSize.Y); _down.Size = _downSize;
+        _track.Position = new Vector2(0, _upSize.Y); _track.Size = new Vector2(Size.X, Size.Y - _upSize.Y - _downSize.Y);
+    }
+    public override void _Ready() => Arrange();
+    public override void _Process(double delta)
+    {
+        if (_track.Size.Y != Size.Y - _upSize.Y - _downSize.Y) Arrange();
+        double snapped = Math.Round(Bar.Value / _row) * _row;
+        if (!Input.IsMouseButtonPressed(MouseButton.Left) && Math.Abs(Bar.Value - snapped) > .01) Bar.Value = snapped;
+        _up.Disabled = Bar.Value <= Bar.MinValue;
+        _down.Disabled = Bar.Value >= Math.Max(Bar.MinValue, Bar.MaxValue - Bar.Page);
+        _up.SelfModulate = _up.Disabled ? new Color(1, 1, 1, .7f) : Colors.White;
+        _down.SelfModulate = _down.Disabled ? new Color(1, 1, 1, .7f) : Colors.White;
+        _track.QueueRedraw();
     }
 }

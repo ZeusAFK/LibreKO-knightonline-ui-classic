@@ -33,7 +33,7 @@ public partial class ClassicPetHatchPanel : Control
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black });
         ClassicPartySkin.Drag(this, header, new Rect2(14, 8, Size.X - 62, 32));
-        Place(title, ClassicPetHatchLayout.Title); title.AddThemeColorOverride("font_color", ClassicDesign.Heading);
+        Place(title, ClassicPetHatchLayout.Title); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         Action(_close, new Rect2(Size.X - 38, 14, 24, 24), Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, "");
         _tabs = Find<ServiceTabs>("pet_hatch_tabs");
         var buttons = _tabs.GetChildren().OfType<Button>().ToArray();
@@ -75,7 +75,7 @@ public partial class ClassicPetHatchPanel : Control
         if (control is Label label) { label.VerticalAlignment = VerticalAlignment.Center; label.ClipContents = true; label.AddThemeConstantOverride("line_spacing", 0); }
     }
     private void Action(Button button, Rect2 rect, LayoutNode art, string? text = null)
-    { ClassicMerchantSkin.Button(button, art, this, rect, text ?? button.Text); Place(button, rect); }
+    { ClassicMerchantSkin.Button(button, art, this, rect, text ?? button.Text); Place(button, rect); if (text != "") ClassicServiceAction.Disabled(button); }
     private static StyleBoxTexture CellFrame()
     {
         bool karus = Plugin.Kit.Nation == 1;
