@@ -278,6 +278,9 @@ public partial class ClassicScrollRail : Control
         Refresh();
     }
 
+    // Owners size the rail before it enters the tree, when Resized is not emitted.
+    public override void _Ready() { Arrange(); Refresh(); }
+
     private static TextureButton Arrow(LayoutNode source) => new()
     {
         TextureNormal = ClassicChatControls.Atlas(source.Images.First(n => n.Tag == 0)),

@@ -8,6 +8,7 @@ using KnightOnlineUiClassic.Windows;
 public partial class Preview : Control
 {
     private PreviewData? _windowData,_chatData;
+    private PreviewData[] _proxies=Array.Empty<PreviewData>();
     static object Create(Type type, params object?[] args) => Activator.CreateInstance(type, BindingFlags.Instance|BindingFlags.NonPublic, null, args, null)!;
     public override async void _Ready()
     {
@@ -32,6 +33,7 @@ public partial class Preview : Control
                 return proxy;
             }).ToArray();
             _windowData=(PreviewData)proxies[Array.FindIndex(attach.GetParameters(),p=>p.ParameterType==typeof(IGameWindows))];
+            _proxies=proxies.Cast<PreviewData>().ToArray();
             _chatData=(PreviewData)proxies[Array.FindIndex(attach.GetParameters(),p=>p.ParameterType==typeof(IGameChat))];
             bool characterAudit = OS.GetCmdlineUserArgs().Contains("character-audit");
             if (characterAudit || OS.GetCmdlineUserArgs().Contains("details-audit") || OS.GetCmdlineUserArgs().Contains("hud-audit"))
@@ -82,6 +84,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("hunt-icon-options")) { await CaptureHuntIconOptions(nation);GetTree().Quit();return; }
             if(OS.GetCmdlineUserArgs().Contains("npc-design-audit")) { await CaptureNpcDesigns(nation);GetTree().Quit();return; }
             if(OS.GetCmdlineUserArgs().Contains("npc-portrait-audit")) { await CaptureNpcPortraitAudit(nation);GetTree().Quit();return; }
+            if(OS.GetCmdlineUserArgs().Contains("hud-qa-audit")){await CaptureHudQaAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("hud-audit")) { await CaptureHudAudit(nation);GetTree().Quit();return; }
             if(OS.GetCmdlineUserArgs().Contains("details-audit")) { await CaptureDetails(nation);GetTree().Quit();return; }
             if (characterAudit) { await CaptureCharacterAudit(game, nation); GetTree().Quit(); return; }
@@ -152,7 +155,10 @@ public partial class Preview : Control
         game.Hotbar.SetPage(0);Raise();
         Require(Page("main_bar")=="1" && Page("extra_bar_0")=="4","F keys must leave extra pages pinned");
         var slot=Bar("extra_bar_0").GetNode<HotSlot>("slot_0");
+        // Slots activate on a completed click (press + release) so a press can still start a drag.
         slot._GuiInput(new InputEventMouseButton { Pressed=true,ButtonIndex=MouseButton.Left });
+        Require(data.LastActivate==-1,"A slot must not activate on press alone");
+        slot._GuiInput(new InputEventMouseButton { Pressed=false,ButtonIndex=MouseButton.Left });
         Require(data.LastActivate==30,"Extra F4 slot must activate absolute slot 30");
         slot._DropData(Vector2.Zero,new Godot.Collections.Dictionary { {"id",123},{"barAbs",15} });
         Require(data.LastDrop==(30,123,15),"Cross-bar drag must keep source and target absolute slots");
@@ -250,6 +256,7 @@ public class PreviewData : DispatchProxy
     public bool WithCooldown;
     public bool WithUnreadMail;
     public Func<int>? MailUnreadCount;
+    public Func<string,object?>? Values;
     public Func<GameNpcPortrait?>? NpcPortraitSource;
     public Func<int,bool,string,IReadOnlyList<string>>? ChatReader;
     public IReadOnlyList<LibreKO.Domain.NearbyRow> NearbyRows=Array.Empty<LibreKO.Domain.NearbyRow>();
@@ -261,6 +268,7 @@ public class PreviewData : DispatchProxy
     {
         var type=method!.ReturnType;
         string name=method.Name;
+        if(Values?.Invoke(name) is {} value) return value;
         if(name=="ReadHistory") return ChatReader?.Invoke((int)args![0]!, (bool)args[1]!, (string)args[2]!) ?? Array.Empty<string>();
         if(name=="NearbyPlayers") return NearbyRows;
         if(name=="Send") {LastSent=(string)args![0]!;return null;}

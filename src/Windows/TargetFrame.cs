@@ -55,7 +55,25 @@ public partial class TargetFrame : Control
         var t = _game.Target;
         Visible = _game.Available && t.Has;
         if (!Visible) return;
-        _view.SetText(NameText, t.Level > 0 ? $"{t.Name}  Lv.{t.Level}" : t.Name);
+        string level = t.Level > 0 ? $"  Lv.{t.Level}" : "";
+        if (_view.Get(NameText) is Label label)
+        {
+            label.Text = FitName(label, t.Name, level);
+            label.TooltipText = t.Name + level;
+        }
         _view.SetProgress(HpBar, t.MaxHp > 0 ? t.Hp / (float)t.MaxHp : 1f);
+    }
+
+    // Long names are shortened inside the frame; the level always stays visible.
+    private static string FitName(Label label, string name, string level)
+    {
+        var font = label.GetThemeFont("font");
+        int size = label.GetThemeFontSize("font_size");
+        float room = label.Size.X - 8;
+        bool Fits(string text) => font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X <= room;
+        if (Fits(name + level)) return name + level;
+        string shown = name;
+        while (shown.Length > 1 && !Fits(shown.TrimEnd() + "…" + level)) shown = shown[..^1];
+        return shown.TrimEnd() + "…" + level;
     }
 }

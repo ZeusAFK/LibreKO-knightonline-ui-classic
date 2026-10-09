@@ -46,7 +46,13 @@ public partial class HotkeyBar : Control
     private Vector2 DefaultPosition()
     {
         var room=GetViewport().GetVisibleRect().Size;
-        return _horizontal ? new Vector2(Mathf.Round((room.X-Size.X)/2),room.Y-Taskbar.BarHeight-Size.Y-2) : new Vector2(8,110);
+        if(_horizontal) return new Vector2(Mathf.Round((room.X-Size.X)/2),room.Y-Taskbar.BarHeight-Size.Y-2);
+        // Keep the vertical bars clear of the status minimap: below it when the default chat
+        // still fits underneath, otherwise beside it, under the Q/P/A/D shortcut row.
+        var status=StatusHud.DefaultBounds;
+        float below=status.End.Y+6;
+        if(below+Size.Y<=room.Y-Taskbar.BarHeight-ChatWindow.DefaultHeight-8) return new Vector2(8,below);
+        return new Vector2(status.End.X+6,110);
     }
     private void Build()
     {

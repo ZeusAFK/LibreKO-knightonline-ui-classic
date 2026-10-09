@@ -9,6 +9,18 @@ public partial class StatusHud : Control
     public const string LayoutName = "{nation}_statebar_us";
     public static readonly Vector2 ScreenPosition = new(8, 8);
 
+    // Screen rectangle of the status bar with its minimap at the default position.
+    public static Rect2 DefaultBounds
+    {
+        get
+        {
+            var source = Plugin.Kit.Layout(LayoutName);
+            var bar = source.Find("Img_StateBar")!;
+            var background = source.Find("Group_MiniMap")!.Find("Img_MiniMapBackground")!;
+            return new Rect2(ScreenPosition, new Vector2(bar.X + bar.W, background.Y + background.H));
+        }
+    }
+
     private readonly LayoutView _view;
     private readonly PluginGame _game;
     private readonly MapCanvas _map;
@@ -54,7 +66,8 @@ public partial class StatusHud : Control
         CentreInBar("Text_MSP","Progress_MSP");
         CentreInBar("Text_ExpP","Progress_ExpP");
         // Use the two existing parchment fields; do not add another frame above the HUD.
-        AlignText("Text_Position",new Rect2(4,43,116,20),true);
+        // The name field ends at the native 4..112 column, before the minimap zoom button.
+        AlignText("Text_Position",new Rect2(4,43,108,20),true);
         AlignText("Text_Version",new Rect2(155,41,117,16),true);
         _zoneName=_view.Get<Label>("Text_Version")!;
         _zoneName.Name="Text_ZoneName";
