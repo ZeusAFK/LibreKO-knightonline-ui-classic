@@ -1,6 +1,7 @@
 using Godot;
 using KnightOnlineUiClassic.Layout;
 using LibreKO.Plugins;
+using Spec = KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message;
 
 namespace KnightOnlineUiClassic.Windows;
 
@@ -13,6 +14,7 @@ public partial class MessageBox : Control
 
     private readonly DialogRequest _request;
     private readonly LayoutView _view;
+    private readonly ClassicMessageArt _art;
 
     public MessageBox(DialogRequest request)
     {
@@ -27,7 +29,11 @@ public partial class MessageBox : Control
 
         _view = new LayoutView(kit, kit.Layout(request.HasCancel ? OkCancelLayout : OkLayout));
         AddChild(_view);
-        _view.Hide("btn_yes","btn_no");
+        // The frame is drawn at the fitted height; the layout keeps the title, message and button places.
+        foreach (var (node, control) in _view.Where(n => n.IsImage && _view.Root.Children.Contains(n))) control.Visible = false;
+        _art = new ClassicMessageArt { Name = "message_art", Size = _view.Root.SizeVec };
+        _view.AddChild(_art); _view.MoveChild(_art, 0);
+        _view.Hide("btn_yes","btn_no","Edit_Common");
         _view.SetText("Text_title",request.Title);
         if (!request.HasCancel) _view.Hide("btn_cancel");
         foreach(var id in new[]{"btn_ok","btn_cancel"})
@@ -51,6 +57,9 @@ public partial class MessageBox : Control
         FitMessage();
     }
 
+    // Sizes set before the box entered the tree were clamped to stale minimums; fit again inside it.
+    public override void _Ready() { FitMessage(); Center(); }
+
     public override void _EnterTree()
     {
         GetViewport().SizeChanged += Center;
@@ -60,30 +69,23 @@ public partial class MessageBox : Control
     public override void _ExitTree() { GetViewport().SizeChanged -= Center; _request.MessageChanged-=UpdateMessage; }
     private void UpdateMessage(string text) { _view.SetText(MessageId,text); FitMessage(); if(IsInsideTree()) Center(); }
 
-    // A long message lengthens the original frame through its middle band (the rows the
-    // native art already stretches) instead of running over the title or the buttons.
-    private readonly Dictionary<Control,(Vector2 Position,Vector2 Size)> _declared=new();
+    // The box fits its content with the shared message rhythm (title band, message, buttons): a short notice
+    // has no empty band, and a long one lengthens through the art's middle band instead of overlapping.
     private void FitMessage()
     {
         if(_view.Get(MessageId) is not Label message) return;
         var root=_view.Root;
         var field=root.Find(MessageId)!;
-        if(_declared.Count==0)
-            foreach(var node in root.Children)
-                if(_view.ControlOf(node) is {} control) _declared[control]=(control.Position,control.Size);
-        message.Size=new Vector2(field.W,field.H);
-        float extra=Mathf.Max(0,Mathf.Ceil(message.GetMinimumSize().Y-field.H));
-        foreach(var node in root.Children)
-        {
-            if(_view.ControlOf(node) is not {} control || !_declared.TryGetValue(control,out var declared)) continue;
-            control.Position=declared.Position;control.Size=declared.Size;
-            if(node.Type=="image" && node.Y==MiddleBandY) control.Size+=new Vector2(0,extra);
-            else if(node.Y>MiddleBandY) control.Position+=new Vector2(0,extra);
-        }
-        message.Size=new Vector2(field.W,field.H+extra);
-        _view.CustomMinimumSize=_view.Size=root.SizeVec+new Vector2(0,extra);
+        float text=ClassicWorldOverlays.Wrapped(message,field.W);
+        bool buttons=_view.Get("btn_ok") is {Visible:true} || _view.Get("btn_cancel") is {Visible:true};
+        float height=Spec.HeightFor(text,buttons);
+        message.Position=new Vector2(field.X,Spec.TextTop);message.Size=new Vector2(field.W,text);
+        foreach(var id in new[]{"btn_ok","btn_cancel"})
+            if(_view.Get(id) is {} button) button.Position=new Vector2(button.Position.X,height-Spec.ButtonBottom-Spec.Button.Y);
+        _art.Size=new Vector2(root.W,height);
+        // Minimum first: a smaller size would otherwise be clamped to the previous minimum.
+        _view.CustomMinimumSize=new Vector2(root.W,height);_view.Size=_view.CustomMinimumSize;
     }
-    private const int MiddleBandY=64;
 
     private void Center()
     {

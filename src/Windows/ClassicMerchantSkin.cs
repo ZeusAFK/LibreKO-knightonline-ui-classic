@@ -19,18 +19,26 @@ public static class ClassicMerchantSkin
         foreach(var layer in CharacterDetailsSkin.Tree(parent).OfType<CanvasLayer>().Where(l=>l.HasMeta("merchant_advert")))ClassicMerchantAdvert.Apply(layer);
         return panel;
     }
-    internal static Color MerchantAccent(bool buying)=>buying?new Color(1,.72f,.49f):new Color(.88f,.90f,.94f);
-    internal static Color MerchantHeading(bool buying)=>new Color(buying?"efcaa6":"dce0e6");
-    internal static Color MerchantDivider(bool buying)=>new Color(buying?"a88764":"929aa7");
+    // Silver SELLING, antique gold BUYING: the same original stone art, tinted toward the two coin metals, with
+    // the original message-box caption gold (f7d179) as the Buying ink. Gold stays clear of the blue hover art
+    // and the Karus red, and keeps the stone texture readable where the earlier copper turned it brown.
+    public static Color MerchantAccent(bool buying)=>buying?new Color(1,.86f,.56f):new Color(.88f,.90f,.94f);
+    public static Color MerchantHeading(bool buying)=>new Color(buying?"f7d179":"dce0e6");
+    public static Color MerchantDivider(bool buying)=>new Color(buying?"a88a4c":"929aa7");
     internal static void Font(Control control){control.AddThemeFontOverride("font",Plugin.Kit.Bold);control.AddThemeFontSizeOverride("font_size",12);}
     internal static void Button(Button button,LayoutNode source,Control parent,Rect2 rect,string? text=null,bool? buying=null){ClassicVendorSkin.Move(button,parent,rect);ClassicVendorSkin.Button(button,source);Font(button);if(text!=null)button.Text=text;button.FocusMode=Control.FocusModeEnum.None;button.Shortcut=null;foreach(var state in new[]{"font_color","font_hover_color","font_pressed_color","font_hover_pressed_color","font_focus_color","font_disabled_color"})button.AddThemeColorOverride(state,new Color("efd9b4"));
         buying ??= parent is ClassicMerchantPanel panel && panel.Window.Id!="merchantmenu"?panel.Window.Id is "wishlist" or "wantedstall":parent is ClassicMerchantSearch?true:null;
         if(buying==true)PaletteButton(button,true);
     }
+    /// <summary>Tinted button art per state: hover brightens the gold stone (overbright modulate), pressed darkens it.</summary>
+    public static Color MerchantButtonTint(bool buying,string state){
+        var accent=MerchantAccent(buying);
+        return state=="hover"?new Color(accent.R*1.3f,accent.G*1.3f,accent.B*1.3f):state is "pressed" or "hover_pressed"?accent.Darkened(.25f):state=="disabled"?accent.Darkened(.5f):accent;
+    }
     internal static void PaletteButton(Button button,bool buying){
-        var normal=(StyleBoxTexture)button.GetThemeStylebox("normal");var accent=MerchantAccent(buying);
+        var normal=(StyleBoxTexture)button.GetThemeStylebox("normal");
         foreach(string state in new[]{"normal","hover","pressed","hover_pressed","disabled"}){
-            var style=(StyleBoxTexture)normal.Duplicate();style.ModulateColor=state=="hover"?accent.Lightened(.18f):state is "pressed" or "hover_pressed"?accent.Darkened(.18f):state=="disabled"?accent.Darkened(.5f):accent;button.AddThemeStyleboxOverride(state,style);
+            var style=(StyleBoxTexture)normal.Duplicate();style.ModulateColor=MerchantButtonTint(buying,state);button.AddThemeStyleboxOverride(state,style);
         }
         var ink=MerchantHeading(buying);foreach(string state in new[]{"font_color","font_hover_color","font_pressed_color","font_hover_pressed_color","font_focus_color"})button.AddThemeColorOverride(state,state=="font_hover_color"?ink.Lightened(.15f):ink);button.AddThemeColorOverride("font_disabled_color",ink.Darkened(.4f));
     }
