@@ -57,14 +57,17 @@ public sealed class NativeStorage
     public QuantityPrompt? Amount { get; }
     public VipVaultPinPrompt? PinPrompt { get; private set; }
 
-    /// <summary>The visible storage page; the vaults keep the client's own page index in step.</summary>
+    /// <summary>
+    /// The visible storage page; a vault whose client still pages it keeps the client's page index in step,
+    /// otherwise (the single-grid VIP vault) the page is the skin's own.
+    /// </summary>
     public int Page
     {
-        get => Kind == StorageKind.Warehouse ? _page : Native.Get<int>(_world, Field("_vipWhPage", "_clanWhPage"));
+        get => _nativePage ? Native.Get<int>(_world, Field("_vipWhPage", "_clanWhPage")) : _page;
         private set
         {
-            if (Kind == StorageKind.Warehouse) _page = value;
-            else Native.Set(_world, Field("_vipWhPage", "_clanWhPage"), value);
+            if (_nativePage) Native.Set(_world, Field("_vipWhPage", "_clanWhPage"), value);
+            else _page = value;
         }
     }
 
@@ -78,6 +81,7 @@ public sealed class NativeStorage
     private readonly Label? _status;
     private readonly Button? _deposit, _withdraw;
     private readonly bool _partialTransfers;
+    private readonly bool _nativePage;
     private int _page;
     private bool _moving;
     private Net? _net;
@@ -116,6 +120,7 @@ public sealed class NativeStorage
         _slots = slots;
         _inventory = inventory;
         _gridStart = Inventory.GridStart;
+        _nativePage = kind != StorageKind.Warehouse && Native.Has(world, kind == StorageKind.Vip ? "_vipWhPage" : "_clanWhPage");
         PageSize = kind switch { StorageKind.Warehouse => WarehousePageSize, StorageKind.Vip => VipPageSize, _ => ClanPageSize };
         Pages = Math.Max(1, (kind == StorageKind.Warehouse ? WarehouseSlots : slots.Length) / PageSize);
         _partialTransfers = kind == StorageKind.Warehouse || PendingSupportsAmounts();
@@ -472,8 +477,9 @@ public sealed class NativeStorage
         byte page = (byte)(stored / PageSize), cell = (byte)(stored % PageSize), bag = (byte)(inventory - _gridStart);
         if (Vip)
         {
-            if (deposit) Net.I.SendVipWarehouseInput(slot.ItemId, page, bag, cell, count);
-            else Net.I.SendVipWarehouseOutput(slot.ItemId, page, cell, bag, count);
+            // The VIP vault is addressed by its absolute slot; its page byte is fixed by the client.
+            if (deposit) Net.I.SendVipWarehouseInput(slot.ItemId, bag, (byte)stored, count);
+            else Net.I.SendVipWarehouseOutput(slot.ItemId, (byte)stored, bag, count);
         }
         else
         {
@@ -526,18 +532,17 @@ public sealed class NativeStorage
             && Native.Set(_world, Field("_vipWhInFlight", "_clanWhInFlight"), true);
     }
 
-    /// <summary>Rearranges the vault within one page. The client has no sender for this request.</summary>
+    /// <summary>Rearranges the vault within one page through the client's own move request.</summary>
     private void MoveVault(int source, int target)
     {
         SetStatus("");
-        var packet = new Packet(Vip ? GameOpcodes.GS_VIP_WAREHOUSE : GameOpcodes.GS_CLAN_WAREHOUSE);
-        packet.WriteByte(OpMove);
-        packet.WriteInt(0);
-        packet.WriteInt(_slots[source].ItemId);
-        packet.WriteByte((byte)(source / PageSize));
-        packet.WriteByte((byte)(source % PageSize));
-        packet.WriteByte((byte)(target % PageSize));
-        if (Native.Get<object>(Net.I, "_conn") is not { } connection || !Native.TryCall(connection, "Send", out _, packet)) return;
+        int itemId = _slots[source].ItemId;
+        if (Vip) Net.I.SendVipWarehouseMoveInside(itemId, (byte)source, (byte)target);
+        else
+        {
+            byte page = (byte)(source / PageSize);
+            Net.I.SendClanWhMoveInside(itemId, page, (byte)(source % PageSize), page, (byte)(target % PageSize));
+        }
         _moving = true;
         _moveFrom = source;
         _moveTo = target;
@@ -551,8 +556,10 @@ public sealed class NativeStorage
         else _net.ClanWhResultEvent += OnVaultResult;
     }
 
-    private void OnVaultResult(byte op, bool ok)
+    private void OnVaultResult(byte op, byte result)
     {
+        // Both vaults report success as 1 (VipSuccess / ClanWhSucceeded); other codes are refusals.
+        bool ok = result == 1;
         if (!GodotObject.IsInstanceValid(Window))
         {
             if (Vip) _net!.VipWarehouseResultEvent -= OnVaultResult;

@@ -92,18 +92,10 @@ public static partial class PreviewFixtures
         }
         else
         {
-            Call(world, "ChatRoomInit"); layer = Field<CanvasLayer>(world, "_chatRoomLayer"); PrepareCommunication(layer, world);
-            SetField(world, "_chatRoomShown", true); Field<HudWindow>(world, "_chatRoomPanel").Visible = true;
-            SetField(world, "_chatRoomCurrentId", 7); Call(world, "UpdateChatRoomStatus");
-            OnChatRoomList(world, new List<ChatRoomEntry>
-            {
-                new() { RoomId = 7, Name = "Moradon hunting party", MemberCount = 8 },
-                new() { RoomId = 8, Name = "A long room name for the market", MemberCount = 123 },
-                new() { RoomId = 9, Name = "Ronark raid", MemberCount = 24 },
-            });
-            Call(world, "AppendChatRoomLine", "System", "Joined the room.", UiTheme.Gold);
-            Call(world, "AppendChatRoomLine", "Rikka", "Meet near the bridge after stocking potions.", UiTheme.TextHi);
-            Call(world, "AppendChatRoomLine", "LongCharacterName1299", "This is a long message that should wrap inside the fixed chat viewport. We are looking for a warrior and a priest for the next hunt.", UiTheme.TextHi);
+            // TODO(port-2619): upstream cd63f98 removed the "chatrooms" window (World.ChatRoom.cs,
+            // ChatRoomEntry) in favour of the nation chat rooms ("nation_chat", World.NationChat.cs).
+            // Rebuild this fixture for the nation chat windows when the Classic skin is retargeted.
+            throw new NotSupportedException("The chat-room window was removed upstream; id=" + id);
         }
         world.RemoveChild(layer); return layer;
     }
@@ -111,10 +103,6 @@ public static partial class PreviewFixtures
     /// <summary>Delivers a buddy-list reply the way the network does, through the client's reply event.</summary>
     public static void OnMessengerList(World world, List<MessengerBuddy> list) =>
         Native.Get<Action<List<MessengerBuddy>>>(Net.I, "MessengerListEvent")!.Invoke(list);
-
-    /// <summary>Delivers a room-list reply the way the network does, through the client's reply event.</summary>
-    public static void OnChatRoomList(World world, List<ChatRoomEntry> list) =>
-        Native.Get<Action<List<ChatRoomEntry>>>(Net.I, "ChatRoomListEvent")!.Invoke(list);
 
     public static CanvasLayer BuildMarketPriceClassicUiPreview(World world)
     {

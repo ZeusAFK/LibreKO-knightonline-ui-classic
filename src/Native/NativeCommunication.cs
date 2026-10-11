@@ -231,7 +231,7 @@ public static class NativeCommunication
         foreach (var line in log.GetChildren()) DescribeLine(log, line);
         NativeWindows.OnDescendantAdded(list, node => DescribeRoom(list, node));
         NativeWindows.OnDescendantAdded(log, node => DescribeLine(log, node));
-        PrependReplyHandler<List<ChatRoomEntry>>("ChatRoomListEvent", "OnChatRoomList", world, _ => DetachRows(list));
+        PrependReplyHandler("ChatRoomListEvent", "OnChatRoomList", world, () => DetachRows(list));
         void RoomId() => window.SetMeta("communication_room_id", Native.Get<int>(world, "_chatRoomCurrentId"));
         RoomId();
         NativeWindows.Sync(window, RoomId);
@@ -296,11 +296,35 @@ public static class NativeCommunication
     {
         var net = Net.I;
         if (net == null || !Native.TryGet<Action<T>>(net, evt, out var current)) return;
+        Prepend(net, evt, handler, world, current, before);
+    }
+
+    /// <summary>
+    /// Untyped form for a single-argument reply whose payload type is not referenced at compile time
+    /// (the client may no longer define it); the hook is bound to whatever <c>Action&lt;T&gt;</c> the event uses.
+    /// </summary>
+    private static void PrependReplyHandler(string evt, string handler, World world, Action before)
+    {
+        var net = Net.I;
+        if (net == null || !Native.TryGet<Delegate>(net, evt, out var current)) return;
+        var type = current.GetType();
+        if (!type.IsGenericType || type.GetGenericTypeDefinition() != typeof(Action<>)) return;
+        var relay = typeof(ReplyRelay).GetMethod(nameof(ReplyRelay.Run))!.MakeGenericMethod(type.GetGenericArguments());
+        Prepend(net, evt, handler, world, current, Delegate.CreateDelegate(type, new ReplyRelay(before), relay));
+    }
+
+    private static void Prepend(Net net, string evt, string handler, World world, Delegate current, Delegate before)
+    {
         var calls = current.GetInvocationList();
         if (!calls.Any(d => d.Target == world && d.Method.Name == handler)) return;
         if (_replyHooks.TryGetValue(evt, out var previous)) calls = calls.Where(d => d != previous).ToArray();
         _replyHooks[evt] = before;
         Native.Set(net, evt, Delegate.Combine(calls.Prepend(before).ToArray()));
+    }
+
+    private sealed class ReplyRelay(Action before)
+    {
+        public void Run<T>(T _) => before();
     }
 
     private static readonly Dictionary<string, Delegate> _replyHooks = new();

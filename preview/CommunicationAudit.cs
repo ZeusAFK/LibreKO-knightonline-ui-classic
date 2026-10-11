@@ -47,7 +47,10 @@ public partial class Preview
             string file = (nation == 1 ? "karus" : "human") + "-" + state + ".png";
             GetViewport().GetTexture().GetImage().SavePng(output + "/" + file); screens.Add(new { state, file, bounds = window.GetGlobalRect().ToString() });
         }
-        foreach (string id in new[] { "messenger", "chatrooms" })
+        // TODO(port-2619): the "chatrooms" pass (room list, log cap, join/leave states) drove the chat-room
+        // window that upstream cd63f98 replaced with the nation chat rooms ("nation_chat"); restore an
+        // equivalent pass against the nation chat windows when the Classic skin is retargeted.
+        foreach (string id in new[] { "messenger" })
         {
             var world = new World(); var layer = (CanvasLayer)DetailCall(world, "BuildCommunicationUiPreview", id)!; AddChild(layer);
             var window = layer.GetChildren().OfType<HudWindow>().Single(); var panel = ClassicCommunicationSkin.Apply(window.Body)!;
@@ -80,36 +83,6 @@ public partial class Preview
                 await Capture(window, "messenger-empty"); to.GrabFocus(); await KeyInput(Key.Escape);
                 Require(!window.Visible && !(bool)DetailField(world, "_msgrShown")!, "Focused recipient Escape follows native Messenger close");
                 DetailCall(world, "MessengerDispose");
-            }
-            else
-            {
-                var rows = (VBoxContainer)DetailField(world, "_chatRoomList")!; var log = (VBoxContainer)DetailField(world, "_chatRoomLog")!;
-                var name = (LineEdit)DetailField(world, "_chatRoomNameInput")!; var message = (LineEdit)DetailField(world, "_chatRoomSayInput")!;
-                Require(name.MaxLength == 30 && message.MaxLength == 128, "Room name and message limits remain native");
-                Require(rows.GetChildren().OfType<PanelContainer>().Single(r => r.GetMeta("communication_selected").AsBool()).GetChildren().Count > 0, "Current room keeps Joined state");
-                name.GrabFocus(); name.Text = "   "; await KeyInput(Key.Enter); Require(name.Text == "   ", "Blank room name cannot create");
-                name.Text = "New room"; name.GrabFocus(); Require(name.HasFocus(), "Room name is focused for create Enter"); await KeyInput(Key.Enter); Require(name.Text == "", "Room name Enter follows native create callback; text=" + name.Text + "; focus=" + name.HasFocus());
-                message.GrabFocus(); message.Text = "On my way"; await KeyInput(Key.Enter); Require(message.Text == "", "Room message Enter follows native send");
-                var many = new List<ChatRoomEntry>(); for (int i = 0; i < 24; i++) many.Add(new ChatRoomEntry { RoomId = i + 1, Name = "A long room name for the market", MemberCount = 123 });
-                DetailCall(world, "OnChatRoomList", many); await Frames(); Require(rows.GetChildCount() == 24, "Room refresh immediately replaces prior children");
-                Require(Descendants(panel).OfType<ScrollContainer>().Single(s => s.Name == "rooms_scroll").GetVScrollBar().Visible, "Long room list scrolls within fixed viewport");
-                await Capture(window, "rooms-full");
-                for (int i = 0; i < 120; i++) DetailCall(world, "OnChatRoomSay", 7, "Rikka", "Message " + i);
-                Require(log.GetChildCount() == 100, "120 native message callbacks return and retain exactly 100 latest lines");
-                Require(Descendants(log.GetChild(0)).OfType<Label>().Single(l => l.Name == "communication_body").Text == "Message 20", "Log cap removes oldest messages immediately");
-                Require(Descendants(log.GetChild(99)).OfType<Label>().Single(l => l.Name == "communication_body").Text == "Message 119", "Log cap retains latest native message");
-                await Capture(window, "rooms-log-cap");
-                DetailCall(world, "OnChatRoomList", new List<ChatRoomEntry>()); Require(rows.GetChildCount() == 1 && rows.GetChild(0) is Label, "Empty room response has immediate empty state");
-                DetailCall(world, "OnChatRoomLeave", false); Require((int)DetailField(world, "_chatRoomCurrentId")! == 7, "Rejected leave retains membership");
-                DetailCall(world, "OnChatRoomLeave", true); await Frames(); Require((int)DetailField(world, "_chatRoomCurrentId")! == 0, "Accepted leave clears membership");
-                Require(Descendants(panel).OfType<Button>().Where(b => b.Name.ToString() is "rooms_send" or "rooms_leave").All(b => b.Disabled), "No-room Send and Leave show disabled state");
-                message.Text = "Cannot send yet"; message.GrabFocus(); await KeyInput(Key.Enter); Require(message.Text == "Cannot send yet", "Sending without membership cannot clear or submit a message");
-                await Capture(window, "rooms-empty");
-                DetailCall(world, "OnChatRoomJoin", 9, false); Require((int)DetailField(world, "_chatRoomCurrentId")! == 0, "Rejected join preserves no-room state");
-                DetailCall(world, "OnChatRoomJoin", 9, true); await Frames(); Require((int)DetailField(world, "_chatRoomCurrentId")! == 9, "Accepted join updates native membership");
-                Require(Descendants(panel).OfType<Button>().Where(b => b.Name.ToString() is "rooms_send" or "rooms_leave").All(b => !b.Disabled), "Joined-room Send and Leave return enabled");
-                message.GrabFocus(); await KeyInput(Key.Escape); Require(!window.Visible && (int)DetailField(world, "_chatRoomCurrentId")! == 9, "Focused message Escape closes window without leaving room");
-                DetailCall(world, "ChatRoomDispose");
             }
             layer.Free(); world.Free();
         }

@@ -135,7 +135,7 @@ public partial class Preview
             int face = editor.Face, hair = editor.Hair;
             await Click(Find<Button>("look_face_next")); await Click(colour); await Click(accept); await KeyInput(Key.KpEnter);
             Require(Busy() && editor.Face == face && editor.Hair == hair && !colour.GetPopup().Visible, "Pending edit, repeated click and keypad Enter cannot replace the submitted look");
-            Require(!net.SendChangeHair(0x543210, 1), "Network independently refuses a second outstanding beauty request");
+            Require(!net.SendChangeHair(0, 1, 0x543210), "Network independently refuses a second outstanding beauty request");
             Reply(99); Require(Busy() && NetBusy(), "Unknown result does not complete a pending request");
             Reply(Net.ChangeHairOpenShop); Require(Busy() && editor.Hair == hair, "Open-shop packet cannot replace pending picks");
             await KeyInput(Key.Escape); Require(!window.Visible && Busy() && Pivot().GetChildCount() == 0, "Escape closes preview and retains pending identity");

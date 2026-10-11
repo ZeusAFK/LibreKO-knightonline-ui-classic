@@ -52,7 +52,7 @@ public partial class Preview
         var inventory=(Inventory)typeof(World).GetProperty("Inv",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(world)!;
         var ids=(int[])DetailField(world,"_upgradeItemIds")!;
         var originDef=ItemData.Get(156210008)!;
-        Require(Descendants(shell).OfType<ItemSlotView>().Single(c=>c.Name=="anvil_item_1").Item.Count==1,$"Staged scroll represents exactly one consumed material; origin class={originDef.Class} type={originDef.ItemType} grade={originDef.Grade}");
+        Require(Descendants(shell).OfType<ItemSlotView>().Single(c=>c.Name=="anvil_item_1").Item.Count==1,$"Staged scroll represents exactly one consumed material; origin class={originDef.Class} type={originDef.ItemType}");
         Require(Descendants(shell).OfType<ItemSlotView>().Single(c=>c.Name=="anvil_bag_1").Item.Count==2,"Bag shows only the unreserved scroll count");
         Require(Descendants(shell).OfType<ItemSlotView>().Count(c=>c.Name.ToString().StartsWith("anvil_bag_"))==28,"All 28 inventory cells visible without scrolling");
         await Capture("ready");
