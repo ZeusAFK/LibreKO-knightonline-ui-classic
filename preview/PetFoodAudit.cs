@@ -115,8 +115,12 @@ public partial class Preview
             require(!Feeding() && refusals == refusedBefore + 1 && results == 0 && mutations == 0 && inventory[strongSlot].Equals(strongItem),
                 "An invalid familiar food reply releases the feed as a refusal without overwriting another inventory record");
             await ClickFeed(); await Request(strongSlot, strong.Id);
-            Receive(Food(1, strongSlot - Inventory.GridStart, weak.Id, 1, 1000));
-            require(Feeding() && results == 0 && mutations == 0 && inventory[strongSlot].Equals(strongItem), "A mismatched familiar food reply leaves the feed pending and cannot overwrite another inventory record");
+            int mismatchedBefore = refusals;
+            Receive(Food(1, strongSlot - Inventory.GridStart, weak.Id, 1, 1000)); await Frames();
+            // The client answers the request it sent: a reply naming other food is that request's refusal.
+            require(!Feeding() && refusals == mismatchedBefore + 1 && results == 0 && mutations == 0 && inventory[strongSlot].Equals(strongItem) && !feed.Disabled,
+                "A mismatched familiar food reply refuses the sent feed and cannot overwrite another inventory record");
+            await ClickFeed(); await Request(strongSlot, strong.Id);
             Receive(success); Satisfaction(10000); await Frames();
             var left = strongItem; left.Count = 1;
             require(results == 1 && mutations == 1 && inventory[strongSlot].Equals(left) && net.LastEnter.Inventory[strongSlot].Equals(left),

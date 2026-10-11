@@ -74,6 +74,17 @@ public partial class ClassicNpcQuestChrome : ClassicFrame
                 var mark=new ClassicRewardSelection(row);row.AddChild(mark);
                 if(row is BoxContainer) row.MoveChild(mark,0);
             }
+        // The client's completion tick is not part of the original reward window; its caption stays on the left.
+        if(node is CanvasItem glyph && node.GetType().Name=="CheckGlyph")
+        {
+            glyph.Visible=false;
+            if(node.GetParent() is BoxContainer heading) heading.Alignment=BoxContainer.AlignmentMode.Begin;
+        }
+        if(node is PanelContainer slot && KnightOnlineUiClassic.Native.NativeQuestLog.IsRewardSlot(slot))
+        {
+            KnightOnlineUiClassic.Native.NativeQuestLog.ClassicSlot(slot);
+            return;
+        }
         if(node is PanelContainer panel)
         {
             if(panel.HasMeta("classic_npc_inset")) return;

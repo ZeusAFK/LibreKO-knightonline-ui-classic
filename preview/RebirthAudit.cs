@@ -74,8 +74,10 @@ public partial class Preview
             }
             for (int row = 0; row < 5; row++)
             {
-                Require(Find<Label>("rebirth_total_" + row).Text == "+" + (net.Sheet.RebirthBonusAtRow(row) + (net.Sheet.RebirthLevel >= 15 ? 0 : pick.PickedAt(row))), state + " total preserves existing bonus " + row);
-                bool locked = Busy() || Confirmation() != null || net.Sheet.RebirthLevel >= 15 || net.Sheet.Level < 83 || (bool)DetailField(world, "_selfDead")!;
+                bool reset = NativeRebirth.Redistributing(world);
+                Require(Find<Label>("rebirth_total_" + row).Text == "+" + (reset ? pick.PickedAt(row) : net.Sheet.RebirthBonusAtRow(row) + (net.Sheet.RebirthLevel >= 15 ? 0 : pick.PickedAt(row))),
+                    state + (reset ? " total is the new placement " : " total preserves existing bonus ") + row);
+                bool locked = Busy() || Confirmation() != null || (bool)DetailField(world, "_selfDead")! || !reset && (net.Sheet.RebirthLevel >= 15 || net.Sheet.Level < 83);
                 Require(Find<Button>("rebirth_add_" + row).Disabled == (locked || !pick.CanAdd(row)), state + " add availability " + row);
                 Require(Find<Button>("rebirth_remove_" + row).Disabled == (locked || !pick.CanRemove(row)), state + " remove availability " + row);
             }
@@ -128,8 +130,15 @@ public partial class Preview
             await KeyInput(Key.Enter); await Capture("pending");
             Require(Busy() && NetBusy(), "Confirmation Enter sends exactly one native request");
             Require(!net.SendRebirthStatChange(new byte[] { 0, 2, 0, 0, 0 }), "Network independently rejects a second outstanding request");
-            Reply(); Reply(1); Result(0); Result(2); Result(-11); Reply(1, 1, 0, 0, 0);
-            Require(Busy() && NetBusy(), "Malformed and unknown replies cannot finish a pending allocation");
+            // The client reads a malformed or unknown reply as its busy refusal: the request ends and the picks stay.
+            string busyText = ItemData.Text(RebirthWire.ResultText(RebirthWire.Busy), "Mekin refused the rebirth.");
+            foreach (var malformed in new Action[] { () => Reply(), () => Reply(1), () => Result(2), () => Result(-11), () => Reply(1, 1, 0, 0, 0) })
+            {
+                malformed();
+                Require(!Busy() && !NetBusy() && pick.PickedAt(0) == 2 && Find<Label>("rebirth_status").Text == busyText, "A malformed or unknown reply ends the request as the client's busy refusal");
+                Result(RebirthWire.Accepted); Require(net.Sheet.RebirthLevel == 4, "A late success after the refusal cannot add a stage");
+                await Click(accept); await KeyInput(Key.Enter); Require(Busy() && NetBusy(), "The kept allocation can be confirmed again");
+            }
             Result(noQualification); await Capture("refused");
             Require(!Busy() && !NetBusy() && pick.PickedAt(0) == 2 && !accept.Disabled, "Refusal retains picks and allows editing and retry");
             Require(Find<Label>("rebirth_status").Text == RefusalText(), "Refusal shows the server's rebirth refusal text");
@@ -167,6 +176,22 @@ public partial class Preview
             await Click(accept); await KeyInput(Key.Enter); Result(RebirthWire.Accepted); await Frames();
             Require(net.Sheet.RebirthLevel == 5 && net.Sheet.RebirthBonusAtRow(1) == 2 && net.Sheet.RebirthBonusAtRow(4) == 2 && !window.Visible, "Success applies only the confirmed snapshot once and closes the service");
             Result(RebirthWire.Accepted); Require(net.Sheet.RebirthLevel == 5, "Duplicate idle success cannot add another stage");
+
+            // Redistribution: the client's reset mode reuses the window with every earned point to place again.
+            DetailCall(world, "OpenRebirthReset"); await Frames();
+            int capacity = net.Sheet.RebirthLevel * RebirthPick.PointsPerRebirth;
+            Require(window.Visible && pick.Capacity == capacity && pick.Placed == 0 && accept.Text == "Redistribute" && accept.Disabled,
+                "Redistribution opens with every earned point to place");
+            await Capture("redistribute");
+            for (int i = 0; i < capacity; i++) await Click(Find<Button>("rebirth_add_" + i % 5));
+            Require(pick.Complete && !accept.Disabled && Enumerable.Range(0, 5).All(row => pick.PickedAt(row) == capacity / 5), "Redistribution places every earned point by row clicks");
+            await Capture("redistribute-placed");
+            await Click(accept); Require(Confirmation() != null && !Busy(), "Redistribution asks before sending"); await Capture("redistribute-confirmation");
+            await KeyInput(Key.Enter); Require(Busy() && Confirmation() == null, "Confirming sends the redistribution");
+            var resetReply = new Packet(GameOpcodes.GS_CLASS_CHANGE); resetReply.WriteByte(Net.ClassChangeRebirthReset); resetReply.WriteByte(1);
+            typeof(Net).GetMethod("HandleClassChange", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { resetReply });
+            Require(!Busy() && !window.Visible && net.Sheet.RebirthLevel == 5 && Enumerable.Range(0, 5).All(row => net.Sheet.RebirthBonusAtRow(row) == capacity / 5),
+                "Accepted redistribution replaces the earned points and closes the service");
         }
         finally { DetailCall(world, "RebirthDispose"); layer.Free(); world.Free(); net.Free(); }
         System.IO.File.WriteAllText(output + "/" + (nation == 1 ? "karus" : "human") + "-rebirth.json", JsonSerializer.Serialize(new { nation, checks, screens, liveRequests = false }, new JsonSerializerOptions { WriteIndented = true }));

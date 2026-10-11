@@ -24,6 +24,9 @@ public partial class ClassicGenderPanel : Control
     private readonly Button _accept;
     private readonly bool _beauty;
     private readonly bool _transfer;
+    private Button? _palette;
+    private ColorRect? _swatch;
+    private LookEditor? _editor;
     public ClassicGenderPanel(HudWindow window, Control body)
     {
         _beauty = window.Id == "changehair";
@@ -65,9 +68,13 @@ public partial class ClassicGenderPanel : Control
         }
         var editor = Find<LookEditor>("look_editor"); Place(editor, _transfer ? ClassicNationTransferLayout.Editor : _beauty ? ClassicBeautyLayout.Editor : ClassicGenderLayout.Editor);
         editor.AddThemeConstantOverride("separation", 8);
-        var races = Find<VBoxContainer>("look_races"); races.AddThemeConstantOverride("separation", 4);
-        races.ChildEnteredTree += StyleRace;
-        foreach (var child in races.GetChildren()) StyleRace(child);
+        // The Beauty Shop editor has no race list.
+        if (native.OfType<VBoxContainer>().SingleOrDefault(c => c.Name == "look_races") is { } races)
+        {
+            races.AddThemeConstantOverride("separation", 4);
+            races.ChildEnteredTree += StyleRace;
+            foreach (var child in races.GetChildren()) StyleRace(child);
+        }
         foreach (var label in CharacterDetailsSkin.Tree(editor).OfType<Label>())
         {
             Font(label); label.VerticalAlignment = VerticalAlignment.Center;
@@ -86,24 +93,21 @@ public partial class ClassicGenderPanel : Control
         // Enter belongs to the service, as on the other look buttons: a focused colour button would also open its picker.
         _colour.FocusMode = FocusModeEnum.None;
         foreach (var state in new[] { "normal", "hover", "pressed", "disabled" }) _colour.AddThemeStyleboxOverride(state, ClassicDesign.InputBox());
-        var picker = _colour.GetPicker();
-        picker.ColorModesVisible = false; picker.SlidersVisible = false; picker.SamplerVisible = false; picker.PresetsVisible = false;
-        picker.AddThemeFontOverride("font", Plugin.Kit.Bold); picker.AddThemeFontSizeOverride("font_size", 13);
-        IEnumerable<Node> PickerTree(Node n) { yield return n; foreach (var child in n.GetChildren(true)) foreach (var item in PickerTree(child)) yield return item; }
-        foreach (var control in PickerTree(picker).OfType<Control>())
-        {
-            if (control is LineEdit input) { ClassicVendorSkin.Input(input); Font(input); }
-            else if (control is Label) Font(control);
-            else if (control is Button button)
-            {
-                ClassicDesign.StyleButton(button);
-                if (ClassicDesign.Karus)
-                    foreach (var state in new[] { "icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color", "icon_focus_color", "icon_disabled_color" })
-                        button.AddThemeColorOverride(state, new Color("17130f"));
-            }
-        }
+        ClassicHairPaletteSkin.StylePicker(_colour.GetPicker(), false);
         _colour.GetPopup().AddThemeStyleboxOverride("panel", ClassicDesign.InputBox());
         var colourCaption = Find<HBoxContainer>("look_colour_row").GetChildren().OfType<Label>().Single(); colourCaption.CustomMinimumSize = new Vector2(170, 26);
+        if (_beauty)
+        {
+            // The Beauty Shop's colour opens the client's hair palette; the row shows the edited colour as a swatch.
+            _palette = Find<Button>("look_palette"); _palette.CustomMinimumSize = new Vector2(80, 26); _palette.FocusMode = FocusModeEnum.None;
+            foreach (var state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" }) _palette.AddThemeStyleboxOverride(state, ClassicDesign.InputBox());
+            _swatch = new ColorRect { Name = "look_palette_swatch", MouseFilter = MouseFilterEnum.Ignore };
+            _palette.AddChild(_swatch); _swatch.SetAnchorsPreset(LayoutPreset.FullRect);
+            _swatch.OffsetLeft = _swatch.OffsetTop = 4; _swatch.OffsetRight = _swatch.OffsetBottom = -4;
+            _editor = editor;
+            var zoom = Find<Button>("look_zoom"); ClassicDesign.StyleButton(zoom); Place(zoom, ClassicBeautyLayout.Zoom);
+            ClassicPartySkin.KarusButtonContrast(zoom); zoom.TooltipText = "Zoom on the face";
+        }
         var statusRect = _transfer ? ClassicNationTransferLayout.Status : ClassicGenderLayout.Status;
         Place(Find<Label>("look_status"), statusRect);
         var status = Find<Label>("look_status"); status.VerticalAlignment = VerticalAlignment.Top;
@@ -114,7 +118,7 @@ public partial class ClassicGenderPanel : Control
             ClassicMerchantSkin.Button(button, Plugin.Kit.Layout("co_change_bill_us").Find(entry.Item3)!, this, entry.Item2);
             Font(button); ClassicServiceAction.Disabled(button); button.SetMeta("look_expected_rect", entry.Item2);
         }
-        foreach (var entry in new[] { ("look_turn_left", _transfer ? ClassicNationTransferLayout.TurnLeft : ClassicGenderLayout.TurnLeft, true), ("look_turn_right", _transfer ? ClassicNationTransferLayout.TurnRight : ClassicGenderLayout.TurnRight, false) })
+        foreach (var entry in new[] { ("look_turn_left", _transfer ? ClassicNationTransferLayout.TurnLeft : _beauty ? ClassicBeautyLayout.TurnLeft : ClassicGenderLayout.TurnLeft, true), ("look_turn_right", _transfer ? ClassicNationTransferLayout.TurnRight : _beauty ? ClassicBeautyLayout.TurnRight : ClassicGenderLayout.TurnRight, false) })
         {
             var button = Find<Button>(entry.Item1); Place(button, entry.Item2); Arrow(button, entry.Item3);
             button.TooltipText = entry.Item3 ? "Turn left" : "Turn right";
@@ -162,9 +166,20 @@ public partial class ClassicGenderPanel : Control
         button.ClipText = true;
         button.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
     }
+    public override void _Process(double delta)
+    {
+        if (_swatch == null || _palette == null || _editor == null) return;
+        _swatch.Color = _editor.HairColour;
+        _swatch.Modulate = _palette.Disabled ? new Color(.45f, .45f, .45f) : Colors.White;
+    }
+    /// <summary>The hair palette window the Beauty Shop opened, while it is shown.</summary>
+    private HudWindow? OpenPalette() => _beauty && GetParent() is HudWindow window
+        ? window.GetParent()?.GetChildren().OfType<HudWindow>().FirstOrDefault(w => w.Id == "hairpalette" && w.Visible) : null;
     public override void _UnhandledKeyInput(InputEvent ev)
     {
         if (!IsVisibleInTree() || ev is not InputEventKey { Pressed: true, Echo: false } key) return;
+        // An open hair palette answers Enter and Escape itself.
+        if (OpenPalette() != null) return;
         if (_beauty && key.Keycode is Key.Enter or Key.KpEnter && !_colour.GetPopup().Visible)
         {
             GetViewport().SetInputAsHandled();

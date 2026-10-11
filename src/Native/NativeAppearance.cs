@@ -13,37 +13,25 @@ public static partial class NativeSetup
     {
         NativeWindows.Prepare("genderchange", NativeAppearance.PrepareGender);
         NativeWindows.Prepare("changehair", NativeAppearance.PrepareBeauty);
+        NativeWindows.Prepare("hairpalette", NativeAppearance.PreparePalette);
         NativeWindows.Prepare("nationtransfer", NativeAppearance.PrepareTransfer);
     }
 }
 
 /// <summary>
 /// Gender change, Beauty Shop and nation transfer in the Classic appearance composition. Gender change
-/// only needs names and the Classic preview/editor behaviour. The Beauty Shop gets the 3D preview and
-/// look editor of the original service in place of the client's steppers, and sends the editor's look.
-/// Nation transfer gets a scrolling account list ordered by slot, an empty-account view, normalised
+/// and the Beauty Shop only need names and the Classic preview/editor behaviour; the Beauty Shop's hair
+/// colour becomes a swatch row that opens the client's hair palette, and its editor stays locked while a
+/// request is pending. Nation transfer gets a scrolling account list ordered by slot, an empty-account view, normalised
 /// drafts, and a certificate confirmation that freezes the account's picks.
 /// </summary>
 public static class NativeAppearance
 {
     public const string TransferTitle = "Nation Transfer";
-    private const int PreviewWidth = 220, PreviewHeight = 300;
-    private const float TurnDegrees = 30f;
     private const int NationTransferCertificate = 810096000;
     private const string CertificateTypo = "nation tranfer item is notavailable";
-    private static readonly Color WarningColour = new("ff6a6a");
     private const string CertificateText = "A Nation Transfer Certificate is required.";
 
-    private sealed class Beauty
-    {
-        public LookPreview Preview = null!;
-        public LookEditor Editor = null!;
-        public Label Name = null!, Identity = null!;
-        public Button Apply = null!;
-        public bool Awaiting;
-    }
-
-    private static readonly ConditionalWeakTable<World, Beauty> _beauty = new();
     private static readonly ConditionalWeakTable<LookPreview, Button[]> _turns = new();
     private sealed record Account(IReadOnlyList<NationTransferCandidate> Candidates, int Target);
     private static readonly ConditionalWeakTable<World, Account> _accounts = new();
@@ -54,6 +42,7 @@ public static class NativeAppearance
         {
             case "genderchange": PrepareGender(window, world); break;
             case "changehair": PrepareBeauty(window, world); break;
+            case "hairpalette": PreparePalette(window, world); break;
             case "nationtransfer": PrepareTransfer(window, world); break;
         }
     }
@@ -75,111 +64,66 @@ public static class NativeAppearance
     public static void PrepareBeauty(HudWindow window, World world)
     {
         if (!NativeIdentity.Begin(window, "native_appearance")) return;
-        var apply = Native.Get<Button>(world, "_changeHairApply");
+        var preview = Native.Get<LookPreview>(world, "_beautyPreview");
+        var editor = Native.Get<LookEditor>(world, "_beautyEditor");
         var status = Native.Get<Label>(world, "_changeHairStatus");
-        if (apply == null || status == null || Net.I is not { } net) return;
-        var body = window.Body;
-        foreach (var child in body.GetChildren().OfType<Control>()) child.Visible = false;
-
-        var row = new HBoxContainer(); row.AddThemeConstantOverride("separation", 12); body.AddChild(row);
-        var preview = new LookPreview(PreviewWidth, PreviewHeight) { Name = "look_preview" };
-        row.AddChild(PreviewColumn(preview));
-        var form = new VBoxContainer(); form.AddThemeConstantOverride("separation", 8); row.AddChild(form);
-        var name = NativeIdentity.HudLabel(14); name.Name = "look_name"; form.AddChild(name);
-        var identity = NativeIdentity.HudLabel(13); identity.Name = "look_identity"; form.AddChild(identity);
-        var editor = new LookEditor { Name = "look_editor" };
-        form.AddChild(editor);
+        var accept = Native.Get<Button>(world, "_beautyConfirm");
+        // The client's "Change hair color" action sits between the editor and the status line.
+        var palette = window.Body.GetChildren().OfType<Button>().FirstOrDefault();
+        if (preview == null || editor == null || status == null || accept == null || palette == null || !Native.Has(world, "_beautyInFlight")) return;
+        if (!NameCommon(preview, editor, status, accept)) return;
         NativeLookEditor.Attach(editor, () => CharacterPreview.HairCount(editor.Race) > 0);
-        editor.GetNode<Control>("look_race_heading").Hide();
-        editor.GetNode<Control>("look_races").Hide();
-        status.Reparent(form, false);
-        status.Visible = true; status.Name = "look_status";
-        status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        status.CustomMinimumSize = new Vector2(230, 0);
-        var actions = new HBoxContainer(); actions.AddThemeConstantOverride("separation", 8); form.AddChild(actions);
-        apply.Reparent(actions, false);
-        apply.Visible = true; apply.Name = "look_accept"; apply.Text = "Apply";
-        apply.AddThemeFontSizeOverride("font_size", 13);
-        var cancel = ActionButton("Cancel", () => Native.Call(world, "CloseChangeHair")); cancel.Name = "look_cancel"; actions.AddChild(cancel);
-
-        var state = new Beauty { Preview = preview, Editor = editor, Name = name, Identity = identity, Apply = apply };
-        _beauty.AddOrUpdate(world, state);
+        if (Native.Get<ColorPickerButton>(editor, "_colour") is not { } picker || picker.GetParent() is not HBoxContainer colourRow) return;
+        picker.Visible = false;
+        colourRow.Visible = true;
+        palette.Reparent(colourRow, false);
+        palette.Name = "look_palette";
+        palette.TooltipText = palette.Text;
+        palette.Text = "";
+        palette.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        accept.Text = "Apply";
+        var name = NativeIdentity.HudLabel(14); name.Name = "look_name"; window.Body.AddChild(name);
+        var identity = NativeIdentity.HudLabel(13); identity.Name = "look_identity"; window.Body.AddChild(identity);
         LookFraming.Attach(preview, () => editor.Race);
-        editor.Changed += () => ShowBeautyLook(world);
-        NativeIdentity.Rewire(apply, () => SubmitBeauty(world));
-        window.VisibilityChanged += () =>
+        void Opened()
         {
-            if (window.Visible) OpenBeauty(world, state);
-            else { NativeLookEditor.CloseColourPicker(editor); LookFraming.Clear(preview); }
-        };
-        Action<bool, int, int> result = (_, _, _) => BeautyResult(state);
-        net.ChangeHairResultEvent += result;
-        world.TreeExiting += () => net.ChangeHairResultEvent -= result;
-        // The Classic service shows refusals in the shared warning colour.
+            if (Net.I is not { } net) return;
+            name.Text = net.LastEnter.Name;
+            identity.Text = StarterStats.RaceName(net.LastEnter.Race);
+        }
+        window.VisibilityChanged += () => { if (window.Visible) Opened(); };
+        if (window.Visible) Opened();
         NativeWindows.Sync(window, () =>
         {
-            if (status.GetThemeColor("font_color") == WarningColour) status.AddThemeColorOverride("font_color", UiTheme.Bad);
+            // A sent look cannot be edited until the server answers; the palette closes with it.
+            bool busy = Native.Get<bool>(world, "_beautyInFlight");
+            if (NativeLookEditor.Locked(editor) != busy)
+            {
+                NativeLookEditor.SetLocked(editor, busy);
+                if (busy) Native.TryCall(world, "CloseHairPalette", out _);
+            }
+            palette.Disabled = busy || CharacterPreview.HairCount(editor.Race) == 0;
         });
         window.SetMeta("classic_appearance_controls", 1);
-        if (window.Visible) OpenBeauty(world, state);
     }
 
-    private static void OpenBeauty(World world, Beauty state)
+    /// <summary>The hair palette the Beauty Shop opens: names its prompt, picker and actions for the Classic skin.</summary>
+    public static void PreparePalette(HudWindow window, World world)
     {
-        if (Net.I is not { } net) return;
-        var me = net.LastEnter;
-        NativeLookEditor.SetLocked(state.Editor, false);
-        state.Editor.Load(Array.Empty<int>(), me.Race, Native.Get<int>(world, "_selfFace"), Native.Get<int>(world, "_selfHair"));
-        state.Name.Text = me.Name;
-        state.Identity.Text = StarterStats.RaceName(me.Race);
-        state.Apply.Disabled = false;
-        ShowBeautyLook(world);
+        if (!NativeIdentity.Begin(window, "native_appearance")) return;
+        var body = window.Body;
+        var prompt = body.GetChildren().OfType<Label>().FirstOrDefault();
+        var picker = Native.Get<ColorPicker>(world, "_hairPalettePicker");
+        var actions = body.GetChildren().OfType<HBoxContainer>().LastOrDefault()?.GetChildren().OfType<Button>().ToArray();
+        if (prompt == null || picker == null || picker.GetParent() != body || actions is not { Length: 2 }) return;
+        prompt.Name = "palette_prompt"; picker.Name = "palette_picker";
+        actions[0].Name = "palette_accept"; actions[1].Name = "palette_cancel";
+        window.SetMeta("classic_palette_controls", 1);
     }
 
-    /// <summary>Shows the editor's look; nothing changes while a request is pending.</summary>
-    public static void ShowBeautyLook(World world)
-    {
-        if (!_beauty.TryGetValue(world, out var state) || Native.Get<bool>(world, "_changeHairInFlight")) return;
-        state.Editor.Refresh();
-        NativeLookEditor.Refresh(state.Editor);
-        state.Preview.Show(state.Editor.Race, state.Editor.Face, state.Editor.HairStyle, state.Editor.HairColour);
-    }
-
-    /// <summary>Sends the edited face, style and colour as one Beauty Shop request.</summary>
-    public static void SubmitBeauty(World world)
-    {
-        if (!_beauty.TryGetValue(world, out var state) || !Native.Get<bool>(world, "_changeHairShown")
-            || Native.Get<bool>(world, "_changeHairInFlight") || Native.Get<bool>(world, "_selfDead") || Net.I is not { } net) return;
-        if (!HasBeautyCoupon(world)) return;
-        Native.Set(world, "_changeHairInFlight", true);
-        state.Awaiting = true;
-        NativeLookEditor.SetLocked(state.Editor, true);
-        state.Apply.Disabled = true;
-        Native.Call(world, "SetChangeHairStatus", "Applying…", false);
-        if (Native.Call(net, "SendChangeHair", state.Editor.Hair, state.Editor.Face) is false)
-            Native.Call(world, "OnChangeHairResult", false, 0, 0);
-    }
-
-    /// <summary>
-    /// Clients that charge a Makeover Coupon refuse before sending when the bag has none, with the client's
-    /// own text; older clients have no coupon rule.
-    /// </summary>
-    private static bool HasBeautyCoupon(World world)
-    {
-        if (Native.ClientType("LibreKO.Domain.BeautyShop") is not { } shop || !Native.TryGet<int>(shop, "Coupon", out int coupon)) return true;
-        if (Native.Call(world, "HasItemInBackpack", coupon) is not false) return true;
-        int text = Native.TryGet<int>(shop, "NoCouponText", out int id) ? id : 0;
-        Native.Call(world, "SetChangeHairStatus", LibreKO.Domain.ItemData.Text(text, "You need a Makeover Coupon."), true);
-        return false;
-    }
-
-    private static void BeautyResult(Beauty state)
-    {
-        if (!state.Awaiting || !GodotObject.IsInstanceValid(state.Editor)) return;
-        state.Awaiting = false;
-        NativeLookEditor.SetLocked(state.Editor, false);
-        state.Apply.Disabled = false;
-    }
+    /// <summary>The Beauty Shop or gender editor whose colour the palette edits.</summary>
+    public static LookEditor? PaletteTarget(World world) =>
+        Native.Get<LookEditor>(world, "_hairPaletteTarget") ?? Native.Get<LookEditor>(world, "_beautyEditor");
 
     public static void PrepareTransfer(HudWindow window, World world)
     {
@@ -358,33 +302,17 @@ public static class NativeAppearance
     {
         var cancel = accept.GetParent()?.GetChildren().OfType<Button>().FirstOrDefault(b => b != accept);
         var turns = preview.GetParent()?.GetChildren().OfType<HBoxContainer>().FirstOrDefault()?.GetChildren().OfType<Button>().ToArray();
-        if (cancel == null || turns is not { Length: 2 }) return false;
+        if (cancel == null || turns is not { Length: 2 or 3 }) return false;
         preview.Name = "look_preview"; editor.Name = "look_editor"; status.Name = "look_status";
         accept.Name = "look_accept"; cancel.Name = "look_cancel";
         turns[0].Name = "look_turn_left"; turns[1].Name = "look_turn_right";
+        if (turns.Length == 3)
+        {
+            // The Beauty Shop's zoom keeps the Classic framing when it zooms back out.
+            turns[2].Name = "look_zoom";
+            NativeIdentity.Rewire(turns[2], () => LookFraming.ToggleZoom(preview));
+        }
         _turns.AddOrUpdate(preview, turns);
         return true;
-    }
-
-    private static Control PreviewColumn(LookPreview preview)
-    {
-        var column = new VBoxContainer();
-        column.AddThemeConstantOverride("separation", 6);
-        column.AddChild(preview);
-        var turnRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        turnRow.AddThemeConstantOverride("separation", 8);
-        var left = LookEditor.StepButton("◀", () => preview.Turn(-TurnDegrees)); left.Name = "look_turn_left";
-        var right = LookEditor.StepButton("▶", () => preview.Turn(TurnDegrees)); right.Name = "look_turn_right";
-        turnRow.AddChild(left); turnRow.AddChild(right);
-        column.AddChild(turnRow);
-        return column;
-    }
-
-    private static Button ActionButton(string text, Action pressed)
-    {
-        var button = new Button { Text = text, FocusMode = Control.FocusModeEnum.None };
-        button.AddThemeFontSizeOverride("font_size", 13);
-        button.Pressed += pressed;
-        return button;
     }
 }

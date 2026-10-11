@@ -53,6 +53,18 @@ public static class LookFraming
 
     public static Node3D? Model(LookPreview preview) => Native.Get<Node3D>(preview, "_model");
 
+    /// <summary>
+    /// The client's head zoom: zoomed in, the client places the camera on the head; zoomed out, the Classic
+    /// framing of the complete orbit returns.
+    /// </summary>
+    public static void ToggleZoom(LookPreview preview)
+    {
+        preview.ToggleZoom();
+        if (_framings.TryGetValue(preview, out var framing)) Fit(framing);
+    }
+
+    public static bool Zoomed(LookPreview preview) => Native.Get<bool>(preview, "_zoomed");
+
     /// <summary>Builds a model with equipment; the native preview only shows a bare body.</summary>
     public static void Show(LookPreview preview, int race, int face, int hairStyle, Color hairColour, int[] gear)
     {
@@ -130,6 +142,7 @@ public static class LookFraming
     private static void Fit(Framing framing)
     {
         if (!GodotObject.IsInstanceValid(framing.Preview) || Model(framing.Preview) is not { } model || !model.IsInsideTree()) return;
+        if (Zoomed(framing.Preview)) { Native.TryCall(framing.Preview, "PlaceCamera", out _); return; }
         var pivot = framing.Pivot.GlobalPosition;
         if (framing.Cape)
         {

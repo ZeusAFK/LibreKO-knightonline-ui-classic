@@ -146,7 +146,8 @@ public partial class ClassicNpcDialogue : Control
             var cards=new List<ClassicNpcCard>();
             foreach(var row in rows)
             {
-                if(row is HBoxContainer) cards.Add(new ClassicNpcCard(row,hunt,row.HasMeta("quest_reward_selected")));
+                // Hunt rows are a value row over the client's progress bar; the card shows the value row.
+                if(row is HBoxContainer || row is VBoxContainer && row.GetChildren().OfType<HBoxContainer>().Any()) cards.Add(new ClassicNpcCard(row,hunt,row.HasMeta("quest_reward_selected")));
                 else if(row is Label hint) section.AddChild(Paragraph(hint.Text));
                 else if(row is RichTextLabel text) section.AddChild(Paragraph(text.Text));
             }
@@ -178,11 +179,11 @@ public partial class ClassicNpcDialogue : Control
             }
             return;
         }
-        bool tagged=_topics.Any(b=>Regex.IsMatch(b.Text,@"\[(In progress|Ready|Completed|Available)\]",RegexOptions.IgnoreCase));
+        bool tagged=_topics.Any(b=>ClassicNpcAction.StateOf(b)!=null);
         int first=_page*_capacity;
         for(int index=first;index<_topics.Count && index<first+_capacity;index++)
         {
-            var view=new ClassicNpcAction(_topics[index],true,tagged);_menu.AddChild(view);
+            var view=new ClassicNpcAction(_topics[index],true,tagged,number:index+1);_menu.AddChild(view);
             ClassicNpcLayout.Place(view,new Rect2(0,(index-first)*37,327,32));
         }
         void Arrow(bool next,int x)
@@ -231,14 +232,15 @@ public partial class ClassicNpcAction : Button
 {
     public Button? Source { get; }
     private readonly bool _option,_states;
+    private readonly int _number;
     private readonly string? _override;
     private readonly Label? _topic,_state;
     private string? _lastText,_lastTooltip;
     private bool? _lastDisabled;
     public ClassicNpcAction(Button? source,string? textOverride=null) : this(source,false,false,textOverride) { }
-    public ClassicNpcAction(Button? source,bool option,bool states=false,string? textOverride=null)
+    public ClassicNpcAction(Button? source,bool option,bool states=false,string? textOverride=null,int number=0)
     {
-        Source=source;_option=option;_states=states;_override=textOverride;ClipText=true;
+        Source=source;_option=option;_states=states;_override=textOverride;_number=number;ClipText=true;
         TextOverrunBehavior=TextServer.OverrunBehavior.TrimEllipsis;Alignment=option?HorizontalAlignment.Left:HorizontalAlignment.Center;
         FocusMode=FocusModeEnum.None;
         foreach(string state in new[]{"normal","hover","pressed","hover_pressed","disabled","focus"})
@@ -254,24 +256,48 @@ public partial class ClassicNpcAction : Button
             Resized+=()=> { ClassicNpcLayout.Place(_topic,new Rect2(18,4,Math.Max(1,Size.X-120),24));ClassicNpcLayout.Place(_state,new Rect2(Size.X-100,4,82,24)); };
         }
         Pressed+=()=> { if(IsInstanceValid(Source) && !Source!.Disabled) Source.EmitSignal(BaseButton.SignalName.Pressed); };
+        Resized+=()=>_lastText=null;
         UpdateSource();
     }
     private void UpdateSource()
     {
         if(!IsInstanceValid(Source)) { Disabled=true;return; }
         string text=_override??Source!.Text;
+        // The client lists choices without numbers; the original menu numbers its rows.
+        if(_option && _number>0 && !Regex.IsMatch(text,@"^\d+\.")) text=$"{_number}.   {text}";
         if(text==_lastText && Source!.TooltipText==_lastTooltip && Source.Disabled==_lastDisabled) return;
         _lastText=text;_lastTooltip=Source!.TooltipText;_lastDisabled=Source.Disabled;
-        Disabled=Source.Disabled;TooltipText=Source.TooltipText;
+        // The client repeats each caption as its tooltip; the Classic row only needs it when the caption is cut.
+        Disabled=Source.Disabled;TooltipText=Source.TooltipText==Source.Text && Fits(text)?"":Source.TooltipText;
         if(_topic==null || _state==null) { Text=text;return; }
         var tag=Regex.Match(text,@"\[(In progress|Ready|Completed|Available)\]\s*",RegexOptions.IgnoreCase);
-        bool navigation=Regex.IsMatch(text,@"^(?:\d+\.\s*)?(Next page|Previous page)\b",RegexOptions.IgnoreCase);
+        bool navigation=Regex.IsMatch(text,@"^(?:\d+\.\s*)?(Next page|Previous page)",RegexOptions.IgnoreCase);
         _topic.Text=tag.Success?text.Remove(tag.Index,tag.Length):text;
         _state.Visible=!navigation;
         if(navigation) { _topic.Size=new Vector2(Math.Max(1,Size.X-36),24);_state.Text="";Text="";return; }
-        _state.Text=tag.Success?tag.Groups[1].Value:"Available";
+        _state.Text=StateOf(Source)??"Available";
         var state=_state.Text.ToLowerInvariant() switch { "in progress"=>LibreKO.Network.QuestViewState.InProgress,"ready"=>LibreKO.Network.QuestViewState.Claimable,"completed"=>LibreKO.Network.QuestViewState.Completed,_=>LibreKO.Network.QuestViewState.Available };
         _state.AddThemeColorOverride("font_color",ClassicQuestStatus.Ink(state));Text="";
     }
     public override void _Process(double delta) => UpdateSource();
+
+    private bool Fits(string text)
+    {
+        var font=GetThemeFont("font");int size=GetThemeFontSize("font_size");
+        float room=(_topic?.Size.X??Size.X-36);
+        return room<=1 || font.GetStringSize(text,HorizontalAlignment.Left,-1,size).X<=room;
+    }
+
+    /// <summary>
+    /// The quest state of a native NPC choice: the client's state tag beside the caption, its ready colour, or
+    /// an older bracketed tag in the caption; null for a choice without a quest state.
+    /// </summary>
+    public static string? StateOf(Button? choice)
+    {
+        if(!IsInstanceValid(choice)) return null;
+        if(choice!.GetChildren().OfType<Label>().FirstOrDefault(l=>l.Text.Length>0) is {} tag) return tag.Text;
+        var bracket=Regex.Match(choice.Text,@"\[(In progress|Ready|Completed|Available)\]",RegexOptions.IgnoreCase);
+        if(bracket.Success) return bracket.Groups[1].Value;
+        return choice.HasThemeColorOverride("font_color") && choice.GetThemeColor("font_color")==UiTheme.Good?"Ready":null;
+    }
 }

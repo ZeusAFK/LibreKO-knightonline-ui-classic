@@ -11,6 +11,7 @@ public enum NativeHudPart
     AttendanceIcon,
     PowerUpStoreIcon,
     FamiliarBar,
+    FamiliarPlate,
 }
 
 /// <summary>Hides or extends native HUD elements that have no public plugin hook.</summary>

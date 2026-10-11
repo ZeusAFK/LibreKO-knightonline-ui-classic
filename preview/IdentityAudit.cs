@@ -81,6 +81,19 @@ public partial class Preview
         Require(!rename.Visible && !(bool)DetailField(renameWorld, "_nameChangeShown")!, "Name Escape invokes the native close behavior");
         rename.Free(); renameWorld.Free();
 
+        // The clan ID change reuses the rename window; the client switches its mode when it opens.
+        var (clanRenameWorld, clanRename, clanRenamePanel) = await Build("BuildClanNameChangeUiPreview");
+        await Capture(clanRename, "clan-name-change");
+        var clanHint = Descendants(clanRenamePanel.Window).OfType<Label>().Single(l => l.Name == "name_change_hint");
+        Require(clanHint.Text == ClassicIdentityPanel.ClanRenameHint, "Clan rename shows the Classic clan explanation");
+        Require(Descendants(clanRenamePanel).OfType<Label>().Count(l => l.IsVisibleInTree() && l.Text == "Change Clan Name") == 1, "Clan rename shows its own title");
+        Require(((LineEdit)DetailField(clanRenameWorld, "_nameChangeEdit")!).Text == "", "Clan rename starts with an empty name");
+        DetailCall(clanRenameWorld, "OpenNameChange", false); await Frames();
+        Require(clanHint.Text == ClassicIdentityPanel.RenameHint, "Reopening as character rename restores the character explanation");
+        clanRenamePanel._UnhandledKeyInput(new InputEventKey { Keycode = Key.Escape, Pressed = true });
+        Require(!clanRename.Visible, "Clan rename Escape invokes the native close behavior");
+        clanRename.Free(); clanRenameWorld.Free();
+
         foreach (bool empty in new[] { false, true })
         {
             var (world, window, panel) = await Build("BuildDisguiseUiPreview", empty);
@@ -128,6 +141,16 @@ public partial class Preview
             Require(!window.Visible && !(bool)DetailField(world, "_disguiseShown")!, "Transformation Escape invokes native cancellation " + empty);
             window.Free(); world.Free();
         }
+        // A member that still exists but changed type (the quest reward box became a flow container) is reported once,
+        // as a missing member is, instead of silently reading as null.
+        var reported = new List<string>(); Action<string> seen = reported.Add;
+        KnightOnlineUiClassic.Native.Native.MemberMissing += seen;
+        var probe = new World();
+        KnightOnlineUiClassic.Native.Native.Get<HBoxContainer>(probe, "_questRewardBox");
+        KnightOnlineUiClassic.Native.Native.Get<HBoxContainer>(probe, "_questRewardBox");
+        bool compatible = KnightOnlineUiClassic.Native.Native.Get<Container>(probe, "_questRewardBox") == null;
+        KnightOnlineUiClassic.Native.Native.MemberMissing -= seen; probe.Free();
+        Require(reported.Count(k => k == "LibreKO.World._questRewardBox") == 1 && compatible, "A native member read as another type is reported once; a compatible base type is not");
         string result = output + "/" + (nation == 1 ? "karus" : "human") + "-identity.json";
         System.IO.File.WriteAllText(result, JsonSerializer.Serialize(new { nation, checks, screens }, new JsonSerializerOptions { WriteIndented = true }));
         GD.Print("Identity audit: " + checks.Count + " checks / " + screens.Count + " screens: " + result);

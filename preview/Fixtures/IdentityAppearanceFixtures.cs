@@ -51,11 +51,16 @@ public static partial class PreviewFixtures
         return window;
     }
 
-    public static Control BuildNameChangeUiPreview(World world)
+    public static Control BuildNameChangeUiPreview(World world) => BuildNameChangeUiPreview(world, false);
+
+    /// <summary>The clan ID change (opened by the clan rename reply) reuses the rename window.</summary>
+    public static Control BuildClanNameChangeUiPreview(World world) => BuildNameChangeUiPreview(world, true);
+
+    private static Control BuildNameChangeUiPreview(World world, bool clan)
     {
         Call(world, "BuildNameChangePanel");
         var window = Field<HudWindow>(world, "_nameChangePanel");
-        window.Ready += () => Callable.From(() => { Call(world, "OpenNameChange"); }).CallDeferred();
+        window.Ready += () => Callable.From(() => { Call(world, "OpenNameChange", clan); }).CallDeferred();
         window.GetParent().RemoveChild(window);
         NativeIdentity.Prepare(window, world);
         return window;
@@ -163,11 +168,17 @@ public static partial class PreviewFixtures
         return layer;
     }
 
-    public static void ShowChangeHairLook(World world) => NativeAppearance.ShowBeautyLook(world);
-
-    /// <summary>The fork's boolean pending flag became the fix branch's request tracker.</summary>
+    /// <summary>The client's request tracker: one outstanding Beauty Shop request at a time.</summary>
     public static bool ChangeHairPending(Net net) =>
-        Native.Get<object>(net, "_changeHairRequest") is { } request ? Native.Get<bool>(request, "Pending") : Native.Get<bool>(net, "_changeHairPending");
+        Native.Get<object>(net, "_changeHairRequest") is { } request && Native.Get<bool>(request, "Pending");
+
+    /// <summary>The hair palette the Beauty Shop built on demand, prepared as the client's window flow would.</summary>
+    public static HudWindow? PrepareHairPalette(World world)
+    {
+        if (Native.Get<HudWindow>(world, "_hairPalette") is not { } palette) return null;
+        NativeAppearance.Prepare(palette, world);
+        return palette;
+    }
 
     public static CanvasLayer BuildNationTransferClassicUiPreview(World world, int nation)
     {
