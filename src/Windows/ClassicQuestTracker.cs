@@ -39,7 +39,31 @@ public static class ClassicQuestTracker
         rows.AddThemeConstantOverride("separation", Spec.RowGap);
         foreach (var child in rows.GetChildren()) Style(child);
         rows.ChildEnteredTree += Style;
+        // The client refits the tracker after listing quests but not after folding it; the frame follows the rows either way.
+        rows.ChildEnteredTree += _ => Fit(panel);
+        rows.ChildExitingTree += _ => Fit(panel);
         panel.ResetSize();
+    }
+
+    private const string FitPending = "classic_tracker_fit";
+
+    /// <summary>Refits the tracker that holds <paramref name="node"/> (the fold art changes the header after the rows do).</summary>
+    internal static void FitAround(Node node)
+    {
+        for (var current = node; current != null; current = current.GetParent())
+            if (current is PanelContainer panel && panel.HasMeta(Skinned)) { Fit(panel); return; }
+    }
+
+    private static void Fit(PanelContainer panel)
+    {
+        if (panel.HasMeta(FitPending)) return;
+        panel.SetMeta(FitPending, true);
+        Callable.From(() =>
+        {
+            if (!GodotObject.IsInstanceValid(panel)) return;
+            panel.RemoveMeta(FitPending);
+            panel.ResetSize();
+        }).CallDeferred();
     }
 
     private static void Style(Node node)
@@ -164,5 +188,6 @@ public partial class ClassicTrackerFold : Node
         _folded = folded;
         ClassicChatControls.SkinButton(_button, folded ? Plugin.Kit.Layout("co_whisper_close_us").Find("btn_open")! : Plugin.Kit.Layout("co_whisper_open_us").Find("btn_hide")!);
         _button.TooltipText = folded ? "Show the tracked quests" : "Fold the tracked quests";
+        ClassicQuestTracker.FitAround(_button);
     }
 }

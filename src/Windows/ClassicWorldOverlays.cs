@@ -31,6 +31,7 @@ public static class ClassicWorldOverlays
         NativeOverlays.Extend(NativeOverlay.Score, node => Once(node, () => Score((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Loot, node => Once(node, () => Loot((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Board, node => Once(node, () => Board((PanelContainer)node)));
+        NativeOverlays.Extend(NativeOverlay.GenieQuick, node => Once(node, () => { Board((PanelContainer)node); ClassicGenieQuick.Apply((PanelContainer)node); }));
         NativeOverlays.Extend(NativeOverlay.Toast, node => Once(node, () => Toast((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Titles, node => Once(node, () => Titles((Container)node)));
         NativeOverlays.Extend(NativeOverlay.LabelPlate, node => Once(node, () => LabelPlate((Label)node)));

@@ -101,6 +101,23 @@ public static class ClassicOverlayLayout
         public const float TowerGap = 2;
     }
 
+    /// <summary>
+    /// The genie quick panel on the event board frame: a caption row with the original whisper window's minimise and
+    /// close pair (co_whisper_open_us <c>btn_hide</c>/<c>btn_close</c>, 19 x 15, 5 px apart; restore is
+    /// co_whisper_close_us <c>btn_open</c>), then the remaining time on the gauge beside Start/Stop and the settings
+    /// button, then the monster rows. Minimised, the panel keeps its caption and time rows.
+    /// </summary>
+    public static class GenieQuick
+    {
+        public static readonly Vector2 Caption = new(19, 15);
+        public const int CaptionGap = 5, RowGap = 4, ControlGap = 4, TitleFont = 12, TimeFont = 11;
+        public const float CaptionHeight = 17, TimeHeight = 22, GaugeHeight = 12;
+        /// <summary>Start/Stop and the square settings button share one height on the time row.</summary>
+        public static readonly Vector2 Toggle = new(58, 22), Settings = new(22, 22);
+        /// <summary>The minutes are outlined so they read on the bright gauge art.</summary>
+        public const int TimeOutline = 3;
+    }
+
     /// <summary>The Wanted plaque: chat tab buttons on an information plaque under the top-right icons.</summary>
     public static class Wanted
     {
