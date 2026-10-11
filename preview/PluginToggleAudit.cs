@@ -42,7 +42,7 @@ public partial class Preview
         }
     }
 
-    private async Task CapturePluginToggleAudit(int nation, PluginInfo info, Plugin boot)
+    private async Task CapturePluginToggleAudit(int nation, PluginInfo info, Plugin boot, bool hudButtons = false)
     {
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         string output = OS.GetEnvironment("LIBREKO_AUDIT_OUTPUT_DIR"); Directory.CreateDirectory(output);
@@ -228,6 +228,10 @@ public partial class Preview
             ["launcher"] = Field<CanvasLayer>(world, "_hudLauncherLayer").Visible,
             ["mini map"] = Shown(Field<MiniMap>(world, "_miniMap")),
             ["plugin hud parts"] = ((IDictionary)typeof(World).GetField("_pluginHud", flags)!.GetValue(world)!).Count > 0,
+            // The top-right icons whose windows the Classic status bar's G, E and R open.
+            ["genie icon"] = Shown(Field<Control?>(world, "_genieIcon")),
+            ["events icon"] = Shown(Field<Control?>(world, "_eventsIcon")),
+            ["daily rank icon"] = Shown(Field<Control?>(world, "_drIcon")),
         };
         Image? Shot(string state)
         {
@@ -301,7 +305,8 @@ public partial class Preview
             Require(registries.Values.All(v => v == 0), $"{state}: every static registry and host UI registration is empty ({Json(registries)})");
             Require(handlers.Values.All(v => v == 0), $"{state}: no plugin hook, network delegate, game API delegate or scene-tree watcher ({Json(handlers)})");
             nativeHud ??= hud;
-            Require(hud["status bars"] && hud["hotbar"] && hud["launcher"] && hud["mini map"] && !hud["plugin hud parts"] && Json(hud) == Json(nativeHud),
+            Require(hud["status bars"] && hud["hotbar"] && hud["launcher"] && hud["mini map"] && !hud["plugin hud parts"]
+                && hud["genie icon"] && hud["events icon"] && hud["daily rank icon"] && Json(hud) == Json(nativeHud),
                 $"{state}: the native HUD is shown as on the native start ({Json(hud)})");
             var open = Descendants(world).OfType<HudWindow>().Where(Shown).Select(w => w.Id).ToList();
             Require(open.Count >= 2, $"{state}: the native inventory and character windows open ({string.Join(", ", open)})");
@@ -326,7 +331,8 @@ public partial class Preview
             var signature = Signature(world);
             Require(Plugin.Active && instance != null && instance.GetType().Assembly == plugin && PluginHost.ActiveTheme == info,
                 $"{state}: the theme runs a plugin instance from the loaded assembly");
-            Require(signature.Count > 50 && hud["plugin hud parts"] && !hud["status bars"] && !hud["mini map"] && !hud["launcher"],
+            Require(signature.Count > 50 && hud["plugin hud parts"] && !hud["status bars"] && !hud["mini map"] && !hud["launcher"]
+                && !hud["genie icon"] && !hud["events icon"] && !hud["daily rank icon"],
                 $"{state}: the Classic HUD replaces the native HUD ({signature.Count} Classic nodes, {Json(hud)})");
             Require(handlers["(total hooks)"] > 0 && handlers["(tree watchers)"] > 0 && registries["NativeWindows.preparers"] > 0,
                 $"{state}: the plugin registered its preparers, hooks and watchers");
@@ -419,6 +425,7 @@ public partial class Preview
             ToggleLog("third enable", lines);
             world = await Rebuilt(world, "third enable");
             await Enabled("re-enabled-again");
+            if (hudButtons) states["hud-buttons"] = await ProbeHudButtons(world, nation, output, Require, Shown);
         }
         finally
         {

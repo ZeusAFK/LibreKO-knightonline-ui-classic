@@ -10,6 +10,9 @@ public enum NativeHudPart
     AchievementsIcon,
     AttendanceIcon,
     PowerUpStoreIcon,
+    GenieIcon,
+    EventsIcon,
+    DailyRankIcon,
     FamiliarBar,
     FamiliarPlate,
 }

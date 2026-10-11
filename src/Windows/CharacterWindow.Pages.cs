@@ -241,6 +241,23 @@ public partial class CharacterWindow
         a.Pressed += () => Page(key, -1); b.Pressed += () => Page(key, 1);
     }
 
+    /// <summary>Whether the window shows the Quest page's journal list rather than another page or a subpage.</summary>
+    public bool QuestListShown => IsVisibleInTree() && _embedded == null && _activePage == "quest";
+
+    /// <summary>
+    /// The HUD's Q: opens the Character window on the Quest page's journal list (an open Quest Details subpage
+    /// goes back to it), or closes the window when that list is already shown. Details open only from a row.
+    /// </summary>
+    public static void ToggleQuestList(PluginGame game)
+    {
+        static CharacterWindow? Owner() => CharacterPageRouter.Owner is { } owner && IsInstanceValid(owner) ? owner : null;
+        if (Owner() is { QuestListShown: true }) { game.Windows.Close("character_info"); return; }
+        if (!game.Windows.IsOpen("character_info")) game.Windows.Open("character_info");
+        if (Owner() is { } shown) shown.SwitchPage("quest", true);
+        // A window the host builds on its first opening enters the tree later in this frame.
+        else Callable.From(() => Owner()?.SwitchPage("quest", true)).CallDeferred();
+    }
+
     private void SwitchPage(string page, bool notify)
     {
         ClearEmbedded();
