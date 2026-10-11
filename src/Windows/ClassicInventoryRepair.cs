@@ -8,10 +8,16 @@ namespace KnightOnlineUiClassic.Windows;
 // Repair uses the existing inventory; only the original cost tooltip is added.
 public partial class ClassicInventoryRepair : Control
 {
+    /// <summary>The original tooltip's price colour when the player cannot pay (0xffdd0000).</summary>
+    public static readonly Color LackColor = new("dd0000");
+    /// <summary>Gap between the pointer and the tooltip on the right (original CUIRepairTooltipDlg).</summary>
+    private const int PointerGap = 26;
+
     private readonly WindowHost _host;
     private readonly PluginGame _game;
     private readonly Control _tip;
     private readonly Label _title, _maximum, _current, _cost;
+    private readonly Color _costColor;
     private readonly Control _header;
     private readonly Button _all;
     private readonly Action _cancelCarry;
@@ -30,7 +36,6 @@ public partial class ClassicInventoryRepair : Control
         _all.Pressed += () => { if (_host.Window.HasMeta("classic_repair_all")) _host.Window.GetMeta("classic_repair_all").AsCallable().Call(); };
         var layer = new CanvasLayer { Layer = 120 }; AddChild(layer);
         _tip = new Control { Size = new Vector2(223, 98), Visible = false, MouseFilter = MouseFilterEnum.Ignore }; layer.AddChild(_tip);
-        _tip.AddChild(new ColorRect { Color = new Color(0, 0, 0, .96f), Size = _tip.Size, MouseFilter = MouseFilterEnum.Ignore });
         var art = Plugin.Kit.Layout("co_tooltop_repair_us");
         foreach (var image in art.Children.Where(n => n.IsImage))
             _tip.AddChild(new TextureRect { Texture = ClassicChatControls.Atlas(image), Position = image.Position, Size = image.SizeVec,
@@ -46,7 +51,12 @@ public partial class ClassicInventoryRepair : Control
         }
         _title = Field("string_title"); _maximum = Field("string_dur_max");
         _current = Field("string_dur_current"); _cost = Field("string_repairgold");
+        _costColor = art.Find("string_repairgold")!.Color;
     }
+    /// <summary>Where the tooltip follows the pointer from; the preview substitutes a fixed point.</summary>
+    public Func<Vector2>? Pointer { get; set; }
+    /// <summary>The tooltip, for bounds checks.</summary>
+    public Control Tip => _tip;
     /// <summary>Repairs exactly the clicked item through the repair mode's own action when it has one.</summary>
     public void Take(int slot)
     {
@@ -79,12 +89,19 @@ public partial class ClassicInventoryRepair : Control
         _maximum.Text = "Maximum Durability : " + maximum.ToString("n0");
         _current.Text = "Current Durability : " + item.Durability.ToString("n0");
         _cost.Text = cost.ToString("n0") + " Noahs";
-        _cost.AddThemeColorOverride("font_color", cost > _game.Character.Gold ? new Color("ff5555") : new Color("ffff00"));
+        _cost.AddThemeColorOverride("font_color", cost > _game.Character.Gold ? LackColor : _costColor);
         _maximum.Visible = _current.Visible = _cost.Visible = valid;
-        var pointer = GetViewport().GetMousePosition();
-        var bounds = GetViewportRect().Size;
-        _tip.Position = new Vector2(Mathf.Clamp(pointer.X + 26, 0, bounds.X - _tip.Size.X),
-            Mathf.Clamp(pointer.Y >= 98 ? pointer.Y - 98 : pointer.Y + 26, 0, bounds.Y - _tip.Size.Y)).Round();
+        _tip.Position = Place(Pointer?.Invoke() ?? GetViewport().GetMousePosition(), _tip.Size, GetViewportRect().Size);
         _tip.Visible = true;
+    }
+    /// <summary>
+    /// The original placement: above and to the right of the pointer; flipped to the left near the
+    /// right edge and below the pointer near the top edge.
+    /// </summary>
+    public static Vector2 Place(Vector2 pointer, Vector2 size, Vector2 bounds)
+    {
+        bool right = pointer.X + size.X < bounds.X, above = pointer.Y - size.Y > 0;
+        var at = new Vector2(right ? pointer.X + PointerGap : pointer.X - size.X, above ? pointer.Y - size.Y : pointer.Y);
+        return new Vector2(Mathf.Clamp(at.X, 0, bounds.X - size.X), Mathf.Clamp(at.Y, 0, bounds.Y - size.Y)).Round();
     }
 }
