@@ -11,6 +11,10 @@ internal static class InventoryLayout
     public static int DrawerTop=>Plugin.Kit.Nation==1?40:39;
     public static int DrawerBottom=>Plugin.Kit.Nation==1?561:558;
     public const int CostumeArea=17, BagItemArea=19, BagContentArea=18;
+    /// <summary>The bag search field, centred in the drawer band between the costume cells and the bag row.</summary>
+    public static Rect2 BagSearch=>new(12,(166+(Plugin.Kit.Nation==1?264:262)-DrawerTop-3)/2-12,121,24);
+    /// <summary>The client's VIP Vault shortcut beside the search field, sharing its row and right edge with the cells.</summary>
+    public static Rect2 VipVault=>new(137,BagSearch.Position.Y,24,24);
     public static readonly (int Position,string Caption,int Column,int Row,int IconX,int IconY)[] CostumeSlots=
     {
         (InventoryConstants.CosPosTattoo,"Tattoo",0,0,25,202),

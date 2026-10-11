@@ -17,14 +17,14 @@ public static partial class NativeSetup
 
 /// <summary>
 /// Prepares the NPC service windows (repair, warp, seal, Chaotic Generator, item combination, recipe
-/// book and redistribution) for the Classic service skin: it names the native controls the skin
+/// book, redistribution, disassembly and the Character Seal transfer) for the Classic service skin: it names the native controls the skin
 /// arranges, marks the windows as Classic-capable, mirrors selection and pending state into metas,
 /// and implements the Classic-only behaviour the skin expects, such as repair through the inventory,
 /// the full carried inventory in the Chaotic Generator and dragging pieces onto its socket.
 /// </summary>
 public static class NativeServices
 {
-    public static readonly string[] WindowIds = { "repair", "warp", "seal", "piecechange", "itemcombine", "combinerecipes", "class_change" };
+    public static readonly string[] WindowIds = { "repair", "warp", "seal", "piecechange", "itemcombine", "combinerecipes", "class_change", "itemsmash", "char_seal_trans" };
 
     private const string ControlsMeta = "classic_service_controls";
     private const string PreparedMeta = "native_service";
@@ -41,11 +41,13 @@ public static class NativeServices
         {
             case "repair": NativeRepair.Attach(window, world); break;
             case "warp": PrepareWarp(window, world); break;
-            case "seal": PrepareSeal(world); break;
+            case "seal": PrepareSeal(window, world); break;
             case "piecechange": NativePieceChange.Attach(window, world); break;
             case "itemcombine": PrepareCombine(window, world); break;
             case "combinerecipes": PrepareRecipeBook(window); break;
             case "class_change": PrepareRedistribution(window, world); break;
+            case "itemsmash": PrepareSmash(window, world); break;
+            case "char_seal_trans": PrepareCharacterSealTrans(window, world); break;
         }
     }
 
@@ -69,7 +71,7 @@ public static class NativeServices
         });
     }
 
-    private static void PrepareSeal(World world)
+    private static void PrepareSeal(HudWindow window, World world)
     {
         Name(world, "_sealSocket", "seal_socket");
         Name(world, "_sealHeadline", "seal_headline");
@@ -79,8 +81,90 @@ public static class NativeServices
         Name(world, "_sealPad", "seal_keypad");
         Name(world, "_sealGold", "seal_gold");
         Name(world, "_sealConfirm", "seal_confirm");
-        if (Native.Get<Array>(world, "_sealBagCells") is { } cells)
-            for (int i = 0; i < cells.Length; i++) NativeWindows.Name(cells.GetValue(i) as Node, "seal_bag_" + i);
+        // The client docks the inventory window beside the seal; the Classic window keeps its own bag.
+        NativeBagCells.Attach(window, world, "seal_bag_", "SealTakeFromBag", "SealBagFit");
+        if (Native.Get<Control>(world, "_sealSocket") is { } socket)
+            socket.AddChild(new ServiceDropTarget(data => SealDropSlot(world, data) >= 0,
+                data => Native.Call(world, "SealTakeFromBag", SealDropSlot(world, data))) { Name = "seal_drop" });
+    }
+
+    /// <summary>The carried slot a drag onto the seal socket comes from, or -1.</summary>
+    private static int SealDropSlot(World world, Variant data)
+    {
+        if (!Native.Get<bool>(world, "_sealShown") || Native.Get<bool>(world, "_sealWaiting") || data.VariantType != Variant.Type.Dictionary) return -1;
+        var dict = data.AsGodotDictionary();
+        if (!dict.ContainsKey("invFrom")) return -1;
+        int abs = dict["invFrom"].AsInt32();
+        return abs >= Inventory.GridStart && abs < Inventory.GridStart + Inventory.GridCount ? abs : -1;
+    }
+
+    /// <summary>
+    /// Keeps a service window's embedded Classic bag in charge: when the client opens the inventory window
+    /// only as the window's bag companion, it is closed again (a player-opened inventory stays open).
+    /// </summary>
+    public static void KeepInventoryClosed(HudWindow window, World world)
+    {
+        window.VisibilityChanged += () =>
+        {
+            if (!window.Visible) return;
+            Callable.From(() =>
+            {
+                if (!window.Visible || Native.Get<object>(world, "_bagPairing") is not { } pairing) return;
+                if (!Native.Get<bool>(pairing, "_openedByCompanion")) return;
+                Native.Set(pairing, "_openedByCompanion", false);
+                Native.Call(world, "HideMainWindow", "Inventory");
+            }).CallDeferred();
+        };
+    }
+
+    /// <summary>Disassembly: the bench like the Chaotic Generator, with the Classic bag instead of the docked inventory.</summary>
+    private static void PrepareSmash(HudWindow window, World world)
+    {
+        Name(world, "_smashSocket", "smash_socket");
+        Name(world, "_smashMessage", "smash_message");
+        Name(world, "_smashSubMessage", "smash_status");
+        Name(world, "_smashStartBtn", "smash_start");
+        Name(world, "_smashStopBtn", "smash_stop");
+        Name(world, "_smashCancelBtn", "smash_cancel");
+        if (Native.Get<Array>(world, "_smashResults") is { } results)
+            for (int i = 0; i < results.Length; i++) NativeWindows.Name(results.GetValue(i) as Node, "smash_result_" + i);
+        NativeBagCells.Attach(window, world, "smash_bag_", "SmashTakeFromBag", "SmashBagFit");
+        DropOnSocket(world, "_smashSocket", "smash_drop", "_smashShown", "SmashTakeFromBag");
+    }
+
+    /// <summary>Character Seal scroll / Cypher Ring transfer: the seal layout with the Classic bag.</summary>
+    private static void PrepareCharacterSealTrans(HudWindow window, World world)
+    {
+        Name(world, "_csSocket", "cstrans_socket");
+        Name(world, "_csTransHeadline", "cstrans_headline");
+        Name(world, "_csTransGold", "cstrans_gold");
+        if (Native.Get<Label>(world, "_csTransHeadline")?.GetParent() is Container stage)
+            NativeWindows.Name(stage.GetChildren().OfType<Label>().LastOrDefault(l => l.Name != "cstrans_headline"), "cstrans_notice");
+        var buttons = Native.Descendants(window.Body).OfType<Button>().Where(b => b.Text is "OK" or "Cancel").ToArray();
+        if (buttons.Length >= 2)
+        {
+            buttons[0].Name = "cstrans_ok";
+            buttons[1].Name = "cstrans_cancel";
+        }
+        if (Native.Get<Label>(world, "_csTransGold")?.GetParent() is Container footer)
+            NativeWindows.Name(footer.GetChildren().OfType<Label>().FirstOrDefault(l => l.Name != "cstrans_gold"), "cstrans_gold_caption");
+        NativeBagCells.Attach(window, world, "cstrans_bag_", "CharacterSealTakeFromBag", "CharacterSealBagFit");
+        DropOnSocket(world, "_csSocket", "cstrans_drop", "_csTransShown", "CharacterSealTakeFromBag");
+    }
+
+    /// <summary>Lets a carried item be dragged onto a service socket; the client's bag action takes it.</summary>
+    private static void DropOnSocket(World world, string socketField, string name, string shownField, string take)
+    {
+        if (Native.Get<Control>(world, socketField) is not { } socket) return;
+        int Slot(Variant data)
+        {
+            if (!Native.Get<bool>(world, shownField) || data.VariantType != Variant.Type.Dictionary) return -1;
+            var dict = data.AsGodotDictionary();
+            if (!dict.ContainsKey("invFrom")) return -1;
+            int abs = dict["invFrom"].AsInt32();
+            return abs >= Inventory.GridStart && abs < Inventory.GridStart + Inventory.GridCount ? abs : -1;
+        }
+        socket.AddChild(new ServiceDropTarget(data => Slot(data) >= 0, data => Native.Call(world, take, Slot(data))) { Name = name });
     }
 
     private static void PrepareCombine(HudWindow window, World world)
@@ -291,7 +375,8 @@ public sealed class NativeRepair
 /// <summary>
 /// The Classic Chaotic Generator shows the whole carried inventory (seven columns, 28 cells) and
 /// accepts exchange pieces dragged from it onto the generator socket; a click or right-click on a
-/// piece stages it. Cells are rebuilt whenever the client rebuilds its own filtered backpack.
+/// piece stages it. The client docks the inventory window instead, so the bag is the plugin's own and
+/// is rebuilt whenever a carried item or the staged piece changes.
 /// </summary>
 public sealed class NativePieceChange
 {
@@ -301,6 +386,7 @@ public sealed class NativePieceChange
     private readonly HudWindow _window;
     private readonly World _world;
     private readonly VBoxContainer _bag;
+    private int _signature;
 
     private NativePieceChange(HudWindow window, World world, VBoxContainer bag)
     {
@@ -319,13 +405,15 @@ public sealed class NativePieceChange
         Name(world, "_pieceSocket", "piece_socket");
         if (Native.Get<Array>(world, "_pieceResultSockets") is { } rewards)
             for (int i = 0; i < rewards.Length; i++) NativeWindows.Name(rewards.GetValue(i) as Node, "piece_reward_" + i);
-        if (Native.Get<VBoxContainer>(world, "_pieceBackpackGrid") is not { } bag) return;
-        bag.Name = "piece_bag";
+        // The client docks the inventory window; the Classic generator keeps its own full carried bag.
+        var bag = new VBoxContainer { Name = "piece_bag" };
+        window.Body.AddChild(bag);
+        bag.AddChild(new GridContainer { Columns = Columns });
         var piece = new NativePieceChange(window, world, bag);
         if (Native.Get<Control>(world, "_pieceSocket") is { } socket)
             socket.AddChild(new ServiceDropTarget(piece.CanDrop, piece.Drop) { Name = "piece_drop" });
-        bag.ChildEnteredTree += child => { if (child is GridContainer) Callable.From(piece.Rebuild).CallDeferred(); };
-        Callable.From(piece.Rebuild).CallDeferred();
+        NativeWindows.Sync(window, piece.Rebuild);
+        NativeServices.KeepInventoryClosed(window, world);
     }
 
     private static void Name(World world, string field, string name) => NativeWindows.Name(Native.Get<Node>(world, field), name);
@@ -333,14 +421,21 @@ public sealed class NativePieceChange
     private bool FullInventory => _window.GetMeta("piece_full_inventory", false).AsBool();
     private Inventory Inv => Native.Get<Inventory>(_world, "Inv")!;
 
-    /// <summary>Replaces the client's filtered backpack grid with every carried cell.</summary>
+    /// <summary>Rebuilds the Classic bag (every carried cell) whenever a carried item or the staged piece changes.</summary>
     private void Rebuild()
     {
         if (!FullInventory || !GodotObject.IsInstanceValid(_bag)) return;
-        var grid = _bag.GetChildren().OfType<GridContainer>().LastOrDefault(g => !g.IsQueuedForDeletion());
-        if (grid == null || grid.HasMeta("classic_piece_bag")) return;
-        grid.SetMeta("classic_piece_bag", true);
-        grid.Columns = Columns;
+        var grid = _bag.GetChildren().OfType<GridContainer>().FirstOrDefault();
+        if (grid == null) return;
+        var inventory = Inv;
+        int staged = Native.Get<int>(_world, "_piecePosition");
+        var hash = new HashCode();
+        hash.Add(staged);
+        for (int i = 0; i < Inventory.GridCount; i++)
+            hash.Add(Inventory.GridStart + i < inventory.Length ? inventory[Inventory.GridStart + i] : default);
+        int signature = hash.ToHashCode();
+        if (grid.GetChildCount() == Inventory.GridCount && signature == _signature) return;
+        _signature = signature;
         grid.AddThemeConstantOverride("h_separation", CellSpacing);
         grid.AddThemeConstantOverride("v_separation", CellSpacing);
         foreach (var child in grid.GetChildren())
@@ -348,8 +443,6 @@ public sealed class NativePieceChange
             grid.RemoveChild(child);
             child.QueueFree();
         }
-        var inventory = Inv;
-        int staged = Native.Get<int>(_world, "_piecePosition");
         for (int i = 0; i < Inventory.GridCount; i++)
         {
             int abs = Inventory.GridStart + i;
@@ -513,5 +606,50 @@ public partial class UpgradeBackpackCell : PanelContainer
         });
         DragLayer.Show(this, preview);
         return new Godot.Collections.Dictionary { { "invFrom", _absSlot } };
+    }
+}
+
+/// <summary>
+/// The carried inventory of a Classic service window whose client docks the inventory window as its
+/// bag companion instead (seal). The cells mirror the carried items, mark the staged item, and hand a
+/// right-click to the client's own companion action; dragging uses the normal inventory protocol.
+/// </summary>
+public static class NativeBagCells
+{
+    private const float CellSize = 45f;
+
+    public static void Attach(HudWindow window, World world, string prefix, string take, string fit)
+    {
+        if (!Native.TryGet<Inventory>(world, "Inv", out var inventory)) return;
+        var holder = new Control { Name = prefix + "cells", Visible = false };
+        window.Body.AddChild(holder);
+        var cells = new ItemSlotView[Inventory.GridCount];
+        for (int i = 0; i < cells.Length; i++)
+        {
+            var cell = new ItemSlotView(CellSize) { Index = Inventory.GridStart + i, Name = prefix + i, Veiled = true };
+            cell.RightClicked += c => Native.Call(world, take, c.Index);
+            cell.Hovered += c => Native.Call(world, "ShowItemTooltip", c.Index, c.Item, "");
+            cell.Unhovered += _ => Native.Call(world, "HideItemTooltip");
+            cell.DragOut = c => c.Item.IsEmpty ? default(Variant) : (Variant)new Godot.Collections.Dictionary { { "invFrom", c.Index } };
+            holder.AddChild(cell);
+            cells[i] = cell;
+        }
+        NativeWindows.Sync(window, () =>
+        {
+            for (int i = 0; i < cells.Length; i++)
+            {
+                int abs = Inventory.GridStart + i;
+                var item = abs < inventory.Length ? inventory[abs] : default;
+                if (!cells[i].Item.Equals(item))
+                {
+                    cells[i].Set(item);
+                    NativeServices.CountBadge(cells[i]);
+                }
+                bool staged = !item.IsEmpty && Native.Call(world, fit, abs) is { } state && state.ToString() == "Staged";
+                var look = staged ? SlotLook.Selected : SlotLook.Normal;
+                if (cells[i].Look != look) cells[i].Look = look;
+            }
+        });
+        NativeServices.KeepInventoryClosed(window, world);
     }
 }

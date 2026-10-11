@@ -139,7 +139,7 @@ public partial class Preview
         GetWindow().Size=new Vector2I(1280,800);await Frames();
         DetailCall(world,"MarketPriceInit");
         var historyLayer=(CanvasLayer)DetailField(world,"_marketPriceLayer")!;historyLayer.Reparent(this);
-        typeof(Net).GetMethod("SeedPreviewPremium",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(net,new object[]{1,1,72});
+        typeof(Net).GetMethod("SeedPreviewPremium",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(net,new object?[]{1,1,72,null});
         var marketCache=(Dictionary<int,MarketPriceReply>)DetailField(world,"_marketPriceCache")!;
         var marketReply=new MarketPriceReply(MarketPrice.History,stack,Enumerable.Range(0,5).Select(i=>new MarketPriceDay(12000+i*1000,16000+i*1000,8000+i*1000)).ToArray(),123,DateTime.UtcNow);
         marketCache[stack]=marketReply;
@@ -156,7 +156,7 @@ public partial class Preview
         DetailCall(world,"CloseMarketPrice");Require(amount.Visible && price.Value==50000 && !(bool)DetailField(world,"_marketPriceShown")!,"History close preserves the underlying price prompt");
         await KeyPress(Key.Enter);await Frames();Require(panel.Size==new Vector2(255,106) && !history.IsVisibleInTree(),"Quantity retains the original size and hides pricing-only market controls: size="+panel.Size+", visible="+amount.Visible+", quantity="+amount.GetMeta("merchant_quantity")+", history="+history.IsVisibleInTree()+", open="+amount.GetMeta("merchant_market_open"));await Capture("market-price-quantity");
         await KeyPress(Key.Escape);DetailCall(world,"CloseSellStall");
-        typeof(Net).GetMethod("SeedPreviewPremium",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(net,new object[]{0,0,0});
+        typeof(Net).GetMethod("SeedPreviewPremium",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(net,new object?[]{0,0,0,null});
         DetailCall(world,"OnMerchantOpenResult",Net.MerchantOpenAccepted);DetailCall(world,"StageStallItem",0);await Frames();Require(panel.Size==new Vector2(255,106) && !history.IsVisibleInTree(),"Non-premium pricing retains the original composition");await Capture("market-price-non-premium");await KeyPress(Key.Escape);DetailCall(world,"CloseSellStall");
         System.IO.File.WriteAllText(output+"/"+(nation==1?"karus":"human")+"-verification.json",JsonSerializer.Serialize(new{nation,checks,screens,pluginHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(ProjectSettings.GlobalizePath("res://.godot/mono/temp/bin/Debug/KnightOnlineUiClassic.dll")))),clientHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(ProjectSettings.GlobalizePath("res://.godot/mono/temp/bin/Debug/LibreKO.dll"))))},new JsonSerializerOptions{WriteIndented=true}));
         GD.Print("MERCHANT_AUDIT_OK "+checks.Count);world.Free();net.Free();foreach(var layer in layers)layer.QueueFree();await Frames(3);

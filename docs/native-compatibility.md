@@ -232,6 +232,36 @@ listed. Preview-only members are listed at the end.
 | `_reset` (`Pending`, `Kind`) *(fix/npc-service-requests)*, otherwise `_resetKind` | F | Redistribution pending |
 | `_repairShown`, `_repairInFlight`, `_repairQueue`, `_repairFooter`, `RepairTakeFromBag(int)`, `RepairAll()`, `CloseRepair()`, `IsRepairable(int)`, `RepairCostAt(int)`, `RepairableSlots()` | F/M | Classic repair mode |
 
+### Storage, items and services on upstream cd63f98
+
+These members replace the rows above where the 2619 review renamed or removed them (`_vipWhPage`,
+`_vipWhPageLbl`, `_vipWhExpirySec`, `_clanWhPageLbl`, `_clanWhLoaded`, `_clanWhLoading`, `_clanWhGoldInput`,
+`ClanWhGoldTransfer(bool)`, `ClanWhDepositSlot`, `ClanWhWithdrawSlot`, `VipWithdrawSlot`, `_invDelSlot`,
+`_invDelItemId`, `_sealBagCells`, `_pieceBackpackGrid`, `Net._conn`). The plugin no longer sends vault packets or
+sets the vaults' pending state itself; every transfer runs through the client's handlers below.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `_vipWhCells`, `_vipKeyCell`, `_vipWhOpen`, `_vipWhExpiresAt`, `_vipWhPinSet`, `_vipSetPinBtn`, `_vipClearPinBtn`, `_vipWhAmount` | F | VIP vault: Classic 4 x 12 pages over the 48-slot grid, key plaque, lock, PIN actions, amount prompt |
+| `VipTakeFromBag(int)`, `VipBagFit(int)`, `AskVipWithdraw(int,int)`, `VipWithdrawInto(int,int)`, `CanDropOnVipVault(int,Variant)`, `DropOnVipVault(int,Variant)` | M | VIP transfers, key use and in-vault moves |
+| `_clanWhCells`, `_clanWhDepositBtn`, `_clanWhWithdrawBtn`, `_clanWhAmount`, `TurnClanWhPage(int)` | F/M | Clan bank page, coin buttons with the client's rights, amount and gold prompts |
+| `ClanTakeFromBag(int)`, `ClanBagFit(int)`, `AskClanWithdraw(int,int)`, `ClanWithdrawInto(int,int)`, `CanDropOnClanWh(int,Variant)`, `DropOnClanWh(int,Variant)` | M | Clan bank transfers and in-bank moves (rights from `ClanCanWithdraw`) |
+| `_whDepositBtn`, `_whWithdrawBtn`, `WhTakeFromBag(int)`, `WhBagFit(int)`, `WithdrawInto(int,int)` | F/M | Warehouse coin buttons, deposit and take-out from the embedded bag |
+| `StorageTransferBusy` | P | Busy state of every storage |
+| `_invDelQueue` (`DestroyQueue`), `_invDelPanel`, `AskDeleteItem(int)`, `ConfirmDeleteItem()`, `HideDeletePrompt()` | F/M | Bulk destroy through the Classic destroy prompt |
+| `OpenVipVaultFromBag()` | M | VIP Vault shortcut in the inventory drawer |
+| `Net.GoldChangeLogEvent`, `_tradeInFlight` | E/F | Gold log: shop trades and server gold notices are logged by the client only |
+| `_sealCompanion`/`SealTakeFromBag(int)`, `SealBagFit(int)`, `_sealShown`, `_sealWaiting` | F/M | Seal: Classic bag and socket drop instead of the docked inventory |
+| `_piecePosition`, `PlacePiece(int)` (`_pieceCompanion` left docked but closed) | F/M | Chaotic Generator: Classic bag rebuilt from the carried items |
+| `_smashSocket`, `_smashResults`, `_smashMessage`, `_smashSubMessage`, `_smashStartBtn`, `_smashStopBtn`, `_smashCancelBtn`, `_smashShown`, `_smashSlot`, `SmashTakeFromBag(int)`, `SmashBagFit(int)` | F/M | Disassemble (`itemsmash`) |
+| `_csSocket`, `_csTransHeadline`, `_csTransGold`, `_csTransShown`, `_csBagSlot`, `CharacterSealTakeFromBag(int)`, `CharacterSealBagFit(int)` | F/M | Character Seal scroll / Cypher Ring transfer (`char_seal_trans`) |
+| `_csSealingPage`, `_csSelectPage`, `_csCodePage`, `_csSelectTitle`, `_csSelectPrompt`, `_csSelectOk`, `_csSlotButtons`, `_csKeys`, `_csCodeStars`, `_csPicked` | F | Character Seal pages (`char_seal`) |
+| `_csSheetName`, `_csSheetLevel`, `_csSheetStats`, `_csSheetGold`, `_csSheetCells`, `_csSheetAchievements` | F | Cypher Ring sheet (`char_seal_sheet`) |
+| `_expSealJar`, `_expSealPercent`, `_expSealAmount`, `_expSealOn`, `_expSealOff`, `_expSealPick`; `Net.ExpSealState` | F/P | EXP Seal (`exp_seal`) |
+| `_tiRows`, `_tiSlots`, `_tiNames`, `_tiPlaces`, `_tiTimes`, `_tiScroll`, `_tiHideToday` | F | Temporary Item List (`timed_items`) |
+| `_lootFilterWindow` body controls (named by order) | - | Loot Filter (`loot_filter`) |
+| `PluginUi.ReplaceExitMenu` (`ExitMenuRequest`) | API | Classic exit menu (`co_exitmenu`) with the temporary item list |
+
 ### Market and communication
 
 | Member | Kind | Used for |

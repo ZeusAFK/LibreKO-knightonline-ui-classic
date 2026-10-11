@@ -63,6 +63,8 @@ public sealed class Plugin : IPlugin
         foreach(var id in ClassicIdentitySkin.WindowIds)ui.ExtendWindow(id,ClassicIdentitySkin.Extend);
         foreach(var id in ClassicServiceSkin.WindowIds)ui.ExtendWindow(id,ClassicServiceSkin.Extend);
         foreach(var id in ClassicEventsSkin.WindowIds)ui.ExtendWindow(id,ClassicEventsSkin.Extend);
+        foreach(var id in ClassicItemsSkin.WindowIds)ui.ExtendWindow(id,ClassicItemsSkin.Extend);
+        ui.ReplaceExitMenu(request=>new ClassicExitMenu(request));
         ui.ExtendWindow("vipwarehouse_pin", ClassicStoragePin.Extend);
         foreach(var id in ClassicStorageSkin.WindowIds)ui.ExtendWindow(id,ClassicStorageSkin.Extend);
         foreach(var id in ClassicMerchantSkin.WindowIds)ui.ExtendWindow(id,ClassicMerchantSkin.Extend);

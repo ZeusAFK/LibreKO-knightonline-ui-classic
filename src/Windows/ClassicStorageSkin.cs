@@ -55,16 +55,17 @@ public partial class ClassicStoragePanel : Control
         _prev.TooltipText = "Previous storage page"; _next.TooltipText = "Next storage page";
         var page = nodes.OfType<Label>().Single(l => l.Name == "storage_page");
         Move(page, ClassicStorageLayout.Page(_vip)); page.MouseFilter = MouseFilterEnum.Pass; page.HorizontalAlignment = HorizontalAlignment.Center;
-        // VIP and clan reuse the client's muted pager label; every storage shows the warehouse's white page count.
+        // Every storage shows the warehouse's white page count.
         page.AddThemeColorOverride("font_color", Colors.White);
-        _cells = nodes.OfType<ItemSlotView>().ToArray();
+        // Only the Classic cells and the VIP key plaque; the client's own grids stay hidden in the body.
+        _cells = nodes.OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_")).ToArray();
         foreach (var cell in _cells)
         {
             string name = cell.Name.ToString();
-            bool bag = name.StartsWith("storage_bag_");
-            int index = int.Parse(name[(bag ? 12 : 13)..]);
-            if (!bag && index >= (_vip ? 12 : 24)) { cell.Visible = false; continue; }
-            var rect = bag ? ClassicStorageLayout.Bag(index, _vip) : ClassicStorageLayout.Stored(index);
+            bool bag = name.StartsWith("storage_bag_"), key = name == "storage_key";
+            int index = key ? 0 : int.Parse(name[(bag ? 12 : 13)..]);
+            if (!bag && !key && index >= (_vip ? 12 : 24)) { cell.Visible = false; continue; }
+            var rect = key ? ClassicStorageLayout.Key : bag ? ClassicStorageLayout.Bag(index, _vip) : ClassicStorageLayout.Stored(index);
             ClassicVendorSkin.Move(cell, this, rect);
             cell.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
             cell.AddChild(new ClassicStorageCell(cell));
@@ -92,26 +93,24 @@ public partial class ClassicStoragePanel : Control
             Caption("Expires in", ClassicStorageLayout.ExpiryCaption);
             var expiry = nodes.OfType<Label>().Single(l => l.Name == "storage_expiry"); Move(expiry, ClassicStorageLayout.Expiry);
             expiry.HorizontalAlignment = HorizontalAlignment.Right; expiry.AddThemeColorOverride("font_color", new Color("efd9b4"));
-            var set = nodes.OfType<Button>().Single(b => b.Text == "Set / change PIN");
-            var clear = nodes.OfType<Button>().Single(b => b.Text == "Clear PIN");
-            foreach (var (button, rect) in new[] { (set, ClassicStorageLayout.ChangePin), (clear, ClassicStorageLayout.ClearPin) })
+            // The client names the PIN action (Set PIN / Change PIN) and enables Clear PIN once a PIN exists.
+            foreach (var (button, rect) in new[] { (Find("storage_pin_set"), ClassicStorageLayout.ChangePin), (Find("storage_pin_clear"), ClassicStorageLayout.ClearPin) })
             {
-                if (button == set) button.Text = "Change PIN";
                 ClassicVendorSkin.Move(button, this, rect); ClassicVendorSkin.Button(button); ClassicMerchantSkin.Font(button);
                 button.SetMeta("storage_expected_rect", rect);
             }
         }
         else
         {
-            var deposit = window.Id == "warehouse" ? nodes.OfType<Button>().Single(b => b.Text == "Deposit") : Find("storage_deposit");
-            var withdraw = window.Id == "warehouse" ? nodes.OfType<Button>().Single(b => b.Text == "Withdraw") : Find("storage_withdraw");
+            var deposit = Find("storage_deposit");
+            var withdraw = Find("storage_withdraw");
             Place(deposit, "btn_gold", new Rect2(206, 316, 22, 25), "");
             Place(withdraw, "btn_gold_warehouse", new Rect2(206, 276, 22, 25), "");
             deposit.TooltipText = "Deposit coins"; withdraw.TooltipText = "Withdraw coins";
             Caption("Stored coins", ClassicStorageLayout.StoredCaption);
             if (window.Id == "warehouse")
             {
-                var search = nodes.OfType<LineEdit>().Single(); search.Text = ""; search.Visible = false;
+                foreach (var search in nodes.OfType<LineEdit>()) { search.Text = ""; search.Visible = false; }
             }
         }
         if (window.HasMeta("storage_amount")) ClassicTradeQuantity.Apply((QuantityPrompt)window.GetMeta("storage_amount").AsGodotObject(), this);
@@ -135,7 +134,9 @@ public partial class ClassicStoragePanel : Control
         _wallet.Text = character.Gold.ToString("n0");
         _weight.Text = character.MaxWeight > 0 ? $"Weight : {character.Weight / 10f:0.0}/{character.MaxWeight / 10f:0.0}" : "";
         _stored.Text = Window.GetMeta("storage_money", 0).AsInt32().ToString("n0");
-        _status.Visible = _status.Text.Length > 0 && !_status.Text.StartsWith("Right-click");
+        // Only real results show; the client's resting hints (neutral tone) stay hidden, as the instructions do.
+        _status.Visible = _status.Text.Length > 0 && !_status.Text.StartsWith("Right-click")
+            && !(_status is StatusLabel && _status.GetThemeColor("font_color") == UiTheme.TextDim);
         _status.TooltipText = _status.Text;
         if (_status is not StatusLabel) _status.AddThemeColorOverride("font_color", new Color("e9b56a"));
         int page = Window.GetMeta("storage_page", 0).AsInt32(), pages = Window.GetMeta("storage_pages", _vip ? 4 : 8).AsInt32();

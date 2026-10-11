@@ -1,3 +1,4 @@
+using Godot;
 using LibreKO;
 using LibreKO.Domain;
 
@@ -5,8 +6,8 @@ namespace KnightOnlineUiClassic.Native;
 
 /// <summary>
 /// Inventory services the Classic inventory needs beyond <see cref="LibreKO.Plugins.IGameInventory"/>:
-/// partial magic bag moves, the destination of a magic bag right-click, and item destruction confirmed
-/// by the Classic prompt for the exact item it showed.
+/// partial magic bag moves, the destination of a magic bag right-click, and item destruction through the
+/// client's bulk destroy queue, confirmed by the Classic prompt.
 /// </summary>
 public static class NativeInventory
 {
@@ -47,19 +48,75 @@ public static class NativeInventory
 
     /// <summary>
     /// Destroys the item in <paramref name="slot"/> only if it is still <paramref name="itemId"/>, is not a
-    /// costume or magic bag item and is not held by an open service. The client sends and applies it.
+    /// costume or magic bag item and is not held by an open service. The client queues, sends and applies it.
     /// </summary>
     public static void ConfirmDrop(int slot, int itemId)
     {
-        if (World is not { } world || !Native.TryGet<Inventory>(world, "Inv", out var inventory))
+        if (World is not { } world || !Native.TryGet<Inventory>(world, "Inv", out var inventory)
+            || Native.Get<DestroyQueue>(world, "_invDelQueue") is not { } queue)
         {
             Plugin.Kit.Game.Inventory.Drop(slot);
             return;
         }
         if (slot < 0 || slot >= inventory.Length || inventory[slot].ItemId != itemId) return;
         if (slot >= InventoryConstants.CospreStart || Native.Call(world, "RefuseItemInUse", slot, -1) is true) return;
-        if (!Native.Set(world, "_invDelSlot", slot) || !Native.Set(world, "_invDelItemId", itemId)) return;
+        if (queue.Running) return;
+        queue.Clear();
+        if (!queue.Add(slot, itemId)) return;
         Native.Call(world, "ConfirmDeleteItem");
+    }
+
+    /// <summary>The items the client's bulk destroy queue holds, in destruction order (empty without a queue).</summary>
+    public static IReadOnlyList<DestroyQueue.Entry> DestroyEntries =>
+        World is { } world && Native.Get<DestroyQueue>(world, "_invDelQueue") is { } queue ? queue.Entries : Array.Empty<DestroyQueue.Entry>();
+
+    /// <summary>Whether the client destroys items through a bulk queue the Classic prompt can drive.</summary>
+    public static bool HasDestroyQueue => World is { } world && Native.Get<DestroyQueue>(world, "_invDelQueue") != null;
+
+    /// <summary>
+    /// Adds an item to the client's destroy queue through its own checks (in use, sealed Cypher Ring,
+    /// duplicates). Returns whether it was queued. The client's own queue card stays hidden.
+    /// </summary>
+    public static bool QueueDestroy(int slot)
+    {
+        if (World is not { } world || Native.Get<DestroyQueue>(world, "_invDelQueue") is not { Running: false } queue) return false;
+        int before = queue.Count;
+        Native.Call(world, "AskDeleteItem", slot);
+        HideDestroyCard();
+        return queue.Count > before;
+    }
+
+    /// <summary>Keeps an item: removes it from the destroy queue.</summary>
+    public static void UnqueueDestroy(int slot)
+    {
+        if (World is { } world && Native.Get<DestroyQueue>(world, "_invDelQueue") is { } queue) queue.Remove(slot);
+    }
+
+    /// <summary>Destroys every queued item that is still in place, one server request at a time.</summary>
+    public static void ConfirmDestroy()
+    {
+        if (World is { } world) Native.Call(world, "ConfirmDeleteItem");
+    }
+
+    /// <summary>Cancels the destroy queue.</summary>
+    public static void CancelDestroy()
+    {
+        if (World is { } world) Native.Call(world, "HideDeletePrompt");
+    }
+
+    /// <summary>The VIP vault key item, whose art marks the bag's VIP Vault shortcut.</summary>
+    public const int VipVaultKey = 800_442_000;
+
+    /// <summary>Opens the VIP vault from the bag, where the client allows it (its zone rules apply).</summary>
+    public static void OpenVipVault()
+    {
+        if (World is { } world) Native.Call(world, "OpenVipVaultFromBag");
+    }
+
+    /// <summary>Hides the client's own queue card; the Classic prompt shows the queue instead.</summary>
+    public static void HideDestroyCard()
+    {
+        if (World is { } world && Native.Get<Control>(world, "_invDelPanel") is { Visible: true } card) card.Visible = false;
     }
 
     private static int FirstFreeCell()

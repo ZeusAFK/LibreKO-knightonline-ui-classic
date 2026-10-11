@@ -99,14 +99,20 @@ public partial class Preview
         var screens=new List<object>();var checks=new List<string>();var countBadges=new List<object>();
         void Require(bool valid,string message) { if(!valid) throw new Exception("VENDOR_AUDIT: "+message);checks.Add(message); }
         var infoWindow=new LogWindow { Visible=false };AddChild(infoWindow);infoWindow.Visible=false;
+        int raised=0;
+        void RaiseNew()
+        {
+            foreach(var line in game.Log.History.Skip(raised).ToArray())
+                typeof(PluginGame).GetMethod("RaiseLogLine",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(game,new object[]{line});
+            raised=game.Log.History.Count;
+        }
         void ApplyGold(int total)
         {
-            int before=game.Log.History.Count;
-            NativeGoldLog.Changed(world,total);DetailCall(world,"OnGoldChange",total);
-            foreach(var line in game.Log.History.Skip(before))
-                typeof(PluginGame).GetMethod("RaiseLogLine",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(game,new object[]{line});
+            NativeGoldLog.Changed(world,total);DetailCall(world,"OnGoldChange",total);RaiseNew();
             DetailCall(world,"OnVendorGold",total);
         }
+        // Shop trades are logged once, by the client's own shop line (the plugin only applies the balance).
+        string ShopLine(int textId,int amount)=>ItemData.Text(textId,"%d").Replace("%d",amount.ToString("n0"));
         Label CountLabel(object cell)
         {
             for(var type=cell.GetType();type!=null;type=type.BaseType)
@@ -285,11 +291,10 @@ public partial class Preview
         shell.BagCells[0].OnDrop!(Inventory.GridStart,Inventory.GridStart+2);
         Require(!(bool)DetailField(world,"_moveInFlight")!,"Native inventory handler also refuses a move during purchase acknowledgement");
         int buyCost=ItemData.BuyPrice(entry.Id)*10;ApplyGold(net.Sheet.Gold-buyCost);
-        DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,buyCost);RefreshBag();
+        DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,buyCost);RaiseNew();RefreshBag();
         Require(inventory[Inventory.GridStart].ItemId==entry.Id && inventory[Inventory.GridStart].Count==73,"Successful acknowledgement merges the actual purchased quantity");
-        Require(game.Log.History.Count==1 && game.Log.History[^1].Text==$"You spent −{buyCost:n0} gold."
-            && game.Log.History[^1].Color==new Color("f07870") && game.Log.History[^1].Kind==GameLogKind.Item,
-            "Authoritative purchase balance change records the actual signed gold expense in red in Info");
+        Require(game.Log.History.Count==1 && game.Log.History[^1].Text==ShopLine(7683,buyCost) && game.Log.History[^1].Kind==GameLogKind.Item,
+            "Authoritative purchase records the actual gold expense once in Info (the client's shop line, no duplicate plugin line)");
         ApplyGold(net.Sheet.Gold);
         Require(game.Log.History.Count==1,"Repeated unchanged balances do not duplicate the Info transfer");
         await Capture("purchase-confirmed");
@@ -303,16 +308,20 @@ public partial class Preview
         Escape();await Frames();Require(!shell.ModalOpen && !InFlight() && inventory[Inventory.GridStart].Count==73,"Cancelling sale approval preserves all items");
         await RightClick(shell.BagCells[0]);amount.Text="10";amount.EmitSignal(LineEdit.SignalName.TextChanged,amount.Text);ok.EmitSignal(BaseButton.SignalName.Pressed);await Frames();await Approve();
         int saleCredit=ItemData.SellPrice(entry.Id)*10;ApplyGold(net.Sheet.Gold+saleCredit);
-        DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,saleCredit);RefreshBag();
+        DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,saleCredit);RaiseNew();RefreshBag();
         Require(inventory[Inventory.GridStart].Count==63,"Successful sale removes only the confirmed quantity");await Capture("sale-confirmed");
-        Require(game.Log.History.Count==2 && game.Log.History[^1].Text==$"You received +{saleCredit:n0} gold."
-            && game.Log.History[^1].Color==new Color("79d892") && game.Log.History[^1].Kind==GameLogKind.Item,
-            "Authoritative sale balance change records the actual signed gold income in green in Info");
+        Require(game.Log.History.Count==2 && game.Log.History[^1].Text==ShopLine(7682,saleCredit) && game.Log.History[^1].Kind==GameLogKind.Item,
+            "Authoritative sale records the actual gold income once in Info (the client's shop line, no duplicate plugin line)");
         infoWindow.Visible=true;infoWindow.Position=new Vector2(688,410);infoWindow.Size=new Vector2(308,205);await Capture("money-info");
         var infoText=Descendants(infoWindow).OfType<RichTextLabel>().Single();
-        Require(infoText.Text.Contains("[color=#f07870]") && infoText.Text.Contains("[color=#79d892]")
-            && infoText.GetParsedText().Contains($"You spent −{buyCost:n0} gold.") && infoText.GetParsedText().Contains($"You received +{saleCredit:n0} gold."),
-            "The rendered Classic Info control displays both expense and income with their distinct colors and signed amounts");
+        Require(infoText.GetParsedText().Contains(ShopLine(7683,buyCost)) && infoText.GetParsedText().Contains(ShopLine(7682,saleCredit))
+            && !infoText.GetParsedText().Contains("You spent") && !infoText.GetParsedText().Contains("You received"),
+            "The rendered Classic Info control displays the expense and the income once each");
+        ApplyGold(net.Sheet.Gold-1234);
+        Require(game.Log.History[^1].Text=="You spent −1,234 gold." || game.Log.History[^1].Text==$"You spent −{1234:n0} gold.",
+            "A gold change the client does not log itself is still recorded as a signed Classic line");
+        Require(game.Log.History[^1].Color==new Color("f07870"),"The Classic expense line is red");
+        ApplyGold(net.Sheet.Gold+1234);
         infoWindow.Visible=false;
         await PointerDrag(hit,target);Escape();await Frames(2);
         Require(!quantity.Visible && !InFlight() && vendor.Visible,"Escape cancels the quantity editor while keeping the shop open");
@@ -327,7 +336,7 @@ public partial class Preview
         await RightClick(shell.BagCells[1]);await Frames();await Approve();
         Require(InFlight() && inventory[Inventory.GridStart+1].ItemId==gear,"Equipment sale confirmation still waits for server acknowledgement");
         int gearCredit=ItemData.SellPrice(gear);ApplyGold(net.Sheet.Gold+gearCredit);
-        DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,gearCredit);RefreshBag();await Capture("equipment-sale-confirmed");
+        DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,gearCredit);RaiseNew();RefreshBag();await Capture("equipment-sale-confirmed");
         Require(inventory[Inventory.GridStart+1].IsEmpty,"Confirmed equipment sale removes the correct item");
         var gearGroup=groups.First(g=>g.Value.Any(e=>e.Id==gear));
         OpenShop(gearGroup.Key);hit=await ShowItem(gear);
@@ -336,7 +345,7 @@ public partial class Preview
         await Approve();await Capture("equipment-buy-pending");
         Require(!quantity.Visible && InFlight() && inventory[Inventory.GridStart+1].IsEmpty,"Non-stackable equipment purchase needs no quantity editor and awaits acknowledgement");
         int gearCost=ItemData.BuyPrice(gear);ApplyGold(net.Sheet.Gold-gearCost);
-        DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,gearCost);RefreshBag();await Capture("equipment-buy-confirmed");
+        DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,gearCost);RaiseNew();RefreshBag();await Capture("equipment-buy-confirmed");
         Require(inventory[Inventory.GridStart+1].ItemId==gear,"Equipment purchase preserves the empty drop destination");
         inventory[Inventory.GridStart+1]=default;OpenShop(group.Key);hit=await ShowItem(entry.Id);
         inventory[Inventory.GridStart+1]=new NativeSlot {ItemId=entry.Id,Count=1,Durability=ItemData.MaxDurabilityOf(entry.Id)};RefreshBag();await Frames();
