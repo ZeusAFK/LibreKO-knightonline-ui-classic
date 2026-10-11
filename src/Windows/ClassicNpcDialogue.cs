@@ -35,6 +35,14 @@ public partial class ClassicNpcDialogue : Control
     public Label? Status { get; private set; }
     public int Page => _page;
     public int PageCount => Math.Max(1,(_topics.Count+_capacity-1)/_capacity);
+    // The client's own dialogue controls, shared with the local-art quest windows (MykoQuestDialogue).
+    public Label NativeTitle => _title;
+    public RichTextLabel NativeSpeech => _nativeSpeech;
+    public ScrollContainer NativeQuest => _nativeQuest;
+    public VBoxContainer QuestSource => _questSource;
+    public VBoxContainer MenuSource => _menuSource;
+    public Button? NativeClose => _nativeClose;
+    public HBoxContainer Header => _header;
     public ClassicNpcDialogue(HudWindow window,Control body,HBoxContainer header,Button? close)
     {
         Name="classic_npc_dialogue";_window=window;_nativeBody=body;_header=header;_nativeClose=close;

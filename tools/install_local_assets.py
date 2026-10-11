@@ -16,6 +16,8 @@ import shutil
 from pathlib import Path
 
 DEFAULT_LAYOUTS = ['re_powerupstore']
+# Quest NPC talk menu and quest viewer (src/Windows/MykoQuestDialogue.cs).
+DEFAULT_LAYOUTS += ['re_quest_npc_menu', 're_quest_viewer']
 
 
 def textures(node):
