@@ -319,10 +319,15 @@ public partial class Preview
         Require((int)DetailField(trackerWorld, "_trackerPage")! == 0, "Previous arrow returns to the first page");
         bool wasFolded = Config.QuestTrackerCollapsed;
         if (wasFolded) Config.SetQuestTrackerCollapsed(false);
-        DetailCall(trackerWorld, "RefreshTracker"); await ShowTracker();
+        DetailCall(trackerWorld, "RefreshTracker");
+        var unfoldedRect = await ShowTracker();
         var foldButton = (Button)rowsBox.FindChild(NativeQuestHud.TrackerFold, true, false)!;
+        // Fold and unfold as the player does: no audit resize, the skin must fit the frame itself.
+        async Task<Rect2> Settled() { await Frames(5); return tracker.GetGlobalRect(); }
         await Click(foldButton);
-        trackerRect = await ShowTracker();
+        trackerRect = await Settled();
+        Require(tracker.GetChildren().OfType<ClassicFrame>().Single().GetGlobalRect() == trackerRect && trackerRect.Size.Y < unfoldedRect.Size.Y,
+            $"Folding shrinks the frame to the header by itself ({unfoldedRect.Size} -> {trackerRect.Size})");
         Require(Config.QuestTrackerCollapsed && rowsBox.GetChildren().OfType<Control>().Count(c => c.Visible && !c.IsQueuedForDeletion()) == 1, "Fold collapses the client's tracker to its header");
         Require(trackerRect.Size.Y == TrackerSpec.HeaderHeight + TrackerSpec.PadY * 2, "Folded tracker is the header in its frame " + trackerRect.Size);
         Require(foldButton.GetNode<ClassicTrackerFold>("classic_fold").IsFolded && foldButton.Text.Length == 0, "Fold button shows the Classic down arrow");
@@ -330,6 +335,10 @@ public partial class Preview
         Save(trackerRect, "tracker-folded");
         await Click(foldButton);
         Require(!Config.QuestTrackerCollapsed, "Fold button unfolds the tracker");
+        var restoredRect = await Settled();
+        Require(restoredRect == unfoldedRect, $"Unfolding restores the full frame by itself ({restoredRect} / {unfoldedRect})");
+        CheckTracker("unfolded");
+        Save(restoredRect, "tracker-unfolded");
         Config.SetQuestTrackerCollapsed(wasFolded);
         tracked.Add(900);
         DetailCall(trackerWorld, "RefreshTracker");

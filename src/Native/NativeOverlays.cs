@@ -39,6 +39,8 @@ public enum NativeOverlay
     TowerButton,
     /// <summary>The ranker statue's message paper.</summary>
     Paper,
+    /// <summary>The genie quick panel (an event box with its own minimise, close and time rows).</summary>
+    GenieQuick,
     /// <summary>The Wanted list buttons, which the client puts on its own (hidden) mini map.</summary>
     Wanted,
     /// <summary>A label plate the client puts on its own (hidden) mini map (the Nereid monument strip).</summary>
@@ -82,7 +84,7 @@ public static class NativeOverlays
         ("_soccerBoard", NativeOverlay.Score, "soccer_score"),
         ("_nestTimerPanel", NativeOverlay.Toast, "event_timer"),
         ("_royaleBoard", NativeOverlay.Board, "royale_board"),
-        ("_genieSub", NativeOverlay.Board, "genie_quick"),
+        ("_genieSub", NativeOverlay.GenieQuick, "genie_quick"),
         ("_eventTitleColumn", NativeOverlay.Titles, "event_titles"),
         ("_gatherChip", NativeOverlay.Chip, "gather_chip"),
         ("_areaBanner", NativeOverlay.Announcement, "area_banner"),
@@ -108,6 +110,7 @@ public static class NativeOverlays
                 || node.IsQueuedForDeletion() || node.HasMeta(Prepared)) continue;
             node.SetMeta(Prepared, true);
             node.Name = name;
+            if (part == NativeOverlay.GenieQuick) NativeGenieQuick.Bind(node, world);
             Apply(part, node);
         }
         // The client draws the order message (top 110) over the area banner's title (top 100); the skin stacks them.
