@@ -18,9 +18,9 @@ public partial class ClassicNpcCard : Control
     {
         Source=source;_choice=choice;Name=hunt?"monster_card":"reward_card";
         MouseFilter=MouseFilterEnum.Stop;TooltipText=source.TooltipText;
-        _sourceName=source.GetChildren().OfType<Label>().FirstOrDefault();_sourceAmount=source.GetChildren().OfType<Label>().LastOrDefault();
-        var nativeIcon=source.GetChildren().OfType<TextureRect>().FirstOrDefault();
-        _icon=new TextureRect { Texture=hunt?Plugin.Kit.Texture("npc_monster_hunt_32.png"):nativeIcon?.Texture,
+        var values=source as HBoxContainer??source.GetChildren().OfType<HBoxContainer>().FirstOrDefault()??source;
+        _sourceName=values.GetChildren().OfType<Label>().FirstOrDefault();_sourceAmount=values.GetChildren().OfType<Label>().LastOrDefault();
+        _icon=new TextureRect { Texture=hunt?Plugin.Kit.Texture("npc_monster_hunt_32.png"):KnightOnlineUiClassic.Native.NativeQuestLog.RewardIcon(source),
             ExpandMode=TextureRect.ExpandModeEnum.IgnoreSize,StretchMode=TextureRect.StretchModeEnum.KeepAspectCentered,
             TextureFilter=TextureFilterEnum.Nearest,MouseFilter=MouseFilterEnum.Ignore };
         AddChild(_icon);ClassicNpcLayout.Place(_icon,new Rect2(6,5,32,32));

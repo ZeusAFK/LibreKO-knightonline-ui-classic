@@ -14,8 +14,9 @@ public static partial class NativeSetup
 
 /// <summary>
 /// The Classic rebirth window: the original Stat/Current/Add/Total columns, availability texts, and an
-/// allocation confirmation that freezes the chosen points before the client sends them. Requirements,
-/// the request and its result stay with the client.
+/// allocation confirmation that freezes the chosen points before the client sends them. The same window
+/// redistributes the existing rebirth points (the client's reset mode). Requirements, the request and
+/// its result stay with the client.
 /// </summary>
 public static class NativeRebirth
 {
@@ -65,8 +66,8 @@ public static class NativeRebirth
             total.Name = "rebirth_total_" + row;
             line.AddChild(total);
             state.Totals[row] = total;
-            NativeIdentity.Rewire(remove[row], () => EditPoint(world, index, false));
-            NativeIdentity.Rewire(add[row], () => EditPoint(world, index, true));
+            RewireStep(remove[row], () => EditPoint(world, index, false));
+            RewireStep(add[row], () => EditPoint(world, index, true));
         }
         NativeIdentity.Rewire(accept, () => Pressed(world));
         _states.AddOrUpdate(world, state);
@@ -79,10 +80,26 @@ public static class NativeRebirth
         NativeWindows.Sync(window, () => Refresh(world));
     }
 
+    /// <summary>
+    /// The client's step buttons add a point on press and repeat while held; the Classic step keeps that
+    /// rhythm but goes through the confirmation lock.
+    /// </summary>
+    private static void RewireStep(BaseButton button, Action step)
+    {
+        foreach (var signal in new[] { BaseButton.SignalName.Pressed, BaseButton.SignalName.ButtonDown })
+            foreach (var connection in button.GetSignalConnectionList(signal))
+                button.Disconnect(signal, connection["callable"].AsCallable());
+        HoldRepeat.Attach(button, step);
+    }
+
     private static CharacterSheet? Sheet(World world) => Native.Get<CharacterSheet>(world, "Sheet");
 
+    /// <summary>The client's reset mode redistributes the points already earned instead of adding a stage.</summary>
+    public static bool Redistributing(World world) => Native.Get<bool>(world, "_rebirthResetMode");
+
     private static bool Unavailable(World world, CharacterSheet sheet) =>
-        Native.Get<bool>(world, "_selfDead") || sheet.Level < CharacterSheet.MaxLevel || sheet.RebirthLevel >= RebirthPick.MaxRebirthLevel;
+        Native.Get<bool>(world, "_selfDead")
+        || !Redistributing(world) && (sheet.Level < CharacterSheet.MaxLevel || sheet.RebirthLevel >= RebirthPick.MaxRebirthLevel);
 
     /// <summary>The fork's RefreshRebirthUI: columns, availability and the lock while a confirmation is open.</summary>
     public static void Refresh(World world)
@@ -90,26 +107,30 @@ public static class NativeRebirth
         if (!_states.TryGetValue(world, out var state) || Sheet(world) is not { } sheet
             || Native.Get<RebirthPick>(world, "_rebirthPick") is not { } pick) return;
         int level = sheet.RebirthLevel;
-        bool capped = level >= RebirthPick.MaxRebirthLevel;
-        bool locked = Native.Get<bool>(world, "_rebirthInFlight") || state.Notice != null || Native.Get<bool>(world, "_selfDead")
-            || capped || sheet.Level < CharacterSheet.MaxLevel;
+        bool reset = Redistributing(world);
+        bool capped = !reset && level >= RebirthPick.MaxRebirthLevel;
+        bool locked = Native.Get<bool>(world, "_rebirthInFlight") || state.Notice != null || Unavailable(world, sheet);
         var labels = Native.Get<Label[]>(world, "_rebirthBonusLbls")!;
         var picks = Native.Get<Label[]>(world, "_rebirthPickLbls")!;
         var add = Native.Get<Button[]>(world, "_rebirthAddBtns")!;
         var remove = Native.Get<Button[]>(world, "_rebirthRemoveBtns")!;
-        Native.Get<Label>(world, "_rebirthLevelLbl")!.Text = capped ? $"Rebirth Lv {level} / {RebirthPick.MaxRebirthLevel}" : $"Rebirth Lv {level}  →  Lv {level + 1}";
+        Native.Get<Label>(world, "_rebirthLevelLbl")!.Text = reset ? $"Rebirth Lv {level}  ·  Redistribution"
+            : capped ? $"Rebirth Lv {level} / {RebirthPick.MaxRebirthLevel}" : $"Rebirth Lv {level}  →  Lv {level + 1}";
         Native.Get<Label>(world, "_rebirthPointsLbl")!.Text = capped ? "No further bonus points are available."
-            : $"Bonus points: {RebirthPick.PointsPerRebirth}   Remaining: {pick.Remaining}";
+            : $"Bonus points: {pick.Capacity}   Remaining: {pick.Remaining}";
         for (int row = 0; row < RebirthPick.StatCount; row++)
         {
             int current = sheet.RebirthBonusAtRow(row), placed = capped ? 0 : pick.PickedAt(row);
             labels[row].Text = $"+{current}";
             picks[row].Text = $"+{placed}";
-            state.Totals[row].Text = $"+{current + placed}";
+            // Redistributing replaces the earned points with the new placement.
+            state.Totals[row].Text = $"+{(reset ? placed : current + placed)}";
             add[row].Disabled = locked || !pick.CanAdd(row);
             remove[row].Disabled = locked || !pick.CanRemove(row);
         }
-        Native.Get<Button>(world, "_rebirthBtn")!.Disabled = locked || !pick.Complete;
+        var accept = Native.Get<Button>(world, "_rebirthBtn")!;
+        accept.Disabled = locked || !pick.Complete;
+        accept.Text = reset ? "Redistribute" : "Rebirth";
         string availability = capped ? "The maximum rebirth level has been reached."
             : sheet.Level < CharacterSheet.MaxLevel ? $"Level {CharacterSheet.MaxLevel} is required."
             : Native.Get<bool>(world, "_selfDead") ? "You cannot rebirth while dead." : "";
@@ -149,16 +170,19 @@ public static class NativeRebirth
             || Unavailable(world, sheet)) return;
         if (!pick.Complete)
         {
-            Native.Call(world, "SetRebirthStatus", $"Place all {RebirthPick.PointsPerRebirth} points first.", true);
+            Native.Call(world, "SetRebirthStatus", $"Place all {pick.Capacity} points first.", true);
             state.Warning = null;
             return;
         }
         int revision = ++state.Revision;
         var picks = pick.Payload();
         var layer = Native.Get<Node>(world, "_rebirthLayer") ?? world;
-        state.Notice = Notice.Confirm(layer,
-            $"Your {ItemData.DisplayName(QualificationItem).Trim()} will be used.\nApply {RebirthPick.PointsPerRebirth} bonus points?\nRebirth Lv {sheet.RebirthLevel} → Lv {sheet.RebirthLevel + 1}",
-            "Rebirth", "Cancel", () => Send(world, revision, picks), () => Cancel(world, revision), title: "Rebirth");
+        state.Notice = Redistributing(world)
+            ? Notice.Confirm(layer, $"Redistribute your {pick.Capacity} rebirth bonus points?\nThe new placement replaces the current one.",
+                "Redistribute", "Cancel", () => Send(world, revision, picks), () => Cancel(world, revision), title: "Rebirth")
+            : Notice.Confirm(layer,
+                $"Your {ItemData.DisplayName(QualificationItem).Trim()} will be used.\nApply {RebirthPick.PointsPerRebirth} bonus points?\nRebirth Lv {sheet.RebirthLevel} → Lv {sheet.RebirthLevel + 1}",
+                "Rebirth", "Cancel", () => Send(world, revision, picks), () => Cancel(world, revision), title: "Rebirth");
         Refresh(world);
     }
 
@@ -167,25 +191,13 @@ public static class NativeRebirth
         if (!_states.TryGetValue(world, out var state) || revision != state.Revision || !Native.Get<bool>(world, "_rebirthShown")
             || Native.Get<bool>(world, "_rebirthInFlight") || state.Notice == null) return;
         state.Notice = null;
-        if (Sheet(world) is not { } sheet || Unavailable(world, sheet)) { Refresh(world); return; }
-        var sent = (byte[])picks.Clone();
-        Native.Set(world, "_rebirthInFlight", true);
-        Native.Set(world, "_rebirthSent", sent);
-        Native.Call(world, "SetRebirthStatus", "Reincarnating…", false);
+        // The picks stayed frozen while the confirmation was open; the client sends them and handles a refused send.
+        if (Sheet(world) is { } sheet && !Unavailable(world, sheet)
+            && Native.Get<RebirthPick>(world, "_rebirthPick") is { } pick && pick.Payload().SequenceEqual(picks))
+            Native.Call(world, "OnRebirthPressed");
         state.Warning = null;
-        Native.Call(world, "RefreshRebirthUI");
         Refresh(world);
-        // The fix branch's sender reports a refused send; upstream's returns nothing and always sends.
-        if (Net.I is { } net && Native.Call(net, "SendRebirthStatChange", sent) is false)
-            Native.Call(world, "OnRebirthStatResult", (int)Net.ClassChangeRebirthStat, LocalRefusal);
     }
-
-    /// <summary>
-    /// The result a refused local send reports: the signed busy refusal where the reply carries an i16
-    /// result, and the legacy refusal byte otherwise.
-    /// </summary>
-    private static int LocalRefusal =>
-        Native.ClientType("LibreKO.Network.RebirthWire") is { } wire && Native.TryGet<short>(wire, "Busy", out short busy) ? busy : 0;
 
     private static void Cancel(World world, int revision)
     {

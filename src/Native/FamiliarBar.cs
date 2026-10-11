@@ -4,9 +4,10 @@ using LibreKO;
 namespace KnightOnlineUiClassic.Native;
 
 /// <summary>
-/// Applies <see cref="NativeHudPart.FamiliarBar"/> extenders to the client's familiar skill bar. The bar is
-/// found when its layout controller is attached, which is the last step of building it, so extenders see the
-/// complete native bar before the controller installs its overlays and default position. Extenders may set:
+/// Applies <see cref="NativeHudPart.FamiliarBar"/> extenders to the client's familiar skill bar and
+/// <see cref="NativeHudPart.FamiliarPlate"/> extenders to its familiar plate. Both are found when their layout
+/// controller is attached, which is the last step of building them, so extenders see the complete native panel
+/// before the controller installs its overlays and default position. Extenders may set:
 /// <list type="bullet">
 /// <item><c>native_drag_handle_only</c>: move the bar with its own grip only, without the floating move grip;</item>
 /// <item><c>hud_default_position</c>: a Callable returning the default position used while no position is saved;</item>
@@ -24,13 +25,24 @@ public static class FamiliarBar
         _watching = true;
         tree.NodeAdded += node =>
         {
-            if (node is not HudLayout layout || layout.GetParent() is not PanelContainer bar || bar.HasMeta("pet_bar_controls") || !IsFamiliarBar(bar)) return;
+            if (node is not HudLayout layout || layout.GetParent() is not PanelContainer bar) return;
+            if (!bar.HasMeta("pet_plate_controls") && Native.Get<string>(layout, "_id") == PlateLayoutId)
+            {
+                bar.SetMeta("pet_plate_controls", 1);
+                bar.Name = "pet_plate";
+                Callable.From(() => Prepare(NativeHudPart.FamiliarPlate, bar, layout, Array.Empty<PanelContainer>())).CallDeferred();
+                return;
+            }
+            if (bar.HasMeta("pet_bar_controls") || !IsFamiliarBar(bar)) return;
             bar.SetMeta("pet_bar_controls", 1);
             var cells = NameControls(bar);
             // The tree is still entering; extenders reparent controls, so they run once it has settled.
-            Callable.From(() => Prepare(bar, layout, cells)).CallDeferred();
+            Callable.From(() => Prepare(NativeHudPart.FamiliarBar, bar, layout, cells)).CallDeferred();
         };
     }
+
+    /// <summary>The layout id of the client's familiar plate (name, level, health, mana, satisfaction, experience).</summary>
+    public const string PlateLayoutId = "pet_plate";
 
     private static bool IsFamiliarBar(PanelContainer bar) =>
         bar.GetChildCount() > 0 && bar.GetChild(0) is HBoxContainer row
@@ -53,13 +65,13 @@ public static class FamiliarBar
         return cells;
     }
 
-    private static void Prepare(PanelContainer bar, HudLayout layout, PanelContainer[] cells)
+    private static void Prepare(NativeHudPart part, PanelContainer bar, HudLayout layout, PanelContainer[] cells)
     {
         if (!GodotObject.IsInstanceValid(bar) || !GodotObject.IsInstanceValid(layout)) return;
-        foreach (var extend in NativeHud.Extenders(NativeHudPart.FamiliarBar))
+        foreach (var extend in NativeHud.Extenders(part))
         {
             try { extend(bar); }
-            catch (Exception e) { GD.PushError($"[plugin:knightonline-ui-classic] familiar bar extension: {e}"); }
+            catch (Exception e) { GD.PushError($"[plugin:knightonline-ui-classic] familiar {part} extension: {e}"); }
         }
         if (bar.HasMeta("native_drag_handle_only")) Native.Set(layout, "_moveGripOverlay", false);
         if (bar.HasMeta("hud_default_position"))

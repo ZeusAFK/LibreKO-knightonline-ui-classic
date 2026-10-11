@@ -40,11 +40,13 @@ public sealed class Plugin : IPlugin
         ui.ExtendWindow("equipview", ClassicEquipViewSkin.Extend);
         ui.ExtendWindow("genderchange", ClassicGenderSkin.Extend);
         ui.ExtendWindow("changehair", ClassicGenderSkin.Extend);
+        ui.ExtendWindow(ClassicHairPaletteSkin.WindowId, ClassicHairPaletteSkin.Extend);
         ui.ExtendWindow("nationtransfer", ClassicGenderSkin.Extend);
         ui.ExtendWindow("rebirth", ClassicRebirthSkin.Extend);
         ui.ExtendWindow("cape", ClassicCapeSkin.Extend);
         ui.ExtendWindow("pet", ClassicPetSkin.Extend);
         NativeHud.Extend(NativeHudPart.FamiliarBar, ClassicPetBarSkin.Apply);
+        NativeHud.Extend(NativeHudPart.FamiliarPlate, ClassicPetPlateSkin.Apply);
         ClassicWorldOverlays.Register();
         ui.ExtendWindow("pethatch", ClassicPetHatchSkin.Extend);
         foreach(var id in ClassicCommunicationSkin.WindowIds)ui.ExtendWindow(id,ClassicCommunicationSkin.Extend);

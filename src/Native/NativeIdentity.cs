@@ -45,7 +45,9 @@ public static class NativeIdentity
     {
         if (!Begin(window, "native_identity")) return;
         var body = window.Body;
-        var hint = body.GetChildren().OfType<Label>().FirstOrDefault(l => l.Text.StartsWith("Requires a Scroll", StringComparison.Ordinal));
+        // Upstream fills the hint when the window opens (character or clan rename); older clients built it with text.
+        var hint = Native.Has(world, "_nameChangeHint") ? Native.Get<Label>(world, "_nameChangeHint")
+            : body.GetChildren().OfType<Label>().FirstOrDefault(l => l.Text.StartsWith("Requires a Scroll", StringComparison.Ordinal));
         NativeWindows.Name(hint, "name_change_hint");
         NativeWindows.Name(Native.Get<LineEdit>(world, "_nameChangeEdit"), "name_change_name");
         var accept = Native.Get<Button>(world, "_nameChangeBtn");
@@ -58,7 +60,14 @@ public static class NativeIdentity
         body.AddChild(cancel);
         body.MoveChild(cancel, status.GetIndex());
         window.SetMeta("classic_identity_controls", 1);
+        // Clan rename (opened by the clan ID change reply) reuses this window.
+        window.SetMeta("name_change_clan", false);
+        if (Native.Has(world, "_nameChangeClan"))
+            NativeWindows.Sync(window, () => window.SetMeta("name_change_clan", Native.Get<bool>(world, "_nameChangeClan")));
     }
+
+    /// <summary>True while the rename window serves a clan ID change.</summary>
+    public static bool RenamesClan(HudWindow window) => window.GetMeta("name_change_clan", false).AsBool();
 
     public static void PrepareClanCreate(HudWindow window, World world)
     {

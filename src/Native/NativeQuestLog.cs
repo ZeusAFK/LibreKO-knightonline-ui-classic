@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Godot;
 using LibreKO;
+using LibreKO.Domain;
 using LibreKO.Network;
 
 namespace KnightOnlineUiClassic.Native;
@@ -53,10 +54,10 @@ public static class NativeQuestLog
     public static void Prepare(HudWindow window, World world)
     {
         ListenForReceipts(world);
-        if (Native.Get<HBoxContainer>(world, "_questRewardBox") is not { } tiles || tiles.GetParent() is not Control detail) return;
+        if (Native.Get<Container>(world, "_questRewardBox") is not { } tiles || tiles.GetParent() is not Control detail) return;
         if (detail.GetNodeOrNull(RewardBoxName) != null) return;
         var optionTitle = Native.Get<Label>(world, "_questRewardOptionTitle");
-        var optionTiles = Native.Get<HBoxContainer>(world, "_questRewardOptionBox");
+        var optionTiles = Native.Get<Container>(world, "_questRewardOptionBox");
         var rows = new VBoxContainer { Name = RewardBoxName };
         rows.AddThemeConstantOverride("separation", RewardSeparation);
         int index = tiles.GetIndex();
@@ -145,11 +146,66 @@ public static class NativeQuestLog
         var name = Native.Call(world, "QuestRewardName", itemId) as string ?? "";
         if (Native.Call(world, "QuestItemRow", itemId, name, count.ToString("n0"), UiTheme.GoldBright) is Control row)
         {
+            Unframe(row, itemId);
             row.SetMeta("quest_reward_item_id", itemId);
             row.SetMeta("quest_reward_count", count);
             panel.AddChild(row);
         }
         return panel;
+    }
+
+    private static readonly (string Glyph, int ItemId)[] Glyphs =
+    {
+        ("system/coins", QuestData.CoinItemId), ("system/level", QuestData.ExpItemId), ("system/medal", QuestData.LadderPointItemId),
+    };
+
+    /// <summary>
+    /// The item a reward row shows: the client frames item icons in a grade slot and draws coins, experience
+    /// and ladder points as flat glyphs; the Classic rows show the original item icon for every reward.
+    /// </summary>
+    public static Texture2D? RewardIcon(Control row)
+    {
+        var icon = Native.Descendants(row).OfType<TextureRect>().FirstOrDefault();
+        if (icon?.Texture is not { } texture) return null;
+        foreach (var (glyph, itemId) in Glyphs)
+            if (UiIcons.Get(glyph) == texture) return ItemData.Icon(itemId);
+        return texture;
+    }
+
+    /// <summary>The client's reward icon slot: the first cell of a quest item row, holding an icon or a glyph.</summary>
+    public static bool IsRewardSlot(PanelContainer slot) =>
+        slot.GetIndex() == 0 && slot.GetParent() is HBoxContainer && slot.GetChildCount() == 1
+        && (slot.GetChild(0) is TextureRect || slot.GetChild(0) is MarginContainer glyph && glyph.GetChildren().OfType<TextureRect>().Any());
+
+    /// <summary>
+    /// Shows a reward slot that stays in the client's row (the client repaints chosen slots) as the original bare
+    /// item icon: the slot's own frame is not drawn, and a glyph becomes the reward's item icon.
+    /// </summary>
+    public static void ClassicSlot(PanelContainer slot)
+    {
+        if (slot.HasMeta("classic_reward_slot")) return;
+        slot.SetMeta("classic_reward_slot", true);
+        slot.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        slot.SelfModulate = Colors.Transparent;
+        if (slot.GetChild(0) is not MarginContainer glyph || RewardIcon(slot) is not { } texture) return;
+        slot.RemoveChild(glyph);
+        glyph.QueueFree();
+        slot.AddChild(new TextureRect
+        {
+            Texture = texture, CustomMinimumSize = new Vector2(32, 32), MouseFilter = Control.MouseFilterEnum.Ignore,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        });
+    }
+
+    /// <summary>Replaces the client's reward slot (frame or glyph) with the original bare item icon.</summary>
+    public static void Unframe(Control row, int itemId)
+    {
+        if (row.GetChildCount() == 0 || row.GetChild(0) is not PanelContainer frame) return;
+        if (Native.Call(typeof(World), "QuestItemIcon", itemId) is not TextureRect icon) return;
+        row.RemoveChild(frame);
+        frame.QueueFree();
+        row.AddChild(icon);
+        row.MoveChild(icon, 0);
     }
 
     /// <summary>Shows planned stat points as allocated and remaining totals.</summary>

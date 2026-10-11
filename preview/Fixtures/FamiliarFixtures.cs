@@ -160,6 +160,15 @@ public static partial class PreviewFixtures
         return layer;
     }
 
+    /// <summary>The client's familiar plate on its own layer, outside the (process-disabled) audit world.</summary>
+    public static CanvasLayer BuildPetPlateClassicUiPreview(World world)
+    {
+        Call(world, "PetPlateInit");
+        var layer = Field<CanvasLayer>(world, "_petPlateLayer");
+        layer.GetParent()?.RemoveChild(layer);
+        return layer;
+    }
+
     /// <summary>The bar's effective default position, including a familiar bar extender's placement.</summary>
     public static Vector2 PetBarDefaultPosition(World world)
     {
