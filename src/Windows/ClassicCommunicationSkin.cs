@@ -6,7 +6,7 @@ namespace KnightOnlineUiClassic.Windows;
 
 public static class ClassicCommunicationSkin
 {
-    public static readonly string[] WindowIds = { "messenger", "chatrooms" };
+    public static readonly string[] WindowIds = { "messenger" };
     public static void Extend(Control body) => body.Ready += () => Callable.From(() => Apply(body)).CallDeferred();
     public static ClassicCommunicationPanel? Apply(Control body)
     {
@@ -39,7 +39,7 @@ public partial class ClassicCommunicationPanel : Control
         Place(title, ClassicFrame.Title(Size.X)); title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, ClassicFrame.Close(Size.X), "");
         _close.SetMeta("communication_expected_rect", ClassicFrame.Close(Size.X));
-        if (window.Id == "messenger") Messenger(); else Rooms();
+        Messenger();
     }
     private T Find<T>(string name) where T : Control => _native.OfType<T>().Single(c => GodotObject.IsInstanceValid(c) && !c.IsQueuedForDeletion() && c.Name == name);
     private static void Font(Control control, bool bold = true, int size = 13)
@@ -99,19 +99,6 @@ public partial class ClassicCommunicationPanel : Control
         Action(Find<Button>("messenger_send"), this, new Rect2(316, 416, 88, 26));
         Find<LineEdit>("messenger_to").TextSubmitted += _ => Find<LineEdit>("messenger_message").GrabFocus();
     }
-    private void Rooms()
-    {
-        Caption("Room", new Rect2(22, 64, 234, 20)); Caption("Members", new Rect2(262, 64, 72, 20));
-        Scroll(Find<ScrollContainer>("rooms_scroll"), ClassicCommunicationLayout.RoomList);
-        Watch(Find<VBoxContainer>("rooms_list"), StyleRow);
-        Input(Find<LineEdit>("rooms_name"), new Rect2(16, 254, 244, 26));
-        Action(Find<Button>("rooms_create"), this, new Rect2(268, 254, 84, 26)); Action(Find<Button>("rooms_refresh"), this, new Rect2(360, 254, 84, 26));
-        Place(Find<Label>("rooms_status"), new Rect2(16, 290, 428, 22)); Find<Label>("rooms_status").AddThemeColorOverride("font_color", ClassicDesign.Heading);
-        Caption("Chat", new Rect2(16, 314, 428, 20)); Scroll(Find<ScrollContainer>("rooms_log_scroll"), ClassicCommunicationLayout.RoomLog, 4);
-        Watch(Find<VBoxContainer>("rooms_log"), StyleLog);
-        Input(Find<LineEdit>("rooms_message"), new Rect2(16, 518, 244, 26));
-        Action(Find<Button>("rooms_send"), this, new Rect2(268, 518, 84, 26)); Action(Find<Button>("rooms_leave"), this, new Rect2(360, 518, 84, 26));
-    }
     private static void Watch(VBoxContainer rows, Action<Control> style)
     {
         rows.CustomMinimumSize = new Vector2(1, 0); rows.AddThemeConstantOverride("separation", 0);
@@ -123,7 +110,7 @@ public partial class ClassicCommunicationPanel : Control
         if (child is Label empty) { Font(empty, false); empty.AddThemeColorOverride("font_color", ClassicDesign.Muted); empty.CustomMinimumSize = new Vector2(1, 26); }
         if (child is not PanelContainer row || !row.HasMeta("communication_row") || row.HasMeta("classic_communication_row")) return;
         row.SetMeta("classic_communication_row", true); row.CustomMinimumSize = new Vector2(1, 30);
-        bool room = row.GetMeta("communication_row").AsString() == "room", selected = row.GetMeta("communication_selected", false).AsBool();
+        bool selected = row.GetMeta("communication_selected", false).AsBool();
         var box = new StyleBoxFlat { BgColor = selected ? new Color("26251f") : Colors.Transparent, BorderColor = selected ? new Color("e7c773") : new Color("544a37") };
         box.BorderWidthBottom = 1; if (selected) box.SetBorderWidthAll(1); box.SetContentMarginAll(0); row.AddThemeStyleboxOverride("panel", box);
         var fields = CharacterDetailsSkin.Tree(row).OfType<Control>().Where(c => c.Name.ToString().StartsWith("communication_")).ToArray();
@@ -133,11 +120,10 @@ public partial class ClassicCommunicationPanel : Control
         {
             var rect = field.Name.ToString() switch
             {
-                "communication_name" => new Rect2(6, 5, room ? 230 : 182, 20),
-                "communication_count" => new Rect2(246, 5, 54, 20),
-                _ => new Rect2(room ? 314 : 292, 3, room ? 90 : 84, 24),
+                "communication_name" => new Rect2(6, 5, 182, 20),
+                "communication_state" => new Rect2(200, 5, 84, 20),
+                _ => new Rect2(292, 3, 84, 24),
             };
-            if (!room && field.Name == "communication_state") rect = new Rect2(200, 5, 84, 20);
             if (field is Button button) Action(button, overlay, rect);
             else
             {
@@ -145,27 +131,10 @@ public partial class ClassicCommunicationPanel : Control
                 if (field is Label label)
                 {
                     LabelStyle(label, rect.Size);
-                    if (label.Name == "communication_count") label.HorizontalAlignment = HorizontalAlignment.Center;
-                    if (label.Name == "communication_state") label.AddThemeColorOverride("font_color", room || row.GetMeta("communication_online", false).AsBool() ? new Color("91c678") : ClassicDesign.Muted);
-                    if (!room && label.Name == "communication_name" && !row.GetMeta("communication_online").AsBool()) label.AddThemeColorOverride("font_color", ClassicDesign.Muted);
+                    if (label.Name == "communication_state") label.AddThemeColorOverride("font_color", row.GetMeta("communication_online", false).AsBool() ? new Color("91c678") : ClassicDesign.Muted);
+                    if (label.Name == "communication_name" && !row.GetMeta("communication_online").AsBool()) label.AddThemeColorOverride("font_color", ClassicDesign.Muted);
                 }
             }
-        }
-    }
-    private static void StyleLog(Control control)
-    {
-        if (control is not HBoxContainer line || line.HasMeta("classic_communication_line")) return;
-        line.SetMeta("classic_communication_line", true); line.AddThemeConstantOverride("separation", 6); line.CustomMinimumSize = new Vector2(1, 22);
-        foreach (var label in line.GetChildren().OfType<Label>())
-        {
-            Font(label, false); label.ClipText = label.ClipContents = true; label.VerticalAlignment = VerticalAlignment.Top; label.SizeFlagsVertical = SizeFlags.Fill;
-            if (label.Name == "communication_author")
-            {
-                label.CustomMinimumSize = new Vector2(132, 0); label.CustomMaximumSize = new Vector2(132, float.MaxValue);
-                label.AutowrapMode = TextServer.AutowrapMode.Off; label.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-                label.AddThemeColorOverride("font_color", ClassicDesign.Heading);
-            }
-            else { label.ClipText = false; label.SizeFlagsVertical = SizeFlags.Fill; label.AddThemeColorOverride("font_color", ClassicDesign.Text); }
         }
     }
     private void Close() => _close.EmitSignal(BaseButton.SignalName.Pressed);
@@ -177,11 +146,6 @@ public partial class ClassicCommunicationPanel : Control
     public override void _Process(double delta)
     {
         foreach (var (scroll, rect) in _scrolls) { scroll.CustomMinimumSize = Vector2.Zero; scroll.Size = rect.Size; }
-        if (Window.Id == "chatrooms")
-        {
-            var status = Find<Label>("rooms_status"); status.TooltipText = status.Text;
-            bool joined = Window.GetMeta("communication_room_id", 0).AsInt32() != 0; Find<Button>("rooms_send").Disabled = Find<Button>("rooms_leave").Disabled = !joined;
-        }
     }
     public override void _Draw() { foreach (var section in _sections) DrawStyleBox(ClassicDesign.SectionBox(0), section); }
 }

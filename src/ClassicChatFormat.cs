@@ -9,7 +9,7 @@ public static class ClassicChatFormat
         5 => ("shout", "ff9a3c"), 6 => ("clan", "46d3c0"),
         7 or 8 or 12 => ("GM", "ffe24a"), 13 => ("commander", "c8e66b"),
         14 => ("trade", "d2b48c"), 15 => ("alliance", "6fb7ff"),
-        19 => ("zone", "9aa0a6"), 23 => ("officer", "b48cff"),
+        19 => ("zone", "9aa0a6"), 23 => ("officer", "b48cff"), 33 => ("room", "8080ff"),
         _ => ("", "e8e8e8"),
     };
 

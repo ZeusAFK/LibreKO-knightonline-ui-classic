@@ -48,6 +48,7 @@ public sealed class Plugin : IPlugin
         ClassicWorldOverlays.Register();
         ui.ExtendWindow("pethatch", ClassicPetHatchSkin.Extend);
         foreach(var id in ClassicCommunicationSkin.WindowIds)ui.ExtendWindow(id,ClassicCommunicationSkin.Extend);
+        ClassicSocialSkin.Register(ui);
         foreach(var id in ClassicMailSkin.WindowIds)ui.ExtendWindow(id,ClassicMailSkin.Extend);
         foreach(var id in ClassicCouncilRate.WindowIds)ui.ExtendWindow(id,ClassicCouncilRate.Extend);
         foreach(var id in ClassicSiegeSkin.WindowIds)ui.ExtendWindow(id,ClassicSiegeSkin.Extend);

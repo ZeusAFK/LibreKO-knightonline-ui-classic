@@ -1,0 +1,52 @@
+using Godot;
+using LibreKO;
+
+namespace KnightOnlineUiClassic.Native;
+
+/// <summary>
+/// Prepares the native social windows the Classic social frame shows (nation chat, clan and join-request
+/// boards, leader transfer, commander, command list): names the controls the skin and the audits look for
+/// and replaces symbol-only captions with the English words of the original client.
+/// </summary>
+public static class NativeSocial
+{
+    internal static void Register()
+    {
+        NativeWindows.Prepare("nation_chat", PrepareNationChat);
+        NativeWindows.Prepare("commander", PrepareCommander);
+    }
+
+    /// <summary>Runs the social preparer of a window built outside the client's window flow (audits).</summary>
+    public static void Prepare(HudWindow window, World world)
+    {
+        if (window.Id == "nation_chat") PrepareNationChat(window, world);
+        else if (window.Id == "commander") PrepareCommander(window, world);
+    }
+
+    private static void PrepareNationChat(HudWindow window, World world)
+    {
+        if (window.HasMeta("classic_social_controls")) return;
+        window.SetMeta("classic_social_controls", 1);
+        if (Native.Get<Button>(world, "_ncRefresh") is { } refresh)
+        {
+            refresh.Name = "nation_refresh";
+            refresh.Text = "Refresh";
+        }
+        NativeWindows.Name(Native.Get<Button>(world, "_ncPublicTab"), "nation_public_tab");
+        NativeWindows.Name(Native.Get<Button>(world, "_ncPrivateTab"), "nation_private_tab");
+        NativeWindows.Name(Native.Get<VBoxContainer>(world, "_ncPublicRows"), "nation_public_rows");
+        NativeWindows.Name(Native.Get<VBoxContainer>(world, "_ncPrivateRows"), "nation_private_rows");
+    }
+
+    private static void PrepareCommander(HudWindow window, World world)
+    {
+        if (window.HasMeta("classic_social_controls")) return;
+        window.SetMeta("classic_social_controls", 1);
+        // The direction toggle is a symbol in the client; the Classic button carries its word.
+        if (window.Body.GetChildren().OfType<Button>().FirstOrDefault() is { } flip)
+        {
+            flip.Name = "commander_flip";
+            flip.Text = "Rotate";
+        }
+    }
+}

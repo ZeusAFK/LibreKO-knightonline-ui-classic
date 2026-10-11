@@ -3,7 +3,7 @@ using LibreKO;
 using LibreKO.Domain;
 using LibreKO.Network;
 
-/// <summary>Mail, messenger, chat-room, market, store and auction fixtures for the Classic audits.</summary>
+/// <summary>Mail, messenger, market, store and auction fixtures for the Classic audits.</summary>
 public static partial class PreviewFixtures
 {
     private static void PrepareCommunication(CanvasLayer layer, World world)
@@ -90,13 +90,8 @@ public static partial class PreviewFixtures
                 new() { CharId = 3, Name = "Ariel", Online = true },
             });
         }
-        else
-        {
-            // TODO(port-2619): upstream cd63f98 removed the "chatrooms" window (World.ChatRoom.cs,
-            // ChatRoomEntry) in favour of the nation chat rooms ("nation_chat", World.NationChat.cs).
-            // Rebuild this fixture for the nation chat windows when the Classic skin is retargeted.
-            throw new NotSupportedException("The chat-room window was removed upstream; id=" + id);
-        }
+        // The chat rooms are the nation chat windows now; BuildSocialUiPreview builds them.
+        else throw new ArgumentException("Unknown communication window " + id);
         world.RemoveChild(layer); return layer;
     }
 

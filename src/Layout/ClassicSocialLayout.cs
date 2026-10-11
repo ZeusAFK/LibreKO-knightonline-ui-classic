@@ -1,0 +1,48 @@
+using Godot;
+
+namespace KnightOnlineUiClassic.Layout;
+
+/// <summary>
+/// Editable geometry of the Classic social windows that the client builds as flow layouts (nation chat,
+/// clan and join-request boards, leader transfer, commander, command list). They share the plain Classic
+/// frame: the gold title and round close button on the title row, the content 16 px from the sides and
+/// the bottom, and the original action buttons, edit fields, sections and list rows of the Messenger.
+/// </summary>
+public static class ClassicSocialLayout
+{
+    /// <summary>Windows drawn in the Classic social frame.</summary>
+    public static readonly string[] WindowIds =
+    {
+        "nation_chat", "nation_chat_create", "nation_chat_password", "nation_chat_search", "nation_chat_members",
+        "commander", "clan_board", "clan_join_list", "clan_message", "clanhandover",
+        "wish_board", "wish_message", "wish_requests", "command_list",
+    };
+
+    /// <summary>Content inset from the left, right and bottom edges (the plain frame's even padding).</summary>
+    public const float Inset = ClassicFrame.Inset;
+    /// <summary>Content top: the title row (14..38) and the same 10 px gap the Messenger keeps above its captions.</summary>
+    public const float ContentTop = 48;
+    /// <summary>Narrowest frame, so the title and the close button never collide.</summary>
+    public const float MinimumWidth = 220;
+
+    /// <summary>Original action buttons (Messenger "Whisper", Chat Rooms "Join"): one height everywhere.</summary>
+    public const float ActionHeight = 24;
+    public const float InputHeight = 24;
+    /// <summary>Caption room inside an action button, left and right.</summary>
+    public const float ButtonPadding = 10;
+    public const int FontSize = 12, HeadingSize = 13, NameSize = 14;
+    /// <summary>Spacing inside the flow layouts: rows of controls and controls within a row.</summary>
+    public const int RowGap = 8, ControlGap = 6;
+
+    /// <summary>Gold window title on the title row, left of the close button.</summary>
+    public static Rect2 Title(float width) => ClassicFrame.Title(width);
+    public static Rect2 Close(float width) => ClassicFrame.Close(width);
+    /// <summary>The title row is the drag handle (the close button excluded).</summary>
+    public static Rect2 Drag(float width) => new(8, 8, width - 56, 36);
+    public static Rect2 Content(Vector2 size) => new(Inset, ContentTop, size.X - Inset * 2, size.Y - ContentTop - Inset);
+    public static Vector2 Frame(Vector2 content) =>
+        new(Mathf.Max(MinimumWidth, Mathf.Ceil(content.X + Inset * 2)), Mathf.Ceil(content.Y + ContentTop + Inset));
+
+    /// <summary>Commander order slots: the original 32 x 32 skill cell inside its 40 x 40 socket.</summary>
+    public const float CommanderSlot = 40;
+}
