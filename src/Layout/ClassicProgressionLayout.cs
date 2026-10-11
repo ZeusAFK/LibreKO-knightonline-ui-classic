@@ -14,12 +14,14 @@ namespace KnightOnlineUiClassic.Layout;
 public static class ClassicProgressionLayout
 {
     public const int Margin = 8, ContentTop = 94, TabHeight = 36, Row = 22, Cell = 45;
+    /// <summary>Width of the native achievement category column; the list takes the rest of the list row.</summary>
+    public const int AchievementCategory = 136, AchievementListGap = 10;
 
     public static Vector2 Size(string id) => id switch
     {
-        "achievements" => new(530, 540),
+        "achievements" => new(530, 566),
         "attendance" => new(492, 552),
-        "rank" => new(360, 504),
+        "rank" => new(Rank.Width, Rank.Height),
         "genie" => new(530, 550),
         _ => throw new ArgumentOutOfRangeException(nameof(id)),
     };
@@ -31,7 +33,7 @@ public static class ClassicProgressionLayout
     public static Rect2 Tab(int index) => new(6 + index * 87, TabTop, 85, TabHeight);
 
     /// <summary>Number of tab plates on the rails of a window.</summary>
-    public static int Tabs(string id) => id switch { "achievements" => 6, "attendance" => 0, _ => 2 };
+    public static int Tabs(string id) => id switch { "achievements" => 6, "attendance" or "rank" => 0, _ => 2 };
 
     /// <summary>The window title: the centred page heading under the rails (Character page headings), or the rails themselves without tabs.</summary>
     public static Rect2 Heading(string id) => Tabs(id) > 0 ? new(12, 86, Size(id).X - 24, 24) : new(48, TabTop, Size(id).X - 96, TabHeight);
@@ -40,10 +42,12 @@ public static class ClassicProgressionLayout
     {
         ["achievements"] = new()
         {
-            ["ach_summary"] = new(14, 116, 380, Row),
-            ["ach_hide_claimed"] = new(398, 116, 124, Row),
-            ["ach_scroll"] = new(12, 146, 506, 362),
-            ["ach_summary_page"] = new(12, 116, 506, 392),
+            ["ach_title_banner"] = new(12, 114, 506, Row),
+            ["ach_summary"] = new(14, 142, 380, Row),
+            ["ach_hide_claimed"] = new(398, 142, 124, Row),
+            ["ach_filters"] = new(12, 168, 506, Row),
+            ["ach_list_row"] = new(12, 198, 506, 336),
+            ["ach_summary_page"] = new(12, 142, 506, 392),
         },
         ["attendance"] = new()
         {
@@ -57,25 +61,44 @@ public static class ClassicProgressionLayout
             ["attendance_legend_1"] = new(360, 474, 120, 20),
             ["attendance_legend_2"] = new(360, 498, 120, 20),
         },
-        ["rank"] = new()
-        {
-            // The native ladder heading is the page heading; the window title stays on the drag strip unseen.
-            ["rank_title"] = new(12, 86, 336, 24),
-            ["rank_header_0"] = new(12, 117, 30, Row),
-            ["rank_header_1"] = new(46, 117, 136, Row),
-            ["rank_header_2"] = new(186, 117, 98, Row),
-            ["rank_header_3"] = new(288, 117, 48, Row),
-            ["rank_scroll"] = new(12, 142, 336, 286),
-            ["rank_mine"] = new(12, 438, 240, Row),
-            ["rank_status"] = new(12, 460, 240, 20),
-            ["rank_refresh"] = new(262, 449, 90, Row),
-        },
+        ["rank"] = Rank.Controls(),
         ["genie"] = Genie(),
     };
 
-    /// <summary>Column widths of a ranking row (place, name, clan, loyalty) with 4-pixel gaps; the scroll bar keeps its own lane.</summary>
-    public static readonly int[] RankColumns = { 30, 136, 98, 48 };
-    public const int RankGap = 4;
+    /// <summary>
+    /// The PK ladder: the Karus and El Morad ladders side by side, each a Clan-list inset under its nation caption
+    /// with a heading row, ten 22-pixel rows, a rule and the player's own row, and the native notice under both.
+    /// </summary>
+    public static class Rank
+    {
+        public const int Width = 800, Height = 460, Side = 388, Rows = 10, Gap = 4;
+        public const int CaptionTop = ContentTop, InsetTop = 120, HeadingTop = 124, RowsTop = 150, InsetHeight = 284;
+        /// <summary>Place, mark, name, clan and score columns of a ladder row (the score holds points and bonus).</summary>
+        public static readonly int[] Columns = { 36, 36, 100, 92, 100 };
+        public static int SideX(int side) => Margin + side * (Side + Margin);
+        public static Rect2 Caption(int side) => new(SideX(side) + 6, CaptionTop, Side - 12, Row);
+        public static Rect2 Inset(int side) => new(SideX(side), InsetTop, Side, InsetHeight);
+        public static Rect2 Heading(int side) => new(SideX(side) + 4, HeadingTop, Side - 8, Row);
+        public static Rect2 Line(int side, int row) => new(SideX(side) + 4, RowsTop + row * Row, Side - 8, Row);
+        public static Rect2 Own(int side) => new(SideX(side) + 4, RowsTop + Rows * Row + 6, Side - 8, Row);
+        public static float RuleY => RowsTop + Rows * Row + 2;
+        public static readonly Rect2 Notice = new(12, InsetTop + InsetHeight + 6, Width - 24, 34);
+        public static string SideName(int side) => side == 0 ? "karus" : "elmorad";
+
+        public static Dictionary<string, Rect2> Controls()
+        {
+            var rects = new Dictionary<string, Rect2> { ["rank_notice"] = Notice };
+            for (int side = 0; side < 2; side++)
+            {
+                string name = SideName(side);
+                rects["rank_caption_" + name] = Caption(side);
+                rects["rank_header_" + name] = Heading(side);
+                for (int row = 0; row < Rows; row++) rects[$"rank_{name}_row_{row}"] = Line(side, row);
+                rects[$"rank_{name}_own"] = Own(side);
+            }
+            return rects;
+        }
+    }
 
     private static Dictionary<string, Rect2> Genie()
     {
@@ -134,6 +157,11 @@ public static class ClassicProgressionLayout
             rects["genie_mode_" + modes[1]] = new(x + 4, 242, 162, 20);
         }
         for (int i = 0; i < 4; i++) rects["genie_scroll_" + i] = new(278 + i * 49, 166, Cell, Cell);
+        // Others page: the movement options, then the return-to-town rules with their potion counts.
+        string[] options = { "genie_return_home", "genie_hunt_in_place", "genie_hide_range", "genie_cure_curse" };
+        for (int i = 0; i < options.Length; i++) rects[options[i]] = new(18, 122 + i * Row, 498, 20);
+        rects["genie_others_title"] = new(14, 224, 300, 20);
+        for (int i = 0; i < GenieOtherRows; i++) rects["genie_other_" + i] = new(18, 252 + i * 24, 498, Row);
         return rects;
     }
 
@@ -141,8 +169,15 @@ public static class ClassicProgressionLayout
     public static Rect2? Rect(string id, string name) =>
         Controls.TryGetValue(id, out var rects) && rects.TryGetValue(name, out var rect) ? rect : null;
 
-    /// <summary>The genie page a control belongs to: the Misc page holds settings, scrolls, hammer and the daily reward.</summary>
-    public static bool GenieMisc(string name) => name is "genie_settings_title" or "genie_range_label" or "genie_range" or "genie_auto_party"
+    /// <summary>Return-to-town rules on the Others page.</summary>
+    public const int GenieOtherRows = 7;
+
+    /// <summary>The genie page of a control: 0 Main, 1 Misc (settings, scrolls, hammer, daily reward), 2 Others.</summary>
+    public static int GeniePage(string name) =>
+        name is "genie_return_home" or "genie_hunt_in_place" or "genie_hide_range" or "genie_cure_curse" or "genie_others_title"
+            || name.StartsWith("genie_other_") ? 2 : GenieMisc(name) ? 1 : 0;
+
+    private static bool GenieMisc(string name) => name is "genie_settings_title" or "genie_range_label" or "genie_range" or "genie_auto_party"
         or "genie_ptcode_title" or "genie_ptcode" or "genie_ptcode_hint" or "genie_combo_hint" or "genie_leader_hint" or "genie_daily_title"
         or "genie_tip" or "genie_daily_status" or "genie_claim" or "genie_scrolls_title" or "genie_auto_scrolls" or "genie_scroll_hint"
         or "genie_scroll_status" or "genie_hammer_title" or "genie_auto_hammer" or "genie_hammer_threshold_label" or "genie_hammer_threshold"
@@ -169,7 +204,9 @@ public static class ClassicProgressionLayout
         switch (id)
         {
             case "achievements":
-                Section("ach_list_frame", new(Margin, 142, 514, 370));
+                // The category column (136 pixels) and the list share the list row with a 10-pixel gap.
+                Section("ach_category_frame", new(Margin, 194, AchievementCategory + 8, 344));
+                Section("ach_list_frame", new(Margin + AchievementCategory + 10, 194, 514 - AchievementCategory - 10, 344));
                 break;
             case "attendance":
                 Section("attendance_daily_frame", new(Margin, 120, 334, 404));
@@ -177,10 +214,19 @@ public static class ClassicProgressionLayout
                 Rule("attendance_legend_rule", new(354, 442, 126, 2));
                 break;
             case "rank":
-                Section("rank_table_frame", new(Margin, 114, 344, 318));
-                Rule("rank_header_rule", new(12, 140, 336, 2));
-                int x = 12;
-                for (int i = 0; i < RankColumns.Length - 1; i++) { x += RankColumns[i] + RankGap; Rule("rank_divider_" + i, new(x - 3, 118, 2, 310)); }
+                for (int side = 0; side < 2; side++)
+                {
+                    var inset = Rank.Inset(side);
+                    Section("rank_frame_" + Rank.SideName(side), inset);
+                    Rule("rank_heading_rule_" + Rank.SideName(side), new(inset.Position.X + 4, Rank.HeadingTop + Row + 1, Rank.Side - 8, 2));
+                    Rule("rank_own_rule_" + Rank.SideName(side), new(inset.Position.X + 4, Rank.RuleY + 1, Rank.Side - 8, 2));
+                    float x = inset.Position.X + 4;
+                    for (int i = 0; i < Rank.Columns.Length - 1; i++)
+                    {
+                        x += Rank.Columns[i] + Rank.Gap;
+                        Rule($"rank_divider_{Rank.SideName(side)}_{i}", new(x - 3, Rank.HeadingTop, 2, Rank.Rows * Row + Row + 6));
+                    }
+                }
                 break;
             case "genie":
                 for (int group = 0; group < 3; group++) Section("genie_skill_frame_" + group, new(Margin + group * 172, 116, 170, 150));
@@ -190,11 +236,14 @@ public static class ClassicProgressionLayout
                 Section("genie_daily_frame", new(Margin, 352, 254, 156));
                 Section("genie_scrolls_frame", new(268, 116, 254, 174));
                 Section("genie_hammer_frame", new(268, 294, 254, 118));
+                Section("genie_options_frame", new(Margin, 116, 514, 98));
+                Section("genie_others_frame", new(Margin, 246, 514, 178));
                 break;
         }
         return root;
     }
 
-    /// <summary>Genie insets shown on each page.</summary>
-    public static bool GenieMiscFrame(string name) => name is "genie_settings_frame" or "genie_daily_frame" or "genie_scrolls_frame" or "genie_hammer_frame";
+    /// <summary>The page of a genie inset.</summary>
+    public static int GenieFramePage(string name) => name is "genie_settings_frame" or "genie_daily_frame" or "genie_scrolls_frame" or "genie_hammer_frame" ? 1
+        : name is "genie_options_frame" or "genie_others_frame" ? 2 : 0;
 }

@@ -89,21 +89,22 @@ public static partial class PreviewFixtures
         return Enumerable.Range(0, count).Select(i => new RankEntry
         {
             Name = names[i % names.Length] + (i >= names.Length ? (i / names.Length).ToString() : ""), Nation = nation,
-            ClanName = clans[i % clans.Length], Loyalty = 25_000 - i * 731, Place = i + 1,
+            ClanName = clans[i % clans.Length], Loyalty = 125_000 - i * 7_310, Place = i + 1,
+            Bonus = i % 3 == 0 ? 1_250 - i * 40 : 0,
         }).ToList();
     }
 
+    /// <summary>The PK ladder as the client shows it while the ladder key is held in a ladder zone.</summary>
     public static HudWindow BuildRankUiPreview(World world, string view)
     {
         Call(world, "RankInit");
-        Call(world, "OpenRank");
-        if (view != "loading")
-        {
-            // The player's own nation carries the requested list; the other nation always has a short one.
-            int own = view == "empty" ? 0 : view == "short" ? 4 : 30, other = view == "empty" ? 0 : 7;
-            bool karus = Net.I.LastEnter.Nation == Nations.Karus;
-            Call(world, "OnRankData", RankRows(1, karus ? own : other), RankRows(2, karus ? other : own), view == "empty" ? 0 : 6, 21_344);
-        }
+        // The player's own nation carries a full ladder; the other side may be short or empty.
+        int own = view == "empty" ? 0 : view == "short" ? 4 : PkLadder.RowsShown, other = view == "empty" ? 0 : view == "short" ? 7 : PkLadder.RowsShown;
+        bool karus = Net.I.LastEnter.Nation == Nations.Karus;
+        Call(world, "OnRankData", new PkLadderReply(RankRows(1, karus ? own : other), RankRows(2, karus ? other : own),
+            view == "empty" ? 0 : 6, view == "empty" ? 0 : 21_344, view == "empty" ? 0 : 480));
+        var window = Field<HudWindow>(world, "_rankPanel");
+        window.Visible = true; SetField(world, "_rankShown", true);
         return DetachWindow(world, "_rankLayer", "_rankPanel");
     }
 

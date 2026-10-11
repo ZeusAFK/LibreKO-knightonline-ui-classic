@@ -114,7 +114,7 @@ public partial class Preview
         await Registration("ft-registration", false, false);
         joinButton.EmitSignal(BaseButton.SignalName.Pressed);
         Require((bool)DetailField(world, "_isEventRegistered")! && joinButton.Text == "Cancel", "Join runs the native registration toggle");
-        DetailCall(world, "OnBifrostJoinResult", true, 55);
+        DetailCall(world, "OnBifrostJoinResult", LibreKO.Domain.TempleJoin.Joined, 55);
         Require(((Button)DetailField(world, "_joinModalBtn")!).Text == "Cancel", "Joining FT updates registration state");
         await Registration("ft-registered", false, true);
         DetailCall(world, "OnBifrostTime", 20, TempleEventType.ForgottenTemple);

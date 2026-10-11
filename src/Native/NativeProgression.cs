@@ -53,6 +53,20 @@ public static class NativeProgression
             || !Named(Native.Get<VBoxContainer>(world, "_achSummaryPage"), "ach_summary_page")) return false;
         list.Name = "ach_list";
         foreach (DictionaryEntry tab in tabs) Named(tab.Value as Node, "ach_tab_" + Convert.ToInt32(tab.Key));
+        // The worn-title banner, the search and status filters and the category column beside the list.
+        var banner = Native.Get<Label>(world, "_achTitleBanner");
+        if (Named(banner, "ach_title") && banner!.GetParent() is HBoxContainer bannerRow)
+        {
+            bannerRow.Name = "ach_title_row";
+            Named(bannerRow.GetParent(), "ach_title_banner");
+            Named(bannerRow.GetChildren().OfType<Button>().FirstOrDefault(), "ach_change_title");
+        }
+        var search = Native.Get<LineEdit>(world, "_achSearch");
+        if (Named(search, "ach_search")) Named(search!.GetParent(), "ach_filters");
+        Named(Native.Get<OptionButton>(world, "_achStatus"), "ach_status");
+        var categories = Native.Get<VBoxContainer>(world, "_achCategoryBox");
+        if (Named(categories, "ach_categories")) Named(categories!.GetParent(), "ach_category_panel");
+        Named(Native.Get<HBoxContainer>(world, "_achListRow"), "ach_list_row");
         NativeWindows.Sync(window, () => SyncAchievements(window, world, tabs, list));
         return true;
     }
@@ -135,30 +149,45 @@ public static class NativeProgression
         Mirror(bonus, Net.AttendanceDailySlots);
     }
 
+    /// <summary>Ladder cells of a <c>LadderRow</c>, in column order.</summary>
+    public static readonly string[] LadderCells = { "Rank", "Mark", "Name", "Clan", "Points", "Bonus" };
+
     private static bool PrepareRank(HudWindow window, World world)
     {
-        var karus = Native.Get<Button>(world, "_rankKarusTab");
-        var elmorad = Native.Get<Button>(world, "_rankElmoradTab");
-        var rows = Native.Get<VBoxContainer>(world, "_rankRows");
-        if (karus == null || elmorad == null || rows == null || rows.GetParent() is not ScrollContainer scroll
-            || karus.GetParent() is not HBoxContainer tabs) return false;
-        if (!Named(Native.Get<Label>(world, "_rankMine"), "rank_mine") || !Named(Native.Get<Label>(world, "_rankStatus"), "rank_status")) return false;
-        karus.Name = "rank_tab_karus";
-        elmorad.Name = "rank_tab_elmorad";
-        rows.Name = "rank_rows";
-        scroll.Name = "rank_scroll";
-        tabs.Name = "rank_tabs";
-        Named(tabs.GetChildren().OfType<Button>().LastOrDefault(b => b != karus && b != elmorad), "rank_refresh");
-        var body = window.Body.GetChildren().OfType<Control>().ToList();
-        Named(body.FirstOrDefault() as Label, "rank_title");
-        int at = body.IndexOf(tabs);
-        if (at + 1 < body.Count && body[at + 1] is HBoxContainer header)
+        // The PK ladder: two fixed ten-row ladders (Karus, El Morad), each with the player's own row under a rule.
+        var karus = Native.Get<Array>(world, "_ladderKarus");
+        var elmorad = Native.Get<Array>(world, "_ladderElMorad");
+        var ownKarus = Native.Get<object>(world, "_ladderOwnKarus");
+        var ownElMorad = Native.Get<object>(world, "_ladderOwnElMorad");
+        if (karus == null || elmorad == null || ownKarus == null || ownElMorad == null) return false;
+        foreach (var (rows, own, side) in new[] { (karus, ownKarus, "karus"), (elmorad, ownElMorad, "elmorad") })
         {
-            header.Name = "rank_header";
-            int i = 0;
-            foreach (var label in header.GetChildren().OfType<Label>()) label.Name = "rank_header_" + i++;
+            for (int i = 0; i < rows.Length; i++)
+                if (rows.GetValue(i) is not { } row || !NameLadderRow(row, $"rank_{side}_row_{i}")) return false;
+            if (!NameLadderRow(own, $"rank_{side}_own")) return false;
+            if (Native.Get<Label>(own, "Rank")?.GetParent()?.GetParent() is not VBoxContainer column) return false;
+            column.Name = "rank_side_" + side;
+            var children = column.GetChildren().OfType<Control>().ToArray();
+            Named(children.FirstOrDefault() as Label, "rank_caption_" + side);
+            if (children.Length > 1 && children[1] is HBoxContainer header)
+            {
+                header.Name = "rank_header_" + side;
+                int c = 0;
+                foreach (var label in header.GetChildren().OfType<Label>()) label.Name = $"rank_{side}_heading_{c++}";
+            }
+            Named(children.OfType<HSeparator>().FirstOrDefault(), "rank_rule_" + side);
         }
-        Named(body.OfType<HSeparator>().FirstOrDefault(), "rank_rule");
+        Named(window.Body.GetChildren().OfType<Label>().LastOrDefault(), "rank_notice");
+        return true;
+    }
+
+    private static bool NameLadderRow(object row, string name)
+    {
+        if (Native.Get<Label>(row, "Rank")?.GetParent() is not HBoxContainer line) return false;
+        line.Name = name;
+        foreach (var cell in LadderCells)
+            if (!Named(Native.Get<Control>(row, cell), name + "_" + cell.ToLowerInvariant())) return false;
+        Named(Native.Get<Control>(row, "Points")?.GetParent(), name + "_score");
         return true;
     }
 
@@ -173,7 +202,10 @@ public static class NativeProgression
         if (slots[0].GetParent()?.GetParent() is not VBoxContainer firstColumn || firstColumn.GetParent() is not HBoxContainer columns
             || columns.GetParent() is not VBoxContainer main || main.GetParent() is not TabContainer tabs) return false;
         tabs.Name = "genie_tabs"; main.Name = "genie_main";
-        if (tabs.GetChildren().OfType<VBoxContainer>().FirstOrDefault(c => c != main) is not { } misc) return false;
+        // The Misc tab is a scroll page around its option column.
+        var page = tabs.GetChildren().OfType<Control>().FirstOrDefault(c => c != main);
+        if (page is ScrollContainer miscScroll) { miscScroll.Name = "genie_misc_scroll"; page = miscScroll.GetChildren().OfType<VBoxContainer>().FirstOrDefault(); }
+        if (page is not VBoxContainer misc) return false;
         misc.Name = "genie_misc";
         for (int i = 0; i < slots.Length; i++) slots[i].Name = "genie_slot_" + i;
         for (int i = 0; i < modes.Length; i++) Named(modes[i], "genie_mode_" + i);
@@ -234,6 +266,23 @@ public static class NativeProgression
             if (at >= 0 && at + 1 < items.Count) Named(items[at + 1] as Label, "genie_scroll_hint");
         }
         Named(misc.GetChildren().OfType<HSeparator>().FirstOrDefault(), "genie_rule");
+        // Movement and curse options under the range, and the return-to-town rules ("Set Others").
+        Named(Native.Get<CheckButton>(world, "_genieReturnHome"), "genie_return_home");
+        Named(Native.Get<CheckButton>(world, "_genieHuntInPlace"), "genie_hunt_in_place");
+        Named(Native.Get<CheckButton>(world, "_genieHideRange"), "genie_hide_range");
+        Named(Native.Get<CheckButton>(world, "_genieCureCurse"), "genie_cure_curse");
+        if (Native.Get<IDictionary>(world, "_genieOther") is { } others)
+        {
+            int row = 0;
+            foreach (DictionaryEntry other in others)
+                if (other.Value is CheckButton toggle && toggle.GetParent() is HBoxContainer line)
+                {
+                    toggle.Name = "genie_other_" + row + "_toggle";
+                    line.Name = "genie_other_" + row;
+                    Named(line.GetChildren().OfType<SpinBox>().FirstOrDefault(), "genie_other_" + row + "_count");
+                    if (row++ == 0 && items.IndexOf(line) is var at and > 0) Named(items[at - 1] as Label, "genie_others_title");
+                }
+        }
         Named(Native.Get<PopupMenu>(world, "_genieSkillPicker"), "genie_skill_picker");
         Named(Native.Get<PopupMenu>(world, "_geniePotionPicker"), "genie_potion_picker");
         Named(Native.Get<PopupMenu>(world, "_genieScrollPicker"), "genie_scroll_picker");

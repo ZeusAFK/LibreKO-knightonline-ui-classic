@@ -25,7 +25,6 @@ public static class ClassicWorldOverlays
         NativeOverlays.Extend(NativeOverlay.Leave, node => Once(node, () => Leave((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Death, node => Once(node, () => Death((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Prompt, node => Once(node, () => Prompt((AcceptDialog)node)));
-        NativeOverlays.Extend(NativeOverlay.NamePrompt, node => Once(node, () => NamePrompt((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Announcement, node => Once(node, () => Announcement((Control)node)));
         NativeOverlays.Extend(NativeOverlay.Chip, node => Once(node, () => Chip((PanelContainer)node)));
         NativeOverlays.Extend(NativeOverlay.Score, node => Once(node, () => Score((PanelContainer)node)));
@@ -179,8 +178,25 @@ public static class ClassicWorldOverlays
         status.HorizontalAlignment = HorizontalAlignment.Center; status.VerticalAlignment = VerticalAlignment.Center;
         Place(join, panel, Spec.Registration.Join); MessageButton(join);
         Place(close, panel, Spec.Registration.Close); MessageButton(close, cancel: true);
+        var count = Find<Label>(host, "registration_count");
+        if (count != null)
+        {
+            Place(count, panel, Spec.Registration.Count); Text(count, 12, ClassicDesign.Muted);
+            count.HorizontalAlignment = HorizontalAlignment.Center;
+        }
+        (bool Count, bool Alone)? shape = null;
         Keep(panel, () =>
         {
+            // The box grows by the sign-up count line; Close takes the single place when the event has no Join.
+            var now = (Count: count is { Visible: true }, Alone: !join.Visible);
+            if (shape != now)
+            {
+                shape = now;
+                var size = Spec.Registration.SizeFor(now.Count);
+                panel.Size = panel.CustomMinimumSize = size; panel.GetNode<Control>("message_art").Size = size;
+                foreach (var (control, rect) in new (Control, Rect2)[] { (join, Spec.Registration.JoinAt(now.Count)), (close, Spec.Registration.CloseAt(now.Count, now.Alone)) })
+                { control.Position = rect.Position; control.Size = rect.Size; control.SetMeta(ExpectedRect, rect); }
+            }
             bool urgent = host.GetMeta(NativeOverlays.Urgent, false).AsBool();
             Ink(timer, urgent ? UrgentOnMessage : MessageText);
             SyncBar(bar, urgent);
@@ -192,7 +208,9 @@ public static class ClassicWorldOverlays
     {
         if (native.GetChildren().OfType<MarginContainer>().FirstOrDefault() is not { } content) return;
         var labels = Descendants(content).OfType<Label>().ToArray();
-        if (labels.Length < 2 || Descendants(content).OfType<Button>().FirstOrDefault() is not { } ok) return;
+        // The resurrection choices are flat rows in their own column; OK is the last button.
+        var rows = Descendants(content).OfType<VBoxContainer>().FirstOrDefault(v => v.GetChildren().OfType<Button>().Any() && !v.GetChildren().OfType<Label>().Any());
+        if (labels.Length < 2 || Descendants(content).OfType<Button>().LastOrDefault(b => rows == null || !rows.IsAncestorOf(b)) is not { } ok) return;
         native.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         var panel = new ClassicMessagePanel(Spec.Death.Size(0), centre: false) { Name = "classic_death" };
         native.AddChild(panel);
@@ -204,17 +222,38 @@ public static class ClassicWorldOverlays
         hint.ClipText = false; hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         hint.HorizontalAlignment = HorizontalAlignment.Center; hint.VerticalAlignment = VerticalAlignment.Center;
         Place(ok, panel, Spec.Death.Ok(0)); MessageButton(ok);
-        // The box fits the hint's wrapped lines (the pending hint is shorter) and stays centred.
-        float fitted = -1;
+        if (rows != null)
+        {
+            Place(rows, panel, Spec.Death.Rows(0, 0));
+            rows.Name = "death_choices";
+            rows.AddThemeConstantOverride("separation", (int)Spec.Death.RowGap);
+            var hover = new StyleBoxFlat { BgColor = new Color(1, 1, 1, .08f) };
+            foreach (var row in rows.GetChildren().OfType<Button>())
+            {
+                // The client keeps its yellow (chosen) and white ink; the row is plain message-box text.
+                foreach (var state in new[] { "normal", "pressed", "focus", "disabled" }) row.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+                row.AddThemeStyleboxOverride("hover", hover); row.AddThemeStyleboxOverride("hover_pressed", hover);
+                row.AddThemeFontOverride("font", Plugin.Kit.Regular); row.AddThemeFontSizeOverride("font_size", 13);
+                row.AddThemeConstantOverride("outline_size", 0);
+                row.CustomMinimumSize = new Vector2(Spec.Message.Text.Size.X, Spec.Death.RowHeight);
+                row.ClipText = true; row.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            }
+        }
+        // The box fits the hint's wrapped lines (the pending hint is shorter) and the choices, and stays centred.
+        (float Hint, int Rows) fitted = (-1, -1);
         void Fit()
         {
             float height = Wrapped(hint, Spec.Message.Text.Size.X);
-            if (height == fitted && native.Size == panel.Size) return;
-            fitted = height;
-            var size = Spec.Death.Size(fitted);
+            int shown = rows is { Visible: true } ? rows.GetChildren().OfType<Button>().Count(b => b.Visible) : 0;
+            if (rows != null) foreach (var row in rows.GetChildren().OfType<Button>()) if (row.TooltipText != row.Text) row.TooltipText = row.Text;
+            if ((height, shown) == fitted && native.Size == panel.Size) return;
+            fitted = (height, shown);
+            var size = Spec.Death.Size(height, shown);
             panel.Size = panel.CustomMinimumSize = size; panel.GetNode<Control>("message_art").Size = size;
             native.CustomMinimumSize = size;
-            foreach (var (control, rect) in new (Control, Rect2)[] { (hint, Spec.Death.Hint(fitted)), (ok, Spec.Death.Ok(fitted)) })
+            var places = new List<(Control, Rect2)> { (hint, Spec.Death.Hint(height)), (ok, Spec.Death.Ok(height, shown)) };
+            if (rows != null) places.Add((rows, Spec.Death.Rows(height, shown)));
+            foreach (var (control, rect) in places)
             { control.Position = rect.Position; control.Size = rect.Size; control.SetMeta(ExpectedRect, rect); }
             // The native panel centres on its anchors; the box sits on whole pixels.
             native.OffsetLeft = -Mathf.Ceil(size.X / 2); native.OffsetRight = native.OffsetLeft + size.X;
@@ -304,41 +343,6 @@ public static class ClassicWorldOverlays
         }) { Name = "classic_prompt_sync" });
     }
 
-    private static void NamePrompt(PanelContainer native)
-    {
-        if (native.GetChildren().OfType<MarginContainer>().FirstOrDefault() is not { } content
-            || Find<LineEdit>(native, "invite_name_input") is not { } input) return;
-        var label = Descendants(content).OfType<Label>().FirstOrDefault();
-        var buttons = Descendants(content).OfType<Button>().ToArray();
-        if (label == null || buttons.Length < 2) return;
-        native.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-        native.CustomMinimumSize = Spec.NamePrompt.Size;
-        var panel = new ClassicMessagePanel(Spec.NamePrompt.Size, centre: false) { Name = "classic_invite_name" };
-        native.AddChild(panel);
-        content.Visible = false;
-        // The party window's own title names the prompt; the native label is its message.
-        var title = new Label { Name = "invite_name_title", Text = "Party", HorizontalAlignment = HorizontalAlignment.Center, MouseFilter = Control.MouseFilterEnum.Ignore };
-        panel.AddChild(title); Place(title, panel, Spec.NamePrompt.Title); Text(title, 13, MessageTitle);
-        Place(label, panel, Spec.NamePrompt.Text); Text(label, 15, MessageText);
-        label.HorizontalAlignment = HorizontalAlignment.Center;
-        Place(input, panel, Spec.NamePrompt.Edit);
-        var field = ClassicDesign.InputBox(); field.ContentMarginTop = field.ContentMarginBottom = 2;
-        input.AddThemeStyleboxOverride("normal", field); input.AddThemeStyleboxOverride("focus", field);
-        input.AddThemeFontOverride("font", Plugin.Kit.Bold); input.AddThemeFontSizeOverride("font_size", 13);
-        input.AddThemeColorOverride("font_color", MessageText); input.AddThemeColorOverride("font_placeholder_color", ClassicDesign.Muted);
-        input.AddThemeColorOverride("caret_color", MessageText); input.Alignment = HorizontalAlignment.Center;
-        Place(buttons[0], panel, Spec.NamePrompt.Send); MessageButton(buttons[0]);
-        Place(buttons[1], panel, Spec.NamePrompt.Cancel); MessageButton(buttons[1], cancel: true);
-        native.ResetSize();
-        // A message box: centred on the screen instead of the client's fixed corner.
-        Keep(native, () =>
-        {
-            var at = ((native.GetViewportRect().Size - Spec.NamePrompt.Size) / 2).Round();
-            if (native.Size != Spec.NamePrompt.Size) native.Size = Spec.NamePrompt.Size;
-            if (native.Position != at) native.Position = at;
-        });
-    }
-
     // ---- Plates, chips and strips -------------------------------------------------------------------
 
     private static void Countdown(PanelContainer plate)
@@ -415,6 +419,22 @@ public static class ClassicWorldOverlays
             part.Draw += () => part.DrawStyleBox(Bar(source), new Rect2(Vector2.Zero, part.Size));
             if (part.GetParent() is Control row) row.CustomMinimumSize = new Vector2(row.CustomMinimumSize.X, Spec.Plaque.BarHeight);
         }
+        // A closable strip gets the plaque close; the Ranking action the chat tab art of plaque actions.
+        foreach (var button in Descendants(strip).OfType<Button>())
+        {
+            if (button.TooltipText == "Close")
+            {
+                ClassicChatControls.SkinButton(button, Plugin.Kit.Layout("{nation}_notice_us").Find("btn_quit")!);
+                button.Icon = null; button.Text = ""; button.FocusMode = Control.FocusModeEnum.None;
+                button.CustomMinimumSize = new Vector2(20, 20);
+            }
+            else
+            {
+                TabButton(button);
+                button.CustomMinimumSize = Spec.Plaque.Action;
+                button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+            }
+        }
         Keep(strip, () => { foreach (var label in labels) Ink(label, PlaqueInk); });
     }
 
@@ -461,31 +481,36 @@ public static class ClassicWorldOverlays
 
     private static void Loot(PanelContainer native)
     {
-        if (native.GetChildren().OfType<MarginContainer>().FirstOrDefault() is not { } content
-            || Find<HBoxContainer>(native, "loot_header") is not { } header || Find<Label>(native, "loot_title") is not { } title
-            || Find<Button>(native, "loot_close") is not { } close || Find<Container>(native, "loot_rows") is not { } rows) return;
+        if (native.GetChildren().OfType<MarginContainer>().FirstOrDefault() is not { } content) return;
+        var cells = Descendants(native).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("loot_slot_"))
+            .OrderBy(c => int.Parse(c.Name.ToString()["loot_slot_".Length..])).ToArray();
+        if (cells.Length == 0) return;
         native.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         native.CustomMinimumSize = Spec.Loot.Size;
-        var panel = new ClassicLootPanel(rows) { Name = "classic_loot" };
+        var panel = new ClassicLootPanel { Name = "classic_loot" };
         native.AddChild(panel);
         content.Visible = false;
-        // The native title row stays the drag handle.
-        ClassicVendorSkin.Move(header, panel, Spec.Loot.Header);
-        header.SetMeta(ExpectedRect, Spec.Loot.Header);
-        header.AddThemeConstantOverride("separation", 0);
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        Text(title, 13, PlaqueInk, shadow: PlaqueShadow);
-        title.VerticalAlignment = VerticalAlignment.Center; title.ClipText = true;
-        title.CustomMinimumSize = new Vector2(0, Spec.Plaque.Height);
-        var indent = new Control { Name = "loot_indent", CustomMinimumSize = new Vector2(Spec.Loot.Title.Position.X, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
-        header.AddChild(indent); header.MoveChild(indent, 0);
-        var art = Plugin.Kit.Layout("{nation}_notice_us").Find("btn_quit")!;
-        ClassicChatControls.SkinButton(close, art);
-        close.Text = ""; close.TooltipText = "Close"; close.FocusMode = Control.FocusModeEnum.None;
-        close.CustomMinimumSize = Spec.Loot.Close.Size; close.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        close.SetMeta(ExpectedRect, Spec.Loot.Close);
-        var gap = new Control { Name = "loot_end", CustomMinimumSize = new Vector2(Spec.Loot.Size.X - Spec.Loot.Close.End.X, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
-        header.AddChild(gap);
+        var hover = new StyleBoxFlat { BgColor = new Color(1, 1, 1, .1f) };
+        // The client's own cells, on the original art: their click takes, right click sets a loot rule, hover shows the tooltip.
+        for (int i = 0; i < cells.Length && i < Spec.Loot.Cells.Length * Spec.Loot.Grids; i++)
+        {
+            Place(cells[i], panel, Spec.Loot.Cell(i));
+            ClassicSlotLook.Attach(cells[i], light => light > 1 ? hover : new StyleBoxEmpty());
+            cells[i].MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+        }
+        foreach (var (name, rect) in new[] { ("loot_take_all", Spec.Loot.TakeAll), ("loot_filter", Spec.Loot.Filter) })
+            if (Find<Button>(native, name) is { } action)
+            {
+                Place(action, panel, rect); TabButton(action);
+                // The caption draws the text; the button's own (transparent) text must not raise it above the 15-pixel art.
+                action.AddThemeFontSizeOverride("font_size", 8);
+            }
+        // The client closes the box on Escape or when it walks away; the plaque adds the original close button.
+        var close = new Button { Name = "loot_close", TooltipText = "Close", FocusMode = Control.FocusModeEnum.None };
+        panel.AddChild(close);
+        Place(close, panel, Spec.Loot.Close);
+        ClassicChatControls.SkinButton(close, Plugin.Kit.Layout("{nation}_notice_us").Find("btn_quit")!);
+        close.Pressed += () => NativeOverlays.CloseLoot(native);
         native.ResetSize();
         Keep(native, () => { if (native.Size != Spec.Loot.Size) native.Size = Spec.Loot.Size; });
     }
@@ -605,75 +630,21 @@ public static class ClassicPlaqueArt
     }
 }
 
-/// <summary>
-/// The original dropped-item grid under an information plaque. The client's loot rows stay hidden in
-/// their list; each cell shows a row's icon and count and takes it through the row's own click.
-/// </summary>
+/// <summary>The loot box art: the information plaque over the original dropped-item grids.</summary>
 public partial class ClassicLootPanel : Control
 {
-    private readonly Container _rows;
-    private readonly Control[] _cells = new Control[ClassicOverlayLayout.Loot.Cells.Length];
-    private readonly Label[] _counts = new Label[ClassicOverlayLayout.Loot.Cells.Length];
-    private readonly TextureRect[] _icons = new TextureRect[ClassicOverlayLayout.Loot.Cells.Length];
-    private readonly Control?[] _bound = new Control?[ClassicOverlayLayout.Loot.Cells.Length];
-
-    public ClassicLootPanel() { _rows = null!; }
-
-    public ClassicLootPanel(Container rows)
+    public ClassicLootPanel()
     {
-        _rows = rows; MouseFilter = MouseFilterEnum.Stop; TextureFilter = TextureFilterEnum.Nearest;
+        MouseFilter = MouseFilterEnum.Stop; TextureFilter = TextureFilterEnum.Nearest;
         Size = CustomMinimumSize = ClassicOverlayLayout.Loot.Size;
-        for (int i = 0; i < _cells.Length; i++)
-        {
-            var rect = ClassicOverlayLayout.Loot.Cells[i];
-            rect.Position += ClassicOverlayLayout.Loot.Grid;
-            var cell = new Control { Name = $"loot_cell_{i}", Position = rect.Position, Size = rect.Size, MouseFilter = MouseFilterEnum.Stop,
-                MouseDefaultCursorShape = CursorShape.PointingHand };
-            cell.SetMeta(ClassicWorldOverlays.ExpectedRect, rect);
-            var icon = new TextureRect { Name = "icon", ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
-            icon.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-            cell.AddChild(icon);
-            var count = new Label { Name = "count" };
-            cell.AddChild(count);
-            ItemCountStyle.Apply(count, cell, Plugin.Kit.Bold);
-            int slot = i;
-            cell.GuiInput += ev =>
-            {
-                if (ev is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } || _bound[slot] is not { } row) return;
-                cell.AcceptEvent();
-                NativeOverlays.TakeLoot(row);
-            };
-            AddChild(cell);
-            (_cells[i], _icons[i], _counts[i]) = (cell, icon, count);
-        }
-    }
-
-    public override void _Process(double delta)
-    {
-        if (!IsVisibleInTree()) return;
-        var rows = _rows.GetChildren().OfType<Control>().Where(r => !r.IsQueuedForDeletion()).ToArray();
-        for (int i = 0; i < _cells.Length; i++)
-        {
-            var row = i < rows.Length ? rows[i] : null;
-            _bound[i] = row;
-            var label = row == null ? null : ClassicWorldOverlays.Descendants(row).OfType<Label>().FirstOrDefault();
-            var native = row == null ? null : ClassicWorldOverlays.Descendants(row).OfType<TextureRect>().FirstOrDefault();
-            string text = label?.Text ?? "";
-            bool gold = row != null && native?.Texture == null && text.StartsWith("Gold", StringComparison.Ordinal);
-            _icons[i].Texture = row == null ? null : gold ? ClassicEventPanel.GoldIcon : native?.Texture;
-            int mark = text.LastIndexOf("  x", StringComparison.Ordinal);
-            _counts[i].Text = mark >= 0 ? text[(mark + 3)..] : "";
-            _cells[i].TooltipText = row == null ? "" : text + "\nClick to take it.";
-            _cells[i].MouseDefaultCursorShape = row == null ? CursorShape.Arrow : CursorShape.PointingHand;
-        }
     }
 
     public override void _Draw()
     {
         ClassicPlaqueArt.Draw(this, ClassicOverlayLayout.Loot.Header);
         var grid = Plugin.Kit.Layout("co_droppeditem_us").Images.First();
-        DrawTextureRectRegion(Plugin.Kit.Texture(grid.Texture!)!, new Rect2(ClassicOverlayLayout.Loot.Grid + grid.Position, grid.SizeVec),
-            new Rect2(grid.SrcX, grid.SrcY, grid.SrcW, grid.SrcH));
+        for (int i = 0; i < ClassicOverlayLayout.Loot.Grids; i++)
+            DrawTextureRectRegion(Plugin.Kit.Texture(grid.Texture!)!, new Rect2(ClassicOverlayLayout.Loot.GridAt(i) + grid.Position, grid.SizeVec),
+                new Rect2(grid.SrcX, grid.SrcY, grid.SrcW, grid.SrcH));
     }
 }

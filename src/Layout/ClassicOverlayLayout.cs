@@ -46,21 +46,33 @@ public static class ClassicOverlayLayout
         public static readonly Rect2 Timer = new(21, Message.TextTop, 285, 18);
         public static readonly Rect2 Bar = new(76, Timer.End.Y + 5, 175, 9);
         public static readonly Rect2 Status = new(21, Bar.End.Y + 5, 285, 38);
-        public static readonly Vector2 Size = new(Message.Width, Message.HeightFor(Status.End.Y - Message.TextTop));
+        /// <summary>The sign-up count line the client shows under the status once the server reports it.</summary>
+        public static readonly Rect2 Count = new(21, Status.End.Y + 3, 285, 15);
+        public static Vector2 SizeFor(bool count) => new(Message.Width, Message.HeightFor((count ? Count.End.Y : Status.End.Y) - Message.TextTop));
+        public static readonly Vector2 Size = SizeFor(false);
         public static Rect2 Join => Message.Left(Size.Y);
         public static Rect2 Close => Message.Right(Size.Y);
+        public static Rect2 JoinAt(bool count) => Message.Left(SizeFor(count).Y);
+        /// <summary>Close alone (an NPC sign-up event has no Join) takes the single centred place.</summary>
+        public static Rect2 CloseAt(bool count, bool alone) => alone ? Message.Single(SizeFor(count).Y) : Message.Right(SizeFor(count).Y);
     }
 
-    /// <summary>Death notice: the experience loss in the title band, the respawn hint as the message (sized to its lines).</summary>
+    /// <summary>
+    /// Death notice: the experience loss in the title band, the respawn hint as the message (sized to its lines) and,
+    /// when the bag holds resurrection scrolls, one 22-pixel choice row per way back (town first) under the hint.
+    /// </summary>
     public static class Death
     {
+        public const float RowHeight = 22, RowGap = 2, RowsGap = 8;
         public static readonly Rect2 Loss = Message.Title;
-        public static Vector2 Size(float hint) => new(Message.Width, Message.HeightFor(hint));
+        public static float RowsHeight(int rows) => rows <= 0 ? 0 : rows * RowHeight + (rows - 1) * RowGap;
+        public static Vector2 Size(float hint, int rows = 0) => new(Message.Width, Message.HeightFor(hint + (rows > 0 ? RowsGap + RowsHeight(rows) : 0)));
         public static Rect2 Hint(float hint) => Message.TextAt(Message.TextTop, hint);
-        public static Rect2 Ok(float hint) => Message.Single(Size(hint).Y);
+        public static Rect2 Rows(float hint, int rows) => new(Message.Text.Position.X, Message.TextTop + hint + RowsGap, Message.Text.Size.X, RowsHeight(rows));
+        public static Rect2 Ok(float hint, int rows = 0) => Message.Single(Size(hint, rows).Y);
     }
 
-    /// <summary>Invite by name: the message box with its original edit field (<c>Edit_Common</c>).</summary>
+    /// <summary>A name prompt: the message box with its original edit field (<c>Edit_Common</c>).</summary>
     public static class NamePrompt
     {
         public static readonly Rect2 Title = Message.Title;
@@ -98,14 +110,22 @@ public static class ClassicOverlayLayout
         public static readonly Rect2 Action = new(212 - Plaque.Inset - 55, 4, 55, 15);
     }
 
-    /// <summary>The original dropped-item grid under an information plaque with the loot title and close.</summary>
+    /// <summary>
+    /// The loot box: two original dropped-item grids side by side (the client's twelve cells, six per grid in entry
+    /// order) under an information plaque carrying Take all, Filter (chat tab art) and the close button.
+    /// </summary>
     public static class Loot
     {
-        public static readonly Vector2 Size = new(102, Plaque.Height + 151);
-        public static readonly Rect2 Header = new(0, 0, 102, Plaque.Height);
-        public static readonly Rect2 Title = new(6, 3, 72, 16);
-        public static readonly Rect2 Close = new(80, 1, 20, 20);
-        public static readonly Vector2 Grid = new(0, Plaque.Height);
+        public const int Grids = 2;
+        public const float GridWidth = 102, GridHeight = 151;
+        public static readonly Vector2 Size = new(GridWidth * Grids, Plaque.Height + GridHeight);
+        public static readonly Rect2 Header = new(0, 0, Size.X, Plaque.Height);
+        public static readonly Rect2 TakeAll = new(5, 4, 55, 15);
+        public static readonly Rect2 Filter = new(62, 4, 55, 15);
+        public static readonly Rect2 Close = new(Size.X - 22, 1, 20, 20);
+        public static Vector2 GridAt(int grid) => new(grid * GridWidth, Plaque.Height);
+        /// <summary>The cell of a loot entry: entries fill the left grid first, each grid in the original slot order.</summary>
+        public static Rect2 Cell(int entry) => new(Cells[entry % Cells.Length].Position + GridAt(entry / Cells.Length), Cells[entry % Cells.Length].Size);
         /// <summary>The six original item areas, in slot order.</summary>
         public static readonly Rect2[] Cells =
         {

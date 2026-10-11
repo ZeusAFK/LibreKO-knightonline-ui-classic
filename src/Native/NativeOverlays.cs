@@ -17,8 +17,6 @@ public enum NativeOverlay
     Death,
     /// <summary>A native confirmation dialog (party invite, duel challenge, town recall).</summary>
     Prompt,
-    /// <summary>The party window's invite-by-name panel (label, name field, Send and Cancel).</summary>
-    NamePrompt,
     /// <summary>A centre-screen broadcast banner or prompt line.</summary>
     Announcement,
     /// <summary>The zone type chip.</summary>
@@ -60,9 +58,7 @@ public static class NativeOverlays
         Apply(NativeOverlay.Death, Named(world, "_deathPanel", "death_notice"));
         foreach (var (field, name) in new[] { ("_inviteAskDialog", "party_invite_prompt"), ("_challengeAskDialog", "duel_prompt"), ("_townRecallDialog", "town_recall_prompt") })
             Apply(NativeOverlay.Prompt, Named(world, field, name));
-        Named(world, "_inviteNameInput", "invite_name_input");
-        Apply(NativeOverlay.NamePrompt, Named(world, "_inviteNamePanel", "party_invite_name"));
-        foreach (var (field, name) in new[] { ("_upgradeNoticeLabel", "upgrade_announcement"), ("_shoutLabel", "shout_announcement"), ("_seasonalLabel", "seasonal_announcement") })
+        foreach (var (field, name) in new[] { ("_upgradeNoticeLabel", "upgrade_announcement"), ("_shoutLabel", "shout_announcement") })
             if (Native.Get<Label>(world, field)?.GetParent()?.GetParent() is PanelContainer panel) Apply(NativeOverlay.Announcement, Named(panel, name));
         Apply(NativeOverlay.Announcement, Named(world, "_battleeventBanner", "battle_announcement"));
         Apply(NativeOverlay.Announcement, Named(world, "_battleeventResult", "battle_result"));
@@ -72,7 +68,6 @@ public static class NativeOverlays
         Apply(NativeOverlay.Score, Named(world, "_battleeventBoard", "battle_score"));
         Apply(NativeOverlay.Score, Named(world, "_bdwScoreBanner", "border_war_score"));
         Apply(NativeOverlay.Menu, Named(world, "_playerMenu", "player_menu"));
-        Apply(NativeOverlay.Menu, Named(world, "_partyCtxMenu", "party_menu"));
         PrepareLoot(world);
     }
 
@@ -83,6 +78,7 @@ public static class NativeOverlays
         Named(world, "_joinModalTimer", "registration_timer");
         Named(world, "_joinModalBar", "registration_bar");
         Named(world, "_joinModalStatus", "registration_status");
+        Named(world, "_joinModalCount", "registration_count");
         Named(world, "_joinModalBtn", "registration_join");
         Named(world, "_joinModalCloseBtn", "registration_close");
         var countdown = Named(world, "_bifrostBanner", "event_countdown");
@@ -114,25 +110,33 @@ public static class NativeOverlays
         Apply(NativeOverlay.Leave, leave);
     }
 
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Node, World> _lootWorlds = new();
+
     private static void PrepareLoot(World world)
     {
-        var panel = Named(world, "_lootPanel", "loot_window");
-        Named(world, "_lootListBox", "loot_rows");
-        if (Native.Get<Label>(world, "_lootTitle") is { } title)
+        // The loot box is a twelve-cell grid of client item cells (entry order) with Take all and Filter under it.
+        if (Named(world, "_lootPanel", "loot_window") is not { } panel || Native.Get<ItemSlotView[]>(world, "_lootCells") is not { } cells) return;
+        for (int i = 0; i < cells.Length; i++)
         {
-            Named(title, "loot_title");
-            if (title.GetParent() is HBoxContainer header)
-            {
-                Named(header, "loot_header");
-                if (header.GetChildren().OfType<Button>().FirstOrDefault() is { } close) Named(close, "loot_close");
-            }
+            if (Named(cells[i], "loot_slot_" + i) == null) return;
+            if (i == 0) Named(cells[i].GetParent(), "loot_grid");
         }
+        if (cells[0].GetParent()?.GetParent() is Node column)
+            foreach (var actions in column.GetChildren().OfType<HBoxContainer>())
+            {
+                var buttons = actions.GetChildren().OfType<Button>().ToArray();
+                if (buttons.Length < 2) continue;
+                Named(actions, "loot_actions"); Named(buttons[0], "loot_take_all"); Named(buttons[1], "loot_filter");
+            }
+        _lootWorlds.AddOrUpdate(panel, world);
         Apply(NativeOverlay.Loot, panel);
     }
 
-    /// <summary>Takes a loot row through the client's own row click.</summary>
-    public static void TakeLoot(Control row) =>
-        row.EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
+    /// <summary>Closes the loot box through the client, as Escape does; the client's box has no close button.</summary>
+    public static void CloseLoot(Node panel)
+    {
+        if (_lootWorlds.TryGetValue(panel, out var world) && GodotObject.IsInstanceValid(world)) Native.Call(world, "CloseLoot");
+    }
 
     private static Node? Named(World world, string field, string name) => Named(Native.Get<Node>(world, field), name);
 
