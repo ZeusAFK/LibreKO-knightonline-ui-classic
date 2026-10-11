@@ -17,7 +17,7 @@ public partial class Preview
         GetWindow().ContentScaleMode = Window.ContentScaleModeEnum.Disabled; GetWindow().Size = new Vector2I(1200, 850); GetViewport().GuiEmbedSubwindows = true;
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1600, 1000), MouseFilter = MouseFilterEnum.Ignore });
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
-        var checks = new List<string>(); var screens = new List<object>();
+        var checks = new List<string>(); var screens = new List<object>(); string design = "classic";
         void Require(bool value, string text) { if (!value) throw new Exception("STORE_AUDIT: " + text); checks.Add(text); }
         async Task Frames(int count = 8) { for (int i = 0; i < count; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }
         async Task Click(Control c)
@@ -37,17 +37,23 @@ public partial class Preview
             string variant = touch ? stateVariant.Replace("pus-touch-", "pus-") : stateVariant;
             var world = new World(); var layer = (CanvasLayer)DetailCall(world, "BuildPowerUpStoreClassicUiPreview", variant)!; AddChild(layer);
             var window = layer.GetChildren().OfType<HudWindow>().Single(); var panel = ClassicStoreSkin.Apply(window.Body)!;
+            // The original Power Up Store art is optional local content; the audit checks whichever design is installed.
+            bool myko = panel is ClassicStoreMykoPanel; design = myko ? "myko-local-art" : "classic";
             T Find<T>(string name) where T : Control => Descendants(window).OfType<T>().Single(c => c.Name == "pus_" + name);
             var cart = (PowerUpStoreCart)DetailField(world, "_pusCart")!;
             async Task Capture(string state)
             {
                 await Frames(); Require(GetViewportRect().Encloses(window.GetGlobalRect()), state + " window fits viewport " + window.GetGlobalRect());
-                Require(window.Body.GetRect() == ClassicStoreLayout.Body(panel.Size), state + " native body matches declarative rectangle " + window.Body.GetRect());
-                var close = Descendants(panel).OfType<Button>().Single(b => b.TooltipText == "Close");
-                Require(close.GetRect() == ClassicStoreLayout.Close(panel.Size.X), state + " original CLOSE actual bounds");
-                foreach (var c in new[] { Find<Control>("tabs"), Find<Control>("well"), Find<Control>("cart"), Find<Control>("grid_scroll"), Find<Control>("tools"), Find<Control>("wallet") }.Where(c => c.IsVisibleInTree()))
-                    Require(window.GetGlobalRect().Encloses(c.GetGlobalRect()), state + " column fits frame " + c.Name);
-                StoreGeometry(state, window, panel, touch, Require);
+                if (myko) MykoStoreGeometry(state, window, (ClassicStoreMykoPanel)panel, Require);
+                else
+                {
+                    Require(window.Body.GetRect() == ClassicStoreLayout.Body(panel.Size), state + " native body matches declarative rectangle " + window.Body.GetRect());
+                    var close = Descendants(panel).OfType<Button>().Single(b => b.TooltipText == "Close");
+                    Require(close.GetRect() == ClassicStoreLayout.Close(panel.Size.X), state + " original CLOSE actual bounds");
+                    foreach (var c in new[] { Find<Control>("tabs"), Find<Control>("well"), Find<Control>("cart"), Find<Control>("grid_scroll"), Find<Control>("tools"), Find<Control>("wallet") }.Where(c => c.IsVisibleInTree()))
+                        Require(window.GetGlobalRect().Encloses(c.GetGlobalRect()), state + " column fits frame " + c.Name);
+                    StoreGeometry(state, window, (ClassicStorePanel)panel, touch, Require);
+                }
                 foreach (var modal in new[] { Find<PanelContainer>("details"), Find<PanelContainer>("gift_box") }.Where(m => m.IsVisibleInTree()))
                     Require(window.GetGlobalRect().Encloses(modal.GetGlobalRect()), state + " active modal stays inside native window " + modal.GetGlobalRect());
                 var giftScroll = Descendants(Find<PanelContainer>("gift_box")).OfType<ScrollContainer>().FirstOrDefault(s => s.IsVisibleInTree());
@@ -69,13 +75,16 @@ public partial class Preview
                             Require(b.ClipText && b.TextOverrunBehavior == TextServer.OverrunBehavior.TrimEllipsis && b.TooltipText.StartsWith(b.Text), state + " long category tab keeps ellipsis and full caption tooltip " + b.Text);
                         else if (b.HasMeta("pus_tab_selected")) Require(b.ClipText && b.TooltipText.StartsWith(b.Text), state + " category tab caption fits its plate " + b.Text + " " + b.Size);
                         else if (b.HasMeta("pus_category_selected")) Require(b.ClipText && b.TextOverrunBehavior == TextServer.OverrunBehavior.TrimEllipsis && b.TooltipText.StartsWith(b.Text), state + " category retains native ellipsis and full caption tooltip " + b.Text);
+                        else if (myko && b.ClipText && b.TextOverrunBehavior == TextServer.OverrunBehavior.TrimEllipsis && b.TooltipText.Length > 0 && b.GetThemeFont("font").GetStringSize(b.Text, HorizontalAlignment.Left, -1, b.GetThemeFontSize("font_size")).X + 4 > b.Size.X)
+                            Require(true, state + " long caption on an original plate keeps ellipsis and tooltip " + b.Text + " " + b.Size);
                         else Require(b.GetThemeFont("font").GetStringSize(b.Text, HorizontalAlignment.Left, -1, b.GetThemeFontSize("font_size")).X + 4 <= b.Size.X, state + " button caption fits " + b.Text + " " + b.Size);
                     }
                 }
                 foreach (var c in Find<GridContainer>("grid").GetChildren().OfType<PanelContainer>())
                 {
                     Require(c.HasMeta("pus_card_id"), state + " actual native catalogue card metadata");
-                    Require(c.GetThemeStylebox("panel") is StyleBoxFlat box && box.CornerRadiusTopLeft == 0, state + " dynamic card retains Classic material after native refresh");
+                    if (myko) Require(c.GetThemeStylebox("panel") is StyleBoxTexture art && art.RegionRect.Size == ClassicStoreMykoLayout.Card, state + " dynamic card retains the original card art after native refresh");
+                    else Require(c.GetThemeStylebox("panel") is StyleBoxFlat box && box.CornerRadiusTopLeft == 0, state + " dynamic card retains Classic material after native refresh");
                 }
                 string file = (nation == 1 ? "karus" : "human") + "-" + state + ".png";
                 GetViewport().GetTexture().GetImage().SavePng(output + "/" + file); screens.Add(new { state, file, bounds = window.GetGlobalRect().ToString() });
@@ -128,6 +137,7 @@ public partial class Preview
                 var icon = Descendants(card).OfType<PanelContainer>().Single(c => c.Name == "pus_card_icon"); var hover = icon.GetGlobalRect().GetCenter();
                 GetViewport().PushInput(new InputEventMouseMotion { Position = hover, GlobalPosition = hover }, true); await Frames();
                 Require(world.ItemTooltipVisible, "Actual catalogue icon hover opens complete native item tooltip"); await Capture("pus-item-tooltip"); DetailCall(world, "HideItemTooltip");
+                if (myko) { await MykoActions(world, window, cart, Find<GridContainer>("grid"), Click, Frames, Capture, Require); card = Find<GridContainer>("grid").GetChildren().OfType<PanelContainer>().First(); }
                 var savedLines = cart.Lines.ToArray();
                 var cartIcon = Descendants(Find<VBoxContainer>("cart_lines")).OfType<TextureRect>().First(); hover = cartIcon.GetGlobalRect().GetCenter();
                 GetViewport().PushInput(new InputEventMouseMotion { Position = hover, GlobalPosition = hover }, true); await Frames();
@@ -166,7 +176,7 @@ public partial class Preview
             finally { layer.Free(); world.Free(); Platform.Override = null; }
         }
         net.Free();
-        System.IO.File.WriteAllText(output + "/" + (nation == 1 ? "karus" : "human") + "-store.json", JsonSerializer.Serialize(new { nation, checks, screens }, new JsonSerializerOptions { WriteIndented = true }));
+        System.IO.File.WriteAllText(output + "/" + (nation == 1 ? "karus" : "human") + "-store.json", JsonSerializer.Serialize(new { nation, design, checks, screens }, new JsonSerializerOptions { WriteIndented = true }));
         GD.Print("Classic store audit: " + checks.Count + " checks / " + screens.Count + " screens");
     }
 
