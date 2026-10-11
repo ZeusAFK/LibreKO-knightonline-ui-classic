@@ -19,21 +19,36 @@ public static class NativeQuestLog
 
     private static readonly Dictionary<int, QuestReceipt> _receipts = new();
     private static Net? _listening;
+    private static NativeHooks.Hook? _receiptHook;
+    private static WeakReference<World>? _receiptWorld;
 
     /// <summary>
     /// Remembers what each turn-in granted. The client keeps only the pending choice, so the Classic log
-    /// records receipts itself to show "Received rewards" while the quest stays completed.
+    /// records receipts itself to show "Received rewards" while the quest stays completed. The network
+    /// session outlives the World, so the receipts follow the session and refresh the latest World.
     /// </summary>
     private static void ListenForReceipts(World world)
     {
-        if (Net.I is not { } net || ReferenceEquals(net, _listening)) return;
+        _receiptWorld = new WeakReference<World>(world);
+        if (Net.I is not { } net || ReferenceEquals(net, _listening) && _receiptHook is { Active: true }) return;
+        _receiptHook?.Release();
         _listening = net;
         _receipts.Clear();
-        net.QuestReceiptEvent += receipt =>
+        Action<QuestReceipt> received = receipt =>
         {
             Record(receipt);
-            if (GodotObject.IsInstanceValid(world)) Callable.From(() => Native.TryCall(world, "RefreshQuestDetail", out _)).CallDeferred();
+            if (_receiptWorld != null && _receiptWorld.TryGetTarget(out var shown) && GodotObject.IsInstanceValid(shown))
+                Callable.From(() => { if (GodotObject.IsInstanceValid(shown)) Native.TryCall(shown, "RefreshQuestDetail", out _); }).CallDeferred();
         };
+        _receiptHook = NativeHooks.Listen("Net.QuestReceiptEvent", () => net.QuestReceiptEvent += received, () => net.QuestReceiptEvent -= received);
+    }
+
+    internal static void Reset()
+    {
+        _receipts.Clear();
+        _listening = null;
+        _receiptHook = null;
+        _receiptWorld = null;
     }
 
     /// <summary>Records what a turn-in granted; the preview calls this when it feeds receipts directly.</summary>

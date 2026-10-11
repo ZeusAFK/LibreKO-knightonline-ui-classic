@@ -5,7 +5,7 @@ namespace KnightOnlineUiClassic;
 public partial class ClassicCheck : Node
 {
     public override void _Ready() { Plugin.Kit.Game.BecameAvailable+=Run; }
-    public override void _ExitTree() { Plugin.Kit.Game.BecameAvailable-=Run; }
+    public override void _ExitTree() { if(Plugin.Active) Plugin.Kit.Game.BecameAvailable-=Run; }
     private async void Run()
     {
         Plugin.Kit.Game.BecameAvailable-=Run;

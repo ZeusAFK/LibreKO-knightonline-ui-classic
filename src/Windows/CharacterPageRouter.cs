@@ -34,6 +34,12 @@ public static class CharacterPageRouter
         foreach(var id in Pages.Keys.ToArray())
             if(Pages.TryGetValue(id,out var page) && GodotObject.IsInstanceValid(page) && GodotObject.IsInstanceValid(page.NativeWindow)) Present(id);
     }
+    /// <summary>Forgets the pages of the previous World (plugin shutdown).</summary>
+    internal static void Reset()
+    {
+        Pages.Clear();
+        Owner = null;
+    }
     public static void Release(CharacterWindow owner)
     {
         foreach(var page in Pages.Values.Where(GodotObject.IsInstanceValid))

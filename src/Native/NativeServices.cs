@@ -295,8 +295,8 @@ public sealed class NativeRepair
             }).CallDeferred();
         };
         var net = Net.I;
-        net.ItemRepairResultEvent += repair.OnResult;
-        world.TreeExiting += () => net.ItemRepairResultEvent -= repair.OnResult;
+        NativeHooks.Listen("Net.ItemRepairResultEvent", () => net.ItemRepairResultEvent += repair.OnResult,
+            () => net.ItemRepairResultEvent -= repair.OnResult, world);
         // The catalogue stays hidden while repairing, so state is followed from outside the window.
         panel.AddChild(new NativeTicker(repair.Sync) { Name = "native_repair_sync" });
     }

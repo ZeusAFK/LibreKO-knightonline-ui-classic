@@ -146,7 +146,7 @@ public partial class NationHud : Control
     }
     private void Refresh()
     {
-        if (!Plugin.Kit.Game.Available) return;
+        if (!Plugin.Active || !Plugin.Kit.Game.Available) return;
         int nation = Plugin.Kit.Game.Character.Nation;
         if (nation == _nation) return;
         _nation = nation;
@@ -155,6 +155,7 @@ public partial class NationHud : Control
     }
     public override void _ExitTree()
     {
+        if (!Plugin.Active) return;
         Plugin.Kit.Game.BecameAvailable -= Refresh;
         Plugin.Kit.Game.Character.Changed -= Refresh;
     }

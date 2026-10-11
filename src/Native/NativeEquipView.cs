@@ -77,8 +77,7 @@ public static class NativeEquipView
         window.Title = Title;
         window.SetMeta("classic_equipview_controls", 1);
         Action<Net.EquipmentViewResult, Net.EquipmentView> received = (result, view) => Received(world, state, result, view);
-        net.EquipmentViewEvent += received;
-        world.TreeExiting += () => net.EquipmentViewEvent -= received;
+        NativeHooks.Listen("Net.EquipmentViewEvent", () => net.EquipmentViewEvent += received, () => net.EquipmentViewEvent -= received, world);
         NativeWindows.Sync(window, () => Sync(world, state));
     }
 

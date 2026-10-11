@@ -63,8 +63,7 @@ public static class NativeVendor
         if (Net.I is { } net)
         {
             Action<int> opened = _ => Sync(window, world);
-            net.TradeNpcEvent += opened;
-            world.TreeExiting += () => net.TradeNpcEvent -= opened;
+            NativeHooks.Listen("Net.TradeNpcEvent", () => net.TradeNpcEvent += opened, () => net.TradeNpcEvent -= opened, world);
         }
     }
 
@@ -340,12 +339,9 @@ public static class NativeGoldLog
         _handlers.Add(world, handler);
         var current = Native.Get<Delegate>(net, "GoldChangeEvent");
         if (!Native.Set(net, "GoldChangeEvent", Delegate.Combine(handler, current))) return;
-        net.GoldChangeLogEvent += logged;
-        world.TreeExiting += () =>
-        {
-            Native.Set(net, "GoldChangeEvent", Delegate.Remove(Native.Get<Delegate>(net, "GoldChangeEvent"), handler));
-            net.GoldChangeLogEvent -= logged;
-        };
+        NativeHooks.Hold("Net.GoldChangeEvent (prepended)",
+            () => Native.Set(net, "GoldChangeEvent", Delegate.Remove(Native.Get<Delegate>(net, "GoldChangeEvent"), handler)), world);
+        NativeHooks.Listen("Net.GoldChangeLogEvent", () => net.GoldChangeLogEvent += logged, () => net.GoldChangeLogEvent -= logged, world);
     }
 
     /// <summary>Applies a new gold total before the client sees it and logs it unless the client does.</summary>

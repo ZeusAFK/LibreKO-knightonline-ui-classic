@@ -17,13 +17,12 @@ namespace KnightOnlineUiClassic.Native;
 /// </summary>
 public static class FamiliarBar
 {
-    private static bool _watching;
+    private static NativeHooks.Hook? _watching;
 
     internal static void Watch()
     {
-        if (_watching || Engine.GetMainLoop() is not SceneTree tree) return;
-        _watching = true;
-        tree.NodeAdded += node =>
+        if (_watching is { Active: true }) return;
+        _watching = NativeHooks.WatchTree("tree.familiar-bar", node =>
         {
             if (node is not HudLayout layout || layout.GetParent() is not PanelContainer bar) return;
             if (!bar.HasMeta("pet_plate_controls") && Native.Get<string>(layout, "_id") == PlateLayoutId)
@@ -38,8 +37,10 @@ public static class FamiliarBar
             var cells = NameControls(bar);
             // The tree is still entering; extenders reparent controls, so they run once it has settled.
             Callable.From(() => Prepare(NativeHudPart.FamiliarBar, bar, layout, cells)).CallDeferred();
-        };
+        });
     }
+
+    internal static void Reset() => _watching = null;
 
     /// <summary>The layout id of the client's familiar plate (name, level, health, mana, satisfaction, experience).</summary>
     public const string PlateLayoutId = "pet_plate";
@@ -67,7 +68,7 @@ public static class FamiliarBar
 
     private static void Prepare(NativeHudPart part, PanelContainer bar, HudLayout layout, PanelContainer[] cells)
     {
-        if (!GodotObject.IsInstanceValid(bar) || !GodotObject.IsInstanceValid(layout)) return;
+        if (!Plugin.Active || !GodotObject.IsInstanceValid(bar) || !GodotObject.IsInstanceValid(layout)) return;
         foreach (var extend in NativeHud.Extenders(part))
         {
             try { extend(bar); }

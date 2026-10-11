@@ -41,4 +41,12 @@ public static partial class NativeHud
         WhisperStyler = style;
         WhisperLineBuilder = buildLine;
     }
+
+    internal static void Reset()
+    {
+        _hidden.Clear();
+        _extenders.Clear();
+        WhisperStyler = null;
+        WhisperLineBuilder = null;
+    }
 }

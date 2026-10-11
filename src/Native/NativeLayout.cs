@@ -18,7 +18,7 @@ public static partial class NativeLayout
 
     private static readonly List<Snap> _snaps = new();
     private static readonly ConditionalWeakTable<HudLayout, Snap> _byLayout = new();
-    private static bool _watchingWindows;
+    private static NativeHooks.Hook? _watchingWindows;
 
     public static HudLayout Attach(
         Control target,
@@ -59,9 +59,14 @@ public static partial class NativeLayout
     /// </summary>
     public static void WatchContentAnchors()
     {
-        if (_watchingWindows || Engine.GetMainLoop() is not SceneTree tree) return;
-        _watchingWindows = true;
-        tree.NodeAdded += node => { if (node is HudWindow window) KeepContentAnchor(window); };
+        if (_watchingWindows is { Active: true }) return;
+        _watchingWindows = NativeHooks.WatchTree("tree.content-anchors", node => { if (node is HudWindow window) KeepContentAnchor(window); });
+    }
+
+    internal static void Reset()
+    {
+        _snaps.Clear();
+        _watchingWindows = null;
     }
 
     public static void KeepContentAnchor(HudWindow window)

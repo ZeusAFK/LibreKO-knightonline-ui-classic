@@ -35,7 +35,9 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     private CharacterPanelBridge(World world)
     {
         _world = new(world);
-        if (Net.I != null) Net.I.ClanDonationListEvent += OnDonations;
+        if (Net.I is { } net)
+            NativeHooks.Listen("Net.ClanDonationListEvent", () => net.ClanDonationListEvent += OnDonations,
+                () => net.ClanDonationListEvent -= OnDonations, world);
     }
 
     /// <summary>The bridge of a client world; one per world so the page selection persists.</summary>
@@ -48,7 +50,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
 
     private void OnDonations(List<(string Name, int Points)> list)
     {
-        if (W == null) { if (Net.I != null) Net.I.ClanDonationListEvent -= OnDonations; return; }
+        if (W == null) return;
         _donations = list.ToList();
     }
 

@@ -23,6 +23,8 @@ public static class ClassicStraightArt
 
     private static readonly Dictionary<string, ImageTexture> Cache = new();
 
+    internal static void Clear() => Cache.Clear();
+
     /// <summary>Corner repairs per original artwork, in window coordinates.</summary>
     public static Op[]? For(string art) => art switch
     {

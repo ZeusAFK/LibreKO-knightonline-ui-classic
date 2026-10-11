@@ -6,6 +6,8 @@ public static class ClassicNpcLayout
 {
     private static FontVariation? _headingFont;
     public static Font BodyFont => Plugin.Kit.ChatStrong;
+    /// <summary>Drops the heading font built from the previous kit (plugin shutdown).</summary>
+    internal static void Reset() => _headingFont = null;
     public static Font HeadingFont => _headingFont??=new FontVariation { BaseFont=Plugin.Kit.ChatFont,VariationEmbolden=UiKit.BoldStrength };
     public const int Width=363,Inset=18,InnerWidth=327,BodyY=208,RowHeight=32,RowGap=5,CardHeight=42,CardGap=6;
     public static readonly Rect2 TitlePlate=new(18,28,305,32);

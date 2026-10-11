@@ -126,12 +126,12 @@ public static class NativeTrade
             NativeVendor.Rewire(gold, () => OpenGold(world));
 
         // The original request message replaces the desktop dialog in the same call that opened it.
+        var net = Net.I;
         Action<int> request = _ => Sync(world);
-        Net.I.ExchangeRequestEvent += request;
+        NativeHooks.Listen("Net.ExchangeRequestEvent", () => net.ExchangeRequestEvent += request, () => net.ExchangeRequestEvent -= request, world);
         // A changed offer withdraws a pending final approval in the same reply that changed it.
         Action<int, int, short, int> partnerAdded = (_, _, _, _) => Sync(world);
-        Net.I.ExchangeOtherAddEvent += partnerAdded;
-        world.TreeExiting += () => { Net.I.ExchangeRequestEvent -= request; Net.I.ExchangeOtherAddEvent -= partnerAdded; };
+        NativeHooks.Listen("Net.ExchangeOtherAddEvent", () => net.ExchangeOtherAddEvent += partnerAdded, () => net.ExchangeOtherAddEvent -= partnerAdded, world);
         Sync(world);
     }
 

@@ -16,7 +16,7 @@ public static class NativeWindows
 
     private static readonly Dictionary<string, List<Preparer>> _preparers = new(StringComparer.OrdinalIgnoreCase);
     private static readonly List<(Func<HudWindow, bool> Match, Preparer Prepare)> _patterns = new();
-    private static bool _watching;
+    private static NativeHooks.Hook? _watching;
 
     public static void Prepare(string id, Preparer prepare)
     {
@@ -40,7 +40,7 @@ public static class NativeWindows
 
     private static void Run(Control body, List<Preparer> preparers)
     {
-        if (!GodotObject.IsInstanceValid(body) || Native.WindowOf(body) is not { } window) return;
+        if (!Plugin.Active || !GodotObject.IsInstanceValid(body) || Native.WindowOf(body) is not { } window) return;
         if (Native.WorldOf(window) is not { } world) return;
         foreach (var prepare in preparers)
         {
@@ -51,14 +51,13 @@ public static class NativeWindows
 
     private static void WatchTree()
     {
-        if (_watching || Engine.GetMainLoop() is not SceneTree tree) return;
-        _watching = true;
-        tree.NodeAdded += node =>
+        if (_watching is { Active: true }) return;
+        _watching = NativeHooks.WatchTree("tree.windows", node =>
         {
             if (node is not HudWindow window) return;
             Callable.From(() =>
             {
-                if (!GodotObject.IsInstanceValid(window) || Native.WorldOf(window) is not { } world) return;
+                if (!Plugin.Active || !GodotObject.IsInstanceValid(window) || Native.WorldOf(window) is not { } world) return;
                 foreach (var (match, prepare) in _patterns)
                 {
                     if (!match(window)) continue;
@@ -66,7 +65,15 @@ public static class NativeWindows
                     catch (Exception e) { GD.PushError($"[plugin:knightonline-ui-classic] {window.Id} preparation: {e}"); }
                 }
             }).CallDeferred();
-        };
+        });
+    }
+
+    /// <summary>Forgets every preparer; the hooks themselves are released by <see cref="NativeHooks"/>.</summary>
+    internal static void Reset()
+    {
+        _preparers.Clear();
+        _patterns.Clear();
+        _watching = null;
     }
 
     /// <summary>Runs <paramref name="sync"/> every frame while the window is visible, before the skin draws.</summary>
@@ -78,17 +85,18 @@ public static class NativeWindows
         sync();
     }
 
-    /// <summary>Calls <paramref name="added"/> for every node that later enters the window's subtree.</summary>
+    /// <summary>
+    /// Calls <paramref name="added"/> for every node that later enters the window's subtree, until the root is freed,
+    /// its World leaves the tree or the plugin shuts down.
+    /// </summary>
     public static void OnDescendantAdded(Node root, Action<Node> added)
     {
-        if (Engine.GetMainLoop() is not SceneTree tree) return;
-        SceneTree.NodeAddedEventHandler? handler = null;
-        handler = node =>
+        NativeHooks.Hook? hook = null;
+        hook = NativeHooks.WatchTree("tree.descendants", node =>
         {
-            if (!GodotObject.IsInstanceValid(root)) { tree.NodeAdded -= handler; return; }
+            if (!GodotObject.IsInstanceValid(root)) { hook?.Release(); return; }
             if (root.IsAncestorOf(node)) added(node);
-        };
-        tree.NodeAdded += handler;
+        }, Native.WorldOf(root));
     }
 
     /// <summary>Names a node if it exists; returns whether it did.</summary>

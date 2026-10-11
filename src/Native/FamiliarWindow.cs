@@ -133,17 +133,23 @@ public sealed partial class FamiliarWindow : Node
     /// <summary>Follows the familiar sheet notifications of the active network session.</summary>
     private void Observe(Net? net)
     {
-        if (_net == net) return;
-        if (_net != null)
-        {
-            _net.PetSummonedEvent -= OnSummoned; _net.PetGoneEvent -= Refresh; _net.PetVitalsEvent -= Refresh;
-            _net.PetModeEvent -= OnMode; _net.PetExpEvent -= OnExp; _net.MagicEvent -= OnMagic;
-        }
+        if (_net == net && _observing is { Active: true }) return;
+        _observing?.Release();
+        _observing = null;
         _net = net;
-        if (_net == null) return;
-        _net.PetSummonedEvent += OnSummoned; _net.PetGoneEvent += Refresh; _net.PetVitalsEvent += Refresh;
-        _net.PetModeEvent += OnMode; _net.PetExpEvent += OnExp; _net.MagicEvent += OnMagic;
+        if (net == null) return;
+        _observing = NativeHooks.Listen("Net.Pet (familiar window)", () =>
+        {
+            net.PetSummonedEvent += OnSummoned; net.PetGoneEvent += Refresh; net.PetVitalsEvent += Refresh;
+            net.PetModeEvent += OnMode; net.PetExpEvent += OnExp; net.MagicEvent += OnMagic;
+        }, () =>
+        {
+            net.PetSummonedEvent -= OnSummoned; net.PetGoneEvent -= Refresh; net.PetVitalsEvent -= Refresh;
+            net.PetModeEvent -= OnMode; net.PetExpEvent -= OnExp; net.MagicEvent -= OnMagic;
+        });
     }
+
+    private NativeHooks.Hook? _observing;
 
     private void OnSummoned(PetSheet _) => Refresh();
     private void OnMode(int _) => Refresh();

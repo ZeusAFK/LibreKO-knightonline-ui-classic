@@ -63,6 +63,30 @@ This page covers:
   Each member falls back to what the public API already offers when native support is absent. For example,
   `MoveAmount` moves the whole stack when the client has no `MoveBetween(int,int,int)`. The preview replaces
   `NativeGame.Source` with fixture data.
+- **Live enable and disable (`NativeHooks`, `NativeSetup.Unregister`).** Upstream switches UI themes from Settings >
+  Plugins without a restart. On disable the client calls `Plugin.Shutdown`, removes every `context.Ui` registration
+  and its leftover `PluginGame` handlers, and rebuilds the World in place. The plugin assembly stays loaded, and a
+  re-enable creates a new `Plugin` instance, so static state survives. The plugin therefore records every hook it
+  attaches to an object it does not own in `NativeHooks`:
+  - scene-tree watchers (`NativeHooks.WatchTree`: the window, content-anchor, familiar-bar and merchant-sign
+    watchers and every `OnDescendantAdded`);
+  - handlers on `Net` events (`NativeHooks.Listen`), including every `Native.Subscribe`;
+  - handlers that replace one of the World's own handlers (`NativeHooks.Replace`: anvil open, nation transfer open)
+    or run ahead of it (the prepended mail-list and gold handlers);
+  - the `Game.Windows.Source` wrapper.
+
+  Each hook is released once, by its caller, when its owner (normally the World) leaves the tree, or on shutdown;
+  on shutdown a replaced World handler is restored while that World is still in the tree. `Plugin.Shutdown` then
+  calls `NativeSetup.Unregister`: it releases all hooks, removes the plugin delegates still attached to the
+  client's game API (the Classic HUD and windows of the World that is about to be rebuilt), sweeps `Net` and the
+  tree's `node_added` for unrecorded plugin handlers (a warning names them; the audit expects none), and clears the
+  static registries (`NativeWindows`, `NativeHud`, `NativeOverlays`, `NativeLayout`, `FamiliarBar`,
+  `NativeGame.Source`, `NativeChat`, `NativeQuestLog`, `NativeCommunication`, `NativeHudChat`, `Native` reports and
+  `MemberMissing` listeners). It also frees plugin nodes outside the World (the developer check, dialogs on the
+  root), the NPC portrait cache, the straight-art cache, the character page router and the cached NPC heading font,
+  and resets `Plugin.Kit`. `Plugin.Active` guards code that can run after shutdown (deferred preparers, `_ExitTree`
+  of Classic nodes freed by the rebuild). `plugin-toggle-audit` drives the host path on a full native World:
+  native start, enable, disable, re-enable, disable, re-enable.
 - **Preview fixtures (`preview/Fixtures`).** The fork's `World.UiPreview.*Classic*` partials are rebuilt in the
   preview project through `Native`: `PreviewFixtures` plus one partial file per group. The preview's `PluginUi` runs
   no window extenders, so fixtures and audits call the group preparer (`NativeServices.Prepare`,

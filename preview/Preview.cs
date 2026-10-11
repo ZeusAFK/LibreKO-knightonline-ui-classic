@@ -23,7 +23,7 @@ public partial class Preview : Control
             var info=(PluginInfo)Create(typeof(PluginInfo),root,manifest,PluginState.Loaded,"");
             var game=new PluginGame();
             var context=(PluginContext)Create(typeof(PluginContext),info,new List<PluginInfo>{info},new PluginUi(),game);
-            new Plugin().Initialize(context);
+            var boot=new Plugin();boot.Initialize(context);
             int nation=OS.GetCmdlineUserArgs().Contains("karus") ? 1 : 2;
             var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;
             var proxies=attach.GetParameters().Select(p=>
@@ -40,6 +40,7 @@ public partial class Preview : Control
                 foreach (var proxy in proxies) ((PreviewData)proxy).CharacterAudit = new CharacterAuditData(nation) { ClanFlag=OS.GetCmdlineUserArgs().Contains("details-audit")?LibreKO.Network.ClanTypes.Accredited5:LibreKO.Network.ClanTypes.Training };
             attach.Invoke(game,proxies);
             NativeGame.Source=PreviewNative.Create(attach.GetParameters().Zip(proxies,(p,x)=>(p.ParameterType,(PreviewData)x)).ToDictionary(e=>e.Item1,e=>e.Item2));
+            if(OS.GetCmdlineUserArgs().Contains("plugin-toggle-audit")){await CapturePluginToggleAudit(nation, info, boot);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("pet-world-reconnect-audit")){await CapturePetWorldReconnectAudit(nation, info);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("pet-keyboard-audit")){await CapturePetKeyboardAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("pet-connection-audit")){await CapturePetConnectionAudit(nation);await FinishManagedAudit();return;}

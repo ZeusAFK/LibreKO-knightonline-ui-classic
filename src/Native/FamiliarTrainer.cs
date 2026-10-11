@@ -158,17 +158,23 @@ public sealed partial class FamiliarTrainer : Node
 
     private void Observe(Net? net)
     {
-        if (_net == net) return;
-        if (_net != null)
-        {
-            _net.InventorySlotEvent -= OnInventorySlot; _net.InventoryGridRefreshEvent -= OnInventoryGrid;
-            _net.PetHatchedEvent -= OnResult; _net.PetTransformedEvent -= OnResult;
-        }
+        if (_net == net && _observing is { Active: true }) return;
+        _observing?.Release();
+        _observing = null;
         _net = net;
-        if (_net == null) return;
-        _net.InventorySlotEvent += OnInventorySlot; _net.InventoryGridRefreshEvent += OnInventoryGrid;
-        _net.PetHatchedEvent += OnResult; _net.PetTransformedEvent += OnResult;
+        if (net == null) return;
+        _observing = NativeHooks.Listen("Net.Pet (familiar trainer)", () =>
+        {
+            net.InventorySlotEvent += OnInventorySlot; net.InventoryGridRefreshEvent += OnInventoryGrid;
+            net.PetHatchedEvent += OnResult; net.PetTransformedEvent += OnResult;
+        }, () =>
+        {
+            net.InventorySlotEvent -= OnInventorySlot; net.InventoryGridRefreshEvent -= OnInventoryGrid;
+            net.PetHatchedEvent -= OnResult; net.PetTransformedEvent -= OnResult;
+        });
     }
+
+    private NativeHooks.Hook? _observing;
 
     private void OnInventorySlot(int abs, ItemSlot _)
     {
