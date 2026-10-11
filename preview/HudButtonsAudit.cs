@@ -2,6 +2,8 @@ using Godot;
 using System.Reflection;
 using System.Text.Json;
 using LibreKO;
+using LibreKO.Domain;
+using LibreKO.Network;
 using LibreKO.Plugins;
 using KnightOnlineUiClassic.Windows;
 
@@ -97,7 +99,7 @@ public partial class Preview
         // ---- Tooltips: English titles with the client's key binding where it has one.
         string Tip(string letter) => Letter(letter)._GetTooltip(Vector2.Zero);
         string KeyText(KeyAction action) => KeyBinds.Get(action).Text;
-        Require(Tip("Q") == "Quests", "Q tooltip: " + Tip("Q"));
+        Require(Tip("Q") == "Quests (" + KeyText(KeyAction.Quests) + ")", "Q tooltip names the Quest Journal key: " + Tip("Q"));
         Require(Tip("P").StartsWith("Power-Up Store (" + KeyText(KeyAction.PowerUpStore) + ")"), "P tooltip: " + Tip("P"));
         Require(Tip("A").StartsWith("Achievements (" + KeyText(KeyAction.Achievements) + ")"), "A tooltip: " + Tip("A"));
         Require(Tip("D").StartsWith("Daily Attendance (" + KeyText(KeyAction.Attendance) + ")"), "D tooltip: " + Tip("D"));
@@ -189,6 +191,83 @@ public partial class Preview
         await QuestList("from-report");
         windows.Close("character_info");
         await Frames(4);
+
+        // ---- The client's "Quest Journal" key (F10): the same toggle as Q, pressed as a real key through the World.
+        var questKey = KeyBinds.Get(KeyAction.Quests);
+        Require(questKey.Assigned, "the Quest Journal key is bound (" + questKey.Text + ")");
+        async Task PressQuestKey()
+        {
+            foreach (bool down in new[] { true, false })
+            {
+                Input.ParseInputEvent(new InputEventKey { Keycode = questKey.Key, PhysicalKeycode = questKey.Key, CtrlPressed = questKey.Ctrl,
+                    ShiftPressed = questKey.Shift, AltPressed = questKey.Alt, Pressed = down });
+                await Frames(1);
+            }
+        }
+        async Task QuestKeyCloses(string state)
+        {
+            await PressQuestKey();
+            await Frames(4);
+            Require(!windows.IsOpen("character_info") && !DetailsOpen(), $"{state}: {questKey.Text} on the shown Quest list closes the Character window");
+        }
+        await PressQuestKey();
+        await QuestList("f10-closed");
+        await QuestKeyCloses("f10-closed");
+        windows.Open("quests");
+        await Frames(8);
+        Require(DetailsOpen() && !owner.QuestListShown, "f10-from-details: the journal window is open as Quest Details");
+        await PressQuestKey();
+        await QuestList("f10-from-details");
+        await QuestKeyCloses("f10-from-details");
+        // A rebind rebuilds the World's hotkey tables; the key keeps its route.
+        ((Delegate?)typeof(KeyBinds).GetField("Changed", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null))?.DynamicInvoke();
+        await Frames(4);
+        await PressQuestKey();
+        await QuestList("f10-after-rebuild");
+        await QuestKeyCloses("f10-after-rebuild");
+        var pad = KeyBinds.GetPad(KeyAction.Quests);
+        if (pad.Assigned)
+        {
+            ((Dictionary<PadChord, Action>)DetailField(world, "_padHotkeys")!)[pad]();
+            await QuestList("pad-closed");
+            windows.Close("character_info");
+            await Frames(4);
+        }
+
+        // The tracker (like NPC quest flows) still opens the journal on its quest: Quest Details of that quest.
+        const int trackedId = 127;
+        DetailCall(world, "OnQuestLog", new List<QuestEntry> { new(trackedId, 1) });
+        DetailCall(world, "OnQuestStrings", new List<QuestStrings> { new(trackedId, "Animal Blood", "You have promised [Moradon Merchant] Clark to bring him Animal Blood.") });
+        var objectives = new QuestObjectives(trackedId, false, [new QuestKillGroup(10, [1], "Shadow Seeker")]);
+        DetailCall(world, "OnQuestObjectives", objectives);
+        DetailCall(world, "OnQuestView", new QuestView(trackedId, 14435, 21, false, false, false, false, QuestViewState.InProgress, 0, "Animal Blood",
+            "You have promised [Moradon Merchant] Clark to bring him Animal Blood.", "", objectives, [4], [], []));
+        await Frames(8);
+        var trackerRow = Descendants(world).OfType<Control>().FirstOrDefault(c => c.IsVisibleInTree() && c.TooltipText == "Open in the quest journal");
+        Require(trackerRow != null, "the tracker lists the active quest with its journal link");
+        if (trackerRow != null)
+        {
+            float scale = GetWindow().Size.X / GetViewportRect().Size.X;
+            var at = Screen(trackerRow).GetCenter() * scale;
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = at, GlobalPosition = at });
+            await Frames(1);
+            foreach (bool down in new[] { true, false })
+            {
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = down, Position = at, GlobalPosition = at });
+                await Frames(1);
+            }
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = new Vector2(1270, 790), GlobalPosition = new Vector2(1270, 790) });
+            bounds["tracker-row"] = Rect(Screen(trackerRow));
+        }
+        await Frames(8);
+        var detailTitle = (Label)DetailField(world, "_questDetailTitle")!;
+        Require(DetailsOpen() && !owner.QuestListShown && Get(owner, "_embedded") != null && (int)DetailField(world, "_questSelected")! == trackedId
+            && detailTitle.IsVisibleInTree() && detailTitle.Text == "Animal Blood",
+            $"a tracker click opens Quest Details on its quest (selected {DetailField(world, "_questSelected")}, title '{detailTitle.Text}')");
+        await Shot("tracker-details");
+        await PressQuestKey();
+        await QuestList("f10-from-tracker-details");
+        await QuestKeyCloses("f10-from-tracker-details");
 
         // ---- P A D G E R: the client's own windows, opened and closed again by the same button.
         var natives = new Dictionary<string, Func<bool>>

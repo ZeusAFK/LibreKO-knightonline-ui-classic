@@ -59,6 +59,7 @@ public static class NativeHudChat
         // The Genie window is built after the client attaches the plugin game API.
         var built = new WeakReference<World>(world);
         Callable.From(() => { if (Plugin.Active && built.TryGetTarget(out var w) && GodotObject.IsInstanceValid(w)) OpenClearOfMiniMap(w); }).CallDeferred();
+        NativeQuestKey.Attach(world, game);
         NativeGoldLog.Attach(world);
         NativeChat.Attach(world);
         NativeWhispers.Attach(world);
