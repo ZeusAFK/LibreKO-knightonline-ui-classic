@@ -4,7 +4,7 @@ namespace KnightOnlineUiClassic.Windows;
 /// <summary>Classic presentation using the original live control instances and callbacks.</summary>
 public static class CharacterDetailsSkin
 {
-    public static readonly string[] WindowIds = { "presets", "titles", "quests", "character_clan_details", "clanpoint", "quest_target", "quest_receipt", "quest_available", "npc_dialog", "userinfo" };
+    public static readonly string[] WindowIds = { "presets", "titles", "quests", "character_clan_details", "clanpoint", "quest_target", "quest_receipt", "npc_dialog", "userinfo" };
     public static void Extend(Control body) => body.Ready += () => Callable.From(() => Apply(body)).CallDeferred();
     public static Control? Apply(Control body)
     {

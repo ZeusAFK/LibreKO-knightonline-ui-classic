@@ -23,15 +23,15 @@ public partial class ClassicDetailPanel : Control
     private Button? _npcMenuCloseSource;
     private const int MaximumNpcMenuRows=10;
     private (ulong Menu,ulong Quest) _npcPage;
-    private bool QuestShell => WindowId is "npc_dialog" or "quest_available" or "quest_receipt";
+    private bool QuestShell => WindowId is "npc_dialog" or "quest_receipt";
     public string WindowId { get; }
     public ScrollContainer ContentScroll { get; }
     public ClassicDetailPanel(string id,Control body,HBoxContainer nativeBar,Button? nativeClose)
     {
         WindowId=id;_body=body;
-        bool questShell=id is "npc_dialog" or "quest_available" or "quest_receipt";
+        bool questShell=id is "npc_dialog" or "quest_receipt";
         var size=id switch { "userinfo"=>new Vector2(360,440),"quest_target"=>new Vector2(360,500),
-            "quest_receipt"=>new Vector2(363,330),"quest_available" or "npc_dialog"=>new Vector2(363,470),_=>new Vector2(360,550) };
+            "quest_receipt"=>new Vector2(363,330),"npc_dialog"=>new Vector2(363,470),_=>new Vector2(360,550) };
         CustomMinimumSize=size;Size=size;_declared=size;_nativeClose=nativeClose;
         if(questShell) Modulate=Colors.Transparent;
         int top=ClassicDesign.Karus?40:44;_top=top;

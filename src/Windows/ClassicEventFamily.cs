@@ -67,7 +67,7 @@ public static class ClassicEventFamily
             text.CustomMinimumSize = new Vector2(text.CustomMinimumSize.X, 0);
     }
 
-    private static void Header(HudWindow window)
+    internal static void Header(HudWindow window)
     {
         if (window.Header is not { } header) return;
         var band = new StyleBoxEmpty();

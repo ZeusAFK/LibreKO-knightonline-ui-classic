@@ -78,6 +78,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("item-lists-audit")){await CaptureItemWindowsAudit(game,nation,true);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("anvil-audit")){await CaptureAnvilAudit(game,nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("inn-audit")){await CaptureInnAudit(nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("premium-quest-audit")){await CapturePremiumQuestAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("npc-services-audit")){await CaptureNpcServices(nation);GetTree().Quit();return;}
             if(OS.GetCmdlineUserArgs().Contains("upstream-integration-audit")){await CaptureUpstreamIntegration(game,nation);GetTree().Quit();return;}
             if(OS.GetCmdlineUserArgs().Contains("merchant-palette")){await CaptureMerchantPalette(nation);GetTree().Quit();return;}
