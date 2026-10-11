@@ -7,96 +7,66 @@ using LibreKO.Network;
 namespace KnightOnlineUiClassic.Native;
 
 /// <summary>
-/// Party roster and seek-party board support: member and listing data on the native rows, a
-/// selection that targets the clicked member, a private-message action per listing and the Classic
-/// roster's top-right docking.
+/// Party HUD and seek-party board support: the native party actions the Classic party HUD offers (invite by
+/// name, row meter, war board, member menu), and on the board the listing data on the native rows plus a
+/// private-message action per listing.
 /// </summary>
 public static class NativeParty
 {
     private const int MembersPerRecruitment = 8, ListingsPerPage = 10;
-    private const string PartyDockKey = "Party";
 
-    public static void PrepareRoster(HudWindow window, World world)
+    /// <summary>The client's invite-by-name prompt (the Classic text prompt when the theme replaces it).</summary>
+    public static void InviteByName(World? world) { if (world != null) Native.TryCall(world, "OpenInvitePrompt", out _); }
+
+    /// <summary>Cycles the party rows' meter (off, damage, healing) through the client's own cooldown.</summary>
+    public static void ToggleMeter(World? world) { if (world != null) Native.TryCall(world, "ToggleRowMeter", out _); }
+
+    public static void ToggleWarBoard(World? world) { if (world != null) Native.TryCall(world, "ToggleWarBoard", out _); }
+
+    public static void ToggleBoard(World? world) { if (world != null) Native.TryCall(world, "ToggleSeekParty", out _); }
+
+    /// <summary>The row meter mode: 0 off, 1 damage dealt, 2 healing.</summary>
+    public static byte MeterMode => Net.I?.PartyRowMeterMode ?? 0;
+
+    /// <summary>A member's share of the party meter, 0..1.</summary>
+    public static float MeterShare(World? world, int memberId)
     {
-        if (Native.Get<VBoxContainer>(world, "_partyMembersBox") is not { } members) return;
-        if (members.Name != "party_members") members.Name = "party_members";
-        foreach (var child in members.GetChildren()) Describe(world, members, child);
-        members.ChildEnteredTree += child => Describe(world, members, child);
-        Dock(window, world);
+        if (world == null || Native.Get<IDictionary<int, int>>(world, "_warBoardRowShares") is not { } shares) return 0;
+        return PartyWarBoard.Fill(shares.TryGetValue(memberId, out int share) ? share : 0);
     }
 
-    private static void Describe(World world, VBoxContainer members, Node node)
-    {
-        if (node is not Control row || row is Label || row.HasMeta("party_id")) return;
-        var party = Net.I.Party;
-        int index = row.GetIndex();
-        if (index < 0 || index >= party.Count) return;
-        var m = party[index];
-        bool isLeader = index == 0, self = m.CharId == Native.Get<int>(world, "_myId");
-        int hp = m.Hp, maxHp = m.MaxHp, mp = m.Mp, maxMp = m.MaxMp, level = m.Level, cls = m.Class;
-        if (self)
-        {
-            var vitals = Net.I.Vitals;
-            hp = vitals.Hp; maxHp = vitals.MaxHp; mp = vitals.Mp; maxMp = vitals.MaxMp;
-            level = Net.I.Sheet.Level; cls = Native.Get<int>(world, "_selfClass");
-        }
-        var status = Net.I.PartyStatusOf(m.CharId);
-        row.SetMeta("party_id", m.CharId);
-        row.SetMeta("party_name", m.Name);
-        row.SetMeta("party_leader", isLeader);
-        row.SetMeta("party_hp", hp);
-        row.SetMeta("party_max_hp", maxHp);
-        row.SetMeta("party_mp", mp);
-        row.SetMeta("party_max_mp", maxMp);
-        row.SetMeta("party_status", string.Join(", ", status ?? Array.Empty<byte>()));
-        row.TooltipText = $"{m.Name} · Lv {level} {CharacterClassCatalog.DisplayName(cls)}\nHP {hp}/{maxHp} · MP {mp}/{maxMp}";
-        if (status is { Count: > 0 })
-        {
-            var names = status.Select(type => Native.Call(typeof(World), "StatusName", type) as string ?? "").Where(name => name.Length > 0).ToArray();
-            row.TooltipText += "\n" + string.Join(", ", names);
-        }
-        int memberId = m.CharId;
-        row.GuiInput += ev =>
-        {
-            if (ev is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } || !row.HasMeta("classic_party_row")) return;
-            if (!GodotObject.IsInstanceValid(world)) return;
-            members.SetMeta("party_selected", memberId);
-            if (Native.Get<IDictionary>(world, "_ents") is { } ents && ents.Contains(memberId) && ents[memberId] is { } member
-                && Native.Call(world, "Selectable", member) is true)
-                Native.Call(world, "Select", memberId, member);
-        };
-    }
+    public static bool IsCommander(int memberId) => Net.I?.PartyCommanderId == memberId;
 
-    /// <summary>Docks the Classic roster at the top-right screen edge, outside the right-hand window stack.</summary>
-    private static void Dock(HudWindow window, World world)
+    /// <summary>Gives the native member menu the Classic menu look.</summary>
+    public static void StyleMemberMenu(World? world, Action<PopupMenu> style)
     {
-        if (Native.Get<IDictionary>(world, "_mainWindows") is not { } windows || !windows.Contains(PartyDockKey) || windows[PartyDockKey] != window) return;
-        window.DockTo(() => new Vector2(Mathf.Max(0, window.GetViewportRect().Size.X - Footprint(window).X), 0));
-        void Leave()
+        if (world != null && Native.Get<PopupMenu>(world, "_partyHudMenu") is { } menu && !menu.HasMeta("classic_menu"))
         {
-            Native.Get<List<string>>(world, "_dockOrder")?.Remove(PartyDockKey);
-            Callable.From(() => { if (GodotObject.IsInstanceValid(window) && window.Visible && !Config.HasWindowPos(window.Id)) Native.TryCall(window.Layout, "ReapplyDefault", out _); }).CallDeferred();
+            menu.SetMeta("classic_menu", true);
+            style(menu);
         }
-        window.VisibilityChanged += Leave;
-        window.Resized += Leave;
-        if (window.IsInsideTree()) window.GetViewport().SizeChanged += () => { if (GodotObject.IsInstanceValid(window)) Leave(); };
-        Leave();
-    }
-
-    private static Vector2 Footprint(Control window)
-    {
-        var minimum = window.GetCombinedMinimumSize();
-        return new Vector2(Mathf.Max(window.Size.X, minimum.X), Mathf.Max(window.Size.Y, minimum.Y)) * window.Scale;
     }
 
     public static void PrepareBoard(HudWindow window, World world)
     {
         if (Native.Get<VBoxContainer>(world, "_seekListBox") is not { } list) return;
         if (list.Name != "seek_members") list.Name = "seek_members";
-        // Rows from the previous page are queued for deletion; drop them before the new page is shown.
+        NativeWindows.Name(Native.Get<OptionButton>(world, "_wantedClassOpt"), "seek_wanted_class");
+        NativeWindows.Name(Native.Get<LineEdit>(world, "_wantedMsgInput"), "seek_wanted_message");
+        NativeWindows.Name(Native.Get<HBoxContainer>(world, "_seekFilters"), "seek_filters");
+        NativeWindows.Name(Native.Get<HBoxContainer>(world, "_fullMoonRow"), "seek_full_moon");
+        NativeWindows.Name(Native.Get<Label>(world, "_seekHeading"), "seek_heading");
+        NativeWindows.Name(Native.Get<Label>(world, "_seekStatusLbl"), "seek_status");
+        if (Native.Descendants(window.Body).OfType<Button>().FirstOrDefault(b => b.Text == "Invite by name") is { } byName) byName.Name = "seek_invite_name";
+        // Rows from the previous page are queued for deletion; drop them before the new page is shown. Filter
+        // changes rebuild the rows without a server reply, so rows are described as they arrive.
+        bool queued = false;
         list.ChildEnteredTree += _ =>
         {
             foreach (var old in list.GetChildren().Where(c => c.IsQueuedForDeletion()).ToArray()) list.RemoveChild(old);
+            if (queued) return;
+            queued = true;
+            Callable.From(() => { queued = false; if (GodotObject.IsInstanceValid(world)) Listed(world); }).CallDeferred();
         };
         NativeWindows.Sync(window, () => Mirror(world));
         if (Net.I == null) return;
@@ -106,7 +76,7 @@ public static class NativeParty
         handler = (page, total, entries) =>
         {
             if (!weakWorld.TryGetTarget(out var w) || !GodotObject.IsInstanceValid(w)) { net.PartyBbsListEvent -= handler; return; }
-            Listed(w, entries);
+            Listed(w);
         };
         net.PartyBbsListEvent += handler;
     }
@@ -121,10 +91,20 @@ public static class NativeParty
         }
     }
 
-    /// <summary>Describes the board's rows after the client listed a page of seek-party entries.</summary>
-    public static void Listed(World world, IReadOnlyList<PartyBbsEntry> entries)
+    /// <summary>
+    /// Describes the board's rows after the client listed a page of seek-party entries: the rows show the
+    /// entries that pass the client's board filter, without the player's own listing.
+    /// </summary>
+    public static void Listed(World world, IReadOnlyList<PartyBbsEntry> _) => Listed(world);
+
+    public static void Listed(World world)
     {
         if (Native.Get<VBoxContainer>(world, "_seekListBox") is not { } list) return;
+        var all = Native.Get<List<PartyBbsEntry>>(world, "_seekEntries") ?? new List<PartyBbsEntry>();
+        var filter = Native.Get<PartyBoardFilter>(world, "_seekFilter");
+        int zone = Native.Get<int>(world, "_zone"), level = Net.I?.Sheet.Level ?? 0;
+        string self = Net.I?.LastEnter.Name ?? "";
+        var entries = all.Where(e => filter.Passes(e, zone, level) && !string.Equals(e.Name, self, StringComparison.OrdinalIgnoreCase)).ToList();
         foreach (var old in list.GetChildren().Where(c => c.IsQueuedForDeletion()).ToArray()) list.RemoveChild(old);
         Mirror(world);
         var rows = list.GetChildren().OfType<PanelContainer>().ToArray();

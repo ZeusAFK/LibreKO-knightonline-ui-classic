@@ -23,7 +23,7 @@ public partial class Taskbar : Control
         TextureFilter=TextureFilterEnum.Nearest;
         AddChild(_view);
         _view.Hide("btn_disband");
-        foreach(var (id,window) in new[]{("btn_inventory","inventory"),("btn_character","character_info"),("btn_skill","skills"),("btn_map","zonemap"),("btn_invite","party")})
+        foreach(var (id,window) in new[]{("btn_inventory","inventory"),("btn_character","character_info"),("btn_skill","skills"),("btn_map","zonemap"),("btn_invite","seek_party")})
         {
             string target=window;
             _view.OnPressed(id,()=>_game.Windows.Toggle(target));
