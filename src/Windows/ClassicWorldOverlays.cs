@@ -430,6 +430,8 @@ public static class ClassicWorldOverlays
     /// <summary>The event title chips: each an information plaque with the plaque ink; rebuilt chips follow.</summary>
     private static void Titles(Container column)
     {
+        // With the local notice art the chips become the original notice bars (see ClassicNoticeBars).
+        if (ClassicNoticeBars.Apply(column)) return;
         void Chip(Node node)
         {
             if (node is not PanelContainer chip || chip.HasMeta(Skinned)) return;

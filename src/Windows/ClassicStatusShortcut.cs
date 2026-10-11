@@ -118,6 +118,7 @@ public partial class ClassicStatusShortcut : BaseButton
             if(_pending>0) DrawBadge();
             return;
         }
+        if(DrawLocalPlate()) return;
         DrawBackground();
         const int fontSize=22;
         float width=_letterFont.GetStringSize(_letter,fontSize:fontSize).X;
@@ -130,6 +131,16 @@ public partial class ClassicStatusShortcut : BaseButton
         if(_pending<=0 || _alert!=null) return;
         DrawBadge();
     }
+    /// <summary>The original letter plate of the local menu art, when installed (see <see cref="ClassicMykoPlates"/>).</summary>
+    private bool DrawLocalPlate()
+    {
+        int state=Disabled?ButtonState.Disabled:IsPressed()?ButtonState.Pressed:_hovered || _lit?ButtonState.Hover:ButtonState.Normal;
+        var tint=Disabled ? new Color(0.55f,0.55f,0.55f):Colors.White;
+        if(!ClassicMykoPlates.Draw(this,new Rect2(Vector2.Zero,Size),_letter,state,tint)) return false;
+        if(_pending>0 && _alert==null) DrawBadge();
+        return true;
+    }
+
     private void DrawBackground()
     {
         int state=Disabled?ButtonState.Disabled:IsPressed()?ButtonState.Pressed:_hovered || _lit?ButtonState.Hover:ButtonState.Normal;

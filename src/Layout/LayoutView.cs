@@ -13,12 +13,15 @@ public partial class LayoutView : Control
     public Control? DragHandle { get; private set; }
 
     private readonly UiKit _kit;
+    private readonly Func<string, Texture2D?> _textures;
     private readonly List<(LayoutNode Node, Control Control)> _built = new();
     private readonly Dictionary<LayoutNode, Control> _byNode = new();
 
-    public LayoutView(UiKit kit, LayoutNode root)
+    /// <param name="textures">Where the layout's textures come from (the bundled assets by default; local art).</param>
+    public LayoutView(UiKit kit, LayoutNode root, Func<string, Texture2D?>? textures = null)
     {
         _kit = kit;
+        _textures = textures ?? kit.Texture;
         Root = root;
         Name = root.Id.Length > 0 ? root.Id : "layout";
         MouseFilter = MouseFilterEnum.Ignore;
@@ -270,7 +273,7 @@ public partial class LayoutView : Control
     public AtlasTexture? Atlas(LayoutNode image)
     {
         if (image.Texture == null || image.SrcW <= 0 || image.SrcH <= 0) return null;
-        var tex = _kit.Texture(image.Texture);
+        var tex = _textures(image.Texture);
         if (tex == null) return null;
         return new AtlasTexture
         {

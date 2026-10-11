@@ -68,7 +68,10 @@ public partial class StatusHud : Control
         var quest=source.Find("btn_quest")!;
         var power=source.Find("btn_power")!;
         int shortcutPitch=power.X-quest.X;
-        float shortcutRight=power.X+shortcutPitch*Shortcuts[^1].Column+power.W;
+        // With the local menu art the original alarm clock follows R and opens the event schedule.
+        var clockArt=ClassicStatusClock.Art;
+        int lastColumn=Shortcuts[^1].Column+(clockArt!=null ? 1:0);
+        float shortcutRight=power.X+shortcutPitch*lastColumn+power.W;
         Size = new Vector2(Mathf.Max(shortcutRight,Mathf.Max(_view.Size.X,background.X+background.W)),background.Y+background.H);
         _expandedSize=Size;
         _collapsedSize=new Vector2(Size.X,source.Find("Img_StateBar")!.H);
@@ -112,6 +115,10 @@ public partial class StatusHud : Control
         foreach(var (letter,window,title,column,press,key,alert) in Shortcuts)
             _shortcuts.Add(new ClassicStatusShortcut(kit,quest,letter,window,title,press?.Invoke(_game),key,alert) {
                 Position=new Vector2(power.X+shortcutPitch*column,power.Y),
+            });
+        if(clockArt!=null)
+            _shortcuts.Add(new ClassicStatusClock(clockArt,new Vector2(quest.W,quest.H),()=>_game.Windows.Toggle("events")) {
+                Position=new Vector2(power.X+shortcutPitch*lastColumn,power.Y),
             });
         _shortcuts.Add(new ClassicStatusShortcut(kit,quest,"","mail","Mail") {
             Position=new Vector2(quest.X,quest.Y+quest.H+5),
