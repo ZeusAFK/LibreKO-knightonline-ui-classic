@@ -315,6 +315,8 @@ Upstream removed the chat-room window, the party window and the trade row lists;
 | `_wantedClassOpt`, `_wantedMsgInput`, `_seekFilters`, `_fullMoonRow`, `_seekHeading`, `_seekStatusLbl`, `_seekEntries`, `_seekFilter`, `_zone` | F | Party board filter panel, Full Moon Rift actions, row descriptions after the client filter |
 | `_exMyOffer`, `_exTheirOffer` (`ExOfferItem.SourceAbs/ItemId/Count/Dura`), `Inv`, `OfferSlot(int)`, `ShowItemTooltip(int, ItemSlot, string)`, `_bagPairing._openedByCompanion`, `HideMainWindow(string)`, `_exStatus`, `Net.ExchangeOtherAddEvent` | F/M/E | Classic trade grids, offering, docked inventory closed, approval withdrawn on partner change |
 | `ChatSystem.RenderText/PlainText/ItemOf` (static), whisper header buttons, `_whisperLayer` popups | M | Whisper item links and emoticons, header actions, emoticon and size popups |
+| `_cmdGroups`, `_cmdEntries`, `_cmdShown`, `FillCommandEntries(CommandGroup)`, static `CommandUnavailableColour`; `CommandCatalog.Groups`, `CommandEntry.Id` | F/M | Classic command list (`NativeCommandList`): reads the client's rows per group, shows the Classic groups in the client's own list and `_cmdShown`, so the client's `RunListedCommand` runs the activated row. Missing members leave the window on its original art with the client's own two lists. |
+| `ChatSystem._input` | F | Prefill the client opens the chat with ("/PM ", "/RoyalOrder ") taken into the Classic chat input (`NativeChat.TakeTyped`) |
 
 ### Identity and appearance
 

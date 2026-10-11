@@ -4,7 +4,7 @@ namespace KnightOnlineUiClassic.Layout;
 
 /// <summary>
 /// Editable geometry of the Classic social windows that the client builds as flow layouts (nation chat,
-/// clan and join-request boards, leader transfer, commander, command list). They share the plain Classic
+/// clan and join-request boards, leader transfer, commander). They share the plain Classic
 /// frame: the gold title and round close button on the title row, the content 16 px from the sides and
 /// the bottom, and the original action buttons, edit fields, sections and list rows of the Messenger.
 /// </summary>
@@ -15,7 +15,7 @@ public static class ClassicSocialLayout
     {
         "nation_chat", "nation_chat_create", "nation_chat_password", "nation_chat_search", "nation_chat_members",
         "commander", "clan_board", "clan_join_list", "clan_message", "clanhandover",
-        "wish_board", "wish_message", "wish_requests", "command_list",
+        "wish_board", "wish_message", "wish_requests",
     };
 
     /// <summary>Content inset from the left, right and bottom edges (the plain frame's even padding).</summary>
