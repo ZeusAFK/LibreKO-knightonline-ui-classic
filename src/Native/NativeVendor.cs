@@ -319,8 +319,10 @@ public static class NativeCountBadge
 }
 
 /// <summary>
-/// Reports every gold change in Info: income in green and spending in red, both signed. The client only
-/// reports gold it picks up, so this handler runs ahead of the client's own and records the change itself.
+/// Reports gold changes the client does not log itself in Info: income in green and spending in red,
+/// both signed. Shop trades and server gold notices are logged by the client (its shop and coin lines),
+/// so they only update the balance here. This handler runs ahead of the client's own and applies the
+/// total first, so the client records no second change.
 /// </summary>
 public static class NativeGoldLog
 {
@@ -328,24 +330,34 @@ public static class NativeGoldLog
     public static readonly Color Expense = new("f07870");
 
     private static readonly ConditionalWeakTable<World, Action<int>> _handlers = new();
+    private static int? _clientLogged;
 
     public static void Attach(World world)
     {
         if (_handlers.TryGetValue(world, out _) || Net.I is not { } net) return;
         Action<int> handler = total => Changed(world, total);
+        Action<GoldChangeReply> logged = reply => _clientLogged = reply.Total;
         _handlers.Add(world, handler);
         var current = Native.Get<Delegate>(net, "GoldChangeEvent");
         if (!Native.Set(net, "GoldChangeEvent", Delegate.Combine(handler, current))) return;
-        world.TreeExiting += () => Native.Set(net, "GoldChangeEvent", Delegate.Remove(Native.Get<Delegate>(net, "GoldChangeEvent"), handler));
+        net.GoldChangeLogEvent += logged;
+        world.TreeExiting += () =>
+        {
+            Native.Set(net, "GoldChangeEvent", Delegate.Remove(Native.Get<Delegate>(net, "GoldChangeEvent"), handler));
+            net.GoldChangeLogEvent -= logged;
+        };
     }
 
-    /// <summary>Applies a new gold total before the client sees it, so the client records no change of its own.</summary>
+    /// <summary>Applies a new gold total before the client sees it and logs it unless the client does.</summary>
     public static void Changed(World world, int total)
     {
         var sheet = Net.I.Sheet;
         long change = (long)total - sheet.Gold;
+        bool clientLogs = _clientLogged == total || Native.Get<bool>(world, "_tradeInFlight");
+        _clientLogged = null;
         if (change == 0) return;
         sheet.SetGold(total);
+        if (clientLogs) return;
         if (change > 0 && Native.Get<object>(world, "Floaters") is { } floaters) Native.Call(floaters, "Gold", change);
         Native.Call(world, "PluginLogAdd", GameLogKind.Item,
             change > 0 ? $"You received +{change:n0} gold." : $"You spent −{-change:n0} gold.", change > 0 ? Income : Expense);

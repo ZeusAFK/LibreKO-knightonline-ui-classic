@@ -68,6 +68,8 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("identity-audit")){await CaptureIdentityAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("classic-services-audit")){await CaptureClassicServices(game,nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("storage-audit")){await CaptureStorageAudit(game,nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("item-windows-audit")){await CaptureItemWindowsAudit(game,nation,false);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("item-lists-audit")){await CaptureItemWindowsAudit(game,nation,true);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("anvil-audit")){await CaptureAnvilAudit(game,nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("npc-services-audit")){await CaptureNpcServices(nation);GetTree().Quit();return;}
             if(OS.GetCmdlineUserArgs().Contains("upstream-integration-audit")){await CaptureUpstreamIntegration(game,nation);GetTree().Quit();return;}

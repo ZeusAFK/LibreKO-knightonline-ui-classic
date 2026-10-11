@@ -258,6 +258,45 @@ public partial class Preview
         inv[InventoryConstants.BagSlotFor(2)]=default;Refresh();await Frames();
         Require(bags[0].Slot==InventoryConstants.MagicBagStart && drawer.Get<BaseButton>("bag_tab_2")!.Disabled,"Removing the selected bag falls back to an equipped bag");
         await Capture("removed-bag");
+        // Bag search in the drawer band and the client's item veils on the Classic cells.
+        {
+            var search=Descendants(drawer).OfType<LineEdit>().Single(e=>e.Name=="bag_search");
+            var costumeBottom=drawer.Get("costume_grid_backing")!.GetGlobalRect().End.Y;
+            var bagTop=drawer.Get("bag_equipment_backing")!.GetGlobalRect().Position.Y;
+            var field=search.GetGlobalRect();
+            Require(search.IsVisibleInTree() && field.Position.Y>=costumeBottom && field.End.Y<=bagTop
+                && Math.Abs((field.Position.Y-costumeBottom)-(bagTop-field.End.Y))<=1,$"The bag search is centred in the drawer band between the costume cells and the bag row {costumeBottom} {field} {bagTop} min={search.GetCombinedMinimumSize()} fs={search.GetThemeFontSize("font_size")} sb={search.GetThemeStylebox("normal").GetMinimumSize()}");
+            var vaultButton=Descendants(drawer).OfType<Button>().Single(b=>b.Name=="vip_vault");
+            Require(vaultButton.IsVisibleInTree() && vaultButton.Size==new Vector2(24,24) && vaultButton.Position.Y==search.Position.Y
+                && vaultButton.Position.X-search.GetRect().End.X==4 && vaultButton.GetRect().End.X==drawer.Get("costume_grid_backing")!.GetRect().End.X
+                && vaultButton.Icon!=null,"The VIP Vault shortcut shares the search row and the cells' right edge, with the key's item art");
+            vaultButton.EmitSignal(BaseButton.SignalName.Pressed);
+            search.Text=ItemData.DisplayName(stack);search.EmitSignal(LineEdit.SignalName.TextChanged,search.Text);await Frames();
+            var grid=all.Where(c=>c.Slot>=InventoryConstants.InventoryStart && c.Slot<InventoryConstants.InventoryStart+28 && !c.Current.IsEmpty).ToArray();
+            Require(grid.All(c=>c.Search==(c.Current.ItemId==stack?SearchMark.Hit:SearchMark.Miss)) && grid.Count(c=>c.Search==SearchMark.Hit)==2,
+                "Search outlines carried hits and dims the other carried items");
+            Require(bags.All(c=>c.Current.IsEmpty || c.Search==SearchMark.Hit),"The shown magic bag outlines its hits");
+            Require(all.Single(c=>c.Slot==InventoryConstants.BagSlotFor(1)).Search==SearchMark.Hit && all.Single(c=>c.Slot==InventoryConstants.BagSlotFor(0)).Search==SearchMark.None,
+                "A hidden magic bag holding a hit is outlined on its bag cell");
+            await Capture("bag-search");
+            Invoke("SetCospreOpen",false);await Frames();
+            Require(search.Text=="" && all.All(c=>c.Search==SearchMark.None),"Closing the drawer ends the search");
+            Invoke("SetCospreOpen",true);await Frames();
+            int sealedSlot=InventoryConstants.InventoryStart+5,wornSlot=InventoryConstants.InventoryStart+6;
+            var keep=(inv[sealedSlot],inv[wornSlot]);
+            var sealedItem=inv[sealedSlot];sealedItem.Flag=(byte)ItemFlag.Sealed;inv[sealedSlot]=sealedItem;
+            var wornItem=inv[wornSlot];wornItem.Durability=0;inv[wornSlot]=wornItem;
+            Refresh();await Frames();
+            foreach(int slot in new[]{sealedSlot,wornSlot})
+            {
+                var cell=all.Single(c=>c.Slot==slot);
+                var veil=cell.GetChildren().OfType<IconVeilView>().Single();
+                var icon=cell.GetChildren().OfType<TextureRect>().Last();
+                Require(veil.GetGlobalRect()==icon.GetGlobalRect(),"The item veil covers exactly the icon "+slot);
+            }
+            await Capture("item-veils");
+            inv[sealedSlot]=keep.Item1;inv[wornSlot]=keep.Item2;Refresh();await Frames();
+        }
         var transferPrompt=(QuantityPrompt)typeof(InventoryWindow).GetField("_movePrompt",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(actual)!;
         Invoke("RequestMove",InventoryConstants.InventoryStart+1,InventoryConstants.MagicBagStart);await Frames();
         var amount=Descendants(transferPrompt).OfType<MoneyEdit>().Single();
@@ -279,6 +318,48 @@ public partial class Preview
         destroy=new ClassicInventoryDestroy(view,()=>destroyed=true);actual.AddChild(destroy);await Frames();
         await Capture("destroy-confirm");destroy._Input(new InputEventKey {Pressed=true,Keycode=Key.Enter});await Frames();
         Require(destroyed,"Enter confirms native item destruction exactly once");
+        // Bulk destroy: the Classic prompt drives the client's destroy queue.
+        {
+            var queue=(DestroyQueue)DetailField(world,"_invDelQueue")!;
+            // The client keeps its queue while the inventory main window is open.
+            var inventoryWindow=new HudWindow("inventory","Inventory") {Visible=true};
+            ((Dictionary<string,HudWindow>)DetailField(world,"_mainWindows")!)["Inventory"]=inventoryWindow;
+            var nativeCard=(Control)DetailField(world,"_invDelPanel")!;
+            var picks=Enumerable.Range(InventoryConstants.InventoryStart,28).Where(s=>!inv[s].IsEmpty).Take(3).ToArray();
+            Require(picks.Length==3 && KnightOnlineUiClassic.Native.NativeInventory.HasDestroyQueue,"The client offers a bulk destroy queue with carried items to queue");
+            ClassicInventoryDestroy Prompt()=>actual.GetChildren().OfType<ClassicInventoryDestroy>().Single(p=>!p.IsQueuedForDeletion());
+            Label Question(ClassicInventoryDestroy p)=>Descendants(p).OfType<Label>().Single(l=>l.Text.StartsWith("Would you like"));
+            Control Strip(ClassicInventoryDestroy p)=>Descendants(p).OfType<Control>().Single(c=>c.Name=="destroy_strip");
+            Invoke("RequestDestroy",picks[0]);await Frames();
+            var bulk=Prompt();
+            Require(queue.Count==1 && !nativeCard.Visible && !Strip(bulk).Visible && Question(bulk).Text=="Would you like to destroy this item?",
+                "One queued item keeps the original single destroy question and hides the client's card");
+            Invoke("RequestDestroy",picks[1]);Invoke("RequestDestroy",picks[2]);Invoke("RequestDestroy",picks[2]);await Frames();
+            var strip=Strip(bulk);var queued=Descendants(strip).OfType<Control>().Where(c=>c.Name.ToString().StartsWith("destroy_item_")).ToArray();
+            Require(queue.Count==3 && Prompt()==bulk && strip.Visible && queued.Length==3 && Question(bulk).Text=="Would you like to destroy 3 items?",
+                "Further items join the open prompt once each and show in the strip above the question");
+            var band=bulk.GetChildren().OfType<LayoutView>().Single();
+            Require(new Rect2(Vector2.Zero,band.Size).Encloses(new Rect2(new Vector2(strip.Position.X,0),new Vector2(strip.Size.X,1)))
+                && strip.GetRect().End.Y==-ClassicInventoryDestroy.StripLift && queued.All(c=>c.Size==new Vector2(ClassicInventoryDestroy.StripCell,ClassicInventoryDestroy.StripCell)),
+                "The strip sits centred over the question band with whole 32 px item cells");
+            Require(GetViewportRect().Encloses(strip.GetGlobalRect()) && GetViewportRect().Encloses(band.GetGlobalRect()),"The destroy prompt and its strip stay inside the viewport");
+            var drop=Descendants(bulk).OfType<DropTarget>().First();
+            Require(drop._CanDropData(Vector2.Zero,new Godot.Collections.Dictionary{{ClassicSlot.DragKeyFrom,picks[0]}}),"Items can be dropped on the open destroy prompt");
+            await Capture("destroy-queue");
+            queued[1].EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton {Pressed=true,ButtonIndex=MouseButton.Left});await Frames();
+            Require(queue.Count==2 && queue.Entries.All(e=>e.Slot!=picks[1]) && Question(bulk).Text=="Would you like to destroy 2 items?","A click on a queued item keeps it");
+            bulk._Input(new InputEventKey {Pressed=true,Keycode=Key.Escape});await Frames();
+            Require(queue.Count==0 && picks.All(s=>!inv[s].IsEmpty) && !actual.GetChildren().OfType<ClassicInventoryDestroy>().Any(p=>!p.IsQueuedForDeletion()),
+                "Escape cancels the whole queue without destroying anything");
+            Invoke("RequestDestroy",picks[0]);Invoke("RequestDestroy",picks[2]);await Frames();
+            Prompt()._Input(new InputEventKey {Pressed=true,Keycode=Key.Enter});await Frames();
+            Require(queue.Running && queue.Count==2,"Enter destroys the queue one server request at a time");
+            DetailCall(world,"OnItemRemoveResult",true,0);
+            Require(queue.Running && queue.Count==1,"Each acknowledgement sends the next queued item");
+            DetailCall(world,"OnItemRemoveResult",true,0);
+            Require(!queue.Running && queue.Count==0,"The last acknowledgement ends the queue");
+            ((Dictionary<string,HudWindow>)DetailField(world,"_mainWindows")!).Remove("Inventory");inventoryWindow.Free();
+        }
         view.Get<BaseButton>("btn_close")!.EmitSignal(BaseButton.SignalName.Pressed);Require(closed,"Original close action is preserved");
         string Hash(string path)=>Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(path)));
         System.IO.File.WriteAllText(output+"/"+prefix+".json",JsonSerializer.Serialize(new {nation,pluginHash=Hash(ProjectSettings.GlobalizePath("res://../bin/KnightOnlineUiClassic.dll")),

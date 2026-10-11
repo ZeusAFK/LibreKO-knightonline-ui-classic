@@ -46,7 +46,6 @@ public partial class Preview
         var pin = storages[1].PinPrompt!; ClassicStoragePin.Apply(pin.Window.Body);
         var checks = new List<string>(); var screens = new List<object>();
         void Require(bool valid, string message) { if (!valid) throw new Exception("STORAGE_AUDIT: " + message); checks.Add(message); }
-        void RaiseResult(string evt, byte op, bool ok) => ((Action<byte, bool>?)typeof(Net).GetField(evt, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(net))?.Invoke(op, ok);
         void Set(string field, object value) => typeof(World).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(world, value);
         async Task Frames(int n = 8) { for (int i = 0; i < n; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }
         async Task Capture(int index, string name)
@@ -60,7 +59,7 @@ public partial class Preview
             if (index == 1)
             {
                 // VIP: the PIN row and the expiry row close the upper part with the warehouse rhythm, no empty band.
-                var pins = controls.OfType<Button>().Where(b => b.Text is "Change PIN" or "Clear PIN").OrderBy(b => b.Position.X).ToArray();
+                var pins = controls.OfType<Button>().Where(b => b.Name.ToString() is "storage_pin_set" or "storage_pin_clear").OrderBy(b => b.Position.X).ToArray();
                 var cells = controls.OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_cell_")).ToArray();
                 var expiry = controls.OfType<Label>().Single(l => l.Name == "storage_expiry");
                 var weight = controls.OfType<Label>().Where(l => l.Text.StartsWith("Weight")).ToArray();
@@ -75,7 +74,7 @@ public partial class Preview
             var bag = controls.OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_bag_")).ToArray();
             Require(bag.Length == 28, "All 28 inventory slots visible / " + name);
             Require(!controls.OfType<LineEdit>().Any(), "Classic storage has no search input / " + name);
-            Require(!controls.OfType<Label>().Any(c => c.Text.StartsWith("Right-click") || c.Text.StartsWith("Slots used") || c.Text.Contains("slots ·") || c.Text.StartsWith("Members may")), "Redundant storage instructions and capacity text are hidden / " + name);
+            Require(!controls.OfType<Label>().Any(c => c.Text.StartsWith("Right-click") || c.Text.StartsWith("Slots used") || c.Text.Contains("slots ·") || c.Text.StartsWith("Members may") || c.Text.StartsWith("Anyone may")), "Redundant storage instructions and capacity text are hidden / " + name);
             Require(bag.Min(c => c.Position.X) == 13 && bag.Max(c => c.GetRect().End.X) == 352, "Inventory cell side margins differ by at most one pixel / " + name);
             Require(controls.OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_cell_")).Min(c => c.Position.X) == bag.Min(c => c.Position.X), "Stored and carried cells share the same left edge / " + name);
             var pageLabel = controls.OfType<Label>().Single(c => c.Name == "storage_page");
@@ -86,7 +85,8 @@ public partial class Preview
             Require(pageLabel.Text == $"{windows[index].GetMeta("storage_page").AsInt32() + 1} / {windows[index].GetMeta("storage_pages").AsInt32()}", "Displayed page matches storage capacity / " + name);
             foreach (var cell in controls.OfType<ItemSlotView>())
             {
-                var icon = Descendants(cell).OfType<TextureRect>().Single();
+                // The item icon sits in the Classic overlay (first child); a VIP lock adds its own small icon.
+                var icon = cell.GetChild(0).GetChildren().OfType<TextureRect>().Single();
                 Require(icon.GetGlobalRect() == new Rect2(cell.GlobalPosition + new Vector2(2, 2), cell.Size - new Vector2(4, 4)), "Inventory-aligned icon inset / " + name);
                 Require(cell.CountLabel.GetGlobalRect() == new Rect2(cell.GlobalPosition, cell.Size - new Vector2(2, 2)), "Inventory-aligned bottom-right count / " + name);
                 Require(cell.CountLabel.GetThemeConstant("outline_size") == 3 && cell.CountLabel.GetThemeFontSize("font_size") == 11, "Shared inventory count typography / " + name);
@@ -112,7 +112,7 @@ public partial class Preview
         Require(!(bool)DetailField(world, "_whInFlight")!, "A plain left click does not transfer an item");
         RightClick(normalBag[Inventory.GridStart + 2]);
         Require((bool)DetailField(world, "_whInFlight")! && !((QuantityPrompt)DetailField(world, "_whAmount")!).Visible, "A single countable unit transfers directly after right-click");
-        DetailCall(world, "OnWarehouseResult", (byte)2, false);
+        DetailCall(world, "OnWarehouseResult", (byte)2, (byte)0);
         Require(inventory[Inventory.GridStart + 2].Count == 1, "A refused single-unit transfer preserves the source");
         ((StatusLabel)DetailField(world, "_whStatus")!).ResetStatus();
         Require(Descendants(panels[0]).OfType<ItemSlotView>().Count(c => c.Name.ToString().StartsWith("storage_cell_") && c.IsVisibleInTree()) == 24, "Classic storage has 24 slots per page");
@@ -138,8 +138,8 @@ public partial class Preview
         Descendants(qty).OfType<MoneyEdit>().Single().Value = 25;
         Input.ParseInputEvent(new InputEventKey { Pressed = true, Keycode = Key.Enter }); await Frames();
         Require((bool)DetailField(world, "_whInFlight")!, "Quantity confirmation starts one transfer");
-        DetailCall(world, "OnWarehouseResult", (byte)3, true); Require((bool)DetailField(world, "_whInFlight")!, "Unrelated acknowledgement cannot complete a pending transfer");
-        DetailCall(world, "OnWarehouseResult", (byte)2, true);
+        DetailCall(world, "OnWarehouseResult", (byte)3, (byte)1); Require((bool)DetailField(world, "_whInFlight")!, "Unrelated acknowledgement cannot complete a pending transfer");
+        DetailCall(world, "OnWarehouseResult", (byte)2, (byte)1);
         Require(inventory[Inventory.GridStart].Count == 75 && warehouse[1].Count == 65, "Partial deposit merges into the existing stack after acknowledgement");
         await Capture(0, "warehouse-partial-merged");
         RightClick(normalCells[1]);
@@ -150,45 +150,78 @@ public partial class Preview
         Require(!(bool)DetailField(world, "_whInFlight")!, "Changing the source stack while a prompt is open invalidates its confirmation");
         DetailCall(world, "AskGoldTransfer", true); Require(qty.Visible, "Clicking the coin opens a gold quantity prompt"); await Capture(0, "warehouse-coins"); qty.Close();
         var vip = (NativeSlot[])DetailField(world, "_vipWh")!; vip[0] = warehouse[0]; vip[1] = warehouse[1]; vip[47] = warehouse[2];
-        Set("_whShown", false); Set("_vipWhShown", true); Set("_vipWhExpirySec", 172800); DetailCall(world, "RefreshVipWarehouse");
+        uint now = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        Set("_whShown", false); Set("_vipWhShown", true); Set("_vipWhOpen", true); Set("_vipWhExpiresAt", now + 172800u); DetailCall(world, "RefreshVipWarehouse");
         await Capture(1, "vip-ready");
+        var vipKey = Descendants(panels[1]).OfType<ItemSlotView>().Single(c => c.Name == "storage_key");
+        Require(!vipKey.Item.IsEmpty && vipKey.IsVisibleInTree() && vipKey.GetRect() == KnightOnlineUiClassic.Windows.ClassicStorageLayout.Key,
+            "VIP key plaque shows the active key beside the expiry field");
+        string expiryText = ((Label)DetailField(world, "_vipWhExpiryLbl")!).Text;
+        Require(expiryText.StartsWith("2d") || expiryText.StartsWith("1d"), "VIP expiry shows the remaining rental time");
         var vipCells = Descendants(panels[1]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_cell_")).ToDictionary(c => c.Index);
+        Require(vipCells.Values.All(c => !c.Locked), "An open VIP vault shows unlocked cells");
         Variant vipDrag = vipCells[0].DragOut!(vipCells[0]);
-        Require(vipCells[5]._CanDropData(Vector2.Zero, vipDrag), "VIP accepts a same-page move into an empty slot");
-        vipCells[5]._DropData(Vector2.Zero, vipDrag); RaiseResult("VipWarehouseResultEvent", 4, true);
+        Require(vipCells[5]._CanDropData(Vector2.Zero, vipDrag), "VIP accepts a move into an empty slot");
+        vipCells[5]._DropData(Vector2.Zero, vipDrag);
+        Require((bool)DetailField(world, "_vipWhInFlight")! && !vip[0].IsEmpty, "VIP rearrangement waits for the server");
+        DetailCall(world, "OnVipWarehouseResult", Net.VipWhMoveSub, Net.VipSuccess);
         Require(vip[0].IsEmpty && vip[5].ItemId == weapon, "VIP rearrangement commits only after acknowledgement");
         await Capture(1, "vip-rearranged");
         RightClick(Descendants(panels[1]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_0"));
         var vipAmount = storages[1].Amount!;
-        Require(vipAmount.Visible && Descendants(vipAmount).OfType<MoneyEdit>().Single().Value == 74, "VIP storage asks quantity rather than moving the entire stack");
-        await Capture(1, "vip-quantity"); Descendants(vipAmount).OfType<MoneyEdit>().Single().Value = 10; vipAmount.Confirm(); DetailCall(world, "OnVipWarehouseResult", (byte)2, true);
+        Require(vipAmount == DetailField(world, "_vipWhAmount") && vipAmount.Visible && Descendants(vipAmount).OfType<MoneyEdit>().Single().Value == 74,
+            "VIP storage asks quantity in the client's prompt rather than moving the entire stack");
+        await Capture(1, "vip-quantity"); Descendants(vipAmount).OfType<MoneyEdit>().Single().Value = 10; vipAmount.Confirm();
+        DetailCall(world, "OnVipWarehouseResult", Net.VipWhInputSub, Net.VipSuccess);
         Require(inventory[Inventory.GridStart].Count == 64 && vip[1].Count == 75, "VIP partial deposit preserves the remainder and merges");
         storages[1].TurnPage(3); storages[1].TurnPage(1);
-        Require((int)DetailField(world, "_vipWhPage")! == 3, "Classic VIP wheel navigation clamps at the last page"); await Capture(1, "vip-last-page"); storages[1].TurnPage(-3);
+        Require(storages[1].Page == 3 && storages[1].Pages == 4, "Classic VIP pages show all 48 slots and clamp at the last page");
+        await Capture(1, "vip-last-page");
+        Require(vipCells[11].Item.ItemId == warehouse[2].ItemId, "The last VIP page shows slot 48");
+        storages[1].TurnPage(-3);
         DetailCall(world, "ShowVipPinDialog", Net.VipWhSetPinSub, "Choose a new 4-digit PIN:"); await Capture(1, "vip-pin");
         pin.Input.Text = "12ab"; pin.ConfirmButton.EmitSignal(Button.SignalName.Pressed);
-        Require(pin.Visible && pin.Message.Text.Contains("exactly 4 digits"), "PIN rejects non-digits without sending"); await Capture(1, "vip-invalid-pin"); pin.Hide();
+        Require(pin.Visible && pin.Message.Text == ((Label)DetailField(world, "_vipWhPinPrompt")!).Text && pin.Message.Text.Contains("4 digits"),
+            "PIN rejects non-digits without sending and shows the client's reprompt"); await Capture(1, "vip-invalid-pin"); pin.Hide();
+        var setPin = Descendants(panels[1]).OfType<Button>().Single(b => b.Name == "storage_pin_set");
+        var clearPin = Descendants(panels[1]).OfType<Button>().Single(b => b.Name == "storage_pin_clear");
+        Require(setPin.Text == "Set PIN" && clearPin.Visible && clearPin.Disabled, "Without a PIN the vault offers Set PIN and keeps Clear PIN visible but disabled");
+        Set("_vipWhPinSet", true); DetailCall(world, "RefreshVipWarehouse"); await Capture(1, "vip-pin-set");
+        Require(setPin.Text == "Change PIN" && clearPin.Visible && !clearPin.Disabled, "With a PIN the vault offers Change PIN and Clear PIN");
         var clan = (NativeSlot[])DetailField(world, "_clanWh")!; clan[0] = warehouse[0]; clan[1] = warehouse[1]; clan[191] = warehouse[2];
-        Set("_vipWhShown", false); Set("_clanWhShown", true); Set("_clanWhLoaded", true); Set("_clanWhMoney", 9_000_000);
+        Set("_vipWhShown", false); Set("_clanWhShown", true); Set("_clanWhMoney", 9_000_000);
         typeof(Net).GetProperty("MyClan")!.SetValue(net, new MyClanInfo { InClan = true, Fame = ClanRanks.Trainee });
         DetailCall(world, "RefreshClanWarehouse"); await Capture(2, "clan-member");
-        DetailCall(world, "ClanWhWithdrawSlot", 1); Require(!storages[2].Amount!.Visible && !(bool)DetailField(world, "_clanWhInFlight")!, "Clan members cannot initiate withdrawal");
+        var clanDeposit = Descendants(panels[2]).OfType<Button>().Single(b => b.Name == "storage_deposit");
+        var clanWithdraw = Descendants(panels[2]).OfType<Button>().Single(b => b.Name == "storage_withdraw");
+        Require(!clanDeposit.Disabled && clanWithdraw.Disabled, "Clan members may deposit coins but not withdraw them");
+        RightClick(Descendants(panels[2]).OfType<ItemSlotView>().Single(c => c.Name == "storage_cell_1"));
+        var clanStatus = (Label)DetailField(world, "_clanWhStatus")!;
+        Require(!storages[2].Amount!.Visible && !(bool)DetailField(world, "_clanWhInFlight")! && clanStatus.Text.StartsWith("Only the chief"), "Clan members cannot initiate withdrawal");
         await Capture(2, "clan-member-refused");
+        RightClick(Descendants(panels[2]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_1"));
+        Require((bool)DetailField(world, "_clanWhInFlight")!, "Clan members may store items (the client's clan-bank rights)");
+        DetailCall(world, "OnClanWhResult", Net.ClanWhInputSub, Net.ClanWhFailed);
+        Require(!inventory[Inventory.GridStart + 1].IsEmpty, "A refused clan deposit keeps the carried item");
         typeof(Net).GetProperty("MyClan")!.SetValue(net, new MyClanInfo { InClan = true, Fame = ClanRanks.Chief });
+        DetailCall(world, "RefreshClanWarehouse");
+        Require(!clanWithdraw.Disabled, "The clan chief may withdraw coins");
         RightClick(Descendants(panels[2]).OfType<ItemSlotView>().Single(c => c.Name == "storage_cell_1"));
         var clanAmount = storages[2].Amount!;
-        Require(clanAmount.Visible, "Clan officers can select a withdrawal quantity"); await Capture(2, "clan-quantity");
-        Descendants(clanAmount).OfType<MoneyEdit>().Single().Value = 5; clanAmount.Confirm(); DetailCall(world, "OnClanWhResult", (byte)3, true);
+        Require(clanAmount == DetailField(world, "_clanWhAmount") && clanAmount.Visible, "Clan officers can select a withdrawal quantity"); await Capture(2, "clan-quantity");
+        Descendants(clanAmount).OfType<MoneyEdit>().Single().Value = 5; clanAmount.Confirm(); DetailCall(world, "OnClanWhResult", Net.ClanWhOutputSub, Net.ClanWhSucceeded);
         Require(inventory[Inventory.GridStart].Count == 69 && clan[1].Count == 60, "Clan partial withdrawal merges into the carried stack");
-        Require(((Label)DetailField(world, "_clanWhStatus")!).Text == "", "A valid clan transfer clears an obsolete permission warning");
+        Require(!clanStatus.Text.StartsWith("Only the chief"), "A valid clan transfer replaces an obsolete permission warning");
         var clanCells = Descendants(panels[2]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_cell_")).ToDictionary(c => c.Index);
         Variant clanDrag = clanCells[0].DragOut!(clanCells[0]);
-        Require(clanCells[5]._CanDropData(Vector2.Zero, clanDrag), "Clan officers may rearrange the current page");
-        clanCells[5]._DropData(Vector2.Zero, clanDrag); RaiseResult("ClanWhResultEvent", 4, true);
+        Require(clanCells[5]._CanDropData(Vector2.Zero, clanDrag), "Clan officers may rearrange the clan bank");
+        clanCells[5]._DropData(Vector2.Zero, clanDrag); DetailCall(world, "OnClanWhResult", Net.ClanWhMoveSub, Net.ClanWhSucceeded);
         Require(clan[0].IsEmpty && clan[5].ItemId == weapon, "Clan rearrangement preserves the item");
         await Capture(2, "clan-rearranged");
+        clanDeposit.EmitSignal(Button.SignalName.Pressed);
+        Require(clanAmount.Visible, "The clan coin button opens the client's gold prompt"); await Capture(2, "clan-coins"); clanAmount.Close();
         storages[2].TurnPage(7); storages[2].TurnPage(1);
-        Require((int)DetailField(world, "_clanWhPage")! == 7, "Classic clan wheel navigation clamps at the last page"); await Capture(2, "clan-last-page");
+        Require(storages[2].Page == 7 && (int)DetailField(world, "_clanWhPage")! == 7, "Classic clan wheel navigation follows the client's page and clamps at the last page"); await Capture(2, "clan-last-page");
         var carriedCells = Descendants(panels[2]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_bag_")).ToDictionary(c => c.Index);
         Variant carriedDrag = new Godot.Collections.Dictionary { { "invFrom", Inventory.GridStart + 1 } };
         Require(carriedCells[Inventory.GridStart + 10]._CanDropData(Vector2.Zero, carriedDrag), "The embedded inventory permits ordinary bag rearrangement");
@@ -197,23 +230,22 @@ public partial class Preview
         DetailCall(world, "OnItemMoveResult", true);
         Require(inventory[Inventory.GridStart + 1].IsEmpty && inventory[Inventory.GridStart + 10].ItemId == weapon, "Inventory acknowledgement refreshes the embedded bag cells");
         await Capture(2, "clan-inventory-rearranged");
-        Set("_vipWhExpirySec", 0); DetailCall(world, "RefreshVipWarehouse");
-        Require((int)DetailField(world, "_vipWhExpirySec")! == 0, "VIP expiry invalidates the displayed rental time");
-        Set("_vipWhShown", true);
+        Set("_clanWhShown", false); Set("_vipWhShown", true);
         var vipStatus = (Label)DetailField(world, "_vipWhStatus")!;
         inventory[Inventory.GridStart + 5] = new NativeSlot { ItemId = WarehouseRules.NoTradeIdFirst, Count = 1, Durability = 1 };
-        RightClick(Descendants(panels[1]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_5"));
-        Require(!vipAmount.Visible && !(bool)DetailField(world, "_vipWhInFlight")! && vipStatus.Text == ItemData.Text(WarehouseRules.NonStorableText, "This item is non-storable"),
-            "VIP storage refuses the server's no-trade range with the non-storable text");
-        inventory[Inventory.GridStart + 5] = default; DetailCall(world, "RefreshVipWarehouse");
+        DetailCall(world, "RefreshVipWarehouse"); for (int i = 0; i < 3; i++) windows[i].Visible = i == 1; await Frames(2);
+        var vipBag5 = Descendants(panels[1]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_5");
+        Require(vipBag5.Look == SlotLook.Unfit, "The embedded bag marks items the vault refuses, as the client's bag does");
+        RightClick(vipBag5);
+        Require(!vipAmount.Visible && !(bool)DetailField(world, "_vipWhInFlight")! && vipStatus.Text.Length > 0, "VIP storage refuses a non-storable item with the client's text");
+        inventory[Inventory.GridStart + 5] = default;
+        Set("_vipWhOpen", false); Set("_vipWhExpiresAt", now - 60u); DetailCall(world, "RefreshVipWarehouse");
         RightClick(Descendants(panels[1]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_0"));
-        Require(vipAmount.Visible, "An expired VIP vault leaves the transfer decision to the server");
-        Descendants(vipAmount).OfType<MoneyEdit>().Single().Value = 5; vipAmount.Confirm();
-        Require((bool)DetailField(world, "_vipWhInFlight")!, "An expired VIP vault sends the requested transfer to the server");
-        DetailCall(world, "OnVipWarehouseResult", (byte)2, false);
-        Require(!(bool)DetailField(world, "_vipWhInFlight")! && inventory[Inventory.GridStart].Count == 69 && vip[1].Count == 75 && vipStatus.Text == "Transfer failed.",
-            "The server's expired-vault refusal releases the transfer and keeps both stacks");
+        Require(!vipAmount.Visible && !(bool)DetailField(world, "_vipWhInFlight")! && vipStatus.Text == ItemData.Text(1673, "You cannot use it due to expiration."),
+            "An expired VIP vault refuses transfers with the expiration text");
         await Capture(1, "vip-expired");
+        Require(vipCells.Values.All(c => c.Locked == !c.Item.IsEmpty) && ((Label)DetailField(world, "_vipWhExpiryLbl")!).Text == "expired", "An expired VIP vault locks its stored items and shows the expiry");
+        Require(vipCells[0].DragOut!(vipCells[0]).VariantType == Variant.Type.Nil, "Locked VIP cells cannot be dragged");
         System.IO.File.WriteAllText(output + "/" + (nation == 1 ? "karus" : "human") + "-verification.json", JsonSerializer.Serialize(new { nation, checks, screens }, new JsonSerializerOptions { WriteIndented = true }));
         GD.Print($"Storage audit passed: {checks.Count} checks, {screens.Count} screenshots, nation {nation}");
         world.Free(); net.Free();

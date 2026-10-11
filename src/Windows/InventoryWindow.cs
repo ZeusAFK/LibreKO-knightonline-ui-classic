@@ -27,6 +27,7 @@ public partial class InventoryWindow : Control
     private InventoryCornerButton _cospreToggle = null!;
     private bool _cospreOpen;
     private int _bag;
+    private LineEdit? _search;
     private int _carried = -1;
     private readonly LibreKO.QuantityPrompt _movePrompt=new(220);
     private readonly ClassicInventoryRepair _repair;
@@ -96,6 +97,9 @@ public partial class InventoryWindow : Control
     {
         _view.ApplyDeclaredBounds();
         _extras.ApplyDeclaredBounds();
+        // The field enters the tree with the default font's taller minimum; settle it on the drawer band.
+        if(_search!=null) Callable.From(()=>_search.Size=InventoryLayout.BagSearch.Size).CallDeferred();
+        if(_extras.GetNodeOrNull<Button>("vip_vault") is {} vault) Callable.From(()=>vault.Size=InventoryLayout.VipVault.Size).CallDeferred();
     }
 
     private ItemSlot BindSlot(Control area, int slot)
@@ -177,12 +181,26 @@ public partial class InventoryWindow : Control
         var item=_game.Inventory.At(slot);
         if(item.IsEmpty || slot>=InventoryConstants.CospreStart) { _game.Inventory.Drop(slot);return; }
         _game.Inventory.HideTooltip();
+        // The client's bulk destroy queue: an open prompt takes further items until it is confirmed.
+        if (NativeInventory.HasDestroyQueue)
+        {
+            var open=GetChildren().OfType<ClassicInventoryDestroy>().FirstOrDefault(p=>!p.IsQueuedForDeletion());
+            if (open!=null) { open.Add(slot); return; }
+            if (!NativeInventory.QueueDestroy(slot)) return;
+            AddChild(new ClassicInventoryDestroy(_view,DestroyQueueSource));
+            return;
+        }
         AddChild(new ClassicInventoryDestroy(_view,()=>
         {
             var current=_game.Inventory.At(slot);
             if(current.ItemId==item.ItemId && current.Count==item.Count) _game.Inventory.ConfirmDrop(slot,item.ItemId);
         }));
     }
+
+    private static readonly ClassicDestroyQueue DestroyQueueSource=new(
+        ()=>NativeInventory.DestroyEntries.Select(e=>e.Slot).ToArray(),
+        NativeInventory.QueueDestroy,NativeInventory.UnqueueDestroy,NativeInventory.ConfirmDestroy,NativeInventory.CancelDestroy,
+        NativeInventory.HideDestroyCard);
 
     private void SlotActivated(int slot)
     {
@@ -224,6 +242,8 @@ public partial class InventoryWindow : Control
         bool changed=_cospreOpen!=open;
         _cospreOpen = open;
         _extras.Visible = open;
+        // The search field lives in the drawer; closing it ends the search.
+        if(!open && _search is {Text.Length:>0}) { _search.Text=""; ApplyBagSearch(); }
         _cospreToggle.Expanded=open;
         if(!open && _carried>=InventoryConstants.CospreStart) CancelCarry();
         float shift=InventoryLayout.DrawerWidth+InventoryLayout.DrawerGap;
@@ -272,6 +292,55 @@ public partial class InventoryWindow : Control
         }
         foreach(var (node,control) in _extras.Areas(InventoryLayout.BagContentArea))
             _bagSlots.Add(BindSlot(control,InventoryConstants.MagicBagStart+int.Parse(node.Id)));
+        BuildBagSearch();
+    }
+
+    /// <summary>
+    /// The client's bag search in the drawer's free band between the costume cells and the bag row: hits in
+    /// the carried grid and the shown magic bag are outlined, misses dimmed, and a hidden bag holding a hit
+    /// is outlined on its bag cell.
+    /// </summary>
+    private void BuildBagSearch()
+    {
+        _search=new LineEdit {Name="bag_search",PlaceholderText="Search the bag",
+            Position=InventoryLayout.BagSearch.Position,Size=InventoryLayout.BagSearch.Size,FocusMode=FocusModeEnum.Click};
+        _search.AddThemeFontOverride("font",Plugin.Kit.Bold);_search.AddThemeFontSizeOverride("font_size",12);
+        _search.AddThemeColorOverride("font_color",ClassicReportDesign.Value);
+        _search.AddThemeColorOverride("font_placeholder_color",ClassicDesign.Muted);
+        foreach(var state in new[]{"normal","focus","read_only"}) _search.AddThemeStyleboxOverride(state,ClassicDesign.InputBox());
+        _search.TextChanged+=_=>ApplyBagSearch();
+        _extras.AddChild(_search);
+        // The client's VIP Vault shortcut from the bag, shown with the vault key's own item art.
+        bool karus=Plugin.Kit.Nation==1;
+        var cell=new StyleBoxTexture {Texture=Plugin.Kit.Texture(karus?"ui_ka_inven_us.png":"ui_el_inven_us.png"),
+            RegionRect=new Rect2(karus?159:157,karus?326:333,51,52)};
+        foreach(var side in new[]{Side.Left,Side.Top,Side.Right,Side.Bottom}) {cell.SetTextureMargin(side,4);cell.SetContentMargin(side,2);}
+        var vault=new Button {Name="vip_vault",TooltipText="VIP Vault",FocusMode=FocusModeEnum.None,ExpandIcon=true,
+            Icon=ItemData.Icon(NativeInventory.VipVaultKey),Position=InventoryLayout.VipVault.Position,Size=InventoryLayout.VipVault.Size,
+            IconAlignment=HorizontalAlignment.Center,MouseDefaultCursorShape=CursorShape.PointingHand};
+        foreach(var state in new[]{"normal","hover","pressed","hover_pressed","focus","disabled"}) vault.AddThemeStyleboxOverride(state,cell);
+        vault.AddThemeColorOverride("icon_hover_color",new Color(1.15f,1.15f,1f));
+        vault.Pressed+=NativeInventory.OpenVipVault;
+        _extras.AddChild(vault);
+    }
+
+    private void ApplyBagSearch()
+    {
+        if(_search==null) return;
+        var inventory=_game.Inventory;
+        var ids=new int[inventory.Length];
+        for(int i=0;i<ids.Length;i++) ids[i]=LibreKO.Domain.BagSearch.Searchable(i)?inventory.At(i).ItemId:0;
+        bool searching=!new ItemQuery(_search.Text).IsEmpty;
+        var hits=searching?WarehouseView.Matches(ids,_search.Text,ItemData.DisplayName):new HashSet<int>();
+        foreach(var cell in _slots.Concat(_bagSlots))
+        {
+            bool searchable=LibreKO.Domain.BagSearch.Searchable(cell.Slot);
+            cell.Search=!searching || !searchable ? SearchMark.None : hits.Contains(cell.Slot) ? SearchMark.Hit : SearchMark.Miss;
+        }
+        var bags=LibreKO.Domain.BagSearch.BagsHoldingHits(hits);
+        for(int bag=0;bag<InventoryConstants.BagSlotMax;bag++)
+            if(_bySlot.TryGetValue(InventoryConstants.BagSlotFor(bag),out var bagCell))
+                bagCell.Search=bags[bag] && bag!=_bag ? SearchMark.Hit : SearchMark.None;
     }
 
     private void SelectBag(int bag)
@@ -313,6 +382,7 @@ public partial class InventoryWindow : Control
             cell.OnHover = (_, over) => HoverSlot(slot, over);
             cell.Refresh();
         }
+        ApplyBagSearch();
     }
 
     public override void _EnterTree()

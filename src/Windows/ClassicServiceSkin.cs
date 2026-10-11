@@ -6,7 +6,7 @@ namespace KnightOnlineUiClassic.Windows;
 
 public static class ClassicServiceSkin
 {
-    public static readonly string[] WindowIds = { "repair", "warp", "seal", "piecechange", "itemcombine", "combinerecipes", "class_change" };
+    public static readonly string[] WindowIds = { "repair", "warp", "seal", "piecechange", "itemcombine", "combinerecipes", "class_change", "itemsmash", "char_seal_trans" };
     public static void Extend(Control body) => body.Ready += () => Callable.From(() => Apply(body)).CallDeferred();
     public static ClassicServicePanel? Apply(Control body)
     {
@@ -74,7 +74,7 @@ public partial class ClassicServicePanel : Control
         title.HorizontalAlignment = HorizontalAlignment.Left;
         // The plain Classic frame is the same dark art for both nations, so its title keeps one colour.
         if (window.Id is not ("warp" or "class_change" or "repair")) title.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
-        if (window.Id != "seal") title.Text = Title(window.Id);
+        if (window.Id is not ("seal" or "char_seal_trans")) title.Text = Title(window.Id);
         if (window.Id != "class_change")
         {
             ClassicMerchantSkin.Button(close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this,
@@ -95,11 +95,13 @@ public partial class ClassicServicePanel : Control
             case "itemcombine": Combine(); break;
             case "combinerecipes": RecipeBook(); break;
             case "class_change": Redistribution(close); break;
+            case "itemsmash": Smash(); break;
+            case "char_seal_trans": CharacterSealTrans(); break;
         }
-        if (window.Id is "repair" or "seal")
+        if (window.Id is "repair" or "seal" or "char_seal_trans")
         {
             var coin = Plugin.Kit.Layout("el_inventory_us").Find("btn_gold")!.Images.First();
-            AddChild(new TextureRect { Position = new Vector2(14, window.Id == "repair" ? 416 : 464), Size = new Vector2(22, 25),
+            AddChild(new TextureRect { Position = new Vector2(14, window.Id switch { "repair" => 416, "seal" => 464, _ => 418 }), Size = new Vector2(22, 25),
                 Texture = ClassicChatControls.Atlas(coin), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore });
         }
@@ -121,7 +123,7 @@ public partial class ClassicServicePanel : Control
     private static string Title(string id) => id switch
     {
         "warp" => "Zone List", "repair" => "Repair", "seal" => "Item Seal / Unseal",
-        "piecechange" => "Chaotic Generator", "itemcombine" => "Item Combination", _ => "Book of Transformation"
+        "piecechange" => "Chaotic Generator", "itemcombine" => "Item Combination", "itemsmash" => "Disassemble", _ => "Book of Transformation"
     };
     private T Find<T>(string name) where T : Control => _native.OfType<T>().Single(n => n.Name == name);
     private void Place(Control control, Rect2 rect, bool keepVisibility = false)
@@ -207,6 +209,9 @@ public partial class ClassicServicePanel : Control
         WarpButton(_native.OfType<Button>().Single(b => b.Text == "Close"), "Btn_Cancel", "Cancel");
         Watch(scroll, row =>
         {
+            // Original dense single-line rows: the zone name only. The client's thumbnail, lock badge and
+            // level / fee column stay hidden; the selected zone's levels, fee and refusal show below the list.
+            if (row is TextureRect || row is VBoxContainer && row.GetParent() is HBoxContainer) { row.Visible = false; return; }
             if (row is Label label) { WarpFont(label); label.CustomMinimumSize = Vector2.Zero; }
             if (row is MarginContainer margin) foreach (string side in new[] { "left", "top", "right", "bottom" }) margin.AddThemeConstantOverride("margin_" + side, 0);
             if (row is PanelContainer panel)
@@ -256,6 +261,35 @@ public partial class ClassicServicePanel : Control
         scroll.AddChild(inset);
         var bag = Find<Control>("piece_bag"); bag.Reparent(inset, false); bag.Visible = true; bag.CustomMinimumSize = Vector2.Zero;
         bag.SizeFlagsHorizontal = SizeFlags.ExpandFill; Watch(bag, StyleDynamic);
+    }
+    private void Smash()
+    {
+        Caption("Item", new Rect2(14, 58, 88, 20));
+        Caption("Pieces", new Rect2(134, 58, 218, 20));
+        Slot(Find<Control>("smash_socket"), new Rect2(28, 83, 45, 45));
+        for (int i = 0; _native.Any(n => n.Name == "smash_result_" + i); i++)
+            Slot(Find<Control>("smash_result_" + i), ClassicServiceLayout.Cell(i, 3, 142, 83));
+        Place(Find<Label>("smash_message"), new Rect2(14, 238, 338, 24));
+        Place(Find<Label>("smash_status"), new Rect2(14, 262, 338, 20));
+        Button(Find<Button>("smash_start"), new Rect2(14, 292, 102, 29));
+        Button(Find<Button>("smash_stop"), new Rect2(132, 292, 102, 29));
+        Button(Find<Button>("smash_cancel"), new Rect2(250, 292, 102, 29));
+        Caption("Inventory", new Rect2(14, 334, 338, 20));
+        for (int i = 0; i < 28; i++) Slot(Find<Control>("smash_bag_" + i), ClassicServiceLayout.Cell(i, 7, 13, 362));
+    }
+    private void CharacterSealTrans()
+    {
+        Slot(Find<Control>("cstrans_socket"), new Rect2(14, 66, 45, 45));
+        var headline = Find<Label>("cstrans_headline"); Place(headline, new Rect2(72, 62, 280, 22)); headline.HorizontalAlignment = HorizontalAlignment.Left;
+        var notice = Find<Label>("cstrans_notice"); Place(notice, new Rect2(72, 86, 280, 36));
+        notice.AutowrapMode = TextServer.AutowrapMode.WordSmart; notice.ClipText = false; notice.HorizontalAlignment = HorizontalAlignment.Left;
+        Button(Find<Button>("cstrans_ok"), new Rect2(14, 134, 156, 29));
+        Button(Find<Button>("cstrans_cancel"), new Rect2(196, 134, 156, 29));
+        Caption("Inventory", new Rect2(14, 179, 338, 20));
+        for (int i = 0; i < 28; i++) Slot(Find<Control>("cstrans_bag_" + i), ClassicServiceLayout.Cell(i, 7, 13, 207));
+        if (_native.FirstOrDefault(n => n.Name == "cstrans_gold_caption") is { } caption) caption.Visible = false;
+        var gold = Find<Label>("cstrans_gold"); Place(gold, new Rect2(183, 418, 169, 24)); gold.HorizontalAlignment = HorizontalAlignment.Right;
+        Caption("Right-click an item to select it.", new Rect2(14, 450, 338, 22));
     }
     private void Combine()
     {

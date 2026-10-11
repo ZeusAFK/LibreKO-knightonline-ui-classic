@@ -86,14 +86,21 @@ public partial class Preview
         var sealMode = typeof(World).GetNestedType("SealMode", BindingFlags.NonPublic | BindingFlags.Public)!;
         foreach (bool bind in new[] { false, true })
         {
-            var (world, window) = await Build("BuildSealUiPreview", Enum.ToObject(sealMode, bind ? 1 : 0), true, ItemFlag.Unsealed, false);
+            var (world, window) = await Build("BuildSealUiPreview", Enum.ToObject(sealMode, bind ? 1 : 0), false, ItemFlag.Unsealed, false);
+            // The fixture's boots bind on equip (shown as not bound), which the socket refuses; stage the ring.
+            DetailCall(world, "TakeSealSocket", 3); await Frames();
+            Require(!((ItemSlotView)Descendants(window).OfType<ItemSlotView>().Single(c => c.Name == "seal_bag_3")).Item.IsEmpty
+                && ((ItemSlotView)Descendants(window).OfType<ItemSlotView>().Single(c => c.Name == "seal_bag_3")).Look == SlotLook.Selected,
+                "The Classic seal bag marks the staged item " + bind);
             await Capture(window, bind ? "seal-bind" : "seal-secret");
-            Require(((Button)DetailField(world, "_sealConfirm")!).Disabled == !bind, "Secret sealing requires eight digits; binding does not");
+            var sealDrop = Descendants((Node)DetailField(world, "_sealSocket")!).OfType<ServiceDropTarget>().Single();
+            Require(sealDrop._CanDropData(Vector2.Zero, new Godot.Collections.Dictionary { { "invFrom", Inventory.GridStart + 3 } }), "A carried item can be dragged onto the seal socket " + bind);
+            Require(((Button)DetailField(world, "_sealConfirm")!).Disabled == !bind, "Secret sealing requires the secret digits; binding does not");
             if (!bind)
             {
                 DetailCall(world, "ShowSealKeypadUiPreview"); await Capture(window, "seal-keypad");
                 for (int i = 0; i < 3; i++) DetailCall(world, "PushSealDigit", i);
-                Require(!((Button)DetailField(world, "_sealConfirm")!).Disabled, "Eight secret digits enable the confirmation");
+                Require(!((Button)DetailField(world, "_sealConfirm")!).Disabled, "The full secret code enables the confirmation");
                 DetailCall(world, "AskSealConfirm");
                 var notice = (Notice)DetailField(world, "_sealNotice")!; notice.Reparent(this);
                 await Frames();

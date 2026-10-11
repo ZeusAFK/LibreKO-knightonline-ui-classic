@@ -4,6 +4,8 @@ using LibreKO.Plugins;
 
 namespace KnightOnlineUiClassic.Layout;
 
+public enum SearchMark { None, Hit, Miss }
+
 public partial class ItemSlot : Control
 {
     public const string DragKeyFrom = "invFrom";
@@ -12,6 +14,8 @@ public partial class ItemSlot : Control
     private static readonly Color HoverTint = new(1f, 1f, 0.8f, 0.12f);
     private static readonly Color CarriedTint = new(0.5f, 0.5f, 0.5f, 1f);
     private static readonly Color GhostTint = new(1f, 1f, 1f, 0.35f);
+    private static readonly Color SearchMissTint = new(1f, 1f, 1f, 0.3f);
+    private static readonly Color SearchHitEdge = new("ffe094");
 
     public int Slot { get; set; }
     public Func<int, GameItem> Source { get; set; } = s => GameItem.Empty(s);
@@ -33,6 +37,9 @@ public partial class ItemSlot : Control
     private readonly Label _count;
     private readonly ColorRect _hover;
     private readonly UpgradeBadge _badge;
+    private readonly IconVeilView _veil;
+    private readonly Panel _searchHit;
+    private SearchMark _search;
     private bool _suppressClick;
     private int _pressedSlot = -1;
     private Vector2 _grabPoint;
@@ -59,6 +66,15 @@ public partial class ItemSlot : Control
         _icon.OffsetLeft = IconInset; _icon.OffsetTop = IconInset;
         _icon.OffsetRight = -IconInset; _icon.OffsetBottom = -IconInset;
         AddChild(_icon);
+        // The client's item veils: exhausted, rented, duplicate and sealed washes and the binding badges.
+        _veil = IconVeilView.Attach(this);
+        _veil.OffsetLeft = IconInset; _veil.OffsetTop = IconInset; _veil.OffsetRight = -IconInset; _veil.OffsetBottom = -IconInset;
+        _searchHit = new Panel { Visible = false, MouseFilter = MouseFilterEnum.Ignore };
+        var edge = new StyleBoxFlat { DrawCenter = false, BorderColor = SearchHitEdge };
+        edge.SetBorderWidthAll(1);
+        _searchHit.AddThemeStyleboxOverride("panel", edge);
+        _searchHit.SetAnchorsPreset(LayoutPreset.FullRect);
+        AddChild(_searchHit);
         _count = new Label();
         AddChild(_count);
         ItemCountStyle.Apply(_count, this);
@@ -78,6 +94,22 @@ public partial class ItemSlot : Control
         SelfModulate=InputEnabled?Colors.White:new Color(0.45f,0.45f,0.45f);
         _count.Text = Current.IsEmpty ? "" : NativeUi.CountBadge(LibreKO.Domain.ItemData.Get(Current.ItemId), Current.Count);
         if (Current.IsEmpty) _badge.Clear(); else _badge.Set(Current.ItemId);
+        _veil.Set(Current.IsEmpty ? default : new LibreKO.Domain.ItemSlot { ItemId = Current.ItemId, Count = (short)Current.Count,
+            Durability = (short)Current.Durability, Flag = (byte)Current.State, ExpiresAt = (int)Current.ExpiresAt });
+        ApplySearch();
+    }
+
+    /// <summary>Bag search: a hit is outlined, a miss is dimmed; empty cells stay plain.</summary>
+    public SearchMark Search
+    {
+        get => _search;
+        set { if (_search == value) return; _search = value; ApplySearch(); }
+    }
+
+    private void ApplySearch()
+    {
+        _searchHit.Visible = _search == SearchMark.Hit && !Current.IsEmpty;
+        _icon.SelfModulate = _search == SearchMark.Miss && !Current.IsEmpty ? SearchMissTint : Colors.White;
     }
 
     public void SetGhost(Texture2D? icon)

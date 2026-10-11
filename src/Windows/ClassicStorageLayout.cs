@@ -25,6 +25,8 @@ public static class ClassicStorageLayout
     public static readonly Rect2 ChangePin = new(13, 177, 165, 27), ClearPin = new(185, 177, 165, 27);
     /// <summary>VIP expiry on the stored-coins row: the caption and the value on the original field.</summary>
     public static readonly Rect2 ExpiryCaption = new(14, 280 - VipCut, 178, 20), Expiry = new(231, 280 - VipCut, 119, 20);
+    /// <summary>The VIP key plaque beside the expiry field, where the coin sits beside the stored coins.</summary>
+    public static readonly Rect2 Key = new(204, 220, 24, 24);
     /// <summary>The stored-coins field and the section separator in the warehouse art.</summary>
     public const float FieldTop = 274, Separator = 309;
     public static Rect2 Weight(bool vip) => new(14, 319 - Cut(vip), 181, 20);
