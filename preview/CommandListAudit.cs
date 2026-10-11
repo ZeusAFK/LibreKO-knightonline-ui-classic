@@ -26,9 +26,10 @@ public partial class Preview
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1000, 700), MouseFilter = MouseFilterEnum.Ignore });
         var offline = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, offline);
         ClassicCommandListSkin.Register(PluginHost.Ui);
-        var checks = new List<string>(); var screens = new List<object>();
+        var checks = new List<string>(); var screens = new List<object>(); var placements = new List<object>();
         string prefix = nation == 1 ? "karus" : "human";
         void Require(bool value, string text) { if (!value) throw new Exception("COMMAND_AUDIT: " + text); checks.Add(text); }
+        void DetailSet(World owner, string field, object? value) => typeof(World).GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.SetValue(owner, value);
         async Task Frames(int count = 6) { for (int i = 0; i < count; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }
 
         var world = new World();
@@ -91,10 +92,16 @@ public partial class Preview
         // Grouping: every client command listed exactly once, in the client's list when its group is shown.
         var model = frame.Model;
         var all = KnightOnlineUiClassic.Native.NativeCommandList.Read(world);
+        var genieRows = KnightOnlineUiClassic.Native.NativeGenieCommands.Rows(world);
         frame.ShowGroup(0);
         Require(groups.ItemCount == model.Count && model.Count == ClassicCommandListLayout.Groups.Length, $"{groups.ItemCount} Classic groups");
-        Require(model.Sum(g => g.Rows.Count) == all.Count && all.Select(r => r.Id).Distinct().Count() == all.Count
-            && all.All(r => model.Count(g => g.Rows.Any(x => x.Id == r.Id)) == 1), $"all {all.Count} client commands are listed once");
+        Require(genieRows.Select(r => r.Id).SequenceEqual(KnightOnlineUiClassic.Native.NativeGenieCommands.Ids) && genieRows.All(r => r.Entry == null),
+            "the client's Genie actions are listed as Genie rows (no client command entry)");
+        var listed = all.Concat(genieRows).ToList();
+        Require(model.Sum(g => g.Rows.Count) == listed.Count && listed.Select(r => r.Id).Distinct().Count() == listed.Count
+            && listed.All(r => model.Count(g => g.Rows.Any(x => x.Id == r.Id)) == 1), $"all {all.Count} client commands and {genieRows.Count} Genie rows are listed once");
+        Require(model.Select(g => g.Title).SequenceEqual(new[] { "Private", "Emotion", "Chat", "Trade", "Party", "Clan", "Knights", "Genie", "King" }),
+            "group order: the original Private, Trade, Party, Clan, Knights, King; Emotion and Chat after Private; Genie in the Guardian Monster place");
         for (int g = 0; g < model.Count; g++)
         {
             // An item without its own colour reports Godot's unset colour (opaque black) and draws in the list's font colour.
@@ -102,10 +109,21 @@ public partial class Preview
             Require(ink.IsEqualApprox(ClassicCommandListLayout.GroupInk), "group ink yellow " + groups.GetItemText(g) + " " + ink.ToHtml());
             groups.Select(g); groups.EmitSignal(ItemList.SignalName.ItemSelected, (long)g); await Frames(2);
             var shown = (System.Collections.IList)DetailField(world, "_cmdShown")!;
-            Require(entries.ItemCount == model[g].Rows.Count && shown.Count == entries.ItemCount, groups.GetItemText(g) + ": the client's list and entries hold the group's rows");
+            int clientRows = model[g].Rows.Count(r => r.Entry != null);
+            Require(entries.ItemCount == model[g].Rows.Count && shown.Count == clientRows && model[g].Rows.Take(clientRows).All(r => r.Entry != null),
+                groups.GetItemText(g) + ": the client's list holds the group's rows, its entries the client commands (listed first)");
             for (int i = 0; i < entries.ItemCount; i++)
             {
                 var row = model[g].Rows[i];
+                if (row.Entry == null)
+                {
+                    // A client action: the client's activation handler has no entry for it; the client's state decides the look.
+                    var state = KnightOnlineUiClassic.Native.NativeGenieCommands.StateOf(world, row.Id);
+                    Require(entries.GetItemText(i) == row.Text && i >= shown.Count && entries.IsItemDisabled(i) == !state.Enabled
+                        && entries.GetItemCustomFgColor(i) == (state.Enabled ? ClassicCommandListLayout.CommandInk : ClassicCommandListLayout.UnavailableInk)
+                        && entries.GetItemTooltip(i) == state.Tooltip, groups.GetItemText(g) + ": " + row.Text + (state.Enabled ? " white" : " grey and disabled") + ", tooltip '" + state.Tooltip + "'");
+                    continue;
+                }
                 Require(entries.GetItemText(i) == row.Text && Equals(shown[i], row.Entry), groups.GetItemText(g) + ": row " + row.Text + " runs its own client entry");
                 Require(entries.GetItemCustomFgColor(i) == (row.Available ? ClassicCommandListLayout.CommandInk : ClassicCommandListLayout.UnavailableInk)
                     && entries.IsItemDisabled(i) == !row.Available, groups.GetItemText(g) + ": " + row.Text + (row.Available ? " white" : " grey and disabled"));
@@ -163,6 +181,66 @@ public partial class Preview
         Require(entries.GetSelectedItems().SequenceEqual(new[] { 2 }) && focus.Commands && focus.Outline == n.Commands.Grow(2), "selected: a click selects the row and moves the focus outline to the commands");
         await Capture("command-list-selected");
 
+        // Genie: the rows follow the client's Genie state (set here as the client's replies would set it; the
+        // function audit drives the real replies). Stopped with the time not reported yet, then running.
+        int genieGroup = GroupIndex("Genie");
+        groups.Select(genieGroup); groups.EmitSignal(ItemList.SignalName.ItemSelected, (long)genieGroup); Move(new Vector2(-50, -50)); await Frames();
+        bool Enabled(string id) => !entries.IsItemDisabled(frame.ShownRows.ToList().FindIndex(r => r.Id == id));
+        Require(Enabled("GenieWindow") && Enabled("GenieStart") && !Enabled("GenieStop") && !Enabled("GenieSpirit"), "genie: stopped, time not reported yet: Start enabled, Stop and Spirit of Genie grey");
+        Move(RowCentre(entries, 1)); await Frames();
+        await Capture("command-list-genie");
+        var running = new Label { Text = "Genie active \u2022 90 minutes" };
+        DetailSet(world, "_genieRunLabel", running); DetailSet(world, "_geniePoints", 90); DetailSet(world, "_genieDeadline", 1.0);
+        typeof(Net).GetProperty("GenieRunning")!.SetValue(offline, true);
+        Move(RowCentre(entries, 2)); await Frames();
+        int startRow = frame.ShownRows.ToList().FindIndex(r => r.Id == "GenieStart");
+        Require(!Enabled("GenieStart") && Enabled("GenieStop") && entries.GetItemTooltip(startRow) == running.Text, "genie running: Start grey with the client's status line, Stop enabled");
+        await Capture("command-list-genie-running");
+        typeof(Net).GetProperty("GenieRunning")!.SetValue(offline, false);
+        running.Text = "No time remaining. Spirit of Genie required."; DetailSet(world, "_geniePoints", 0); await Frames(2);
+        Require(!Enabled("GenieStart") && !Enabled("GenieStop") && entries.GetItemTooltip(startRow) == running.Text, "genie without time: Start grey with the client's 'No time remaining' line");
+        DetailSet(world, "_genieDeadline", 0.0); running.Text = "Genie stopped."; await Frames(2);
+
+        // Open position: the right edge with the client's 12 px HUD margin, vertically centred, at several screen sizes;
+        // HUD on the right half moves it beside narrow parts or keeps it between the parts above and below.
+        var size = window.Size;
+        foreach (var screen in new[] { new Vector2(800, 600), new Vector2(1024, 768), new Vector2(1280, 720), new Vector2(1366, 768), new Vector2(1600, 900), new Vector2(1920, 1080), new Vector2(2560, 1440) })
+        {
+            var free = ClassicCommandListLayout.OpenSpot(screen, size, new List<Rect2>());
+            Require(free.X == screen.X - 12 - size.X && (free.Y == Mathf.Floor((screen.Y - size.Y) / 2) || screen.Y < size.Y), $"{screen}: right edge, vertically centred {free}");
+            // The Classic HUD on the right: the clock strip, a full party list (8 members), the Genie quick panel, Info at the bottom right.
+            var clock = new Rect2(screen.X - 90, 4, 80, 18);
+            var party = new Rect2(screen.X - 131, 0, 131, 25 + 8 * 45 + 64);
+            var quick = new Rect2(screen.X - 189 - 12, screen.Y / 2, 189, 108);
+            var info = new Rect2(screen.X - 430, screen.Y - 190, 420, 180);
+            foreach (var (name, hud) in new[] { ("clock", new[] { clock }), ("party", new[] { clock, party }), ("genie", new[] { clock, quick }), ("info", new[] { clock, info }), ("all", new[] { clock, party, quick, info }) })
+            {
+                var spot = ClassicCommandListLayout.OpenSpot(screen, size, hud);
+                var rect = new Rect2(spot, size);
+                bool fits = rect.Position.X >= 0 && rect.Position.Y >= 0 && rect.End.X <= screen.X && rect.End.Y <= screen.Y;
+                bool clear = hud.All(r => !r.Intersects(rect));
+                placements.Add(new { screen = screen.ToString(), hud = name, spot = spot.ToString(), clear });
+                Require(fits, $"{screen} {name}: on screen {rect}");
+                // The 573 px window fits below the clock from 720 px and between the clock and a 180 px Info from 900 px;
+                // on smaller screens it stays centred at the edge over them.
+                if (screen.Y >= 720 && (name is not ("info" or "all") || screen.Y >= 900)) Require(clear, $"{screen} {name}: covers no HUD part {rect}");
+            }
+        }
+        // The preview builder drops the client's window layout; the function audit opens the window through it. Here
+        // the client's default-position hook the preparer set (HudWindow.DockTo) must give the spot.
+        var dock = (Func<Vector2>)typeof(HudWindow).GetField("_dock", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(window)!;
+        var expectedSpot = ClassicCommandListLayout.OpenSpot(GetViewportRect().Size, window.Size, new List<Rect2>());
+        Require(dock() == expectedSpot && expectedSpot == new Vector2(GetViewportRect().Size.X - 12 - window.Size.X, Mathf.Floor((GetViewportRect().Size.Y - window.Size.Y) / 2)),
+            "the window's default position is its right-middle spot " + dock());
+        window.Position = dock(); await Frames(2);
+        await Capture("command-list-open");
+        window.Position = ((GetViewportRect().Size - window.Size) / 2).Round();
+        groups.Select(clan); groups.EmitSignal(ItemList.SignalName.ItemSelected, (long)clan); await Frames(2);
+        var press2 = new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = window.Position + RowCentre(entries, 2), GlobalPosition = window.Position + RowCentre(entries, 2) };
+        GetViewport().PushInput(press2, true);
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = press2.Position, GlobalPosition = press2.Position }, true);
+        Move(new Vector2(-50, -50)); await Frames();
+
         // Scrolled: the client's own Private group (19 commands, before the Classic regrouping) is longer than the box.
         frame.ShowRows(all.Where(r => r.ClientGroup == "Private").ToList()); await Frames();
         var scroll = Descendants(frame).OfType<ClassicCommandScroll>().Single(s => s.Name == "command_entry_scroll");
@@ -212,7 +290,7 @@ public partial class Preview
             for (int id = from; id <= to; id++) { string t = LibreKO.Domain.ItemData.Text(id, ""); if (t.Length > 0) texts[id] = t; }
         var listing = model.Select(g => new { group = g.Title, commands = g.Rows.Select(r => new { r.Id, r.ClientGroup, r.Text, r.Available, r.Tooltip }) });
         System.IO.File.WriteAllText(output + "/" + prefix + "-command-texts.json", JsonSerializer.Serialize(new { texts, listing }, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
-        System.IO.File.WriteAllText(output + "/" + prefix + "-command.json", JsonSerializer.Serialize(new { nation, checks, screens }, new JsonSerializerOptions { WriteIndented = true }));
+        System.IO.File.WriteAllText(output + "/" + prefix + "-command.json", JsonSerializer.Serialize(new { nation, checks, screens, placements }, new JsonSerializerOptions { WriteIndented = true }));
         GD.Print("COMMAND_AUDIT_OK " + prefix + " " + checks.Count + " checks / " + screens.Count + " screens");
         layer.QueueFree(); world.QueueFree();
         await Frames(); offline.Free();

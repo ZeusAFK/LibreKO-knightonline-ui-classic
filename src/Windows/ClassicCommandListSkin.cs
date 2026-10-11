@@ -32,8 +32,9 @@ public static class ClassicCommandListSkin
         foreach (var (group, index) in ClassicCommandListLayout.Groups.Select((g, i) => (g, i)))
         {
             // Table order first, then commands the table does not know; commands the client has not built go last.
+            // Client actions (the Genie rows) come after the client's entries and keep their order: their state changes while the list is open.
             int Rank(Row row) { int i = Array.IndexOf(group.Commands, row.Id); return i < 0 ? group.Commands.Length : i; }
-            var ordered = groups[index].Rows.OrderBy(r => r.Available ? 0 : 1).ThenBy(Rank).ToList();
+            var ordered = groups[index].Rows.OrderBy(r => r.Entry == null ? 2 : r.Available ? 0 : 1).ThenBy(Rank).ToList();
             groups[index] = (group.Title, ordered);
         }
         return groups.Where(g => g.Rows.Count > 0).ToList();
@@ -55,6 +56,8 @@ public partial class ClassicCommandListFrame : Control
     private World? _world;
     private ItemList? _entries;
     private List<(string Title, List<Row> Rows)> _model = new();
+    private IReadOnlyList<Row> _shown = Array.Empty<Row>();
+    private readonly Dictionary<int, NativeGenieCommands.State> _actionStates = new();
 
     public ClassicCommandListFrame() { }
 
@@ -108,6 +111,7 @@ public partial class ClassicCommandListFrame : Control
     public ClassicCommandListLayout.Nation Geometry => _n;
     public IReadOnlyList<(string Title, List<Row> Rows)> Model => _model;
     public bool CommandsFocused => _focus.Commands;
+    public IReadOnlyList<Row> ShownRows => _shown;
 
     public override Vector2 _GetMinimumSize() => _n.Size;
 
@@ -115,7 +119,8 @@ public partial class ClassicCommandListFrame : Control
 
     public override void _Process(double delta)
     {
-        if (_world != null || GetParent() is not HudWindow window) return;
+        if (_world != null) { RefreshActions(); return; }
+        if (GetParent() is not HudWindow window) return;
         if (window.HasMeta(NativeCommandList.Gate))
         {
             if (window.GetMeta(NativeCommandList.WorldMeta).AsGodotObject() is World world && IsInstanceValid(world)) Bind(world);
@@ -145,10 +150,12 @@ public partial class ClassicCommandListFrame : Control
         Place(entries, _n.Commands);
         entries.ItemSelected += _ => _focus.Commands = true;
         entries.ItemClicked += (_, _, _) => _focus.Commands = true;
+        // The client's handler runs its own entries; the rows after them are client actions run here.
+        entries.ItemActivated += index => RunAction((int)index);
         _commandScroll = new ClassicCommandScroll(entries, _n.CommandScroll, Plugin.Kit.Layout(ClassicCommandListLayout.Uif).Find("list_content")) { Name = "command_entry_scroll" };
         AddChild(_commandScroll);
         MoveChild(_focus, -1);
-        _model = ClassicCommandListSkin.Group(NativeCommandList.Read(world));
+        _model = ClassicCommandListSkin.Group(NativeCommandList.Read(world).Concat(NativeGenieCommands.Rows(world)).ToList());
         _groups.Clear();
         foreach (var (title, _) in _model)
         {
@@ -158,7 +165,6 @@ public partial class ClassicCommandListFrame : Control
         }
         _groups.Select(0);
         ShowGroup(0);
-        SetProcess(false);
     }
 
     /// <summary>The client refills its list whenever the window opens; show the selected Classic group again.</summary>
@@ -180,12 +186,40 @@ public partial class ClassicCommandListFrame : Control
     public void ShowRows(IReadOnlyList<Row> rows)
     {
         if (_world == null) return;
-        NativeCommandList.Show(_world, rows, (list, row, entry) =>
-        {
-            list.SetItemCustomFgColor(row, entry.Available ? ClassicCommandListLayout.CommandInk : ClassicCommandListLayout.UnavailableInk);
-            list.SetItemDisabled(row, !entry.Available);
-        });
+        _shown = rows;
+        _actionStates.Clear();
+        NativeCommandList.Show(_world, rows, (list, row, entry) => Mark(list, row, entry.Available));
         if (_entries != null) _entries.GetVScrollBar().Value = 0;
+        RefreshActions();
+    }
+
+    private static void Mark(ItemList list, int row, bool available)
+    {
+        list.SetItemCustomFgColor(row, available ? ClassicCommandListLayout.CommandInk : ClassicCommandListLayout.UnavailableInk);
+        list.SetItemDisabled(row, !available);
+    }
+
+    /// <summary>Client actions follow the client's state while shown: grey and disabled, with the client's reason, when they cannot run.</summary>
+    private void RefreshActions()
+    {
+        if (_world == null || !IsInstanceValid(_world) || _entries == null || !IsVisibleInTree()) return;
+        for (int i = 0; i < _shown.Count && i < _entries.ItemCount; i++)
+        {
+            if (_shown[i].Entry != null) continue;
+            var state = NativeGenieCommands.StateOf(_world, _shown[i].Id);
+            if (_actionStates.TryGetValue(i, out var last) && last == state) continue;
+            _actionStates[i] = state;
+            Mark(_entries, i, state.Enabled);
+            _entries.SetItemTooltip(i, state.Tooltip);
+            if (!state.Enabled && _entries.IsSelected(i)) _entries.Deselect(i);
+        }
+    }
+
+    private void RunAction(int index)
+    {
+        if (_world == null || !IsInstanceValid(_world) || index < 0 || index >= _shown.Count || _shown[index].Entry != null) return;
+        NativeGenieCommands.Run(_world, _shown[index].Id);
+        RefreshActions();
     }
 
     private void Art(Rect2 rect, Rect2 source, string name)

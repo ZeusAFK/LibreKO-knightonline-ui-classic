@@ -75,6 +75,36 @@ public static class ClassicCommandListLayout
     public const float FocusOutset = 2;
 
     /// <summary>
+    /// The window opens at the right screen edge (the client's 12 px HUD margin), vertically centred. HUD on the
+    /// right half shapes the spot: short or wide parts (the clock and icons at the top, Info, the taskbar) bound the
+    /// column above or below and the window stays centred between them; narrow parts that reach into the middle of
+    /// the screen (a long party list, the Genie quick panel) put the window beside them, on their left. When nothing
+    /// fits, it stays centred at the edge.
+    /// </summary>
+    public static Vector2 OpenSpot(Vector2 screen, Vector2 size, IReadOnlyList<Rect2> hud)
+    {
+        var right = hud.Where(r => r.HasArea() && r.End.X > screen.X / 2 && r.Size.X * r.Size.Y < screen.X * screen.Y * .4f).ToList();
+        bool Beside(Rect2 r) => r.Size.X <= NarrowHud && r.Size.Y > ShortHud && r.Position.Y < screen.Y * .75f && r.End.Y > screen.Y * .25f;
+        float centre = Mathf.Floor((screen.Y - size.Y) / 2);
+        float x = screen.X - Edge - size.X, y = centre;
+        for (int pass = 0; pass <= right.Count; pass++)
+        {
+            float top = Edge, bottom = screen.Y - Edge;
+            foreach (var r in right.Where(r => !Beside(r) && r.Position.X < x + size.X && r.End.X > x))
+                if (r.GetCenter().Y < screen.Y / 2) top = Mathf.Max(top, r.End.Y + Gap);
+                else bottom = Mathf.Min(bottom, r.Position.Y - Gap);
+            y = bottom - top >= size.Y ? Mathf.Clamp(centre, top, bottom - size.Y) : centre;
+            var spot = new Rect2(x, y, size);
+            var blocking = right.Where(r => Beside(r) && r.Intersects(spot)).ToList();
+            if (blocking.Count == 0) break;
+            x = blocking.Min(r => r.Position.X) - Gap - size.X;
+        }
+        return new Vector2(Mathf.Floor(Mathf.Clamp(x, 0, Mathf.Max(0, screen.X - size.X))), Mathf.Floor(Mathf.Clamp(y, 0, Mathf.Max(0, screen.Y - size.Y))));
+    }
+
+    public const float Edge = 12, Gap = 6, NarrowHud = 260, ShortHud = 100;
+
+    /// <summary>
     /// Presentation groups. The client's catalog keeps its own six groups; the Classic list regroups its entries
     /// by what they do. Each entry names client command ids (<c>CommandId</c> member names); a group title
     /// that is a client group name keeps the client's text. Commands the client adds later and this table does
@@ -91,6 +121,9 @@ public static class ClassicCommandListLayout
         new("Party", "Party", new[] { "Party", "QuitParty", "SeekingParty", "BlockParty", "AllowParty" }),
         new("Clan", "Clan", new[] { "JoinClan", "QuitClan", "BanFromClan", "AppointVice", "ClanChat", "ClanNotice", "ClanWar", "Surrender", "ClanCommand", "ClanBattle", "ClanKick" }),
         new("Knights", "Knights", new[] { "Confederacy", "QuitKnights", "BanKnights", "Report" }),
+        // The original's Guardian Monster category (7805, between Knights and King) held the orders for a helper that
+        // fights for the player; the Genie takes that place. Its rows are client actions, not slash commands.
+        new("Genie", null, new[] { "GenieWindow", "GenieStart", "GenieStop", "GenieSpirit" }),
         new("King", "King", new[] { "RoyalOrder", "Prize", "ExperiencePoint", "DropRate", "Rain", "Clear" }),
     };
 }
