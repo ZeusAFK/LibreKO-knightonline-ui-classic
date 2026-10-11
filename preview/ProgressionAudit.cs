@@ -242,6 +242,8 @@ public partial class Preview
         {
             var (world, window, panel) = Open("BuildGenieUiPreview", view);
             var layer = (CanvasLayer)DetailField(world, "_genieLayer")!; world.RemoveChild(layer); AddChild(layer);
+            // The genie quick panel on the same layer gets its Classic box as the live overlay check gives it.
+            NativeOverlays.PrepareLater(world);
             await Frames();
             var slots = Enumerable.Range(0, 24).Select(i => Named<Button>(panel, "genie_slot_" + i)).ToArray();
             Require(slots.All(s => s.Size == new Vector2(36, 36) && s.GetThemeStylebox("normal") is StyleBoxTexture), view + " 24 skill slots on Classic cells");
