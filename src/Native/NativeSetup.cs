@@ -39,6 +39,7 @@ public static partial class NativeSetup
         RegisterMapFortune(context);
         RegisterBoards(context);
         RegisterOverlays(context);
+        RegisterQuestHud(context);
         NativeWindows.Register(context.Ui);
     }
 
@@ -64,6 +65,7 @@ public static partial class NativeSetup
         NativeWindows.Reset();
         NativeHud.Reset();
         NativeOverlays.Reset();
+        NativeQuestHud.Reset();
         NativeLayout.Reset();
         FamiliarBar.Reset();
         NativeGame.Reset();
@@ -101,4 +103,5 @@ public static partial class NativeSetup
     static partial void RegisterMapFortune(PluginContext context);
     static partial void RegisterBoards(PluginContext context);
     static partial void RegisterOverlays(PluginContext context);
+    static partial void RegisterQuestHud(PluginContext context);
 }

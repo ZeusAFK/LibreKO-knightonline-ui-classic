@@ -74,7 +74,7 @@ public partial class Preview
         {
             if(OS.GetCmdlineUserArgs().Contains("showcase-details") && id=="npc_dialog") continue;
             var model=new World();
-            string caption=id switch { "presets"=>"Presets","titles"=>"Titles","quests"=>"Quests","character_clan_details"=>"Knights Management","clanpoint"=>"Clan Contribution","quest_target"=>"Target","quest_receipt"=>"Reward","quest_available"=>"Quest available","npc_dialog"=>"Quest","userinfo"=>"User Information",_=>id };
+            string caption=id switch { "presets"=>"Presets","titles"=>"Titles","quests"=>"Quests","character_clan_details"=>"Knights Management","clanpoint"=>"Clan Contribution","quest_target"=>"Target","quest_receipt"=>"Reward","npc_dialog"=>"Quest","userinfo"=>"User Information",_=>id };
             var panel=new HudWindow(id,caption,new Vector2(40,40),persistLayout:false);
             var body=panel.Body;
             character.Visible=CharacterPageRouter.Supports(id);
@@ -178,19 +178,6 @@ public partial class Preview
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
                 typeof(World).GetField("_questReceiptWindow",BindingFlags.NonPublic|BindingFlags.Instance)!.SetValue(model,panel);
             }
-            else if(id=="quest_available")
-            {
-                DetailCall(model,"EnsureQuestNotificationWindow");
-                var built=(HudWindow)DetailField(model,"_questNotificationWindow")!;
-                var notifications=(List<QuestView>)DetailField(model,"_questNotifications")!;
-                for(int i=0;i<43;i++) notifications.Add(new QuestView(62+i,1,21,true,true,false,false,QuestViewState.Available,0,
-                    i==0?"A New Beginning":"Daily Supply Delivery","Speak to the guards.",i==0?"Welcome to Moradon. Help the guards protect the village.":string.Join(" ",Enumerable.Repeat("The guards need help delivering supplies before the next battle.",4)),new QuestObjectives(62+i,false,[]),[],[],i==0?["Tell me more","I will help","Not now"]:["I will bring the supplies"]));
-                for(int index=1;index<=3;index++) notifications[index]=notifications[index] with { State=index==1?QuestViewState.InProgress:index==2?QuestViewState.Claimable:QuestViewState.Completed };
-                DetailCall(model,"RefreshQuestNotification");
-                panel.Title=$"Quests available (1 of {notifications.Count})";
-                foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
-                typeof(World).GetField("_questNotificationWindow",BindingFlags.NonPublic|BindingFlags.Instance)!.SetValue(model,panel);
-            }
             else if(id=="npc_dialog")
             {
                 panel.Title="Defeat the Monsters of Moradon";
@@ -245,7 +232,7 @@ public partial class Preview
             if(id=="character_clan_details") ((Label)DetailField(model,"_clanNoticeLbl")!).Text=string.Join(" ",Enumerable.Repeat("Prepare for the next war. Meet at Moradon.",5));
             panel.Position=new Vector2(40,40);
             await ToSignal(GetTree().CreateTimer(.5),SceneTreeTimer.SignalName.Timeout);
-            if(composed is ClassicDetailPanel && id is "npc_dialog" or "quest_available" or "quest_receipt")
+            if(composed is ClassicDetailPanel && id is "npc_dialog" or "quest_receipt")
             {
                 var expected=((GetViewportRect().Size-panel.Size)/2).Floor();
                 if(panel.Position!=expected) throw new Exception(id+": content window did not open at the screen centre");
@@ -363,40 +350,6 @@ public partial class Preview
                 }
                 GD.Print("NPC_STATUS_INK_OK: available, in progress, ready, completed");
                 await CaptureNpcFixtures(model,(ClassicNpcDialogue)composed,prefix,output,measurements);
-            }
-            if(id=="quest_available")
-            {
-                var anchor=panel.Position;
-                foreach(var label in Descendants(body).OfType<Label>().Where(l=>l.HasMeta("quest_status")))
-                    if(label.GetThemeColor("font_color")!=ClassicQuestStatus.Ink((QuestViewState)label.GetMeta("quest_status").AsInt32())) throw new Exception("Initial notification status colour is incorrect");
-                var initialHeight=panel.Size.Y;
-                var arrows=Descendants(body).OfType<Button>().Where(b=>b.TooltipText is "Previous quest" or "Next quest").Select(b=>b.GlobalPosition).ToArray();
-                DetailCall(model,"StepQuestNotification",1);
-                await ToSignal(GetTree().CreateTimer(.3),SceneTreeTimer.SignalName.Timeout);
-                if(panel.Position!=anchor || !arrows.SequenceEqual(Descendants(body).OfType<Button>().Where(b=>b.TooltipText is "Previous quest" or "Next quest").Select(b=>b.GlobalPosition))) throw new Exception("Notification paging moved its top edge or arrows");
-                if(panel.Size.Y==initialHeight) throw new Exception("Notification height did not follow different content");
-                GD.Print("QUEST_PAGING_ANCHOR_OK");
-                if(!Descendants(body).OfType<Label>().Any(l=>l.Text=="Daily Supply Delivery")) throw new Exception("Native notification paging failed");
-                await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
-                GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-quest-notification-next.png"));
-                for(int step=0;step<12;step++)
-                {
-                    DetailCall(model,"StepQuestNotification",1);
-                    if(Descendants(body).OfType<Button>().Any(b=>!b.HasMeta("classic_npc_plate") || b.GetThemeStylebox("normal") is not StyleBoxEmpty))
-                        throw new Exception("A freshly paged notification exposed its default style");
-                    await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
-                    foreach(var label in Descendants(body).OfType<Label>().Where(l=>l.HasMeta("quest_status")))
-                        if(label.GetThemeColor("font_color")!=ClassicQuestStatus.Ink((QuestViewState)label.GetMeta("quest_status").AsInt32())) throw new Exception("First-frame notification status colour is incorrect");
-                    if(panel.Position!=anchor || !arrows.SequenceEqual(Descendants(body).OfType<Button>().Where(b=>b.TooltipText is "Previous quest" or "Next quest").Select(b=>b.GlobalPosition)))
-                        throw new Exception("First-frame notification geometry moved its paging controls");
-                }
-                GD.Print("QUEST_PAGING_FIRST_FRAME_OK: 12 page transitions");
-                await ToSignal(GetTree().CreateTimer(.3),SceneTreeTimer.SignalName.Timeout);
-                if(panel.Position!=anchor) throw new Exception("Rapid quest paging moved the window");
-                panel.Visible=false;panel.Position=Vector2.Zero;panel.Visible=true;
-                await ToSignal(GetTree().CreateTimer(.5),SceneTreeTimer.SignalName.Timeout);
-                if(panel.Position!=((GetViewportRect().Size-panel.Size)/2).Floor()) throw new Exception("Notification did not reopen at the centre");
-                GD.Print("QUEST_DYNAMIC_REOPEN_OK");
             }
             if(id=="character_clan_details")
             {
