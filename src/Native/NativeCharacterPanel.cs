@@ -91,7 +91,9 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
         {
             if (Native.Get<IDictionary>(w, "_characterPages") is { } pages)
                 foreach (var content in pages.Values.OfType<Control>()) content.Visible = false;
-            Net.I.SendQuestLogRequest();
+            // Quest Details showing means the client's journal is open and kept current by its quest events;
+            // reloading the log there would only clear it until the server answers.
+            if (Native.Call(w, "MainWindowOpen", "Quests") is not true) Net.I.SendQuestLogRequest();
         }
         else Call(w, "ShowCharacterPage", Page(page == ClanKey ? ClanPage : page == FriendsKey ? FriendsPage : 0));
         SyncClanContent(w);
