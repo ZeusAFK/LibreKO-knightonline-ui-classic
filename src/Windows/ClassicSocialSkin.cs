@@ -184,35 +184,25 @@ public static class ClassicSocialStyle
     public static void Button(Button button)
     {
         if (IconOnly(button)) { Cell(button); return; }
-        bool tab = button.ToggleMode && button.ButtonGroup != null && button.GetParent() is HBoxContainer;
-        if (tab) ClassicDesign.StyleButton(button, true);
-        else ClassicVendorSkin.Button(button, Plugin.Kit.Layout("co_change_bill_us").Find("btn_ok")!);
+        ClassicVendorSkin.Button(button, Plugin.Kit.Layout("co_change_bill_us").Find("btn_ok")!);
         Pad(button);
         Font(button, true, ClassicSocialLayout.FontSize);
         button.Icon = null; button.FocusMode = Control.FocusModeEnum.None; button.ClipText = false;
         button.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
         button.CustomMinimumSize = new Vector2(Math.Max(button.CustomMinimumSize.X, 0), ClassicSocialLayout.ActionHeight);
         foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color" })
-            button.AddThemeColorOverride(state, tab ? ClassicDesign.Heading : ButtonInk);
+            button.AddThemeColorOverride(state, ButtonInk);
         button.AddThemeColorOverride("font_disabled_color", ButtonDisabledInk);
-        if (tab)
-        {
-            // A selected tab reads pressed in both nations; the others keep the plain tab art.
-            button.AddThemeColorOverride("font_color", ClassicDesign.Muted);
-            button.AddThemeColorOverride("font_pressed_color", ClassicDesign.Heading);
-            button.AddThemeColorOverride("font_hover_pressed_color", ClassicDesign.Heading);
-        }
-        else if (button.ToggleMode)
-        {
-            // Toggle choices (leader transfer) are list rows: the picked one carries the gold selection line.
-            foreach (var state in new[] { "normal", "hover", "disabled" }) button.AddThemeStyleboxOverride(state, RowBox(false));
-            foreach (var state in new[] { "pressed", "hover_pressed" }) button.AddThemeStyleboxOverride(state, RowBox(true));
-            button.AddThemeColorOverride("font_color", ClassicDesign.Text);
-            button.AddThemeColorOverride("font_hover_color", ClassicDesign.Heading);
-            button.AddThemeColorOverride("font_pressed_color", ClassicDesign.Heading);
-            button.AddThemeColorOverride("font_hover_pressed_color", ClassicDesign.Heading);
-            button.Alignment = HorizontalAlignment.Left;
-        }
+        if (!button.ToggleMode) return;
+        // Tabs and toggle choices (leader transfer) read like the Messenger's list rows on the dark frame of both
+        // nations: the selected one carries the gold selection line, the others the row rule.
+        foreach (var state in new[] { "normal", "hover", "disabled" }) button.AddThemeStyleboxOverride(state, RowBox(false));
+        foreach (var state in new[] { "pressed", "hover_pressed" }) button.AddThemeStyleboxOverride(state, RowBox(true));
+        button.AddThemeColorOverride("font_color", ClassicDesign.Text);
+        button.AddThemeColorOverride("font_hover_color", ClassicDesign.Heading);
+        button.AddThemeColorOverride("font_pressed_color", ClassicDesign.Heading);
+        button.AddThemeColorOverride("font_hover_pressed_color", ClassicDesign.Heading);
+        button.Alignment = button.GetParent() is HBoxContainer ? HorizontalAlignment.Center : HorizontalAlignment.Left;
     }
 
     /// <summary>Captions keep the Messenger buttons' side room instead of touching the art's end caps.</summary>

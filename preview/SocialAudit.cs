@@ -166,6 +166,7 @@ public partial class Preview
             await Capture(window, "command-list-group");
             Done(opened);
         }
+        await CaptureSocialPrompts(nation, output, Require, Frames, screens);
         System.IO.File.WriteAllText(output + "/" + prefix + "-social.json", JsonSerializer.Serialize(new { nation, checks, screens }, new JsonSerializerOptions { WriteIndented = true }));
         GD.Print("SOCIAL_AUDIT_OK " + prefix + " " + checks.Count + " checks / " + screens.Count + " screens");
         await Frames(); offline.Free();

@@ -197,6 +197,33 @@ public static class NativeWhispers
         window.Id.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) && Native.WorldOf(window) is { } world
         && Native.Get<CanvasLayer>(world, "_whisperLayer") is { } layer && window.GetParent() == layer;
 
+    private static Type? ChatSystemType => Native.ClientType("LibreKO.ChatSystem");
+
+    /// <summary>A whisper line as the client's chat renders it: item links and emoticons in BBCode.</summary>
+    public static string Render(string text, string hex) =>
+        ChatSystemType is { } type && Native.Call(type, "RenderText", text, hex) is string rendered ? rendered : $"[color=#{hex}]{ClassicChatFormat.Esc(text)}[/color]";
+
+    /// <summary>A whisper line without markup: item links become their bracketed names.</summary>
+    public static string Plain(string text) => ChatSystemType is { } type && Native.Call(type, "PlainText", text) is string plain ? plain : text;
+
+    /// <summary>Shows the item tooltip of a clicked item link.</summary>
+    public static void ShowLink(Variant meta)
+    {
+        if (ChatSystemType is { } type && Native.Call(type, "ItemOf", meta) is int itemId && itemId > 0) NativeChat.ShowLinkTooltip(itemId);
+    }
+
+    /// <summary>
+    /// Styles the popups the client opens for its whisper windows (size and transparency, the emoticon and
+    /// emoji picker) as they are created; they live on the whisper layer, outside the windows.
+    /// </summary>
+    public static void StylePopups(HudWindow window, Action<PopupPanel> style)
+    {
+        if (window.GetParent() is not CanvasLayer layer || layer.HasMeta("classic_whisper_popups")) return;
+        layer.SetMeta("classic_whisper_popups", true);
+        foreach (var popup in layer.GetChildren().OfType<PopupPanel>()) style(popup);
+        layer.ChildEnteredTree += node => { if (node is PopupPanel popup) Callable.From(() => { if (GodotObject.IsInstanceValid(popup)) style(popup); }).CallDeferred(); };
+    }
+
     /// <summary>The conversation that Enter focuses, if any.</summary>
     public static string? ComposeTarget(World world) => _states.GetOrCreateValue(world).ComposeTarget;
 
@@ -209,7 +236,7 @@ public static class NativeWhispers
     private static object? Conversation(World world, string name) =>
         Native.Get<System.Collections.IDictionary>(world, "_whispers") is { } chats && chats.Contains(name) ? chats[name] : null;
 
-    internal static void Prepare(HudWindow window, World world)
+    public static void Prepare(HudWindow window, World world)
     {
         string name = window.Id[Prefix.Length..];
         var state = _states.GetOrCreateValue(world);

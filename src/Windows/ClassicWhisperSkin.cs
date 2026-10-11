@@ -1,5 +1,6 @@
 using Godot;
 using KnightOnlineUiClassic.Layout;
+using KnightOnlineUiClassic.Native;
 using LibreKO;
 
 namespace KnightOnlineUiClassic.Windows;
@@ -30,6 +31,9 @@ public static class ClassicWhisperSkin
         var nativeGrip=Descendants(header).OfType<HBoxContainer>().First();
         string name=Descendants(header).OfType<Label>().First(label=>label.Text!="◆").Text;
         var nativeClose=Descendants(header).OfType<Button>().Last();
+        // The client's header actions (player menu, size and transparency, whisper block) sit before its
+        // minimize and close buttons; they move onto the original title bar with their callbacks.
+        var actions=Descendants(header).OfType<Button>().Where(b=>b.Icon!=null && b!=nativeClose && b.TooltipText is not ("Minimize" or "Restore")).ToArray();
         var scroll=Descendants(window.Body).OfType<ScrollContainer>().First();
         var input=Descendants(window.Body).OfType<LineEdit>().First();
         var nativeSend=Descendants(window.Body).OfType<Button>().First();
@@ -56,7 +60,7 @@ public static class ClassicWhisperSkin
             title.ClipText=true;
             title.TextOverrunBehavior=TextServer.OverrunBehavior.TrimEllipsis;
             title.Position=new Vector2(view==expanded ? 8:6,2);
-            title.Size=new Vector2(view==expanded ? 216:94,20);
+            title.Size=new Vector2(view==expanded ? 216-actions.Length*ClassicWhisperLayout.ActionPitch:94,20);
             title.AddThemeColorOverride("font_outline_color",Colors.Black);
             title.AddThemeConstantOverride("outline_size",1);
             var grip=view.Get("btn_bar")!;
@@ -98,6 +102,26 @@ public static class ClassicWhisperSkin
         compact.AddChild(compactClose);
         compactClose.Pressed+=()=>nativeClose.EmitSignal(BaseButton.SignalName.Pressed);
 
+        for(int i=0;i<actions.Length;i++)
+        {
+            var action=actions[i];
+            action.Reparent(expanded,keepGlobalTransform:false);
+            action.Name="whisper_action_"+i;
+            action.CustomMinimumSize=Vector2.Zero;
+            action.Position=ClassicWhisperLayout.Action(i,actions.Length).Position;
+            action.Size=ClassicWhisperLayout.Action(i,actions.Length).Size;
+            action.AddThemeConstantOverride("icon_max_width",12);
+            action.ExpandIcon=false;
+            action.IconAlignment=HorizontalAlignment.Center;
+            action.AddThemeStyleboxOverride("normal",new StyleBoxEmpty());
+            var hover=new StyleBoxFlat { BgColor=new Color(1,1,1,.16f) };
+            foreach(var state in new[]{"hover","pressed","hover_pressed"}) action.AddThemeStyleboxOverride(state,hover);
+            action.AddThemeStyleboxOverride("focus",new StyleBoxEmpty());
+            // Header icons keep the original cyan of the title; the block toggle keeps the client's red or green state.
+            if(!action.HasThemeColorOverride("icon_normal_color")) action.AddThemeColorOverride("icon_normal_color",new Color("00ffff"));
+            action.AddThemeColorOverride("icon_hover_color",Colors.White);
+        }
+        NativeWhispers.StylePopups(window,Popup);
         var attention=new ClassicWhisperAttention(compactBar,compact.Get<Label>("exit_id")!);
         surface.AddChild(attention);
         window.AttentionStyler=attention.SetUnread;
@@ -123,8 +147,9 @@ public static class ClassicWhisperSkin
         input.Position=edit.Position;
         input.PlaceholderText="";
         var textStyle=edit.Strings.First();
+        // The client's emoticon button sits inside the right end of the input; the text stops before it.
         foreach(var state in new[]{"normal","focus","read_only"})
-            input.AddThemeStyleboxOverride(state,new StyleBoxEmpty { ContentMarginTop=textStyle.Y-edit.Y });
+            input.AddThemeStyleboxOverride(state,new StyleBoxEmpty { ContentMarginTop=textStyle.Y-edit.Y,ContentMarginRight=ClassicWhisperLayout.EmoticonRoom });
         input.AddThemeFontOverride("font",kit.ChatStrong);
         input.AddThemeFontSizeOverride("font_size",13);
         input.AddThemeColorOverride("font_color",textStyle.Color);
@@ -175,11 +200,40 @@ public static class ClassicWhisperSkin
         Refresh();
     }
 
+    /// <summary>The client's size and transparency popup and its emoticon picker on the Classic menu panel.</summary>
+    public static void Popup(PopupPanel popup)
+    {
+        if(popup.HasMeta("classic_popup")) return;
+        popup.SetMeta("classic_popup",true);
+        var panel=ClassicDesign.InputBox(); panel.BgColor=new Color(0,0,0,.94f); panel.SetContentMarginAll(6);
+        popup.AddThemeStyleboxOverride("panel",panel);
+        ClassicSocialStyle.Apply(popup);
+    }
+
     public static Control Line(string name,bool mine,bool notice,string text)
     {
         var source=Plugin.Kit.Layout("co_whisper_open_us").Find("exit_chat")!;
+        string ink=notice ? "ffff00":mine ? "ffffff":"80ffff";
+        // Item links and emoticons render as in the client's chat; other lines keep the plain Classic label.
+        string rendered=NativeWhispers.Render(text,ink);
+        if(rendered.Contains("[url") || rendered.Contains("[img"))
+        {
+            var rich=new RichTextLabel {
+                BbcodeEnabled=true,FitContent=true,ScrollActive=false,MetaUnderlined=false,Text=rendered,
+                AutowrapMode=TextServer.AutowrapMode.WordSmart,SizeFlagsHorizontal=Control.SizeFlags.ExpandFill,
+                CustomMinimumSize=new Vector2(source.W,0),MouseFilter=Control.MouseFilterEnum.Pass,
+                HorizontalAlignment=mine && !notice ? HorizontalAlignment.Right:HorizontalAlignment.Left,
+            };
+            rich.AddThemeFontOverride("normal_font",Plugin.Kit.ChatStrong);
+            rich.AddThemeFontSizeOverride("normal_font_size",13);
+            rich.AddThemeColorOverride("font_outline_color",Colors.Black);
+            rich.AddThemeConstantOverride("outline_size",1);
+            rich.MetaClicked+=meta=>NativeWhispers.ShowLink(meta);
+            rich.MetaHoverEnded+=_=>NativeChat.HideLinkTooltip();
+            return rich;
+        }
         var label=new Label {
-            Text=text,
+            Text=NativeWhispers.Plain(text),
             HorizontalAlignment=mine && !notice ? HorizontalAlignment.Right:HorizontalAlignment.Left,
             AutowrapMode=TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal=Control.SizeFlags.ExpandFill,
@@ -188,7 +242,7 @@ public static class ClassicWhisperSkin
         label.AddThemeFontOverride("font",Plugin.Kit.ChatStrong);
         label.AddThemeFontSizeOverride("font_size",13);
         // Keep the original cyan private-channel color for incoming messages.
-        label.AddThemeColorOverride("font_color",new Color(notice ? "ffff00":mine ? "ffffff":"80ffff"));
+        label.AddThemeColorOverride("font_color",new Color(ink));
         label.AddThemeColorOverride("font_outline_color",Colors.Black);
         label.AddThemeConstantOverride("outline_size",1);
         label.AddThemeColorOverride("font_shadow_color",Colors.Black);

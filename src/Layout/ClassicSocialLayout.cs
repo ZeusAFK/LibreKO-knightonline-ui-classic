@@ -43,6 +43,17 @@ public static class ClassicSocialLayout
     public static Vector2 Frame(Vector2 content) =>
         new(Mathf.Max(MinimumWidth, Mathf.Ceil(content.X + Inset * 2)), Mathf.Ceil(content.Y + ContentTop + Inset));
 
-    /// <summary>Commander order slots: the original 32 x 32 skill cell inside its 40 x 40 socket.</summary>
-    public const float CommanderSlot = 40;
+    /// <summary>Player menu: the Classic menu panel, one 22 px row per action under the player's name.</summary>
+    public const float MenuWidth = 150, MenuRow = 22, MenuInset = 6;
+    public const int MenuPadding = 4;
+
+    /// <summary>
+    /// Text prompt on the original message box: title band, the message at its wrapped height, the original
+    /// edit field (Edit_Common, 173 x 23) 8 px under it, then the OK and Cancel art with the common gaps.
+    /// </summary>
+    public const float PromptLine = 18;
+    public static Rect2 PromptText(float height) => ClassicOverlayLayout.Message.TextAt(ClassicOverlayLayout.Message.TextTop, height);
+    public static Rect2 PromptEdit(float text) => new(77, ClassicOverlayLayout.Message.TextTop + text + 8, 173, 23);
+    public static Vector2 PromptSize(float text) =>
+        new(ClassicOverlayLayout.Message.Width, ClassicOverlayLayout.Message.HeightFor(PromptEdit(text).End.Y - ClassicOverlayLayout.Message.TextTop));
 }
