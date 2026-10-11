@@ -16,7 +16,6 @@ public static class NativeCharacterNpc
         ("npc_dialog", KeepContentAnchor),
         ("quest_available", KeepContentAnchor),
         ("quest_receipt", KeepContentAnchor),
-        ("party", NativeParty.PrepareRoster),
         ("seek_party", NativeParty.PrepareBoard),
     };
 

@@ -146,6 +146,8 @@ public sealed class NativeServiceWindows : IGameWindows
         ["shoppingmall"] = ("_pusShown", "ToggleShoppingMall", null),
         ["zonemap"] = ("_fullMapShown", "ToggleFullMap", null),
         ["genie"] = ("_genieShown", "ToggleGenie", "CloseGenie"),
+        // The party window is gone; the taskbar's party button opens the party board, which loads its list on open.
+        ["seek_party"] = ("_seekShown", "ToggleSeekParty", null),
     };
 
     private bool Service(string id, out (string Shown, string Toggle, string? Close) service) =>

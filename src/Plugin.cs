@@ -17,6 +17,7 @@ public sealed class Plugin : IPlugin
         ui.ReplaceHud(HudPart.Hotbar, () => new NationHud(() => new HotkeyBar()));
         ui.ReplaceHud(HudPart.Chat, () => new NationHud(() => new ChatWindow()));
         ui.ReplaceHud(HudPart.CombatLog, () => new NationHud(() => new LogWindow()));
+        ui.ReplaceHud(HudPart.Party, () => new NationHud(() => new ClassicPartyHud(Kit.Game.Party, () => NativeHudChat.World)));
         NativeHud.StyleWhispers(ClassicWhisperSkin.Apply, ClassicWhisperSkin.Line);
         ui.HideHud(HudPart.MiniMap);
         ui.HideHud(HudPart.Launcher);
@@ -48,6 +49,9 @@ public sealed class Plugin : IPlugin
         ClassicWorldOverlays.Register();
         ui.ExtendWindow("pethatch", ClassicPetHatchSkin.Extend);
         foreach(var id in ClassicCommunicationSkin.WindowIds)ui.ExtendWindow(id,ClassicCommunicationSkin.Extend);
+        ClassicSocialSkin.Register(ui);
+        ui.ReplacePlayerMenu(request => new ClassicPlayerMenu(request));
+        ui.ReplaceTextInput(request => new ClassicTextPrompt(request));
         foreach(var id in ClassicMailSkin.WindowIds)ui.ExtendWindow(id,ClassicMailSkin.Extend);
         foreach(var id in ClassicCouncilRate.WindowIds)ui.ExtendWindow(id,ClassicCouncilRate.Extend);
         foreach(var id in ClassicSiegeSkin.WindowIds)ui.ExtendWindow(id,ClassicSiegeSkin.Extend);
@@ -64,7 +68,6 @@ public sealed class Plugin : IPlugin
         ui.ExtendWindow("exchange", ClassicExchangeSkin.Extend);
         ui.ExtendWindow("anvil", ClassicAnvilSkin.Extend);
         ui.ExtendWindow("anvil_choice", ClassicAnvilChoice.Extend);
-        ui.ExtendWindow("party", ClassicPartySkin.Extend);
         ui.ExtendWindow("seek_party", ClassicPartySkin.Extend);
         foreach(var id in ClassicProgressionSkin.WindowIds)ui.ExtendWindow(id,ClassicProgressionSkin.Extend);
         foreach (var id in CharacterDetailsSkin.WindowIds)

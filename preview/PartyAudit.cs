@@ -3,6 +3,7 @@ using LibreKO;
 using LibreKO.Network;
 using KnightOnlineUiClassic;
 using KnightOnlineUiClassic.Windows;
+using KnightOnlineUiClassic.Layout;
 using System.Reflection;
 using System.Text.Json;
 
@@ -22,22 +23,25 @@ public partial class Preview
         Call("BuildPartyPanel");
         Field<CanvasLayer>("_partyLayer").Reparent(this);
         Field<CanvasLayer>("_partyDialogLayer").Reparent(this);
-        var roster=new HudWindow("party","Party",new Vector2(26,30),252);AddChild(roster);
-        roster.Body.AddChild(Field<VBoxContainer>("_partyContent"));
+        // The party window is gone upstream: the Classic party list replaces the client's party HUD and is
+        // driven by the plugin party API the client's bridge implements.
+        typeof(World).GetField("_myId",BindingFlags.NonPublic|BindingFlags.Instance)!.SetValue(world,300);
+        Call("BuildPartyHud"); Call("PluginSocialInit"); net.Vitals.Seed(3100,3400,2500,2800);
+        var hudLayer=new CanvasLayer{Layer=64};AddChild(hudLayer);
+        var partyPanel=new ClassicPartyHud(LibreKO.Plugins.PluginHost.Game.Party,()=>world);hudLayer.AddChild(partyPanel);
         Call("BuildSeekPartyPanel");Field<CanvasLayer>("_seekLayer").Reparent(this);
         var board=Field<Control>("_seekPanel");board.Position=new Vector2(222,30);board.Visible=true;
         typeof(World).GetField("_seekShown",BindingFlags.NonPublic|BindingFlags.Instance)!.SetValue(world,true);
-        NativeCharacterNpc.Prepare(roster,world); NativeCharacterNpc.Prepare((HudWindow)board,world);
-        ClassicPartySkin.Apply(roster.Body); ClassicPartySkin.Apply(((HudWindow)board).Body);
+        NativeCharacterNpc.Prepare((HudWindow)board,world);
+        ClassicPartySkin.Apply(((HudWindow)board).Body);
         await Settled();
-        var partyPanel=roster.GetNode<ClassicPartyRoster>("classic_party_roster");
         var boardPanel=board.GetNode<ClassicPartyBoard>("classic_party_board");
         var checks=new List<string>();var captures=new List<object>();string prefix=nation==1?"karus":"human";
         void Check(bool ok,string text){if(!ok)throw new Exception("PARTY_AUDIT: "+text);checks.Add(text);}
         async Task Capture(string state)
         {
             await Settled();
-            roster.Position=new Vector2(26,30); board.Position=new Vector2(222,30);
+            partyPanel.Position=new Vector2(26,30); board.Position=new Vector2(222,30); partyPanel.Refresh();
             await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
             foreach(var parent in new Control[]{partyPanel,boardPanel})
             {
@@ -50,19 +54,30 @@ public partial class Preview
                 }
             }
             Check(boardPanel.Size==new Vector2(320,481),state+": original BBS outer size");
-            foreach(var row in Field<VBoxContainer>("_partyMembersBox").GetChildren().OfType<Control>().Where(c=>c.HasMeta("party_id")))
-                Check(row.Size==new Vector2(131,45),state+": compact member bounds "+row.Size);
+            var shown=partyPanel.GetChildren().OfType<ClassicPartyHudRow>().Where(r=>r.Visible).ToArray();
+            Check(shown.Length==Net.I.Party.Count && partyPanel.Visible==(Net.I.Party.Count>0),state+": one original member cell per member, hidden without a party");
+            for(int i=0;i<shown.Length;i++)
+                Check(shown[i].GetRect()==ClassicPartyHudLayout.Row(i) && shown[i].Member.Name==Net.I.Party[i].Name,state+": member cell bounds "+shown[i].GetRect());
+            if(partyPanel.Visible) Check(partyPanel.Size==new Vector2(131,ClassicPartyHudLayout.Height(shown.Length)),state+": party list size "+partyPanel.Size);
             using var image=GetViewport().GetTexture().GetImage();image.SavePng(output+"/"+prefix+"-"+state+".png");
             captures.Add(new{state,file=prefix+"-"+state+".png",rosterSize=partyPanel.Size.ToString(),boardSize=boardPanel.Size.ToString()});
         }
         var members=Enumerable.Range(0,8).Select(i=>new PartyMember(300+i,1,i==7?"LongCharacterName1234":new[]{"Knight","Priest","Rogue","Mage","Warrior","Healer","Archer","Scout"}[i],3400,3400-i*400,70+i,nation*100+1+i%4,2800,2800-i*300)).ToArray();
-        net.SeedPartyPreview(members);Call("RefreshPartyUI");
+        net.SeedPartyPreview(members);Call("RefreshPartyUI");await Settled();
+        Check(PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_leave").Text=="Disband","leader: Leave reads Disband");
         Call("OnBbsList",0,24,Enumerable.Range(0,10).Select(i=>new PartyBbsEntry(i==9?"LongPlayerName123456":"Player"+(i+1),nation*100+1+i%4,70+i,0,"",21,1,nation)).ToList());
         await Capture("full-party");
-        var list=Field<VBoxContainer>("_partyMembersBox");list.GetChildren().OfType<Control>().ElementAt(3).EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
-        Check(list.GetMeta("party_selected").AsInt32()==303,"left click selects an unavailable member without targeting a different entity");
+        partyPanel.GetNode<ClassicPartyHudRow>("party_member_3").EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
+        await Settled();
+        Check((int)typeof(World).GetField("_partyPick",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(world)! == 303,"left click picks the member natively without targeting a different entity");
+        Check(partyPanel.GetNode<ClassicPartyHudRow>("party_member_3").Member.Picked,"picked member carries the selection");
+        var meter=PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_meter");
+        Check(meter.Text=="Meter: Damage","row meter starts on damage dealt");
+        meter.EmitSignal(BaseButton.SignalName.Pressed);await Settled();
+        Check(net.PartyRowMeterMode==2 && meter.Text=="Meter: Healing","Meter runs the native row meter toggle");
         var statuses=(Dictionary<int,HashSet<byte>>)typeof(Net).GetField("_partyStatus",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(net)!;
-        statuses[302]=new HashSet<byte>{2,4};Call("RefreshPartyUI");
+        statuses[302]=new HashSet<byte>{2,4};Call("RefreshPartyUI");await Settled();
+        Check(partyPanel.GetNode<ClassicPartyHudRow>("party_member_2").Member.HpColour!=partyPanel.GetNode<ClassicPartyHudRow>("party_member_1").Member.HpColour,"status members show the native HP look");
         var seekRows=Field<VBoxContainer>("_seekListBox").GetChildren().OfType<Control>().ToArray();
         seekRows[2].EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
         await Capture("selected-status");
@@ -76,9 +91,19 @@ public partial class Preview
         PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Recruit").EmitSignal(BaseButton.SignalName.Pressed);
         await Capture("recruit-form");
         PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Recruit").EmitSignal(BaseButton.SignalName.Pressed);
+        PartyTree(boardPanel).OfType<Button>().Single(b=>b.Name=="seek_filter_toggle").EmitSignal(BaseButton.SignalName.Pressed);
+        await Capture("filters");
+        var filterPanel=PartyTree(boardPanel).OfType<Control>().Single(c=>c.Name=="seek_filter_panel");
+        Check(filterPanel.Visible && PartyTree(filterPanel).OfType<OptionButton>().Single().IsVisibleInTree() && PartyTree(filterPanel).OfType<CheckBox>().Count(c=>c.IsVisibleInTree())==2,"filter panel shows the native board filters");
+        var sameZone=PartyTree(filterPanel).OfType<CheckBox>().First();
+        sameZone.ButtonPressed=true;await Settled();
+        Check(((LibreKO.Domain.PartyBoardFilter)typeof(World).GetField("_seekFilter",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(world)!).SameZone,"filter check runs the native board filter");
+        sameZone.ButtonPressed=false;
+        PartyTree(boardPanel).OfType<Button>().Single(b=>b.Name=="seek_filter_toggle").EmitSignal(BaseButton.SignalName.Pressed);
         net.SeedPartyPreview(members.Take(2).ToArray());Call("RefreshPartyUI");await Capture("two-members");
         net.SeedPartyPreview();Call("RefreshPartyUI");Call("OnBbsList",0,0,new List<PartyBbsEntry>());await Capture("empty");
-        Check(PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Invite").Disabled,"empty: stale invite disabled");
+        Check(PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Private").Disabled,"empty: stale private message disabled");
+        Check(!PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Invite").Disabled,"empty: Invite stays available for invite by name");
         System.IO.File.WriteAllText(output+"/"+prefix+"-verification.json",JsonSerializer.Serialize(new{nation,checks,captures,pluginHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(ProjectSettings.GlobalizePath("res://../bin/KnightOnlineUiClassic.dll"))))},new JsonSerializerOptions{WriteIndented=true}));
         world.Free(); net.Free();
         GD.Print("PARTY_AUDIT_OK "+prefix+" "+checks.Count);

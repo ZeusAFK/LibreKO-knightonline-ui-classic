@@ -11,21 +11,20 @@ public static partial class NativeSetup
     static partial void RegisterCommunication(PluginContext context)
     {
         foreach (var id in NativeCommunication.WindowIds) NativeWindows.Prepare(id, NativeCommunication.Prepare);
+        NativeSocial.Register();
     }
 }
 
 /// <summary>
-/// Prepares the native mail, messenger and chat-room windows for the Classic skins: names the native
-/// controls, mirrors row state into the metas the skins read and keeps the Classic list behaviour
-/// (immediate row replacement, bounded room log, Classic drop-zone materials).
+/// Prepares the native mail and messenger windows for the Classic skins: names the native controls,
+/// mirrors row state into the metas the skins read and keeps the Classic list behaviour (immediate row
+/// replacement, Classic drop-zone materials). The nation chat rooms use the Classic social frame.
 /// </summary>
 public static class NativeCommunication
 {
-    public static readonly string[] WindowIds = { "mail", "mailread", "mailcompose", "messenger", "chatrooms" };
+    public static readonly string[] WindowIds = { "mail", "mailread", "mailcompose", "messenger" };
 
-    private const int RoomLogLines = 100;
     private const string MessengerEmptyText = "No one else online.";
-    private const string RoomsEmptyText = "No rooms yet — create one.";
 
     public static void Prepare(HudWindow window, World world)
     {
@@ -35,7 +34,6 @@ public static class NativeCommunication
             case "mailread": PrepareReader(window, world); break;
             case "mailcompose": PrepareCompose(window, world); break;
             case "messenger": PrepareMessenger(window, world); break;
-            case "chatrooms": PrepareRooms(window, world); break;
         }
     }
 
@@ -202,75 +200,6 @@ public static class NativeCommunication
         parts[2].Name = "communication_action";
     }
 
-    private static void PrepareRooms(HudWindow window, World world)
-    {
-        if (Prepared(window, "classic_communication_controls")) return;
-        var list = Native.Get<VBoxContainer>(world, "_chatRoomList");
-        var name = Native.Get<LineEdit>(world, "_chatRoomNameInput");
-        var status = Native.Get<Label>(world, "_chatRoomStatus");
-        var logScroll = Native.Get<ScrollContainer>(world, "_chatRoomLogScroll");
-        var log = Native.Get<VBoxContainer>(world, "_chatRoomLog");
-        var message = Native.Get<LineEdit>(world, "_chatRoomSayInput");
-        if (list == null || name == null || status == null || logScroll == null || log == null || message == null) return;
-        if (list.GetParent() is not ScrollContainer listScroll) return;
-        var create = name.GetParent().GetChildren().OfType<Button>().ToArray();
-        var say = message.GetParent().GetChildren().OfType<Button>().ToArray();
-        if (create.Length < 2 || say.Length < 2) return;
-        listScroll.Name = "rooms_scroll";
-        list.Name = "rooms_list";
-        name.Name = "rooms_name";
-        create[0].Name = "rooms_create";
-        create[1].Name = "rooms_refresh";
-        status.Name = "rooms_status";
-        logScroll.Name = "rooms_log_scroll";
-        log.Name = "rooms_log";
-        message.Name = "rooms_message";
-        say[0].Name = "rooms_send";
-        say[1].Name = "rooms_leave";
-        foreach (var row in list.GetChildren()) DescribeRoom(list, row);
-        foreach (var line in log.GetChildren()) DescribeLine(log, line);
-        NativeWindows.OnDescendantAdded(list, node => DescribeRoom(list, node));
-        NativeWindows.OnDescendantAdded(log, node => DescribeLine(log, node));
-        PrependReplyHandler("ChatRoomListEvent", "OnChatRoomList", world, () => DetachRows(list));
-        void RoomId() => window.SetMeta("communication_room_id", Native.Get<int>(world, "_chatRoomCurrentId"));
-        RoomId();
-        NativeWindows.Sync(window, RoomId);
-        window.SetMeta("classic_communication_controls", 1);
-    }
-
-    private static void DescribeRoom(VBoxContainer list, Node node)
-    {
-        if (node.GetParent() != list) return;
-        DetachQueued(list);
-        if (node is not PanelContainer row || row.GetChildCount() == 0 || row.GetChild(0) is not HBoxContainer line) return;
-        var parts = line.GetChildren().OfType<Control>().ToArray();
-        if (parts.Length < 3 || parts[0] is not Label name) return;
-        bool joined = parts[2] is Label;
-        row.SetMeta("communication_row", "room");
-        row.SetMeta("communication_selected", joined);
-        name.Name = "communication_name";
-        name.TooltipText = name.Text;
-        parts[1].Name = "communication_count";
-        parts[2].Name = joined ? "communication_state" : "communication_action";
-    }
-
-    private static void DescribeLine(VBoxContainer log, Node node)
-    {
-        if (node.GetParent() != log) return;
-        DetachQueued(log);
-        var live = log.GetChildren().Where(c => c != node).ToList();
-        while (live.Count >= RoomLogLines)
-        {
-            log.RemoveChild(live[0]);
-            live[0].QueueFree();
-            live.RemoveAt(0);
-        }
-        if (node is not HBoxContainer line || line.GetChildCount() < 2 || line.GetChild(0) is not Label author || line.GetChild(1) is not Label body) return;
-        author.Name = "communication_author";
-        author.TooltipText = author.Text.EndsWith(':') ? author.Text[..^1] : author.Text;
-        body.Name = "communication_body";
-    }
-
     /// <summary>Removes rows the client queued for deletion so a refreshed list never counts or lays out stale rows.</summary>
     internal static void DetachQueued(Node parent)
     {
@@ -299,20 +228,6 @@ public static class NativeCommunication
         Prepend(net, evt, handler, world, current, before);
     }
 
-    /// <summary>
-    /// Untyped form for a single-argument reply whose payload type is not referenced at compile time
-    /// (the client may no longer define it); the hook is bound to whatever <c>Action&lt;T&gt;</c> the event uses.
-    /// </summary>
-    private static void PrependReplyHandler(string evt, string handler, World world, Action before)
-    {
-        var net = Net.I;
-        if (net == null || !Native.TryGet<Delegate>(net, evt, out var current)) return;
-        var type = current.GetType();
-        if (!type.IsGenericType || type.GetGenericTypeDefinition() != typeof(Action<>)) return;
-        var relay = typeof(ReplyRelay).GetMethod(nameof(ReplyRelay.Run))!.MakeGenericMethod(type.GetGenericArguments());
-        Prepend(net, evt, handler, world, current, Delegate.CreateDelegate(type, new ReplyRelay(before), relay));
-    }
-
     private static void Prepend(Net net, string evt, string handler, World world, Delegate current, Delegate before)
     {
         var calls = current.GetInvocationList();
@@ -320,11 +235,6 @@ public static class NativeCommunication
         if (_replyHooks.TryGetValue(evt, out var previous)) calls = calls.Where(d => d != previous).ToArray();
         _replyHooks[evt] = before;
         Native.Set(net, evt, Delegate.Combine(calls.Prepend(before).ToArray()));
-    }
-
-    private sealed class ReplyRelay(Action before)
-    {
-        public void Run<T>(T _) => before();
     }
 
     private static readonly Dictionary<string, Delegate> _replyHooks = new();

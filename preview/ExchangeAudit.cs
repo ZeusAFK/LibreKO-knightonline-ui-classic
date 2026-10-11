@@ -30,7 +30,9 @@ public partial class Preview
 
         string output=ProjectSettings.GlobalizePath("res://../../research/trade-window-audit");System.IO.Directory.CreateDirectory(output);
 
-        foreach(string pack in new[]{"build/client/LibreKO.pck","build/client/source-content/knightonline.pck"})
+        // The runner loads the audit client pack; only the source content (item icons) comes from the build.
+
+        foreach(string pack in new[]{"build/client/source-content/knightonline.pck"})
 
             if(!ProjectSettings.LoadResourcePack(ProjectSettings.GlobalizePath("res://../../"+pack),false))throw new Exception("Missing pack "+pack);
 
@@ -64,6 +66,10 @@ public partial class Preview
 
         var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
 
+        // A trade request closes the vendor and the warehouse first; their quantity prompts exist in a running world.
+        foreach(string closer in new[]{"_tradePrompt","_whAmount"}){var quantity=new QuantityPrompt(76);world.AddChild(quantity);typeof(World).GetField(closer,BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(world,quantity);}
+        // The client subscribes its partner-offer handler at world start, before any plugin preparer.
+        net.ExchangeOtherAddEvent+=(item,count,dura,unique)=>DetailCall(world,"OnExchangeOtherAdd",item,count,dura,unique);
         NativeTrade.Prepare((HudWindow)DetailField(world,"_exPanel")!,world);
 
         CanvasLayer TradeLayer(string name)=>name switch{"_exRequestLayer"=>NativeTrade.RequestLayer(world)!,"_exFinalLayer"=>NativeTrade.FinalLayer(world)!,_=>(CanvasLayer)DetailField(world,name)!};
@@ -146,6 +152,8 @@ public partial class Preview
         }
 
         await Frames(20);await Capture("empty");
+        {var pairing=DetailField(world,"_bagPairing")!;Require(!(bool)pairing.GetType().GetField("_openedByCompanion",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(pairing)!,"The Classic trade carries its own bag grid; the inventory the client docked is closed again");}
+        Require(shell.GetNode<ClassicExchangeCell>("exchange_bag_0").Item?.ItemId==stack && shell.GetNode<ClassicExchangeCell>("exchange_bag_1").Item?.ItemId==single[0],"Carried grid shows the bag slots from the client inventory");
 
         foreach(var key in new[]{Key.Enter,Key.KpEnter}) {await KeyPress(key);await Frames(2);Require(!(bool)DetailField(world,"_exConfirmedByMe")!,"Enter never confirms empty trade: "+key);}
 
@@ -209,9 +217,9 @@ public partial class Preview
 
         for(int i=0;i<11;i++){DetailCall(world,"OfferSlotAmount",Inventory.GridStart+i+1,1);DetailCall(world,"OnExchangeAddResult",true);}
 
-        for(int i=0;i<12;i++)DetailCall(world,"OnExchangeOtherAdd",single[i],1,ItemData.MaxDurabilityOf(single[i]));
+        for(int i=0;i<12;i++)DetailCall(world,"OnExchangeOtherAdd",single[i],1,ItemData.MaxDurabilityOf(single[i]),0);
 
-        DetailCall(world,"OnExchangeOtherAdd",Net.ExchangeGoldItem,54321,(short)0);
+        DetailCall(world,"OnExchangeOtherAdd",Net.ExchangeGoldItem,54321,(short)0,0);
 
         await Capture("twelve-slots");
 
@@ -261,7 +269,8 @@ public partial class Preview
         Click((Button)DetailField(world,"_exConfirmBtn")!);await Frames();await KeyPress(Key.Escape);
         Require(!finalLayer.Visible && (bool)DetailField(world,"_exShown")!,"Escape cancels approval without cancelling trade");
         Click((Button)DetailField(world,"_exConfirmBtn")!);await Frames();
-        DetailCall(world,"OnExchangeOtherAdd",stack,1,(short)0);
+        // Delivered as the network does, through the client's reply event.
+        Native.Get<Action<int,int,short,int>>(net,"ExchangeOtherAddEvent")!.Invoke(stack,1,(short)0,0);
         Require(!finalLayer.Visible && !(bool)DetailField(world,"_exConfirmedByMe")!,"Partner offer changes invalidate pending approval");
         Click(finalAccept);Require(!(bool)DetailField(world,"_exConfirmedByMe")!,"Stale Yes cannot confirm a changed offer");
         Click((Button)DetailField(world,"_exConfirmBtn")!);await Frames();Click(finalAccept);

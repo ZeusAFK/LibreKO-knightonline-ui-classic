@@ -15,9 +15,11 @@ public static partial class NativeSetup
 }
 
 /// <summary>
-/// The Classic player trade on top of the client's exchange: named offer lists and modal layers, the
-/// <c>ex_*</c> state and <c>trade_*</c> row metas the skin reads, the original request message, a coin
-/// amount prompt, and a mouse-only final approval before the client's own confirmation is sent.
+/// The Classic player trade on top of the client's exchange: the offers and the carried items the skin
+/// shows in its own grids, the <c>ex_*</c> state metas it reads, named modal layers, the original request
+/// message, a coin amount prompt, and a mouse-only final approval before the client's own confirmation is
+/// sent. The client docks the inventory beside its trade window; the Classic trade carries its own
+/// inventory grid, so the inventory the trade opened is closed again.
 /// </summary>
 public static class NativeTrade
 {
@@ -36,20 +38,67 @@ public static class NativeTrade
 
     private static State StateOf(World world) => _states.GetOrCreateValue(world);
 
+    private static readonly ConditionalWeakTable<HudWindow, World> _worlds = new();
+
+    /// <summary>The world whose exchange the trade window shows (also for a window kept outside the world).</summary>
+    public static World? WorldOf(HudWindow window) => _worlds.TryGetValue(window, out var world) && GodotObject.IsInstanceValid(world) ? world : Native.WorldOf(window);
+
     public static CanvasLayer? RequestLayer(World world) => StateOf(world).Request;
 
     public static CanvasLayer? FinalLayer(World world) => StateOf(world).Final;
 
     public static bool FinalPending(World world) => StateOf(world).FinalPending;
 
+    /// <summary>An item in an offer grid or in the carried inventory; <c>Slot</c> is the bag slot it came from.</summary>
+    public readonly record struct TradeItem(int Slot, int ItemId, int Count, short Durability);
+
+    /// <summary>The offered items in offer order (mine or the partner's).</summary>
+    public static IReadOnlyList<TradeItem> Offers(World world, bool mine)
+    {
+        var result = new List<TradeItem>();
+        foreach (var offer in Native.Get<IEnumerable>(world, mine ? "_exMyOffer" : "_exTheirOffer") ?? Array.Empty<object>())
+            result.Add(new TradeItem(Native.Get<int>(offer!, "SourceAbs"), Native.Get<int>(offer!, "ItemId"), Native.Get<int>(offer!, "Count"), Native.Get<short>(offer!, "Dura")));
+        return result;
+    }
+
+    /// <summary>The carried inventory grid (bag slots), with the items still in the bag.</summary>
+    public static IReadOnlyList<TradeItem> Bag(World world)
+    {
+        var result = new List<TradeItem>();
+        if (Native.Get<Inventory>(world, "Inv") is not { } inv) return result;
+        for (int abs = Inventory.GridStart; abs < Inventory.GridStart + Inventory.GridCount && abs < inv.Length; abs++)
+            if (!inv[abs].IsEmpty) result.Add(new TradeItem(abs, inv[abs].ItemId, inv[abs].Count, inv[abs].Durability));
+        return result;
+    }
+
+    /// <summary>Offers a bag slot through the client (quantity prompt, refusals and pending state stay native).</summary>
+    public static void Offer(World world, int abs) => Native.Call(world, "OfferSlot", abs);
+
+    public static void Tooltip(World world, TradeItem item, bool bag) =>
+        Native.Call(world, "ShowItemTooltip", bag ? item.Slot : -1, new ItemSlot { ItemId = item.ItemId, Count = (short)item.Count, Durability = item.Durability }, "");
+
+    public static void HideTooltip(World world) => Native.Call(world, "HideItemTooltip");
+
+    /// <summary>Closes the inventory window the client opened as the trade's bag companion.</summary>
+    private static void KeepInventoryClosed(World world)
+    {
+        if (!Native.Get<bool>(world, "_exShown") || Native.Get<object>(world, "_bagPairing") is not { } pairing) return;
+        if (!Native.Get<bool>(pairing, "_openedByCompanion")) return;
+        Native.Set(pairing, "_openedByCompanion", false);
+        Native.Call(world, "HideMainWindow", "Inventory");
+    }
+
     public static void Prepare(HudWindow window, World world)
     {
         if (window.HasMeta("native_exchange")) return;
         window.SetMeta("native_exchange", true);
+        _worlds.AddOrUpdate(window, world);
         var state = StateOf(world);
-        NativeWindows.Name(Native.Get<VBoxContainer>(world, "_exMineList"), "exchange_mine");
-        NativeWindows.Name(Native.Get<VBoxContainer>(world, "_exTheirsList"), "exchange_theirs");
-        NativeWindows.Name(Native.Get<VBoxContainer>(world, "_exBagList"), "exchange_inventory");
+        NativeWindows.Name(Native.Get<Label>(world, "_exStatus"), "exchange_status");
+        window.VisibilityChanged += () =>
+        {
+            if (window.Visible) Callable.From(() => { if (GodotObject.IsInstanceValid(world)) KeepInventoryClosed(world); }).CallDeferred();
+        };
         if (Native.Get<CanvasLayer>(world, "_exWaitLayer") is { } wait) { wait.Name = "exchange_wait"; wait.SetMeta("exchange_wait", true); }
         if (Native.Get<CanvasLayer>(world, "_exAmountLayer") is { } amount)
         {
@@ -76,14 +125,13 @@ public static class NativeTrade
         if (Native.Descendants(window.Body).OfType<Button>().FirstOrDefault(b => b.Text == "Add gold") is { } gold)
             NativeVendor.Rewire(gold, () => OpenGold(world));
 
-        WatchRows(world, "_exBagList", BagRow);
-        WatchRows(world, "_exMineList", (w, row) => OfferRow(w, row, "_exMyOffer"));
-        WatchRows(world, "_exTheirsList", (w, row) => OfferRow(w, row, "_exTheirOffer"));
-
         // The original request message replaces the desktop dialog in the same call that opened it.
         Action<int> request = _ => Sync(world);
         Net.I.ExchangeRequestEvent += request;
-        world.TreeExiting += () => Net.I.ExchangeRequestEvent -= request;
+        // A changed offer withdraws a pending final approval in the same reply that changed it.
+        Action<int, int, short, int> partnerAdded = (_, _, _, _) => Sync(world);
+        Net.I.ExchangeOtherAddEvent += partnerAdded;
+        world.TreeExiting += () => { Net.I.ExchangeRequestEvent -= request; Net.I.ExchangeOtherAddEvent -= partnerAdded; };
         Sync(world);
     }
 
@@ -275,50 +323,6 @@ public static class NativeTrade
             if ((ItemData.Get(id)?.Countable ?? 0) == 0 || counted.Add(id)) count++;
         }
         return count;
-    }
-
-    private static void WatchRows(World world, string list, Action<World, Control> describe)
-    {
-        if (Native.Get<VBoxContainer>(world, list) is not { } container) return;
-        NativeWindows.OnDescendantAdded(container, node =>
-        {
-            if (node is not Control row || row.GetParent() != container) return;
-            describe(world, row);
-            var state = StateOf(world);
-            if (state.FinalPending && Offers(world) != state.Offers) CloseFinal(world);
-        });
-    }
-
-    private static void BagRow(World world, Control row)
-    {
-        if (row is not PanelContainer || Native.Get<Inventory>(world, "Inv") is not { } inv) return;
-        int index = row.GetIndex(), seen = 0;
-        for (int abs = Inventory.GridStart; abs < Inventory.GridStart + Inventory.GridCount && abs < inv.Length; abs++)
-        {
-            if (inv[abs].IsEmpty) continue;
-            if (seen++ != index) continue;
-            Describe(row, inv[abs].ItemId, inv[abs].Count, inv[abs].Durability, abs);
-            return;
-        }
-    }
-
-    private static void OfferRow(World world, Control row, string offers)
-    {
-        if (Native.Get<IList>(world, offers) is not { } list || row.GetIndex() >= list.Count || list[row.GetIndex()] is not { } offer) return;
-        int itemId = Native.Get<int>(offer, "ItemId"), count = Native.Get<int>(offer, "Count");
-        short durability = Native.Get<short>(offer, "Dura");
-        Describe(row, itemId, count, durability, Native.Get<int>(offer, "SourceAbs"));
-        var tooltip = new ItemSlot { ItemId = itemId, Count = (short)count, Durability = durability };
-        row.MouseEntered += () => Native.Call(world, "ShowItemTooltip", -1, tooltip, "");
-        row.MouseExited += () => Native.Call(world, "HideItemTooltip");
-    }
-
-    private static void Describe(Control row, int itemId, int count, short durability, int source)
-    {
-        row.SetMeta("trade_item_id", itemId);
-        row.SetMeta("trade_count", count);
-        row.SetMeta("trade_durability", durability);
-        row.SetMeta("trade_source", source);
     }
 }
 
