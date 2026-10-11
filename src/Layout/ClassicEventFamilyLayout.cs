@@ -12,7 +12,7 @@ namespace KnightOnlineUiClassic.Layout;
 public static class ClassicEventFamilyLayout
 {
     public const int Margin = ClassicEventsLayout.Margin, TitleTop = 14, TitleHeight = 24, ContentGap = 10;
-    public const int Row = 22, Button = 24, Cell = 45, BodyGap = 8;
+    public const int Row = 22, Button = 24, Cell = 45, BodyGap = 8, ButtonMinWidth = 64, ButtonPadding = 12;
     public const int FontSize = 13, SmallFont = 12, TinyFont = 11;
 
     /// <summary>Insets of the client's content margin inside the frame: content starts 48 pixels down, as in the event windows.</summary>
@@ -25,7 +25,7 @@ public static class ClassicEventFamilyLayout
     /// <summary>Body width per window, where the client's natural width is too narrow or too wide for its rows.</summary>
     public static int BodyWidth(string id) => id switch
     {
-        "events" => 548,
+        "events" => 516,
         "daily_rank" => 0,
         "rank_board" => 0,
         "nestindun" => 0,

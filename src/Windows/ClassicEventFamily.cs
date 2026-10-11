@@ -18,6 +18,13 @@ public static class ClassicEventFamily
 {
     public const string Skinned = "classic_event_family";
 
+    /// <summary>Client windows of this family; none is in the plugin API's list of known window ids.</summary>
+    public static readonly string[] WindowIds =
+    {
+        "events", "daily_rank", "rank_board", "war_result", "war_ranking", "chaos_ladder", "chaos_skill", "chaos_caption",
+        "nestindun", "vanguard_invite", "vanguard_invite_mini", "vanguard_list", "vanguard_list_mini", "siege_war", "royale_score",
+    };
+
     public static void Extend(Control body) => body.Ready += () => Callable.From(() => Apply(body)).CallDeferred();
 
     /// <summary>Applies the Classic frame and materials to the window owning <paramref name="body"/>.</summary>
@@ -105,7 +112,14 @@ public static class ClassicEventFamily
         if (Near(native, UiTheme.Good)) return ClassicEventPanel.Ready;
         if (Near(native, UiTheme.Bad) || Near(native, UiTheme.Hp)) return ClassicEventPanel.Refused;
         if (Near(native, UiTheme.Premium) || Near(native, UiTheme.Mp)) return new Color("9cd8f0");
-        return new Color(native, 1);
+        // Other client accents keep their meaning in the nearest Classic ink: greys by brightness, then by hue.
+        if (native.S < .25f) return native.V > .75f ? ClassicEventPanel.Ink : ClassicEventPanel.Muted;
+        float hue = native.H;
+        if (hue < .05f || hue > .9f) return ClassicEventPanel.Refused;
+        if (hue < .2f) return native.V > .88f && native.S < .5f ? new Color("ffe094") : ClassicEventPanel.Caption;
+        if (hue < .45f) return ClassicEventPanel.Ready;
+        if (hue < .75f) return new Color("9cd8f0");
+        return ClassicEventPanel.Ink;
     }
 
     /// <summary>Restyles a node and everything under it once.</summary>
@@ -126,7 +140,10 @@ public static class ClassicEventFamily
                 case HSeparator rule: Rule(rule); break;
                 case VSeparator rule: Rule(rule); break;
                 case ScrollContainer scroll: Scroll(scroll); break;
+                case ScrollBar bar when bar.GetParent() is not ScrollContainer: ScrollBar(bar); break;
+                case RichTextLabel rich: Rich(rich); break;
                 case ProgressBar bar: Gauge(bar); break;
+                case StatBar stat: ClassicFamilyGauge.Replace(stat); break;
                 case ItemList list: List(list); break;
                 case PanelContainer panel: Panel(panel); break;
             }
@@ -147,7 +164,9 @@ public static class ClassicEventFamily
         size = size >= 18 ? size : Math.Clamp(size, Spec.TinyFont, Spec.FontSize);
         var ink = Ink(label.GetThemeColor("font_color"));
         bool outlined = label.GetThemeConstant("outline_size") > 0;
+        var alignment = label.VerticalAlignment;
         ClassicEventPanel.Bold(label, ink, size);
+        label.VerticalAlignment = alignment;
         if (outlined)
         {
             label.AddThemeConstantOverride("outline_size", 3);
@@ -178,7 +197,11 @@ public static class ClassicEventFamily
             button.AddThemeColorOverride(state, new Color("efd9b4"));
         button.AddThemeColorOverride("font_disabled_color", ClassicDesign.Muted);
         button.FocusMode = Control.FocusModeEnum.None;
-        if (button.CustomMinimumSize.Y < Spec.Button) button.CustomMinimumSize = new Vector2(button.CustomMinimumSize.X, Spec.Button);
+        // The caption decides the width (never clipped), at least the width of the original small buttons.
+        button.ClipText = false; button.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
+        float caption = Plugin.Kit.Bold.GetStringSize(button.Text, HorizontalAlignment.Left, -1, Spec.SmallFont).X + 2 * Spec.ButtonPadding;
+        button.CustomMinimumSize = new Vector2(Math.Max(button.CustomMinimumSize.X, Math.Max(Spec.ButtonMinWidth, Mathf.Ceil(caption))),
+            Math.Max(button.CustomMinimumSize.Y, Spec.Button));
         // A toggle shows its chosen state with the pressed art, as the original tab-like buttons do.
         if (button.ToggleMode) button.AddThemeColorOverride("font_pressed_color", new Color("ffe094"));
     }
@@ -191,24 +214,41 @@ public static class ClassicEventFamily
 
     public static void Scroll(ScrollContainer scroll)
     {
+        ScrollBar(scroll.GetVScrollBar());
+        ScrollBar(scroll.GetHScrollBar());
+        scroll.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        scroll.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+    }
+
+    /// <summary>The event windows' scroll bar: a dark track with a thin gold line and the service button art as grabber.</summary>
+    public static void ScrollBar(ScrollBar bar)
+    {
         var track = new StyleBoxFlat { BgColor = new Color("171715"), BorderColor = new Color("bfa777") };
         track.SetBorderWidthAll(1); track.SetContentMarginAll(0);
         var grabber = Plugin.Kit.Layout("co_change_bill_us").Find("btn_ok")!;
-        foreach (ScrollBar bar in new ScrollBar[] { scroll.GetVScrollBar(), scroll.GetHScrollBar() })
+        bar.AddThemeStyleboxOverride("scroll", track);
+        bar.AddThemeStyleboxOverride("scroll_focus", track);
+        foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
         {
-            bar.AddThemeStyleboxOverride("scroll", track);
-            foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-            {
-                var part = grabber.Images.FirstOrDefault(n => n.Tag == (state == "grabber_pressed" ? 1 : state == "grabber_highlight" ? 2 : 0)) ?? grabber.Images.First();
-                var box = new StyleBoxTexture { Texture = Plugin.Kit.Texture(part.Texture!), RegionRect = new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH) };
-                box.SetTextureMarginAll(3); box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-            }
-            bar.FocusMode = Control.FocusModeEnum.None;
+            var part = grabber.Images.FirstOrDefault(n => n.Tag == (state == "grabber_pressed" ? 1 : state == "grabber_highlight" ? 2 : 0)) ?? grabber.Images.First();
+            var box = new StyleBoxTexture { Texture = Plugin.Kit.Texture(part.Texture!), RegionRect = new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH) };
+            box.SetTextureMarginAll(3); box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
         }
-        scroll.GetVScrollBar().CustomMinimumSize = new Vector2(12, 0);
-        scroll.GetHScrollBar().CustomMinimumSize = new Vector2(0, 12);
-        scroll.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-        scroll.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        bar.FocusMode = Control.FocusModeEnum.None;
+        if (bar is VScrollBar) bar.CustomMinimumSize = new Vector2(12, bar.CustomMinimumSize.Y);
+        else bar.CustomMinimumSize = new Vector2(bar.CustomMinimumSize.X, 12);
+    }
+
+    private static void Rich(RichTextLabel rich)
+    {
+        foreach (var font in new[] { "normal_font", "bold_font" }) rich.AddThemeFontOverride(font, Plugin.Kit.Bold);
+        int size = rich.GetThemeFontSize("normal_font_size");
+        rich.AddThemeFontSizeOverride("normal_font_size", Math.Clamp(size, Spec.TinyFont, Spec.FontSize));
+        rich.AddThemeFontSizeOverride("bold_font_size", Math.Clamp(size, Spec.TinyFont, Spec.FontSize));
+        rich.AddThemeColorOverride("default_color", Ink(rich.GetThemeColor("default_color")));
+        rich.AddThemeColorOverride("font_shadow_color", Colors.Black);
+        rich.AddThemeConstantOverride("shadow_offset_x", 1); rich.AddThemeConstantOverride("shadow_offset_y", 1);
+        rich.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
     }
 
     private static void Gauge(ProgressBar bar)
@@ -249,7 +289,8 @@ public static class ClassicEventFamily
         var margins = (L: flat.ContentMarginLeft, T: flat.ContentMarginTop, R: flat.ContentMarginRight, B: flat.ContentMarginBottom);
         StyleBox box;
         bool bordered = flat.BorderWidthTop > 0 && flat.BorderColor.A > .2f;
-        bool section = bordered && margins.L == margins.T && margins.L >= 6 && flat.CornerRadiusTopLeft <= 4;
+        // Sections and panels (even padding) take the inset; rows (wider than tall padding) and round chips do not.
+        bool section = bordered && margins.L == margins.T && margins.L >= 6 && flat.CornerRadiusTopLeft < 8;
         bool selected = bordered && Near(flat.BorderColor, UiTheme.Gold);
         if (section && !selected)
         {
@@ -263,6 +304,45 @@ public static class ClassicEventFamily
         box.ContentMarginLeft = Math.Max(0, margins.L); box.ContentMarginTop = Math.Max(0, margins.T);
         box.ContentMarginRight = Math.Max(0, margins.R); box.ContentMarginBottom = Math.Max(0, margins.B);
         panel.AddThemeStyleboxOverride("panel", box);
+    }
+}
+
+/// <summary>
+/// The original message-box progress bar (groove and red fill) in place of a client stat bar. The stat bar stays
+/// in the tree, hidden, and keeps receiving the client's updates; the gauge mirrors its fraction every frame.
+/// </summary>
+public partial class ClassicFamilyGauge : ProgressBar
+{
+    public const float Height = 9;
+    private readonly StatBar _source;
+    public ClassicFamilyGauge() { _source = null!; }
+
+    private ClassicFamilyGauge(StatBar source)
+    {
+        _source = source; Name = "classic_gauge"; MouseFilter = MouseFilterEnum.Ignore;
+        MinValue = 0; MaxValue = 1; Step = 0; ShowPercentage = false;
+        CustomMinimumSize = new Vector2(source.CustomMinimumSize.X, Height);
+        SizeFlagsHorizontal = source.SizeFlagsHorizontal; SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        ClassicWorldOverlays.ProgressBar(this, urgent: true);
+    }
+
+    public static void Replace(StatBar source)
+    {
+        if (source.GetParent() is not { } parent || parent.HasNode("classic_gauge_" + source.GetInstanceId())) return;
+        var gauge = new ClassicFamilyGauge(source) { Name = "classic_gauge_" + source.GetInstanceId() };
+        parent.AddChild(gauge);
+        parent.MoveChild(gauge, source.GetIndex() + 1);
+        source.Visible = false;
+        gauge.Sync();
+    }
+
+    public override void _Process(double delta) => Sync();
+
+    private void Sync()
+    {
+        if (_source == null || !GodotObject.IsInstanceValid(_source)) return;
+        float shown = NativeApi.Get<float>(_source, "_frac");
+        if (Math.Abs(Value - shown) > .0001f) Value = shown;
     }
 }
 
