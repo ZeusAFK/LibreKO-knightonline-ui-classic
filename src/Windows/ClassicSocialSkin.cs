@@ -7,7 +7,7 @@ namespace KnightOnlineUiClassic.Windows;
 
 /// <summary>
 /// The Classic look of the social windows the client lays out as flows (nation chat, clan and join-request
-/// boards, leader transfer, commander, command list). The client's own content keeps its controls, callbacks
+/// boards, leader transfer, commander). The client's own content keeps its controls, callbacks
 /// and flow; the plugin frames it in the plain Classic frame through the client's frame seam and restyles
 /// every control with the original pieces the Messenger uses.
 /// </summary>
@@ -60,21 +60,11 @@ public partial class ClassicSocialFrame : Container
         foreach (var side in new[] { "left", "top", "right", "bottom" }) _content.AddThemeConstantOverride("margin_" + side, 0);
         AddChild(_content);
         ClassicSocialStyle.Watch(_content);
-        if (frame.Id == "command_list") Callable.From(() => CommandRows(_content)).CallDeferred();
         foreach (var part in GetChildren().OfType<Control>())
             part.SizeFlagsHorizontal = part.SizeFlagsVertical = SizeFlags.Fill;
     }
 
     public Control Content => _content;
-
-    /// <summary>Command list: the group list shows exactly its groups, the command list whole rows that scroll by rows.</summary>
-    private static void CommandRows(Control content)
-    {
-        if (!IsInstanceValid(content)) return;
-        var lists = ClassicSocialStyle.Descendants(content).OfType<ItemList>().ToArray();
-        for (int i = 0; i < lists.Length && i < 2; i++)
-            if (!lists[i].HasNode("classic_list_rows")) lists[i].AddChild(new ClassicListRows(lists[i], fitRows: i == 0));
-    }
 
     public override Vector2 _GetMinimumSize() =>
         _content == null ? Vector2.Zero : ClassicSocialLayout.Frame(_content.GetCombinedMinimumSize());

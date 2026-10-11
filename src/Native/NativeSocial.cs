@@ -5,7 +5,7 @@ namespace KnightOnlineUiClassic.Native;
 
 /// <summary>
 /// Prepares the native social windows the Classic social frame shows (nation chat, clan and join-request
-/// boards, leader transfer, commander, command list): names the controls the skin and the audits look for
+/// boards, leader transfer, commander): names the controls the skin and the audits look for
 /// and replaces symbol-only captions with the English words of the original client.
 /// </summary>
 public static class NativeSocial
@@ -14,6 +14,7 @@ public static class NativeSocial
     {
         NativeWindows.Prepare("nation_chat", PrepareNationChat);
         NativeWindows.Prepare("commander", PrepareCommander);
+        NativeCommandList.Register();
     }
 
     /// <summary>Runs the social preparer of a window built outside the client's window flow (audits).</summary>

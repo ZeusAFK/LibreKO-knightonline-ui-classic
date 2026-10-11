@@ -190,6 +190,15 @@ public partial class ChatWindow : Control
     {
         _input.GrabFocus();
         _input.CaretColumn = _input.Text.Length;
+        // A prefill reaches the client's hidden input right after this request.
+        Callable.From(TakePrefill).CallDeferred();
+    }
+
+    private void TakePrefill()
+    {
+        if (!IsInstanceValid(this) || NativeChat.TakeTyped() is not { Length: > 0 } text) return;
+        _links.Clear(); _input.MaxLength = 128; _input.Text = text; _previousText = text; _input.CaretColumn = text.Length; ApplyInputLimit();
+        _input.GrabFocus();
     }
 
     private void FocusChannel(string prefix)

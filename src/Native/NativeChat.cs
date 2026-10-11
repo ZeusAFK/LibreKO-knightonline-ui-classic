@@ -36,6 +36,19 @@ public static class NativeChat
 
     private static object? ChatOf(World world) => Native.Get<object>(world, "Chat");
 
+    /// <summary>
+    /// Text the client put into its own hidden chat input when it opened the chat with a prefill (the command
+    /// list's "/PM ", "/RoyalOrder "...). With the Classic chat the client only raises the input request, so the
+    /// Classic input takes the text once and the client's input is cleared.
+    /// </summary>
+    public static string TakeTyped()
+    {
+        if (NativeHudChat.World is not { } world || ChatOf(world) is not { } chat || Native.Get<LineEdit>(chat, "_input") is not { } input) return "";
+        string text = input.Text;
+        if (text.Length > 0) input.Clear();
+        return text;
+    }
+
     /// <summary>Whether the plugin replaces the native chat panel (the Classic chat is active).</summary>
     public static bool ChatReplaced => Native.Call(PluginHost.Ui, "HudHidden", HudPart.Chat) is true;
 

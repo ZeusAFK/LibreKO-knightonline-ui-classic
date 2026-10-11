@@ -11,7 +11,7 @@ public partial class Preview
 {
     /// <summary>
     /// social-audit: the Classic social frame on every new social window (nation chat, clan and join-request
-    /// boards, leader transfer, commander, command list) for one nation. Each window is captured in its main
+    /// boards, leader transfer, commander) for one nation. Each window is captured in its main
     /// states; the frame, title, close button and content are checked at their actual rendered bounds, every
     /// visible control stays inside the content, native inks are mapped to the Classic palette, and the main
     /// native actions run through the restyled controls.
@@ -154,26 +154,6 @@ public partial class Preview
             Require(choices[0].ButtonPressed && !choices[1].ButtonPressed, "leader transfer: picking another heir moves the selection natively");
             Require(choices[0].GetThemeStylebox("pressed") is StyleBoxFlat picked && picked.BorderColor == ClassicSocialStyle.SelectedEdge, "leader transfer: the picked heir carries the gold selection line");
             await Capture(window, "clanhandover-picked");
-            Done(opened);
-        }
-        // Command list: groups and entries, then another group.
-        {
-            var opened = await Open("command-list"); var (world, window) = opened;
-            await Capture(window, "command-list");
-            var groups = (ItemList)DetailField(world, "_cmdGroups")!;
-            var entries = (ItemList)DetailField(world, "_cmdEntries")!;
-            float pitch = entries.GetItemRect(1, false).Position.Y - entries.GetItemRect(0, false).Position.Y;
-            float frame = entries.GetThemeStylebox("panel").GetMinimumSize().Y;
-            Require(!groups.GetVScrollBar().Visible && Math.Abs(groups.Size.Y - frame - groups.ItemCount * pitch) < .5f,
-                "command list: the group list shows exactly its groups, without an empty band or a scroll bar");
-            float shown = (entries.Size.Y - frame) / pitch;
-            Require(Math.Abs(shown - Mathf.Round(shown)) < .02f, $"command list: the command list shows whole rows ({shown:0.00})");
-            entries.GetVScrollBar().Value = pitch * 1.4; await Frames();
-            Require(Math.Abs(entries.GetVScrollBar().Value % pitch) < .01, "command list: the command list scrolls by whole rows");
-            entries.GetVScrollBar().Value = 0; await Frames();
-            groups.Select(2); groups.EmitSignal(ItemList.SignalName.ItemSelected, 2L); await Frames();
-            Require(((ItemList)DetailField(world, "_cmdEntries")!).ItemCount > 0, "command list: another group lists its commands natively");
-            await Capture(window, "command-list-group");
             Done(opened);
         }
         await CaptureSocialPrompts(nation, output, Require, Frames, screens);
