@@ -17,7 +17,7 @@ public static class ClassicItemsLayout
         "exp_seal" => new(300, 185),
         "timed_items" => new(380, 310),
         "loot_filter" => new(360, 460),
-        "char_seal" => page switch { "select" => new(380, 273), "code" => new(380, 290), _ => new(380, 327) },
+        "char_seal" => page switch { "select" => new(380, 273), "code" => new(380, 290), _ => SealHelpSize(SealHelpDefault) },
         "char_seal_sheet" => new(380, page == "achievements" ? 575 : 527),
         _ => throw new ArgumentOutOfRangeException(nameof(id)),
     };
@@ -48,11 +48,27 @@ public static class ClassicItemsLayout
     public static readonly Rect2 LootRulesCaption = new(16, 302, 328, 20), LootRules = new(16, 324, 328, 120);
 
     // Character Seal: the help page, the character slot list and the code keypad.
-    public static Rect2 SealHelpTitle(int index) => new(16, 48 + index * 114, 348, 20);
-    public static Rect2 SealHelpText(int index) => new(16, 70 + index * 114, 348, 84);
+    // Help page: each section is its title, then its text at its wrapped height (up to SealHelpTextMax, then it
+    // scrolls); the sections follow each other at the family's section gap and the buttons follow the last text at
+    // the select page's 10 px, so the page is as tall as its content.
+    public const float SealHelpTop = 48, SealHelpTitleHeight = 20, SealHelpTitleGap = 2, SealHelpTextMax = 84;
+    public const float SealHelpSectionGap = 12, SealHelpButtonGap = 10;
+    private static float SealHelpSectionTop(IReadOnlyList<float> texts, int index)
+    {
+        float top = SealHelpTop;
+        for (int i = 0; i < index; i++) top += SealHelpTitleHeight + SealHelpTitleGap + texts[i] + SealHelpSectionGap;
+        return top;
+    }
+    public static Rect2 SealHelpTitle(IReadOnlyList<float> texts, int index) => new(16, SealHelpSectionTop(texts, index), 348, SealHelpTitleHeight);
+    public static Rect2 SealHelpText(IReadOnlyList<float> texts, int index) =>
+        new(16, SealHelpSectionTop(texts, index) + SealHelpTitleHeight + SealHelpTitleGap, 348, texts[index]);
+    public static float SealHelpButtonsTop(IReadOnlyList<float> texts) => SealHelpText(texts, texts.Count - 1).End.Y + SealHelpButtonGap;
+    public static Vector2 SealHelpSize(IReadOnlyList<float> texts) => new(380, SealHelpButtonsTop(texts) + ButtonHeight + Inset);
+    /// <summary>The help page before its texts are measured: two sections at the most text each.</summary>
+    public static readonly float[] SealHelpDefault = { SealHelpTextMax, SealHelpTextMax };
     public static Rect2 SealPageLeft(float top) => new(16, top, 166, ButtonHeight);
     public static Rect2 SealPageRight(float top) => new(198, top, 166, ButtonHeight);
-    public const float SealHelpButtons = 284, SealSelectButtons = 230, SealCodeEdit = 212, SealCodeButtons = 247;
+    public const float SealSelectButtons = 230, SealCodeEdit = 212, SealCodeButtons = 247;
     public static readonly Rect2 SealTitle = new(16, 48, 348, 20);
     public static Rect2 SealSlot(int index) => new(16, 74 + index * 30, 348, 26);
     public static readonly Rect2 SealPrompt = new(16, 200, 348, 20);

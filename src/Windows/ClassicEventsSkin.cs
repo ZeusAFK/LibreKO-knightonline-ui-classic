@@ -300,25 +300,7 @@ public abstract partial class ClassicEventPanel : Control
 
     public static Texture2D? GoldIcon => LibreKO.Domain.ItemData.Icon(LibreKO.Domain.QuestData.CoinItemId);
 
-    protected static void Scroll(ScrollContainer scroll)
-    {
-        var track = new StyleBoxFlat { BgColor = new Color("171715"), BorderColor = new Color("bfa777") };
-        track.SetBorderWidthAll(1); track.SetContentMarginAll(0);
-        var grabber = Plugin.Kit.Layout("co_change_bill_us").Find("btn_ok")!;
-        foreach (ScrollBar bar in new ScrollBar[] { scroll.GetVScrollBar(), scroll.GetHScrollBar() })
-        {
-            bar.AddThemeStyleboxOverride("scroll", track);
-            foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-            {
-                var part = grabber.Images.FirstOrDefault(n => n.Tag == (state == "grabber_pressed" ? 1 : state == "grabber_highlight" ? 2 : 0)) ?? grabber.Images.First();
-                var box = new StyleBoxTexture { Texture = Plugin.Kit.Texture(part.Texture!), RegionRect = new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH) };
-                box.SetTextureMarginAll(3); box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-            }
-            bar.FocusMode = FocusModeEnum.None;
-        }
-        scroll.GetVScrollBar().CustomMinimumSize = new Vector2(12, 0);
-        scroll.GetHScrollBar().CustomMinimumSize = new Vector2(0, 12);
-    }
+    protected static void Scroll(ScrollContainer scroll) => ClassicDarkFrame.Scroll(scroll);
 
     /// <summary>Native "Caption: value" text without its caption.</summary>
     protected static string After(string text)

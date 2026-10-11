@@ -65,7 +65,7 @@ public partial class ClassicExitMenu : Control
         float listHeight = shown * TimedRowPitch - (TimedRowPitch - TimedCell) + 7;
         var notice = new Label { Text = _request.Notice, AutowrapMode = TextServer.AutowrapMode.WordSmart, HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore, Name = "exit_timed_notice" };
-        Font(notice, ClassicReportDesign.Caption);
+        Font(notice, ClassicDarkFrame.Caption);
         float inner = TimedWidth - ClassicFrame.Inset * 2;
         notice.Position = new Vector2(ClassicFrame.Inset, ClassicFrame.Inset); notice.Size = new Vector2(inner, 34);
         var panel = new Control { Name = "exit_timed", MouseFilter = MouseFilterEnum.Stop };
@@ -81,14 +81,7 @@ public partial class ClassicExitMenu : Control
         inset.AddThemeConstantOverride("margin_left", 4); inset.AddThemeConstantOverride("margin_top", 3);
         inset.AddThemeConstantOverride("margin_bottom", 4);
         inset.AddChild(list); scroll.AddChild(inset); panel.AddChild(scroll);
-        var track = new StyleBoxFlat { BgColor = new Color("171715"), BorderColor = new Color("bfa777") };
-        track.SetBorderWidthAll(1); track.SetContentMarginAll(0);
-        var bar = scroll.GetVScrollBar(); bar.AddThemeStyleboxOverride("scroll", track); bar.CustomMinimumSize = new Vector2(12, 0);
-        foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-        {
-            var box = ClassicDesign.ButtonBox(state == "grabber_highlight" ? "hover" : state == "grabber_pressed" ? "pressed" : "normal");
-            box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-        }
+        ClassicDarkFrame.ScrollBar(scroll.GetVScrollBar());
         foreach (var item in _request.TimedItems) list.AddChild(Row(item));
         AddChild(panel);
         return panel;
@@ -110,10 +103,10 @@ public partial class ClassicExitMenu : Control
         row.AddChild(icon);
         var name = new Label { Text = item.Name, Position = new Vector2(TimedCell + 10, 1), Size = new Vector2(TimedWidth - ClassicFrame.Inset * 2 - TimedCell - 22, 19),
             ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis, MouseFilter = MouseFilterEnum.Ignore, TooltipText = item.Name };
-        Font(name, ClassicReportDesign.Value); row.AddChild(name);
+        Font(name, ClassicDarkFrame.Value); row.AddChild(name);
         var left = new Label { Text = item.Place.Length > 0 ? $"{item.Place}  ·  {item.TimeLeft}" : item.TimeLeft, Position = new Vector2(TimedCell + 10, 21),
             Size = name.Size, ClipText = true, MouseFilter = MouseFilterEnum.Ignore };
-        Font(left, item.Urgent ? new Color("dc143c") : ClassicReportDesign.Caption, 11); row.AddChild(left);
+        Font(left, item.Urgent ? new Color("dc143c") : ClassicDarkFrame.Caption, 11); row.AddChild(left);
         return row;
     }
 

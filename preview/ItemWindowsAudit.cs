@@ -138,7 +138,20 @@ public partial class Preview
                 await Frames(4);
                 Require(window.GetMeta("items_page").AsString() == page, "Character Seal follows the native page " + page);
                 await Capture(window, "char-seal-" + page, panel);
-                Require(panel.Size == ClassicItemsLayout.Size("char_seal", page), "Character Seal page keeps its Classic size " + page);
+                if (page == "help")
+                {
+                    // The help page is as tall as its texts: section gap, button gap and bottom inset are the family's.
+                    var scrolls = new[] { Named<ScrollContainer>(panel, "cs_help_scroll_0"), Named<ScrollContainer>(panel, "cs_help_scroll_1") };
+                    var titles = new[] { Named<Label>(panel, "cs_help_title_0"), Named<Label>(panel, "cs_help_title_1") };
+                    var seal = Named<Button>(panel, "cs_seal");
+                    Require(titles[1].Position.Y - scrolls[0].GetRect().End.Y == ClassicItemsLayout.SealHelpSectionGap
+                        && seal.Position.Y - scrolls[1].GetRect().End.Y == ClassicItemsLayout.SealHelpButtonGap
+                        && panel.Size.Y - seal.GetRect().End.Y == ClassicItemsLayout.Inset,
+                        $"Character Seal help sizes to its content ({titles[1].Position.Y - scrolls[0].GetRect().End.Y}, {seal.Position.Y - scrolls[1].GetRect().End.Y}, {panel.Size.Y - seal.GetRect().End.Y})");
+                    foreach (var scroll in scrolls)
+                        Require(scroll.GetChild<Label>(0).Size.Y <= scroll.Size.Y + .5f || scroll.Size.Y >= ClassicItemsLayout.SealHelpTextMax, "Character Seal help text is not clipped");
+                }
+                else Require(panel.Size == ClassicItemsLayout.Size("char_seal", page), "Character Seal page keeps its Classic size " + page);
                 if (page == "select")
                 {
                     var slots = Descendants(panel).OfType<Button>().Where(b => b.Name.ToString().StartsWith("cs_slot_")).ToArray();

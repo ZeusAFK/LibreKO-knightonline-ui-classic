@@ -607,6 +607,7 @@ public static class ClassicWorldOverlays
     private static void Announcement(Control node)
     {
         if (node is PanelContainer panel) panel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        if (node.Name == "order_message" && !node.HasNode("classic_banner_stack")) node.AddChild(new ClassicBannerStack(node) { Name = "classic_banner_stack" });
         foreach (var label in Descendants(node).OfType<Label>())
         {
             int size = label.GetThemeFontSize("font_size");
@@ -861,4 +862,35 @@ public partial class ClassicPlaqueBack : Control
         Resized += QueueRedraw;
     }
     public override void _Draw() => ClassicPlaqueArt.Draw(this, new Rect2(Vector2.Zero, Size));
+}
+
+/// <summary>
+/// Keeps the order message (a flashing war notice) clear of the area banner: while the banner shows, the message
+/// moves just below the banner's last line; otherwise it stays at the client's own position.
+/// </summary>
+public partial class ClassicBannerStack : Node
+{
+    public const float Gap = 10;
+    private readonly Control _message;
+    private float _home = float.NaN;
+
+    public ClassicBannerStack() { _message = null!; }
+
+    public ClassicBannerStack(Control message) { _message = message; }
+
+    public override void _Process(double delta)
+    {
+        if (_message == null || !IsInstanceValid(_message)) return;
+        if (float.IsNaN(_home)) _home = _message.Position.Y;
+        float top = _home;
+        if (_message.GetMeta(NativeOverlays.StackBelow, default(Variant)).AsGodotObject() is Control banner && IsInstanceValid(banner)
+            && banner.IsVisibleInTree() && banner.Modulate.A > .01f)
+        {
+            float bottom = banner.GetChildren().OfType<Label>().Where(l => l.Visible && l.Text.Length > 0)
+                .Select(l => l.GetGlobalRect().End.Y).DefaultIfEmpty(float.NegativeInfinity).Max();
+            var origin = _message.GetGlobalRect().Position.Y - _message.Position.Y;
+            if (bottom + Gap > origin + _home) top = Mathf.Ceil(bottom + Gap - origin);
+        }
+        if (Math.Abs(_message.Position.Y - top) > .5f) _message.Position = new Vector2(_message.Position.X, top);
+    }
 }

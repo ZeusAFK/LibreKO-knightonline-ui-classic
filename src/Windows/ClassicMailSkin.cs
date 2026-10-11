@@ -77,13 +77,7 @@ public partial class ClassicMailPanel : Control
         Place(scroll, rect, keepVisibility); scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
         StyleScroll(scroll); _fixedScrolls.Add((scroll, rect));
     }
-    private static void StyleScroll(ScrollContainer scroll)
-    {
-        var bar = scroll.GetVScrollBar(); var track = new StyleBoxFlat { BgColor = new Color("17130e"), BorderColor = new Color("8b795c") };
-        track.SetBorderWidthAll(1); bar.AddThemeStyleboxOverride("scroll", track);
-        foreach (string state in new[] { "grabber", "grabber_highlight", "grabber_pressed" }) { var box = ClassicDesign.ButtonBox(state == "grabber_highlight" ? "hover" : state == "grabber_pressed" ? "pressed" : "normal"); box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box); }
-        bar.CustomMinimumSize = new Vector2(10, 0); bar.FocusMode = FocusModeEnum.None;
-    }
+    private static void StyleScroll(ScrollContainer scroll) => ClassicDarkFrame.ScrollBar(scroll.GetVScrollBar(), 10);
     private void Inbox()
     {
         Action(Find<Button>("mail_compose"), new Rect2(16, 52, 94, 26), "Write");
@@ -187,8 +181,7 @@ public partial class ClassicMailPanel : Control
     }
     private static void StyleScrollText(TextEdit edit)
     {
-        var bar = edit.GetVScrollBar(); bar.CustomMinimumSize = new Vector2(10, 0);
-        foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" }) bar.AddThemeStyleboxOverride(state, ClassicDesign.ButtonBox(state == "grabber_highlight" ? "hover" : state == "grabber_pressed" ? "pressed" : "normal"));
+        ClassicDarkFrame.ScrollBar(edit.GetVScrollBar(), 10);
     }
     private void FocusedEscape(Control input)
     {

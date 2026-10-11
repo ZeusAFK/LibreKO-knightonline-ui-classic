@@ -81,12 +81,7 @@ public partial class ClassicCommunicationPanel : Control
     {
         _sections.Add(rect.Grow(1)); rect = rect.GrowSide(Side.Left, -inset);
         Place(scroll, rect); scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled; _scrolls.Add((scroll, rect));
-        var bar = scroll.GetVScrollBar(); bar.CustomMinimumSize = new Vector2(10, 0); bar.FocusMode = FocusModeEnum.None;
-        var track = new StyleBoxFlat { BgColor = new Color("17130e"), BorderColor = new Color("8b795c") }; track.SetBorderWidthAll(1); bar.AddThemeStyleboxOverride("scroll", track);
-        foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-        {
-            var box = ClassicDesign.ButtonBox(state == "grabber_highlight" ? "hover" : state == "grabber_pressed" ? "pressed" : "normal"); box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-        }
+        ClassicDarkFrame.ScrollBar(scroll.GetVScrollBar(), 10);
     }
     private void Messenger()
     {

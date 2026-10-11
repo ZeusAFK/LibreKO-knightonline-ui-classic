@@ -74,8 +74,11 @@ public partial class Preview
                     && button.GetThemeStylebox("disabled") is StyleBoxTexture, tag + " Classic button art: " + button.Text);
                 Require(button.Size.Y >= Spec.Button && TextWidth(button, button.Text) <= button.Size.X - 4, tag + " button fits its caption: " + button.Text + " " + button.Size);
             }
+            foreach (var check in Descendants(window.Body).OfType<Button>().Where(b => b.IsVisibleInTree() && b.Text.Length > 0 && b is CheckBox or CheckButton))
+                Require(check.GetThemeFont("font") == Plugin.Kit.Bold && check.GetThemeColor("font_color") == ClassicDarkFrame.Value,
+                    tag + " check caption in Arial Bold and the light ink of both nations: " + check.Text + " " + check.GetThemeFont("font")?.ResourcePath + " " + check.GetThemeColor("font_color").ToHtml());
             foreach (var panel in Descendants(window.Body).OfType<PanelContainer>().Where(p => p.IsVisibleInTree() && p is not ItemSlotView))
-                Require(panel.GetThemeStylebox("panel") is not StyleBoxFlat flat || flat.BgColor.A == 0 || flat.BgColor.IsEqualApprox(ClassicReportDesign.SelectedRow),
+                Require(panel.GetThemeStylebox("panel") is not StyleBoxFlat flat || flat.BgColor.A == 0 || flat.BgColor.IsEqualApprox(ClassicDarkFrame.SelectedRow),
                     tag + " no modern panel fill");
             foreach (var cell in Descendants(window.Body).OfType<ItemSlotView>().Where(c => c.IsVisibleInTree()))
                 Require(cell.GetThemeStylebox("panel") is StyleBoxTexture, tag + " item cell on the inventory cell art");
@@ -170,6 +173,11 @@ public partial class Preview
             var actions = Descendants(window.Body).OfType<Button>().Where(b => b.Text.Length > 0).ToArray();
             Require(actions.Length == 3 && actions.All(Connected), "nestindun: Enter, Receive EXP and Cancel keep their native actions");
             await Capture(window, view);
+            var labels = Descendants(window.Body).OfType<Label>().Where(l => l.IsVisibleInTree()).ToArray();
+            var description = labels.First(l => l.AutowrapMode != TextServer.AutowrapMode.Off);
+            var question = labels.First(l => l.GetGlobalRect().Position.Y > description.GetGlobalRect().Position.Y);
+            float band = question.GetGlobalRect().Position.Y - description.GetGlobalRect().End.Y;
+            Require(band <= 12, $"nestindun {view}: the question follows the description without an empty band ({band:0} px)");
             await Close(world, window);
         }
         // Wanted.

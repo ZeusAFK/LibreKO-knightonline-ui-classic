@@ -24,7 +24,7 @@ public partial class ClassicPlayerMenu : Control
         MouseFilter = MouseFilterEnum.Stop;
         GuiInput += ev => { if (ev is InputEventMouseButton { Pressed: true }) { _request.Close(); AcceptEvent(); } };
         _panel = new PanelContainer { Name = "player_menu_panel", MouseFilter = MouseFilterEnum.Stop };
-        var box = ClassicDesign.InputBox(); box.BgColor = new Color(0, 0, 0, .94f); box.SetContentMarginAll(ClassicSocialLayout.MenuPadding);
+        var box = ClassicDarkFrame.InputBox(); box.BgColor = new Color(0, 0, 0, .94f); box.SetContentMarginAll(ClassicSocialLayout.MenuPadding);
         _panel.AddThemeStyleboxOverride("panel", box);
         AddChild(_panel);
         var rows = new VBoxContainer { Name = "player_menu_rows" };
@@ -33,7 +33,7 @@ public partial class ClassicPlayerMenu : Control
         var title = new Label { Name = "player_menu_name", Text = request.Name, MouseFilter = MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(ClassicSocialLayout.MenuWidth, ClassicSocialLayout.MenuRow) };
         title.VerticalAlignment = VerticalAlignment.Center; title.ClipText = true; title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         ClassicSocialStyle.Font(title, true, ClassicSocialLayout.HeadingSize);
-        title.AddThemeColorOverride("font_color", ClassicDesign.Heading);
+        title.AddThemeColorOverride("font_color", ClassicDarkFrame.Heading);
         title.AddThemeStyleboxOverride("normal", new StyleBoxEmpty { ContentMarginLeft = ClassicSocialLayout.MenuInset });
         rows.AddChild(title);
         rows.AddChild(new HSeparator { Name = "player_menu_rule" });
@@ -44,12 +44,12 @@ public partial class ClassicPlayerMenu : Control
             button.CustomMinimumSize = new Vector2(ClassicSocialLayout.MenuWidth, ClassicSocialLayout.MenuRow);
             ClassicSocialStyle.Font(button, true, ClassicSocialLayout.FontSize);
             var normal = new StyleBoxEmpty { ContentMarginLeft = ClassicSocialLayout.MenuInset, ContentMarginRight = ClassicSocialLayout.MenuInset };
-            var hover = new StyleBoxFlat { BgColor = ClassicReportDesign.SelectedRow, ContentMarginLeft = ClassicSocialLayout.MenuInset, ContentMarginRight = ClassicSocialLayout.MenuInset };
+            var hover = new StyleBoxFlat { BgColor = ClassicDarkFrame.SelectedRow, ContentMarginLeft = ClassicSocialLayout.MenuInset, ContentMarginRight = ClassicSocialLayout.MenuInset };
             button.AddThemeStyleboxOverride("normal", normal);
             button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
             foreach (var state in new[] { "hover", "pressed", "hover_pressed" }) button.AddThemeStyleboxOverride(state, hover);
             button.AddThemeColorOverride("font_color", ClassicDesign.Text);
-            foreach (var state in new[] { "font_hover_color", "font_pressed_color", "font_hover_pressed_color" }) button.AddThemeColorOverride(state, ClassicDesign.Heading);
+            foreach (var state in new[] { "font_hover_color", "font_pressed_color", "font_hover_pressed_color" }) button.AddThemeColorOverride(state, ClassicDarkFrame.Heading);
             var run = row.Run;
             button.Pressed += () => run();
             rows.AddChild(button);
@@ -117,7 +117,7 @@ public partial class ClassicTextPrompt : Control
             MaxLength = request.MaxLength, Alignment = HorizontalAlignment.Center, TextDirection = TextDirection.Ltr,
         };
         // The original 23 px edit field (Edit_Common) with the message boxes' Arial Bold.
-        var field = ClassicDesign.InputBox(); field.ContentMarginTop = field.ContentMarginBottom = 0;
+        var field = ClassicDarkFrame.InputBox(); field.ContentMarginTop = field.ContentMarginBottom = 0;
         _input.AddThemeStyleboxOverride("normal", field); _input.AddThemeStyleboxOverride("focus", field);
         _input.AddThemeFontOverride("font", Plugin.Kit.Bold); _input.AddThemeFontSizeOverride("font_size", 12);
         _input.AddThemeColorOverride("font_color", ClassicWorldOverlays.MessageText);
