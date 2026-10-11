@@ -21,7 +21,7 @@ public static class CharacterDetailsSkin
         if(window.Id=="npc_dialog")
         {
             var dialogue=new ClassicNpcDialogue(window,body,bar,close);
-            window.AddChild(dialogue);ClassicInnChoice.Attach(window,dialogue);window.ResetSize();return dialogue;
+            window.AddChild(dialogue);ClassicNpcOpeningChoice.Attach(window,dialogue);window.ResetSize();return dialogue;
         }
         var panel=new ClassicDetailPanel(window.Id,body,bar,close);window.AddChild(panel);window.ResetSize();return panel;
     }

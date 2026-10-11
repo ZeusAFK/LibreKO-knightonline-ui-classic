@@ -63,8 +63,8 @@ public partial class ClassicServicePanel : Control
         var close = grip.GetChildren().OfType<Button>().Single(b => b.TooltipText == "Close");
         foreach (var child in window.GetChildren().OfType<Control>()) child.Visible = false;
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-        // The redistribution menu uses the same plain frame, fitted to its options instead of the fixed message art.
-        if (window.Id != "warp")
+        // The redistribution menu is the original co_change_us opening window (message art, see Redistribution).
+        if (window.Id is not ("warp" or "class_change"))
         {
             AddChild(new ClassicFrame { Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black });
         }
@@ -106,19 +106,32 @@ public partial class ClassicServicePanel : Control
                 StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore });
         }
     }
+    /// <summary>
+    /// The redistribution menu on the original co_change_us window: the client's description as the white greeting,
+    /// its two choices and Close as yellow text rows ("Walk away"), pressed through the client's own buttons.
+    /// </summary>
     private void Redistribution(Button close)
     {
-        Place(Find<Label>("redistribution_description"), new Rect2(15, 20, 293, 64));
-        var choices = _native.OfType<Button>().Where(b => b.Text is "Stat points" or "Mastery points").ToArray();
-        void TextButton(Button button, Rect2 rect, string text)
+        var layout = ClassicNpcOpeningLayout.Change;
+        var greeting = Find<Label>("redistribution_description");
+        ClassicVendorSkin.Move(greeting, this, layout.Greeting);
+        int shift = ClassicNpcOpening.Greeting(greeting, layout);
+        var said = layout.GreetingRect(shift); greeting.SetMeta("service_expected_rect", said);
+        // Out of the tree the label may still clamp to its native minimum width; this runs after the move's own
+        // deferred resize, which holds the original rectangle, once the panel is in the tree.
+        Callable.From(() => greeting.Size = said.Size).CallDeferred();
+        var rows = _native.OfType<Button>().Where(b => b.Text is "Stat points" or "Mastery points").Append(close).ToArray();
+        for (int i = 0; i < rows.Length; i++)
         {
-            Place(button, rect); button.Text = text; button.Icon = null; button.Alignment = HorizontalAlignment.Left;
-            foreach (var state in new[] { "normal", "hover", "pressed", "focus", "disabled" }) button.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
-            button.AddThemeColorOverride("font_color", new Color("e4d9bf")); button.AddThemeColorOverride("font_hover_color", new Color("ffe094"));
-            button.AddThemeColorOverride("font_pressed_color", new Color("e4bf68")); button.FocusMode = FocusModeEnum.None;
+            var rect = layout.Choice(i, shift);
+            ClassicVendorSkin.Move(rows[i], this, rect); rows[i].SetMeta("service_expected_rect", rect);
+            rows[i].Text = rows[i] == close ? ClassicNpcOpeningLayout.LeaveCaption : "Redistribute " + rows[i].Text.ToLowerInvariant();
+            ClassicNpcOpening.Row(rows[i], layout);
+            rows[i].TooltipText = ClassicNpcOpening.Fits(rows[i], layout) ? "" : rows[i].Text;
         }
-        for (int i = 0; i < choices.Length; i++) TextButton(choices[i], new Rect2(20, 100 + i * 32, 293, 23), "Redistribute " + choices[i].Text.ToLowerInvariant());
-        TextButton(close, new Rect2(20, 164, 293, 23), "Close");
+        Size = CustomMinimumSize = new Vector2(ClassicNpcOpeningLayout.Width, layout.Height(rows.Length, shift));
+        var art = new ClassicNpcOpeningArt(layout) { Size = Size };
+        AddChild(art); MoveChild(art, 0);
     }
     private static string Title(string id) => id switch
     {

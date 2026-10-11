@@ -15,8 +15,8 @@ public static class ClassicServiceLayout
         "piecechange" => new(366, 495),
         "itemcombine" => new(366, 416),
         "combinerecipes" => new(790, 481),
-        // The redistribution menu closes 20 px under its last option, as far as the description sits from the top.
-        "class_change" => new(327, 207),
+        // The redistribution menu starts at the original co_change_us size; ClassicNpcOpeningLayout.Change sizes it.
+        "class_change" => new(ClassicNpcOpeningLayout.Width, ClassicNpcOpeningLayout.BaseHeight),
         // Disassembly: the generator bench with a 3 x 3 piece grid, then the bag 14 px above the bottom edge.
         "itemsmash" => new(366, 568),
         // The Character Seal transfer follows the item seal: socket, question, actions, bag, coins and hint.
