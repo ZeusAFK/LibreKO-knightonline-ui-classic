@@ -8,7 +8,7 @@ using System.Text.Json;
 using Spec = KnightOnlineUiClassic.Layout.ClassicOverlayLayout;
 
 // Native world overlays without a window id: confirmation prompts, the death notice, broadcast
-// banners, the zone chip, war score strips, the player menu and the loot window. Each overlay is
+// banners, the zone chip, war score strips and the loot window. Each overlay is
 // captured once in its native look, then prepared and skinned and captured in its main states.
 public partial class Preview
 {
@@ -40,9 +40,8 @@ public partial class Preview
         Call("BuildUpgradeNoticeBanner"); Call("BuildShoutBanner"); Call("BuildBattleEventUi");
         Call("BuildClanBattleBanner"); Call("BuildZoneAbilityChip");
         SetField("_bdwHudLayer", new CanvasLayer { Layer = 95 }); world.AddChild(Field<CanvasLayer>("_bdwHudLayer")); Call("BuildBdwScoreBanner");
-        Call("PlayerMenuInit"); Call("BuildLootWindow"); Call("BuildLootPrompt");
+        Call("BuildLootWindow"); Call("BuildLootPrompt");
         foreach (var layer in world.GetChildren().OfType<CanvasLayer>().ToArray()) layer.Reparent(this);
-        Field<PopupMenu>("_playerMenu").Reparent(this);
 
         var checks = new List<string>(); var failures = new List<string>(); var screens = new List<object>();
         void Require(bool valid, string text) { if (valid) checks.Add(text); else { failures.Add(text); GD.PushError("WORLD_OVERLAYS_AUDIT: " + text); } }
@@ -99,7 +98,6 @@ public partial class Preview
         var clanBattle = Field<PanelContainer>("_clanBattlePanel"); var clanBattleLabel = Field<Label>("_clanBattleLabel");
         var chip = Field<PanelContainer>("_zoneabilityChip"); var chipLabel = Field<Label>("_zoneabilityTypeLbl");
         var board = Field<WarScoreStrip>("_battleeventBoard"); var bdw = Field<WarScoreStrip>("_bdwScoreBanner");
-        var menu = Field<PopupMenu>("_playerMenu");
         var lootLayer = Field<CanvasLayer>("_lootLayer"); var lootPanel = Field<PanelContainer>("_lootPanel");
         var lootCells = Field<ItemSlotView[]>("_lootCells"); var lootPrompt = Field<Label>("_lootPrompt");
 
@@ -132,9 +130,6 @@ public partial class Preview
         await Shot("native-death"); Call("HideDeathDialog");
         ShowBanners(); await Frames(); PlaceBanners();
         await Shot("native-banners"); HideBanners();
-        menu.Clear(); foreach (var item in new[] { "Request a party", "Report", "User trade", "Whisper", "Add friend", "User Information", "Duel", "Equipment View", "Copy name" }) menu.AddItem(item);
-        menu.ResetSize(); menu.Position = new Vector2I(560, 260); menu.Popup();
-        await Shot("native-menu"); menu.Hide();
         var gold = new LootEntry(Net.GoldItemId, 1520);
         // The client places the box at its 3D anchor; the audit shows the contents as the client's refresh does.
         void ShowLoot(List<LootEntry> entries)
@@ -152,7 +147,7 @@ public partial class Preview
         await Frames(2);
         foreach (var (node, what) in new (Node, string)[] { (invite, "party invite"), (duel, "duel challenge"), (recall, "town recall"), (deathPanel, "death notice"),
             (upgradeLabel.GetParent().GetParent(), "upgrade banner"), (battleBanner, "battle banner"), (clanBattle, "clan battle banner"), (chip, "zone chip"),
-            (board, "battle score"), (bdw, "border war score"), (menu, "player menu"), (lootPanel, "loot window"), (lootPrompt, "loot prompt") })
+            (board, "battle score"), (bdw, "border war score"), (lootPanel, "loot window"), (lootPrompt, "loot prompt") })
             Require(node.HasMeta("classic_overlay"), $"{what} has the Classic skin");
 
         async Task Prompt(ConfirmationDialog dialog, string state, string title, bool decline)
@@ -288,13 +283,6 @@ public partial class Preview
         await Shot("banners-result", ("shout", Global(shoutLabel)), ("result", Global(battleResult)));
         HideBanners();
 
-        // Player menu.
-        menu.Popup(); menu.SetFocusedItem(3); await Frames();
-        Require(menu.GetFocusedItem() == 3 && menu.GetThemeStylebox("hover") is StyleBoxFlat { BgColor.A: > 0.5f }, "player menu: the hovered row shows the Classic selection");
-        Require(menu.GetThemeFont("font") == Plugin.Kit.Regular && menu.GetThemeStylebox("panel") is StyleBoxFlat && Inside(viewport, Win(menu)), $"player menu: Classic type and panel inside the viewport {Win(menu)}");
-        await Shot("menu", ("menu", Win(menu)));
-        menu.Hide();
-
         // Loot: gold and two items, then a full box of twelve; cells are the client's own (click takes, right click sets a rule).
         SetField("_openBundleId", 7);
         ShowLoot(new List<LootEntry> { gold, new(singles[0], 1), new(stackable, 25) });
@@ -353,7 +341,6 @@ public partial class Preview
         System.IO.File.WriteAllText(System.IO.Path.Combine(output, prefix + "-world-overlays.json"),
             JsonSerializer.Serialize(new { checks, failures, screenshots = screens, liveTransactions = false }, new JsonSerializerOptions { WriteIndented = true }));
         foreach (var layer in GetChildren().OfType<CanvasLayer>().ToArray()) layer.Free();
-        menu.Free();
         world.Free(); net.Free();
         await Frames(2);
         if (failures.Count > 0) throw new Exception("WORLD_OVERLAYS_AUDIT failed: " + string.Join("; ", failures));

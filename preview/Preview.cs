@@ -66,6 +66,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("map-fortune-audit")){await CaptureMapFortuneAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("events-b-audit")){await CaptureEventsBAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("event-windows-audit")){await CaptureEventWindowsAudit(nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("event-overlays-audit")){await CaptureEventOverlaysAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("identity-audit")){await CaptureIdentityAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("classic-services-audit")){await CaptureClassicServices(game,nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("storage-audit")){await CaptureStorageAudit(game,nation);await FinishManagedAudit();return;}

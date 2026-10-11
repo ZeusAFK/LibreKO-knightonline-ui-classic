@@ -93,6 +93,29 @@ public static class ClassicOverlayLayout
         public const float BarHeight = 7;
     }
 
+    /// <summary>An event box (Knight Royale sign-up, genie quick panel): the plain frame with even padding.</summary>
+    public static class Board
+    {
+        public const float Padding = 12, PaddingTop = 10, Alpha = .9f;
+        /// <summary>Gap between the Classic target frame and the siege tower button under it.</summary>
+        public const float TowerGap = 2;
+    }
+
+    /// <summary>The Wanted plaque: chat tab buttons on an information plaque under the top-right icons.</summary>
+    public static class Wanted
+    {
+        public const float Margin = 8, Top = 56, Gap = 2;
+        public static Vector2 Size(int buttons) => new(Plaque.CapLeft + 1 + buttons * Plaque.Action.X + Math.Max(0, buttons - 1) * Gap + Plaque.CapRight + 1, Plaque.Height);
+        public static Rect2 Button(int index) => new(Plaque.CapLeft + 1 + index * (Plaque.Action.X + Gap), 4, Plaque.Action.X, Plaque.Action.Y);
+    }
+
+    /// <summary>Mini-map plates (the Nereid monument strip) at the top right, under the Wanted plaque.</summary>
+    public static class MapPlates
+    {
+        public const int Layer = 62;
+        public const float Top = Wanted.Top + Plaque.Height + 4;
+    }
+
     /// <summary>The registration countdown plaque: title and time on one line, the original bar below.</summary>
     public static class Countdown
     {

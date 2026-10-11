@@ -4,7 +4,7 @@ using LibreKO.Plugins;
 
 namespace KnightOnlineUiClassic.Native;
 
-/// <summary>Native world overlays that have no window id: prompts, event plates, banners, menus and loot.</summary>
+/// <summary>Native world overlays that have no window id: prompts, event plates, banners, boards and loot.</summary>
 public enum NativeOverlay
 {
     /// <summary>The temple event registration modal (a full-rect host named <c>event_registration</c>).</summary>
@@ -23,10 +23,26 @@ public enum NativeOverlay
     Chip,
     /// <summary>A war score strip.</summary>
     Score,
-    /// <summary>A world context menu.</summary>
-    Menu,
     /// <summary>The loot window.</summary>
     Loot,
+    /// <summary>A multi-line event box with its own controls (Knight Royale sign-up, genie quick panel).</summary>
+    Board,
+    /// <summary>A centre toast plate (Monster Stone and Chaos timers).</summary>
+    Toast,
+    /// <summary>The event title chips beside the premium chip.</summary>
+    Titles,
+    /// <summary>A one-line label plate (Nereid flag and score boards).</summary>
+    LabelPlate,
+    /// <summary>A free-standing action button (siege drop-off).</summary>
+    Action,
+    /// <summary>The siege tower button, which the client puts on its own (hidden) target bar.</summary>
+    TowerButton,
+    /// <summary>The ranker statue's message paper.</summary>
+    Paper,
+    /// <summary>The Wanted list buttons, which the client puts on its own (hidden) mini map.</summary>
+    Wanted,
+    /// <summary>A label plate the client puts on its own (hidden) mini map (the Nereid monument strip).</summary>
+    MapPlate,
 }
 
 /// <summary>
@@ -49,6 +65,45 @@ public static class NativeOverlays
     internal static void Register(PluginContext context) =>
         context.Game.BecameAvailable += () => { if (NativeHudChat.World is { } world) Prepare(world); };
 
+    /// <summary>
+    /// Overlays the client builds later (or rebuilds), checked four times a second: the event plates and boards,
+    /// banners and splashes, the siege tower actions, the ranker paper and the Wanted buttons.
+    /// </summary>
+    private static readonly (string Field, NativeOverlay Part, string Name)[] Later =
+    {
+        ("_soccerBoard", NativeOverlay.Score, "soccer_score"),
+        ("_nestTimerPanel", NativeOverlay.Toast, "event_timer"),
+        ("_royaleBoard", NativeOverlay.Board, "royale_board"),
+        ("_genieSub", NativeOverlay.Board, "genie_quick"),
+        ("_eventTitleColumn", NativeOverlay.Titles, "event_titles"),
+        ("_gatherChip", NativeOverlay.Chip, "gather_chip"),
+        ("_areaBanner", NativeOverlay.Announcement, "area_banner"),
+        ("_msgOut", NativeOverlay.Announcement, "skill_message"),
+        ("_orderMessage", NativeOverlay.Announcement, "order_message"),
+        ("_killSplash", NativeOverlay.Announcement, "kill_splash"),
+        ("_nereidFlagBoard", NativeOverlay.LabelPlate, "nereid_flags"),
+        ("_nereidScoreBoard", NativeOverlay.LabelPlate, "nereid_score"),
+        ("_nereidStrip", NativeOverlay.MapPlate, "nereid_strip"),
+        ("_dropOff", NativeOverlay.Action, "siege_drop_off"),
+        ("_towerButton", NativeOverlay.TowerButton, "siege_tower"),
+        ("_rankerPaper", NativeOverlay.Paper, "ranker_paper"),
+        ("_wantedToggle", NativeOverlay.Wanted, "wanted_toggle"),
+        ("_wantedOpen", NativeOverlay.Wanted, "wanted_open"),
+    };
+
+    /// <summary>Prepares the overlays that already exist and the later ones once (safe to call repeatedly).</summary>
+    public static void PrepareLater(World world)
+    {
+        foreach (var (field, part, name) in Later)
+        {
+            if (!Native.Has(world, field) || Native.Get<Node>(world, field) is not { } node || !GodotObject.IsInstanceValid(node)
+                || node.IsQueuedForDeletion() || node.HasMeta(Prepared)) continue;
+            node.SetMeta(Prepared, true);
+            node.Name = name;
+            Apply(part, node);
+        }
+    }
+
     /// <summary>Prepares every overlay of a world; safe to call again.</summary>
     public static void Prepare(World world)
     {
@@ -67,8 +122,15 @@ public static class NativeOverlays
         Apply(NativeOverlay.Chip, Named(world, "_zoneabilityChip", "zone_chip"));
         Apply(NativeOverlay.Score, Named(world, "_battleeventBoard", "battle_score"));
         Apply(NativeOverlay.Score, Named(world, "_bdwScoreBanner", "border_war_score"));
-        Apply(NativeOverlay.Menu, Named(world, "_playerMenu", "player_menu"));
         PrepareLoot(world);
+        PrepareLater(world);
+        double next = 0;
+        world.AddChild(new NativeEventWatcher(() =>
+        {
+            if (Time.GetTicksMsec() < next || !GodotObject.IsInstanceValid(world)) return;
+            next = Time.GetTicksMsec() + 250;
+            PrepareLater(world);
+        }) { Name = "classic_overlay_later" });
     }
 
     private static void PrepareEvents(World world)

@@ -177,6 +177,8 @@ public static class ClassicEventFamily
 
     private static void StyleButton(Button button)
     {
+        // A flat button is a clickable strip around its own labels (a collapsible board title), not a service button.
+        if (button.Flat) { button.FocusMode = Control.FocusModeEnum.None; return; }
         if (button.Text.Length == 0 && button.Icon != null)
         {
             // Icon buttons keep their glyph in the caption gold without a modern chip.
@@ -200,7 +202,9 @@ public static class ClassicEventFamily
         // The caption decides the width (never clipped), at least the width of the original small buttons.
         button.ClipText = false; button.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
         float caption = Plugin.Kit.Bold.GetStringSize(button.Text, HorizontalAlignment.Left, -1, Spec.SmallFont).X + 2 * Spec.ButtonPadding;
-        button.CustomMinimumSize = new Vector2(Math.Max(button.CustomMinimumSize.X, Math.Max(Spec.ButtonMinWidth, Mathf.Ceil(caption))),
+        // Glyph buttons (one or two characters: arrows, plus, minus) stay square; captions get the small-button width.
+        float least = button.Text.Trim().Length <= 2 ? Spec.Button : Spec.ButtonMinWidth;
+        button.CustomMinimumSize = new Vector2(Math.Max(button.CustomMinimumSize.X, Math.Max(least, Mathf.Ceil(caption))),
             Math.Max(button.CustomMinimumSize.Y, Spec.Button));
         // A toggle shows its chosen state with the pressed art, as the original tab-like buttons do.
         if (button.ToggleMode) button.AddThemeColorOverride("font_pressed_color", new Color("ffe094"));
