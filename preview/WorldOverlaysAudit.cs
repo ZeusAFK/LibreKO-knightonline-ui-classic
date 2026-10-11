@@ -8,7 +8,7 @@ using System.Text.Json;
 using Spec = KnightOnlineUiClassic.Layout.ClassicOverlayLayout;
 
 // Native world overlays without a window id: confirmation prompts, the death notice, broadcast
-// banners, the zone chip, war score strips, the player menu and the loot window. Each overlay is
+// banners, the zone chip, war score strips and the loot window. Each overlay is
 // captured once in its native look, then prepared and skinned and captured in its main states.
 public partial class Preview
 {
@@ -37,12 +37,11 @@ public partial class Preview
         void SetField(string name, object? value) { var f = typeof(World).GetField(name, Flags)!; f.SetValue(world, value == null ? null : Convert.ChangeType(value, f.FieldType)); }
         void Call(string method, params object?[] args) => DetailCall(world, method, args);
         Call("BuildDeathDialog"); Call("TownRecallInit"); Call("BuildChallengePrompt"); Call("BuildPartyPanel");
-        Call("BuildUpgradeNoticeBanner"); Call("BuildShoutBanner"); Call("BuildSeasonalBanner"); Call("BuildBattleEventUi");
+        Call("BuildUpgradeNoticeBanner"); Call("BuildShoutBanner"); Call("BuildBattleEventUi");
         Call("BuildClanBattleBanner"); Call("BuildZoneAbilityChip");
         SetField("_bdwHudLayer", new CanvasLayer { Layer = 95 }); world.AddChild(Field<CanvasLayer>("_bdwHudLayer")); Call("BuildBdwScoreBanner");
-        Call("PlayerMenuInit"); Call("BuildLootWindow"); Call("BuildLootPrompt");
+        Call("BuildLootWindow"); Call("BuildLootPrompt");
         foreach (var layer in world.GetChildren().OfType<CanvasLayer>().ToArray()) layer.Reparent(this);
-        Field<PopupMenu>("_playerMenu").Reparent(this);
 
         var checks = new List<string>(); var failures = new List<string>(); var screens = new List<object>();
         void Require(bool valid, string text) { if (valid) checks.Add(text); else { failures.Add(text); GD.PushError("WORLD_OVERLAYS_AUDIT: " + text); } }
@@ -94,15 +93,13 @@ public partial class Preview
         var deathPanel = Field<PanelContainer>("_deathPanel");
         var upgradeLayer = Field<CanvasLayer>("_upgradeNoticeLayer"); var upgradeLabel = Field<Label>("_upgradeNoticeLabel");
         var shoutLayer = Field<CanvasLayer>("_shoutLayer"); var shoutLabel = Field<Label>("_shoutLabel");
-        var seasonalLayer = Field<CanvasLayer>("_seasonalLayer");
         var battleBanner = Field<PanelContainer>("_battleeventBanner"); var battleBannerLabel = Field<Label>("_battleeventBannerLbl");
         var battleResult = Field<PanelContainer>("_battleeventResult"); var battleResultLabel = Field<Label>("_battleeventResultLbl");
         var clanBattle = Field<PanelContainer>("_clanBattlePanel"); var clanBattleLabel = Field<Label>("_clanBattleLabel");
         var chip = Field<PanelContainer>("_zoneabilityChip"); var chipLabel = Field<Label>("_zoneabilityTypeLbl");
         var board = Field<WarScoreStrip>("_battleeventBoard"); var bdw = Field<WarScoreStrip>("_bdwScoreBanner");
-        var menu = Field<PopupMenu>("_playerMenu"); var partyMenu = Field<PopupMenu>("_partyCtxMenu");
         var lootLayer = Field<CanvasLayer>("_lootLayer"); var lootPanel = Field<PanelContainer>("_lootPanel");
-        var lootRows = Field<VBoxContainer>("_lootListBox"); var lootPrompt = Field<Label>("_lootPrompt");
+        var lootCells = Field<ItemSlotView[]>("_lootCells"); var lootPrompt = Field<Label>("_lootPrompt");
 
         void ShowBanners()
         {
@@ -124,23 +121,24 @@ public partial class Preview
         }
         void HideBanners()
         {
-            foreach (var layer in new[] { upgradeLayer, shoutLayer, seasonalLayer }) layer.Visible = false;
+            foreach (var layer in new[] { upgradeLayer, shoutLayer }) layer.Visible = false;
             foreach (var c in new Control[] { battleBanner, battleResult, clanBattle, chip, board, bdw, lootPrompt }) c.Visible = false;
         }
         invite.DialogText = "Guardian invites you to a party.\nJoin?"; invite.PopupCentered();
         await Shot("native-prompt"); invite.Hide();
-        Call("OpenInvitePrompt"); Field<LineEdit>("_inviteNameInput").Text = "Longestcharactername";
-        await Shot("native-invite-name"); Field<PanelContainer>("_inviteNamePanel").Visible = false;
         Call("OnDeathExpLoss", 1_234_567L); Call("ShowDeathDialog");
         await Shot("native-death"); Call("HideDeathDialog");
         ShowBanners(); await Frames(); PlaceBanners();
         await Shot("native-banners"); HideBanners();
-        menu.Clear(); foreach (var item in new[] { "Request a party", "Report", "User trade", "Whisper", "Add friend", "User Information", "Duel", "Equipment View", "Copy name" }) menu.AddItem(item);
-        menu.ResetSize(); menu.Position = new Vector2I(560, 260); menu.Popup();
-        await Shot("native-menu"); menu.Hide();
         var gold = new LootEntry(Net.GoldItemId, 1520);
+        // The client places the box at its 3D anchor; the audit shows the contents as the client's refresh does.
+        void ShowLoot(List<LootEntry> entries)
+        {
+            var list = Field<List<LootEntry>>("_lootEntries"); list.Clear(); list.AddRange(entries);
+            Call("RefreshLootWindow"); lootLayer.Visible = true;
+        }
         SetField("_openBundleId", 7);
-        Call("OnLootContents", 7, new List<LootEntry> { gold, new(singles[0], 1), new(stackable, 25) });
+        ShowLoot(new List<LootEntry> { gold, new(singles[0], 1), new(stackable, 25) });
         lootPanel.Position = new Vector2(560, 260);
         await Shot("native-loot"); Call("CloseLoot");
 
@@ -149,7 +147,7 @@ public partial class Preview
         await Frames(2);
         foreach (var (node, what) in new (Node, string)[] { (invite, "party invite"), (duel, "duel challenge"), (recall, "town recall"), (deathPanel, "death notice"),
             (upgradeLabel.GetParent().GetParent(), "upgrade banner"), (battleBanner, "battle banner"), (clanBattle, "clan battle banner"), (chip, "zone chip"),
-            (board, "battle score"), (bdw, "border war score"), (menu, "player menu"), (partyMenu, "party menu"), (lootPanel, "loot window"), (lootPrompt, "loot prompt") })
+            (board, "battle score"), (bdw, "border war score"), (lootPanel, "loot window"), (lootPrompt, "loot prompt") })
             Require(node.HasMeta("classic_overlay"), $"{what} has the Classic skin");
 
         async Task Prompt(ConfirmationDialog dialog, string state, string title, bool decline)
@@ -198,34 +196,12 @@ public partial class Preview
         recall.PopupCentered();
         await Prompt(recall, "town-recall", "Town Recall", true);
 
-        // Invite by name from the party window: the message box with its edit field; Cancel and Send stay native.
-        var namePanel = Field<PanelContainer>("_inviteNamePanel"); var nameInput = Field<LineEdit>("_inviteNameInput");
-        Require(namePanel.HasMeta("classic_overlay"), "invite by name has the Classic skin");
-        Call("OpenInvitePrompt"); nameInput.Text = "Longestcharactername";
-        await Frames();
-        var nameBox = namePanel.GetNode<Control>("classic_invite_name");
-        Require(namePanel.Visible && nameBox.Size == Spec.NamePrompt.Size && Global(nameBox).Position == ((viewport.Size - Spec.NamePrompt.Size) / 2).Round(), $"invite by name: centred message box {Global(nameBox)}");
-        foreach (var control in nameBox.GetChildren().OfType<Control>().Where(c => c.HasMeta(ClassicWorldOverlays.ExpectedRect)))
-        {
-            Expected(control, nameBox, "invite by name " + control.Name);
-            if (control is Label label) Require(Fits(label), $"invite by name: '{label.Text}' fits");
-            if (control is Button button) ButtonArt(button, "invite by name " + button.Text);
-        }
-        Require(nameInput.GetThemeFont("font").GetStringSize(nameInput.Text, HorizontalAlignment.Left, -1, nameInput.GetThemeFontSize("font_size")).X <= nameInput.Size.X - 12,
-            "invite by name: a name at the native 20-character limit fits the edit field");
-        await Shot("party-invite-name", ("box", Global(nameBox)), ("input", Global(nameInput)));
-        nameBox.GetChildren().OfType<Button>().Single(b => b.Text == "Cancel").EmitSignal(BaseButton.SignalName.Pressed);
-        Require(!namePanel.Visible, "invite by name: Cancel runs the native close");
-        Call("OpenInvitePrompt"); nameInput.Text = "Guardian";
-        nameBox.GetChildren().OfType<Button>().Single(b => b.Text == "Send").EmitSignal(BaseButton.SignalName.Pressed);
-        Require(!namePanel.Visible, "invite by name: Send runs the native invite");
-
         // Death notice: experience loss, the pending (disabled) state and the native OK.
         Call("OnDeathExpLoss", 1_234_567_890L); Call("ShowDeathDialog");
         await Frames();
         var death = deathPanel.GetNode<Control>("classic_death");
         var deathLabels = death.GetChildren().OfType<Label>().Where(l => l.HasMeta(ClassicWorldOverlays.ExpectedRect)).ToArray();
-        var deathOk = Descendants(death).OfType<Button>().Single();
+        var deathOk = death.GetChildren().OfType<Button>().Single();
         async Task DeathState(string state)
         {
             await Frames();
@@ -241,6 +217,32 @@ public partial class Preview
         }
         Require(deathLabels.Length == 2, "death notice: loss and hint labels placed");
         await DeathState("death");
+        // Resurrection scrolls in the bag: the town row and one row per scroll between the hint and OK.
+        var scrollType = typeof(World).Assembly.GetType("LibreKO.Domain.ScrollSkill")!;
+        var offer = (System.Collections.IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(scrollType))!;
+        foreach (var (id, name) in new[] { (500, "Blessed Resurrection Scroll"), (501, "Resurrection Scroll of an Extraordinarily Long Name") })
+            offer.Add(Activator.CreateInstance(scrollType, id, name, 0, 0, 0));
+        typeof(World).GetField("_deathScrolls", Flags)!.SetValue(world, offer);
+        SetField("_deathPick", 1);
+        Call("RefreshDeathRows"); Call("RefreshDeathDialogText"); Call("ArmRespawnButton", "Please confirm the availability.");
+        await Frames(3);
+        var choices = death.GetNode<VBoxContainer>("death_choices");
+        var choiceRows = choices.GetChildren().OfType<Button>().Where(b => b.Visible).ToArray();
+        Require(choices.Visible && choiceRows.Length == 3, "death notice: the town row and two scroll rows are offered");
+        Expected(choices, death, "death notice choices");
+        Require(choiceRows.All(r => r.Size.Y == Spec.Death.RowHeight && Inside(Global(choices), Global(r))), "death notice: whole 22-pixel choice rows inside the message band");
+        Require(Global(choices).End.Y + Spec.Message.ActionGap <= Global(deathOk).Position.Y + .5f && Global(choices).Position.Y >= Global(deathLabels[1]).End.Y, "death notice: choices between the hint and OK");
+        Require(choiceRows[1].GetThemeColor("font_color") == new Color(1, 1, 0) && choiceRows[0].GetThemeColor("font_color") == Colors.White, "death notice: the chosen row keeps the native yellow");
+        Require(choiceRows.All(r => r.TooltipText == r.Text && r.ClipText), "death notice: long scroll names are clipped with the full text as tooltip");
+        await Shot("death-scrolls", ("box", Global(death)), ("choices", Global(choices)), ("ok", Global(deathOk)));
+        choiceRows[0].EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
+        await Frames(2);
+        Require(Field<int>("_deathPick") == 0 && choiceRows[0].GetThemeColor("font_color") == new Color(1, 1, 0), "death notice: a row click is the native choice");
+        await Shot("death-scrolls-town", ("box", Global(death)));
+        typeof(World).GetField("_deathScrolls", Flags)!.SetValue(world, Activator.CreateInstance(typeof(List<>).MakeGenericType(scrollType)));
+        Call("RefreshDeathRows"); Call("RefreshDeathDialogText"); Call("ArmRespawnButton", "Press OK to teleport back to the re-spawn point.");
+        await Frames(3);
+        Require(!choices.Visible && Global(death).Size == Spec.Death.Size(deathLabels[1].Size.Y), "death notice: without scrolls the box returns to the hint and OK");
         Call("MarkRespawnPending");
         await Frames(2);
         Require(deathOk.Disabled && deathOk.GetNode<Label>("caption").GetThemeColor("font_color") != Colors.White, "death notice: the pending OK is disabled and greyed");
@@ -281,16 +283,9 @@ public partial class Preview
         await Shot("banners-result", ("shout", Global(shoutLabel)), ("result", Global(battleResult)));
         HideBanners();
 
-        // Player menu.
-        menu.Popup(); menu.SetFocusedItem(3); await Frames();
-        Require(menu.GetFocusedItem() == 3 && menu.GetThemeStylebox("hover") is StyleBoxFlat { BgColor.A: > 0.5f }, "player menu: the hovered row shows the Classic selection");
-        Require(menu.GetThemeFont("font") == Plugin.Kit.Regular && menu.GetThemeStylebox("panel") is StyleBoxFlat && Inside(viewport, Win(menu)), $"player menu: Classic type and panel inside the viewport {Win(menu)}");
-        await Shot("menu", ("menu", Win(menu)));
-        menu.Hide();
-
-        // Loot: gold and two items, then a full grid with a long name; a cell click takes through the native row.
+        // Loot: gold and two items, then a full box of twelve; cells are the client's own (click takes, right click sets a rule).
         SetField("_openBundleId", 7);
-        Call("OnLootContents", 7, new List<LootEntry> { gold, new(singles[0], 1), new(stackable, 25) });
+        ShowLoot(new List<LootEntry> { gold, new(singles[0], 1), new(stackable, 25) });
         lootPanel.Position = new Vector2(560, 260);
         await Frames();
         var loot = lootPanel.GetNode<Control>("classic_loot");
@@ -298,33 +293,52 @@ public partial class Preview
         {
             await Frames();
             Require(lootPanel.Size == Spec.Loot.Size && loot.Size == Spec.Loot.Size && Inside(viewport, Global(loot)), $"{state}: original grid size {lootPanel.Size}");
-            foreach (var name in new[] { "loot_header", "loot_close" })
+            foreach (var name in new[] { "loot_take_all", "loot_filter", "loot_close" })
             {
                 var control = loot.FindChild(name, true, false) as Control;
                 Require(control != null && control.IsVisibleInTree(), $"{state}: {name} visible");
-                if (control != null) { var expected = control.GetMeta(ClassicWorldOverlays.ExpectedRect).AsRect2(); Require(new Rect2(control.GlobalPosition - loot.GlobalPosition, control.Size) == expected, $"{state}: {name} at {expected}"); }
+                if (control != null)
+                {
+                    Expected(control, loot, $"{state} {name}");
+                    Require(Inside(new Rect2(Global(loot).Position, Spec.Loot.Header.Size), Global(control)), $"{state}: {name} on the plaque");
+                    if (control is Button { Text.Length: > 0 } button)
+                    {
+                        ButtonArt(button, $"{state} {name}");
+                        // Take all and Filter (which opens the client's Loot Filter window) keep their native callbacks.
+                        Require(button.GetSignalConnectionList(BaseButton.SignalName.Pressed).Count > 0, $"{state}: {name} keeps its native action");
+                    }
+                }
             }
-            var title = (Label)loot.FindChild("loot_title", true, false)!;
-            Require(Fits(title) && Inside(Global((Control)loot.FindChild("loot_header", true, false)!), Global(title)), $"{state}: loot title fits the plaque");
-            for (int i = 0; i < Spec.Loot.Cells.Length; i++)
+            for (int i = 0; i < lootCells.Length; i++)
             {
-                var cell = loot.GetNode<Control>($"loot_cell_{i}");
+                var cell = lootCells[i];
+                Require(cell.GetParent() == loot, $"{state}: cell {i} on the Classic grid");
                 Expected(cell, loot, $"{state} cell {i}");
-                var icon = cell.GetNode<TextureRect>("icon");
-                Require((icon.Texture != null) == (i < filled), $"{state}: cell {i} {(i < filled ? "shows its item" : "is empty")}");
+                Require(cell.GetThemeStylebox("panel") is StyleBoxEmpty, $"{state}: cell {i} shows the original art, not a modern frame");
+                Require(cell.Item.IsEmpty == (i >= filled), $"{state}: cell {i} {(i < filled ? "shows its item" : "is empty")}");
             }
             await Shot(state, ("loot", Global(loot)));
         }
         await LootState("loot", 3);
-        Require(loot.GetNode<Control>("loot_cell_0").GetNode<Label>("item_count").Text == "1520" && loot.GetNode<Control>("loot_cell_2").GetNode<Label>("item_count").Text == "25"
-            && loot.GetNode<Control>("loot_cell_1").GetNode<Label>("item_count").Text == "", "loot: stack counts from the native rows; single items show none");
-        Call("OnLootContents", 7, new List<LootEntry> { gold, new(singles[0], 1), new(stackable, 25), new(singles[1], 1), new(singles[3], 1), new(singles[2], 1) });
-        await LootState("loot-full", 6);
-        var taken = -1;
-        var rows = lootRows.GetChildren().OfType<Control>().Where(r => !r.IsQueuedForDeletion()).ToArray();
-        rows[4].GuiInput += ev => { if (ev is InputEventMouseButton { Pressed: true }) taken = 4; };
-        loot.GetNode<Control>("loot_cell_4").EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
-        Require(taken == 4, "loot: a cell click takes its item through the native row");
+        string Count(int i) => lootCells[i].GetChildren().OfType<Label>().First(l => l.Name == "item_count").Text;
+        Require(Count(0) == "48210" || Count(0) == "1520", "loot: gold shows its amount");
+        Require(Count(2) == "25" && Count(1) == "", "loot: stack counts from the native cells; single items show none");
+        var full = new List<LootEntry> { gold, new(singles[0], 1), new(stackable, 25), new(singles[1], 1), new(singles[3], 1), new(singles[2], 1) };
+        for (int i = 0; full.Count < 12; i++) full.Add(new(catalog[i * 7].Id, 1 + i));
+        ShowLoot(full);
+        await LootState("loot-full", 12);
+        Require(Global(lootCells[6]).Position.X >= Global(loot).Position.X + Spec.Loot.GridWidth, "loot: entries 7 to 12 fill the second grid");
+        var hovered = lootCells[4];
+        Input.WarpMouse(Global(hovered).GetCenter());
+        GetViewport().PushInput(new InputEventMouseMotion { Position = Global(hovered).GetCenter(), GlobalPosition = Global(hovered).GetCenter() });
+        await Frames(3);
+        await Shot("loot-hover", ("loot", Global(loot)), ("cell", Global(hovered)));
+        GetViewport().PushInput(new InputEventMouseMotion { Position = new Vector2(5, 5), GlobalPosition = new Vector2(5, 5) });
+        int taken = -1;
+        var takeSpy = Native.Get<System.Delegate>(hovered, "Clicked");
+        hovered.Clicked += c => taken = c.Index;
+        hovered._GuiInput(new InputEventMouseButton { Pressed = false, ButtonIndex = MouseButton.Left });
+        Require(taken == hovered.Index && takeSpy != null, "loot: a cell click runs the native take");
         ((Button)loot.FindChild("loot_close", true, false)!).EmitSignal(BaseButton.SignalName.Pressed);
         await Frames(2);
         Require(!lootLayer.Visible, "loot: Close runs the native close");
@@ -332,7 +346,6 @@ public partial class Preview
         System.IO.File.WriteAllText(System.IO.Path.Combine(output, prefix + "-world-overlays.json"),
             JsonSerializer.Serialize(new { checks, failures, screenshots = screens, liveTransactions = false }, new JsonSerializerOptions { WriteIndented = true }));
         foreach (var layer in GetChildren().OfType<CanvasLayer>().ToArray()) layer.Free();
-        menu.Free();
         world.Free(); net.Free();
         await Frames(2);
         if (failures.Count > 0) throw new Exception("WORLD_OVERLAYS_AUDIT failed: " + string.Join("; ", failures));

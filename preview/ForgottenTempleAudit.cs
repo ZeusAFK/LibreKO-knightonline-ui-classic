@@ -114,11 +114,32 @@ public partial class Preview
         await Registration("ft-registration", false, false);
         joinButton.EmitSignal(BaseButton.SignalName.Pressed);
         Require((bool)DetailField(world, "_isEventRegistered")! && joinButton.Text == "Cancel", "Join runs the native registration toggle");
-        DetailCall(world, "OnBifrostJoinResult", true, 55);
+        DetailCall(world, "OnBifrostJoinResult", LibreKO.Domain.TempleJoin.Joined, 55);
         Require(((Button)DetailField(world, "_joinModalBtn")!).Text == "Cancel", "Joining FT updates registration state");
         await Registration("ft-registered", false, true);
         DetailCall(world, "OnBifrostTime", 20, TempleEventType.ForgottenTemple);
         await Registration("ft-registration-urgent", true, true);
+        // The server's sign-up count adds its line under the status; the box grows by that line only.
+        DetailCall(world, "OnTempleSignUps", (int)TempleEventType.ForgottenTemple, 14, 9);
+        await Frames(); await Frames();
+        {
+            var panel = join.GetNode<Control>("classic_registration");
+            var count = (Label)DetailField(world, "_joinModalCount")!;
+            Require(count.Visible && count.Text.Length > 0 && Fits(count), "registration: the sign-up count line shows and fits");
+            Require(panel.Size == Spec.Registration.SizeFor(true), $"registration: the box grows by the count line {panel.Size}");
+            Expected(count, panel, "registration count"); Expected(joinButton, panel, "registration join with count"); Expected(closeButton, panel, "registration close with count");
+            Require(count.GetGlobalRect().End.Y + Spec.Message.ActionGap <= joinButton.GetGlobalRect().Position.Y + .5f, "registration: the count line keeps the gap above the buttons");
+            await Capture("ft-registration-count");
+            // Juraid Mountain signs up at an NPC: no Join, Close alone in the centre.
+            Native.Set(world, "_isEventRegistered", false);
+            ((Label)DetailField(world, "_joinModalCount")!).Visible = false;
+            DetailCall(world, "OnBifrostTime", 600, TempleEventType.JuraidMountain); DetailCall(world, "UpdateJoinModalState");
+            await Frames(); await Frames();
+            Require(!joinButton.Visible && closeButton.Visible, "juraid: the client hides Join for the NPC sign-up");
+            Require(new Rect2(closeButton.GlobalPosition - panel.GlobalPosition, closeButton.Size) == Spec.Message.Single(panel.Size.Y), "juraid: Close takes the single centred place");
+            Require(Fits(statusLabel), "juraid: the NPC sign-up hint fits the status band");
+            await Capture("juraid-registration");
+        }
         closeButton.EmitSignal(BaseButton.SignalName.Pressed);
         Require(!join.Visible && countdown.Visible, "Close runs the native close and keeps the countdown plaque");
         await Capture("ft-countdown");

@@ -26,8 +26,6 @@ public partial class ClassicProgressionPanel : Control
     private readonly string _id;
     private readonly Control[] _native;
     private readonly List<(Control Control, Rect2 Rect)> _fixed = new();
-    private Control? _genieMain, _genieMisc;
-    private Button? _genieMainTab, _genieMiscTab;
     private TabContainer? _genieTabs;
     private float _achTop;
 
@@ -57,7 +55,7 @@ public partial class ClassicProgressionPanel : Control
         bar.SetMeta("progression_expected_rect", heading);
         foreach (var control in bar.GetChildren().OfType<Control>())
         {
-            control.Visible = control is Label { Text.Length: > 1 } && _id != "rank";
+            control.Visible = control is Label { Text.Length: > 1 };
             if (control is Label title && title.Visible)
             {
                 Caption(title); title.ClipText = true; title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
@@ -236,7 +234,39 @@ public partial class ClassicProgressionPanel : Control
         Place(Find<Label>("ach_summary")); Text(Find<Label>("ach_summary"), 13, ClassicReportDesign.Value);
         var hide = Find<CheckButton>("ach_hide_claimed"); Place(hide); if (hide != null) StyleCheck(hide);
         FixedScroll(Find<ScrollContainer>("ach_scroll"));
+        // The list takes the list row beside the category column, not the client's fixed list size.
+        if (Find<ScrollContainer>("ach_scroll") is { } listScroll) { listScroll.CustomMinimumSize = Vector2.Zero; listScroll.SizeFlagsHorizontal = SizeFlags.ExpandFill; }
         Find<VBoxContainer>("ach_list")?.AddThemeConstantOverride("separation", 0);
+        // Worn title, then search and status filters; the category column sits beside the list.
+        if (Find<PanelContainer>("ach_title_banner") is { } banner)
+        {
+            Place(banner); banner.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+            Find<HBoxContainer>("ach_title_row")?.AddThemeConstantOverride("separation", 8);
+            var worn = Find<Label>("ach_title"); Text(worn, 13, Gold); if (worn != null) Font(worn, true);
+            if (Find<Button>("ach_change_title") is { } change) { StyleButton(change, 120); change.SizeFlagsVertical = SizeFlags.ShrinkCenter; }
+        }
+        if (Find<HBoxContainer>("ach_filters") is { } filters)
+        {
+            Place(filters); filters.AddThemeConstantOverride("separation", 8);
+            if (Find<LineEdit>("ach_search") is { } search) { StyleInput(search); search.CustomMinimumSize = new Vector2(0, ClassicProgressionLayout.Row); }
+            if (Find<OptionButton>("ach_status") is { } status)
+            {
+                StyleButton(status, 120); status.Alignment = HorizontalAlignment.Left;
+                status.AddThemeConstantOverride("arrow_margin", 6);
+                StylePopup(status.GetPopup());
+            }
+        }
+        if (Find<HBoxContainer>("ach_list_row") is { } listRow)
+        {
+            Place(listRow); listRow.AddThemeConstantOverride("separation", ClassicProgressionLayout.AchievementListGap);
+            if (Find<PanelContainer>("ach_category_panel") is { } column)
+            {
+                var inset = new StyleBoxEmpty(); inset.SetContentMarginAll(0);
+                column.AddThemeStyleboxOverride("panel", inset);
+                column.CustomMinimumSize = new Vector2(ClassicProgressionLayout.AchievementCategory, 0);
+            }
+            Find<VBoxContainer>("ach_categories")?.AddThemeConstantOverride("separation", 0);
+        }
         var page = Find<VBoxContainer>("ach_summary_page"); Place(page);
         if (page != null) { page.CustomMinimumSize = Vector2.Zero; page.ClipContents = true; }
         var tabs = new[] { Find<Button>("ach_tab_summary") }.Concat(Enumerable.Range(0, 5).Select(i => Find<Button>("ach_tab_" + i))).ToArray();
@@ -271,10 +301,14 @@ public partial class ClassicProgressionPanel : Control
                 if (child is Label empty) { Text(empty, 13, ClassicDesign.Muted); empty.SetMeta("classic_progression_row", true); }
                 else if (child is PanelContainer row && row.HasMeta("ach_row")) StyleAchievementRow(row);
             }
+        if (Find<VBoxContainer>("ach_categories") is { } categories)
+            foreach (var row in categories.GetChildren().OfType<PanelContainer>()) StyleCategoryRow(row);
         if (Find<VBoxContainer>("ach_summary_page") is { } page) StyleSummary(page);
         if (Find<ScrollContainer>("ach_scroll") is { Visible: true } rowsScroll && Find<VBoxContainer>("ach_list") is { } rowsList) WholeRows(rowsScroll, rowsList);
-        // The list inset belongs to the category pages; the summary draws its own sections.
-        if (Frame.Get("ach_list_frame") is { } frame && Find<ScrollContainer>("ach_scroll") is { } scroll) frame.Visible = scroll.Visible;
+        // The list insets belong to the category pages; the summary draws its own sections.
+        bool listShown = Find<HBoxContainer>("ach_list_row") is { Visible: true };
+        foreach (var name in new[] { "ach_list_frame", "ach_category_frame" })
+            if (Frame.Get(name) is { } frame) frame.Visible = listShown;
     }
 
     /// <summary>
@@ -308,6 +342,25 @@ public partial class ClassicProgressionPanel : Control
         }
     }
 
+    /// <summary>A category entry of the list column: a whole 22-pixel row, gold and lit while chosen.</summary>
+    private static void StyleCategoryRow(PanelContainer row)
+    {
+        if (row.IsQueuedForDeletion() || row.GetChildren().OfType<Label>().FirstOrDefault() is not { } label) return;
+        // The native rebuild marks the chosen category in its bright gold.
+        bool chosen = label.GetThemeColor("font_color").IsEqualApprox(UiTheme.GoldBright) || label.GetMeta("ach_category_chosen", false).AsBool();
+        if (row.HasMeta("classic_progression_row")) return;
+        row.SetMeta("classic_progression_row", true);
+        label.SetMeta("ach_category_chosen", chosen);
+        row.SetMeta("ach_category_chosen", chosen);
+        var box = new StyleBoxFlat { BgColor = chosen ? ClassicReportDesign.SelectedRow : Colors.Transparent };
+        box.SetContentMargin(Side.Left, 6); box.SetContentMargin(Side.Right, 4); box.SetContentMargin(Side.Top, 0); box.SetContentMargin(Side.Bottom, 0);
+        row.AddThemeStyleboxOverride("panel", box);
+        row.CustomMinimumSize = new Vector2(0, ClassicProgressionLayout.Row);
+        Text(label, 12, chosen ? Gold : ClassicReportDesign.Value);
+        if (chosen) Font(label, true, 12);
+        label.TooltipText = label.Text; label.MouseFilter = MouseFilterEnum.Pass;
+    }
+
     private static void StyleAchievementRow(PanelContainer row)
     {
         row.SetMeta("classic_progression_row", true);
@@ -332,15 +385,24 @@ public partial class ClassicProgressionPanel : Control
                     : reward ? (claimed ? Gold : ClassicDesign.Muted) : ClassicDesign.Muted);
             }
         }
+        // The progress gauge: a thin dark track with a gold (complete: green) fill.
+        if (text != null)
+            foreach (var track in text.GetChildren().OfType<ColorRect>())
+            {
+                track.Color = new Color("2a241b");
+                foreach (var fill in track.GetChildren().OfType<ColorRect>())
+                    fill.Color = fill.AnchorRight >= 1 ? Claimed : ClassicReportDesign.Caption;
+            }
+        foreach (var reward in CharacterDetailsSkin.Tree(row).OfType<ItemSlotView>()) ClassicSlotLook.Attach(reward, CellBox);
         foreach (var action in row.GetChildren().OfType<MarginContainer>().SelectMany(m => m.GetChildren().OfType<HBoxContainer>()).SelectMany(h => h.GetChildren().OfType<Control>()).Where(c => c is Button or Label))
         {
             action.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-            if (action is Button claim) { StyleButton(claim, 76); claim.Name = "ach_claim"; }
+            if (action is Button claim) { StyleButton(claim, 76); claim.Name = claim.Text == "Equip" ? "ach_equip" : "ach_claim"; }
             else if (action is Label state)
             {
                 Font(state, false, 12); state.CustomMinimumSize = new Vector2(76, 22);
                 state.HorizontalAlignment = HorizontalAlignment.Center; state.VerticalAlignment = VerticalAlignment.Center;
-                state.AddThemeColorOverride("font_color", claimed ? ClassicDesign.Muted : ClassicReportDesign.Value);
+                state.AddThemeColorOverride("font_color", state.Text == "Worn" ? Gold : claimed ? ClassicDesign.Muted : ClassicReportDesign.Value);
             }
         }
     }
@@ -447,55 +509,79 @@ public partial class ClassicProgressionPanel : Control
 
     private void Rank()
     {
-        var title = Find<Label>("rank_title"); Place(title); Caption(title); if (title != null) title.HorizontalAlignment = HorizontalAlignment.Center;
-        string[] tabs = { "rank_tab_karus", "rank_tab_elmorad" };
-        for (int i = 0; i < tabs.Length; i++)
-            if (Find<Button>(tabs[i]) is { } tab)
-            {
-                var rect = ClassicProgressionLayout.Tab(i);
-                ClassicVendorSkin.Move(tab, this, rect); tab.SetMeta("progression_expected_rect", rect); StyleTab(tab, false);
-            }
-        var refresh = Find<Button>("rank_refresh"); Place(refresh); StyleButton(refresh);
-        for (int i = 0; i < 4; i++)
+        foreach (var side in new[] { "karus", "elmorad" })
         {
-            var header = Find<Label>("rank_header_" + i); Place(header); Caption(header);
-            if (header != null) header.HorizontalAlignment = i == 3 ? HorizontalAlignment.Right : i == 0 ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+            var caption = Find<Label>("rank_caption_" + side); Place(caption); Caption(caption);
+            if (caption != null) caption.HorizontalAlignment = HorizontalAlignment.Center;
+            if (Find<HBoxContainer>("rank_header_" + side) is { } header) { Place(header); LadderLine(header, true); }
+            for (int i = 0; i < ClassicProgressionLayout.Rank.Rows; i++)
+                if (Find<HBoxContainer>($"rank_{side}_row_{i}") is { } line) { Place(line); LadderLine(line, false); }
+            if (Find<HBoxContainer>($"rank_{side}_own") is { } own) { Place(own); LadderLine(own, false); }
         }
-        FixedScroll(Find<ScrollContainer>("rank_scroll"));
-        Find<VBoxContainer>("rank_rows")?.AddThemeConstantOverride("separation", 0);
-        var mine = Find<Label>("rank_mine"); Place(mine); Text(mine); if (mine != null) { Font(mine, true); mine.AddThemeColorOverride("font_color", Gold); }
-        var status = Find<Label>("rank_status"); Place(status); Text(status, 12, ClassicDesign.Muted);
+        var notice = Find<Label>("rank_notice"); Place(notice); Text(notice, 12, ClassicDesign.Muted, true);
+        if (notice != null) notice.HorizontalAlignment = HorizontalAlignment.Center;
         SyncRank();
+    }
+
+    /// <summary>Gives a ladder heading or row the Classic column widths and type; the native labels keep their text.</summary>
+    private static void LadderLine(HBoxContainer line, bool heading)
+    {
+        line.AddThemeConstantOverride("separation", ClassicProgressionLayout.Rank.Gap);
+        line.CustomMinimumSize = new Vector2(0, ClassicProgressionLayout.Row);
+        var cells = line.GetChildren().OfType<Control>().ToArray();
+        var columns = ClassicProgressionLayout.Rank.Columns;
+        for (int i = 0; i < cells.Length && i < columns.Length; i++)
+        {
+            var cell = cells[i];
+            cell.CustomMinimumSize = new Vector2(columns[i], i == 1 && !heading ? 20 : 0);
+            cell.SizeFlagsHorizontal = SizeFlags.Fill; cell.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            var align = i is 0 or 1 ? HorizontalAlignment.Center : i == 4 ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+            if (cell is Label label)
+            {
+                if (heading) Caption(label);
+                else
+                {
+                    Text(label, 12, i == 3 ? ClassicReportDesign.Caption : ClassicReportDesign.Value);
+                    if (i == 0) Font(label, true, 12);
+                    label.MouseFilter = MouseFilterEnum.Pass;
+                }
+                label.HorizontalAlignment = align;
+            }
+            else if (cell is HBoxContainer score)
+            {
+                // Points and the red kill bonus share the right-aligned score column.
+                score.AddThemeConstantOverride("separation", 3);
+                score.Alignment = BoxContainer.AlignmentMode.End;
+                var parts = score.GetChildren().OfType<Label>().ToArray();
+                for (int p = 0; p < parts.Length; p++)
+                {
+                    Text(parts[p], 12, p == 0 ? Gold : new Color("ff8a7a"));
+                    parts[p].HorizontalAlignment = HorizontalAlignment.Right;
+                    // Points give way to the bonus when both do not fit; the bonus is never cut.
+                    parts[p].ClipText = p == 0; parts[p].SizeFlagsHorizontal = p == 0 ? SizeFlags.ExpandFill : SizeFlags.ShrinkEnd;
+                    if (p > 0) parts[p].TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
+                }
+                score.ClipContents = true;
+            }
+        }
     }
 
     private void SyncRank()
     {
-        if (Find<VBoxContainer>("rank_rows") is not { } rows) return;
-        // Column rules frame ranked rows only; empty and loading messages span the table.
-        bool ranked = rows.GetChildren().OfType<PanelContainer>().Any(r => !r.IsQueuedForDeletion());
-        foreach (var (node, rule) in Frame.Where(n => n.Id.StartsWith("rank_divider_"))) rule.Visible = ranked;
-        foreach (var child in rows.GetChildren().OfType<Control>())
-        {
-            if (child.HasMeta("classic_progression_row")) continue;
-            child.SetMeta("classic_progression_row", true);
-            if (child is Label empty) { Text(empty, 13, ClassicDesign.Muted); empty.HorizontalAlignment = HorizontalAlignment.Center; empty.CustomMinimumSize = new Vector2(1, 44); continue; }
-            if (child is not PanelContainer row) continue;
-            row.AddThemeStyleboxOverride("panel", new StyleBoxEmpty()); row.CustomMinimumSize = new Vector2(1, ClassicProgressionLayout.Row);
-            if (row.GetChildren().OfType<HBoxContainer>().FirstOrDefault() is not { } columns) continue;
-            columns.AddThemeConstantOverride("separation", ClassicProgressionLayout.RankGap);
-            var cells = columns.GetChildren().OfType<Label>().ToArray();
-            int.TryParse(cells.FirstOrDefault()?.Text, out int place);
-            for (int i = 0; i < cells.Length && i < ClassicProgressionLayout.RankColumns.Length; i++)
+        foreach (var side in new[] { "karus", "elmorad" })
+            for (int i = 0; i <= ClassicProgressionLayout.Rank.Rows; i++)
             {
-                var label = cells[i];
-                Text(label, 13, i == 0 ? (place is > 0 and <= 3 ? Gold : ClassicReportDesign.Value) : i == 2 ? ClassicReportDesign.Caption : ClassicReportDesign.Value);
-                if (i == 0) Font(label, true);
-                label.CustomMinimumSize = new Vector2(ClassicProgressionLayout.RankColumns[i], ClassicProgressionLayout.Row);
-                label.SizeFlagsHorizontal = SizeFlags.Fill;
-                label.HorizontalAlignment = i == 3 ? HorizontalAlignment.Right : i == 0 ? HorizontalAlignment.Center : HorizontalAlignment.Left;
-                label.TooltipText = label.Text; label.MouseFilter = MouseFilterEnum.Pass;
+                string row = i < ClassicProgressionLayout.Rank.Rows ? $"rank_{side}_row_{i}" : $"rank_{side}_own";
+                if (Find<Label>(row + "_rank") is not { } place) continue;
+                int.TryParse(place.Text, out int at);
+                var ink = at is > 0 and <= 3 ? Gold : ClassicReportDesign.Value;
+                if (place.GetThemeColor("font_color") != ink) place.AddThemeColorOverride("font_color", ink);
+                foreach (var cell in new[] { "_name", "_clan" })
+                    if (Find<Label>(row + cell) is { } label && label.TooltipText != label.Text) label.TooltipText = label.Text;
+                // The player's own row reads in the gold of the selected Character-window entries.
+                if (i == ClassicProgressionLayout.Rank.Rows && Find<Label>(row + "_name") is { } self && self.GetThemeColor("font_color") != Gold)
+                    self.AddThemeColorOverride("font_color", Gold);
             }
-        }
     }
 
     // ---- Genie ------------------------------------------------------------------------------------
@@ -503,17 +589,19 @@ public partial class ClassicProgressionPanel : Control
     private void Genie()
     {
         _genieTabs = Find<TabContainer>("genie_tabs");
-        _genieMain = new Control { Name = "genie_main_page", Size = Size, MouseFilter = MouseFilterEnum.Ignore }; AddChild(_genieMain);
-        _genieMisc = new Control { Name = "genie_misc_page", Size = Size, MouseFilter = MouseFilterEnum.Ignore, Visible = false }; AddChild(_genieMisc);
-        _genieMainTab = new ClassicReportButton { Name = "genie_tab_main", Text = "Main" }; AddChild(_genieMainTab);
-        _genieMiscTab = new ClassicReportButton { Name = "genie_tab_misc", Text = "Misc" }; AddChild(_genieMiscTab);
-        foreach (var (tab, misc) in new[] { (_genieMainTab, false), (_genieMiscTab, true) })
+        // Main, Misc and Others (the client's "Set Others" section, which the Misc page cannot hold).
+        string others = Find<Label>("genie_others_title")?.Text is { Length: > 0 } title ? title : "Others";
+        string[] names = { "main", "misc", "others" }, captions = { "Main", "Misc", others };
+        for (int i = 0; i < names.Length; i++)
         {
-            var rect = ClassicProgressionLayout.Tab(misc ? 1 : 0); tab.Position = rect.Position; tab.Size = rect.Size;
-            tab.SetMeta("progression_expected_rect", rect); bool page = misc; tab.Pressed += () => GeniePage(page);
+            var page = new Control { Name = "genie_" + names[i] + "_page", Size = Size, MouseFilter = MouseFilterEnum.Ignore, Visible = i == 0 };
+            AddChild(page); _geniePages[i] = page;
+            var tab = new ClassicReportButton { Name = "genie_tab_" + names[i], Text = captions[i], ClipText = true }; AddChild(tab); _genieTabButtons[i] = tab;
+            var rect = ClassicProgressionLayout.Tab(i); tab.Position = rect.Position; tab.Size = rect.Size;
+            tab.SetMeta("progression_expected_rect", rect); int index = i; tab.Pressed += () => GeniePage(index);
         }
         var controls = _native.Where(c => ClassicProgressionLayout.Rect("genie", c.Name) != null && !c.Name.ToString().StartsWith("genie_tab_")).ToArray();
-        foreach (var control in controls) Place(control, ClassicProgressionLayout.GenieMisc(control.Name) ? _genieMisc : _genieMain);
+        foreach (var control in controls) Place(control, _geniePages[ClassicProgressionLayout.GeniePage(control.Name)]);
         foreach (var control in controls)
         {
             string name = control.Name;
@@ -535,6 +623,17 @@ public partial class ClassicProgressionPanel : Control
                     StyleButton(button);
                     if (name is "genie_hp_item" or "genie_mp_item") { button.Alignment = HorizontalAlignment.Left; }
                     break;
+                case HBoxContainer rule when name.StartsWith("genie_other_"):
+                    // A return-to-town rule: its check (clipped, with the full text as tooltip) and the potion count.
+                    rule.AddThemeConstantOverride("separation", 8);
+                    foreach (var toggle in rule.GetChildren().OfType<CheckButton>())
+                    {
+                        StyleCheck(toggle); toggle.AddThemeFontSizeOverride("font_size", 12);
+                        toggle.ClipText = true; toggle.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; toggle.TooltipText = toggle.Text;
+                        toggle.CustomMinimumSize = Vector2.Zero; toggle.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                    }
+                    foreach (var count in rule.GetChildren().OfType<SpinBox>()) { StyleSpin(count); count.CustomMinimumSize = new Vector2(80, ClassicProgressionLayout.Row); }
+                    break;
                 case Label label when name.Contains("_title"): Caption(label); break;
                 case Label label when name is "genie_run": Text(label); Font(label, true); label.AddThemeColorOverride("font_color", Gold); break;
                 case Label label when name.EndsWith("_label"): Text(label, 12); break;
@@ -543,20 +642,24 @@ public partial class ClassicProgressionPanel : Control
         }
         for (int i = 0; Window.HasMeta("genie_picker_" + i); i++)
             if (Window.GetMeta("genie_picker_" + i).AsGodotObject() is PopupMenu menu) StylePopup(menu);
-        GeniePage(false);
+        GeniePage(0);
     }
 
-    private void GeniePage(bool misc)
+    private readonly Control[] _geniePages = new Control[3];
+    private readonly Button[] _genieTabButtons = new Button[3];
+
+    private void GeniePage(int shown)
     {
-        if (_genieMain == null || _genieMisc == null || _genieMainTab == null || _genieMiscTab == null) return;
-        _genieMain.Visible = !misc; _genieMisc.Visible = misc;
-        if (_genieTabs != null && _genieTabs.GetTabCount() > 1) _genieTabs.CurrentTab = misc ? 1 : 0;
-        StyleTab(_genieMainTab, !misc); StyleTab(_genieMiscTab, misc);
+        if (_geniePages.Any(p => p == null)) return;
+        for (int i = 0; i < _geniePages.Length; i++) { _geniePages[i].Visible = i == shown; StyleTab(_genieTabButtons[i], i == shown); }
+        // Misc and Others are both the client's Misc tab.
+        if (_genieTabs != null && _genieTabs.GetTabCount() > 1) _genieTabs.CurrentTab = shown == 0 ? 0 : 1;
         foreach (var (node, control) in Frame.Where(n => n.Id.StartsWith("genie_") && n.Type == "classic_section"))
-            control.Visible = ClassicProgressionLayout.GenieMiscFrame(node.Id) == misc;
+            control.Visible = ClassicProgressionLayout.GenieFramePage(node.Id) == shown;
     }
 
-    public bool GenieMiscShown => _genieMisc?.Visible ?? false;
+    public int GenieShownPage => Array.FindIndex(_geniePages, p => p?.Visible == true);
+    public bool GenieMiscShown => GenieShownPage == 1;
 
     private static void StyleMonsters(ItemList list)
     {

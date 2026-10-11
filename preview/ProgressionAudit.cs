@@ -71,7 +71,8 @@ public partial class Preview
             if (view == "summary")
             {
                 var page = Named<VBoxContainer>(panel, "ach_summary_page");
-                Require(page.Visible && !Named<ScrollContainer>(panel, "ach_scroll").Visible, "Summary page replaces the list natively");
+                Require(page.Visible && !Named<HBoxContainer>(panel, "ach_list_row").Visible && !Named<HBoxContainer>(panel, "ach_filters").Visible, "Summary page replaces the list and its filters natively");
+                Require(Named<PanelContainer>(panel, "ach_title_banner").IsVisibleInTree() && Named<Label>(panel, "ach_title").Text.StartsWith("Title:"), "Worn title banner stays above every page");
                 Require(new Rect2(page.GlobalPosition, page.Size).Encloses(Descendants(page).OfType<Control>().Where(c => c.IsVisibleInTree() && c is PanelContainer).Select(c => c.GetGlobalRect()).Aggregate((a, b) => a.Merge(b))), "Summary sections stay inside the summary page");
                 Require(Descendants(page).OfType<ProgressBar>().All(b => b.GetThemeStylebox("fill") is StyleBoxTexture), "Category progress uses the original gauge art");
                 var war = tabs.First(t => t.Name == "ach_tab_" + (int)AchievementTab.War);
@@ -79,7 +80,7 @@ public partial class Preview
                 war.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
                 Require(!(bool)DetailField(world, "_achOnSummary")! && (AchievementTab)DetailField(world, "_achTab")! == AchievementTab.War, "Category tab invokes the native category selection");
                 Require(war.GetMeta("progression_tab_selected").AsBool(), "Selected category keeps the pressed plate after the native refresh");
-                Require(Named<ScrollContainer>(panel, "ach_scroll").Visible, "Category list becomes visible");
+                Require(Named<HBoxContainer>(panel, "ach_list_row").Visible && Named<HBoxContainer>(panel, "ach_filters").Visible, "Category list and filters become visible");
             }
             if (view == "list")
             {
@@ -112,6 +113,32 @@ public partial class Preview
                 WholeRowsOnly("list end");
                 bar.Value = 0; await Frames();
                 await Hover(claim); await Capture(window, "claim-hover"); Leave();
+                // Category column, search and status filter drive the native list.
+                var categories = Named<VBoxContainer>(panel, "ach_categories").GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion()).ToArray();
+                Require(categories.Length > 1 && categories.All(r => r.Size.Y == ClassicProgressionLayout.Row), "Category column lists All and the war groups on 22-pixel rows");
+                Require(categories.Count(r => r.GetMeta("ach_category_chosen", false).AsBool()) == 1 && categories[0].GetMeta("ach_category_chosen", false).AsBool(), "All is the chosen category");
+                var column = Named<PanelContainer>(panel, "ach_category_panel");
+                Require(panel.Frame.Get("ach_category_frame")!.GetGlobalRect().Encloses(column.GetGlobalRect()) && panel.Frame.Get("ach_list_frame")!.GetGlobalRect().Encloses(scroll.GetGlobalRect()), "Category column and list inside their insets");
+                Require(!column.GetGlobalRect().Intersects(scroll.GetGlobalRect()), "Category column and list do not overlap");
+                categories[1].EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left }); await Frames(3);
+                Require((int)DetailField(world, "_achGroup")! != AchievementData.AllGroups, "Category row invokes the native group selection");
+                var chosen = Named<VBoxContainer>(panel, "ach_categories").GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion()).ToArray();
+                Require(chosen.Length > 1 && chosen[1].GetMeta("ach_category_chosen", false).AsBool() && !chosen[0].GetMeta("ach_category_chosen", false).AsBool(), "Chosen category moves to the clicked row");
+                await Capture(window, "category");
+                var search = Named<LineEdit>(panel, "ach_search");
+                Require(search.GetThemeStylebox("normal") is StyleBoxFlat && search.Size.Y == ClassicProgressionLayout.Row, "Search uses the Classic edit field");
+                search.Text = "zzzz-no-match"; search.EmitSignal(LineEdit.SignalName.TextChanged, search.Text); await Frames(3);
+                var none = Named<VBoxContainer>(panel, "ach_list").GetChildren().OfType<Label>().Where(l => !l.IsQueuedForDeletion()).FirstOrDefault();
+                Require(none != null && none.Text.Contains("matches"), "Search filters the native list and shows its empty message");
+                await Capture(window, "search-empty");
+                search.Text = ""; search.EmitSignal(LineEdit.SignalName.TextChanged, ""); await Frames(3);
+                var status = Named<OptionButton>(panel, "ach_status");
+                Require(status.ItemCount == 3 && status.GetThemeStylebox("normal") is StyleBoxTexture, "Status filter on the Classic button art");
+                status.Select(2); status.EmitSignal(OptionButton.SignalName.ItemSelected, 2L); await Frames(3);
+                Require((AchievementStatusFilter)DetailField(world, "_achStatusFilter")! == AchievementStatusFilter.Completed, "Status filter invokes the native filter");
+                await Capture(window, "completed");
+                var change = Named<Button>(panel, "ach_change_title");
+                Require(Connected(change) && change.GetThemeStylebox("normal") is StyleBoxTexture && change.Size.Y == ClassicProgressionLayout.Row, "Change title keeps its native callback on a Classic button");
             }
             if (view == "claimed")
                 Require(Named<VBoxContainer>(panel, "ach_list").GetChildren().OfType<PanelContainer>().All(r => !r.GetMeta("ach_claimed").AsBool()), "Hide claimed keeps the native filter");
@@ -160,35 +187,51 @@ public partial class Preview
             await Done(world, window);
         }
 
-        // Rankings.
-        foreach (string view in new[] { "full", "short", "empty", "loading" })
+        // PK ladder (Today's Rank).
+        foreach (string view in new[] { "full", "short", "empty" })
         {
             var (world, window, panel) = Open("BuildRankUiPreview", view);
             await Frames();
-            var mineTab = Named<Button>(panel, nation == 1 ? "rank_tab_karus" : "rank_tab_elmorad");
-            Require(mineTab.ButtonPressed, view + " opens on the player's nation");
             await Capture(window, view);
-            var rows = Named<VBoxContainer>(panel, "rank_rows").GetChildren().OfType<PanelContainer>().ToArray();
-            if (rows.Length > 0)
+            foreach (var side in new[] { "karus", "elmorad" })
             {
-                var headers = Enumerable.Range(0, 4).Select(i => Named<Label>(panel, "rank_header_" + i)).ToArray();
-                var cells = rows[0].GetChildren().OfType<HBoxContainer>().Single().GetChildren().OfType<Label>().ToArray();
-                for (int i = 0; i < 4; i++) Require(Mathf.Abs(cells[i].GetGlobalRect().Position.X - headers[i].GetGlobalRect().Position.X) < .5f, view + " column " + i + " aligns with its heading");
-                Require(Mathf.Abs(cells[3].GetGlobalRect().End.X - headers[3].GetGlobalRect().End.X) < .5f, view + " loyalty right edge aligns with its heading");
-                Require(rows.All(r => r.Size.Y == ClassicProgressionLayout.Row), view + " uniform 22-pixel rows");
-                Require(cells.All(c => c.ClipText), view + " long names and clans are clipped to their columns");
+                var headings = Enumerable.Range(0, 5).Select(i => Named<Label>(panel, $"rank_{side}_heading_{i}")).ToArray();
+                Require(Named<Label>(panel, "rank_caption_" + side).IsVisibleInTree(), view + " " + side + " ladder caption shown");
+                var lines = Enumerable.Range(0, PkLadder.RowsShown).Select(i => Named<HBoxContainer>(panel, $"rank_{side}_row_{i}"))
+                    .Append(Named<HBoxContainer>(panel, $"rank_{side}_own")).ToArray();
+                Require(lines.All(l => l.Size.Y == ClassicProgressionLayout.Row), view + " " + side + " uniform 22-pixel rows");
+                for (int i = 1; i < PkLadder.RowsShown; i++)
+                    Require(lines[i].GlobalPosition.Y - lines[i - 1].GlobalPosition.Y == ClassicProgressionLayout.Row, view + " " + side + " rows on a 22-pixel pitch " + i);
+                foreach (var line in lines)
+                {
+                    var cells = line.GetChildren().OfType<Control>().ToArray();
+                    for (int c = 0; c < 5; c++)
+                    {
+                        Require(Mathf.Abs(cells[c].GetGlobalRect().Position.X - headings[c].GetGlobalRect().Position.X) < .5f
+                            && Mathf.Abs(cells[c].GetGlobalRect().End.X - headings[c].GetGlobalRect().End.X) < .5f, view + " " + line.Name + " column " + c + " under its heading");
+                        Require(line.GetGlobalRect().Encloses(cells[c].GetGlobalRect()), view + " " + line.Name + " cell " + c + " inside its row");
+                    }
+                    Require(cells.OfType<Label>().All(c => c.ClipText), view + " " + line.Name + " long names and clans clipped to their columns");
+                }
+                var frame = panel.Frame.Get("rank_frame_" + side)!;
+                Require(frame.GetGlobalRect().Encloses(lines[^1].GetGlobalRect()) && frame.GetGlobalRect().Encloses(headings[0].GetGlobalRect()), view + " " + side + " ladder inside its inset");
             }
-            if (view == "full")
+            bool karus = nation == 1;
+            string mine = karus ? "karus" : "elmorad", theirs = karus ? "elmorad" : "karus";
+            if (view != "empty")
             {
-                Require(Named<ScrollContainer>(panel, "rank_scroll").GetVScrollBar().Visible, "Thirty players scroll inside the table");
-                var other = Named<Button>(panel, nation == 1 ? "rank_tab_elmorad" : "rank_tab_karus");
-                await Hover(other); await Capture(window, "tab-hover"); Leave();
-                other.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-                Require((int)DetailField(world, "_rankNation")! == (nation == 1 ? 2 : 1) && other.ButtonPressed && !mineTab.ButtonPressed, "Nation tab invokes the native ladder filter");
-                await Capture(window, "other-nation");
-                Named<Button>(panel, "rank_refresh").EmitSignal(BaseButton.SignalName.Pressed);
-                Require(Named<Label>(panel, "rank_status").Text.StartsWith("Loading"), "Refresh invokes the native request");
+                Require(Named<Label>(panel, $"rank_{mine}_own_name").Text == "Classic Preview" && Named<Label>(panel, $"rank_{mine}_own_rank").Text == "6", view + " own row under the player's nation");
+                Require(Named<Label>(panel, $"rank_{theirs}_own_name").Text.Length == 0, view + " other nation's own row stays empty");
+                Require(Named<Label>(panel, $"rank_{mine}_row_0_rank").GetThemeColor("font_color") == new Color("ffe094"), view + " top three places in gold");
+                Require(Named<TextureRect>(panel, $"rank_{mine}_row_0_mark").Size == new Vector2(36, 20), view + " rank symbol cell keeps the 36 x 20 mark column");
+                var bonus = Named<Label>(panel, $"rank_{mine}_row_0_bonus");
+                Require(bonus.Visible && bonus.GetGlobalRect().End.X <= Named<Label>(panel, $"rank_{mine}_heading_4").GetGlobalRect().End.X + .5f, view + " kill bonus fits the score column");
+                var name = Named<Label>(panel, $"rank_{mine}_row_1_name");
+                Require(name.TooltipText == name.Text, view + " clipped names keep a tooltip");
             }
+            if (view == "short") Require(Named<Label>(panel, $"rank_{mine}_row_5_name").Text.Length == 0, "Short ladder leaves the remaining rows empty");
+            var notice = Named<Label>(panel, "rank_notice");
+            Require(notice.Text.Length > 0 && notice.GetLineCount() <= 2, view + " ladder notice fits its two lines");
             Named<Control>(panel.Frame, "btn_close").EmitSignal(BaseButton.SignalName.Pressed);
             Require(!window.Visible && !(bool)DetailField(world, "_rankShown")!, view + " Close ornament invokes the native close");
             await Done(world, window);
@@ -199,6 +242,8 @@ public partial class Preview
         {
             var (world, window, panel) = Open("BuildGenieUiPreview", view);
             var layer = (CanvasLayer)DetailField(world, "_genieLayer")!; world.RemoveChild(layer); AddChild(layer);
+            // The genie quick panel on the same layer gets its Classic box as the live overlay check gives it.
+            NativeOverlays.PrepareLater(world);
             await Frames();
             var slots = Enumerable.Range(0, 24).Select(i => Named<Button>(panel, "genie_slot_" + i)).ToArray();
             Require(slots.All(s => s.Size == new Vector2(36, 36) && s.GetThemeStylebox("normal") is StyleBoxTexture), view + " 24 skill slots on Classic cells");
@@ -236,8 +281,24 @@ public partial class Preview
                 Require(((PopupMenu)DetailField(world, "_genieScrollPicker")!).Visible, "Scroll cell opens the native scroll picker");
                 ((PopupMenu)DetailField(world, "_genieScrollPicker")!).Hide();
             }
+            var othersTab = Named<Button>(panel, "genie_tab_others");
+            othersTab.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
+            Require(panel.GenieShownPage == 2 && ((TabContainer)Named<Control>(window, "genie_tabs")).CurrentTab == 1, view + " Others tab shows the client's movement and return-to-town options");
+            var options = new[] { "genie_return_home", "genie_hunt_in_place", "genie_hide_range", "genie_cure_curse" }.Select(n => Named<CheckButton>(panel, n)).ToArray();
+            var optionsFrame = panel.Frame.Get("genie_options_frame")!.GetGlobalRect();
+            Require(options.All(o => o.IsVisibleInTree() && optionsFrame.Encloses(o.GetGlobalRect())), view + " movement and curse options inside their inset");
+            var rules = Enumerable.Range(0, ClassicProgressionLayout.GenieOtherRows).Select(i => Named<HBoxContainer>(panel, "genie_other_" + i)).ToArray();
+            var rulesFrame = panel.Frame.Get("genie_others_frame")!.GetGlobalRect();
+            Require(rules.All(r => r.IsVisibleInTree() && rulesFrame.Encloses(r.GetGlobalRect())), view + " every return-to-town rule inside its inset");
+            Require(rules.Count(r => r.GetChildren().OfType<SpinBox>().Any(c => c.IsVisibleInTree())) == 2, view + " HP and MP rules keep their potion counts");
+            Require(rules.All(r => r.GetChildren().OfType<CheckButton>().All(t => t.TooltipText == t.Text && t.GetGlobalRect().End.X <= r.GetGlobalRect().End.X + .5f)), view + " long rules are clipped inside their row with their text as tooltip");
+            Require(!Named<Control>(panel, "genie_ptcode").IsVisibleInTree() && !Named<Control>(panel, "genie_slot_0").IsVisibleInTree(), view + " Others page never overlaps Main or Misc");
+            var home = options[0]; bool wasHome = home.ButtonPressed; home.ButtonPressed = !wasHome;
+            Require(((CheckButton)DetailField(world, "_genieReturnHome")!).ButtonPressed == !wasHome, view + " options are the client's own settings controls");
+            home.ButtonPressed = wasHome;
+            await Capture(window, view + "-others");
             Named<Button>(panel, "genie_tab_main").EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-            Require(!panel.GenieMiscShown, view + " Main tab returns to the main page");
+            Require(panel.GenieShownPage == 0, view + " Main tab returns to the main page");
             Named<Control>(panel.Frame, "btn_close").EmitSignal(BaseButton.SignalName.Pressed);
             Require(!window.Visible && !(bool)DetailField(world, "_genieShown")!, view + " Close ornament invokes the native close");
             layer.QueueFree();

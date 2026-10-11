@@ -335,13 +335,37 @@ control, callback, timer and position rule. All members exist on bare upstream.
 
 | Member | Kind | Used for |
 | --- | --- | --- |
-| `_joinModal`, `_joinModalTitle`, `_joinModalTimer`, `_joinModalBar`, `_joinModalStatus`, `_joinModalBtn`, `_joinModalCloseBtn`, `_bifrostBanner`, `_bifrostTitleLbl`, `_bifrostTimerLbl`, `_bifrostBar`, `_bifrostRemaining`, `_isEventRegistered`, const `BifrostUrgentSecs` | F | Temple event registration message box and countdown plaque |
+| `_joinModal`, `_joinModalTitle`, `_joinModalTimer`, `_joinModalBar`, `_joinModalStatus`, `_joinModalCount`, `_joinModalBtn`, `_joinModalCloseBtn`, `_bifrostBanner`, `_bifrostTitleLbl`, `_bifrostTimerLbl`, `_bifrostBar`, `_bifrostRemaining`, `_isEventRegistered`, const `BifrostUrgentSecs` | F | Temple event registration message box and countdown plaque |
 | `_inZoneLeaveBanner`, `_inZoneLeaveTitleLbl`, `_inZoneLeaveBtn` | F | In-zone leave plaque |
 | `_deathPanel`, `_inviteAskDialog`, `_challengeAskDialog`, `_townRecallDialog` | F | Death notice and confirmation prompts on the message box art |
-| `_upgradeNoticeLabel`, `_shoutLabel`, `_seasonalLabel`, `_battleeventBanner`, `_battleeventResult`, `_clanBattlePanel`, `_lootPrompt` | F | Outlined broadcast lines |
+| `_upgradeNoticeLabel`, `_shoutLabel`, `_battleeventBanner`, `_battleeventResult`, `_clanBattlePanel`, `_lootPrompt` | F | Outlined broadcast lines |
 | `_zoneabilityChip`, `_battleeventBoard`, `_bdwScoreBanner` | F | Zone chip and war score plaques |
-| `_playerMenu`, `_partyCtxMenu` | F | Context menus |
-| `_lootPanel`, `_lootListBox`, `_lootTitle` | F | Loot window on the dropped-item grid (cells click the native rows) |
+| `_lootPanel`, `_lootCells`, `CloseLoot()` | F/M | Loot box: the client's twelve cells on two dropped-item grids, plus a close button |
+
+Overlays the client builds later are prepared through their fields four times a second (`NativeOverlays.PrepareLater`):
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `_soccerBoard` | F | Soccer score strip (war score plaque with close) |
+| `_nestTimerPanel` | F | Monster Stone and Chaos timer toast (outlined text) |
+| `_royaleBoard`, `_genieSub` | F | Knight Royale sign-up board and genie quick panel (event frame) |
+| `_eventTitleColumn`, `_gatherChip`, `_nereidFlagBoard`, `_nereidScoreBoard` | F | Information plaques |
+| `_nereidStrip`, `_wantedToggle`, `_wantedOpen`, `_vanguardLayer`, `_zone` | F | Mini-map plates and Wanted buttons re-hosted at the top right (the Classic HUD hides the client mini map) |
+| `_areaBanner`, `_msgOut`, `_orderMessage`, `_killSplash` | F | Outlined Arial Bold banners |
+| `_towerButton`, `_dropOff` | F | Siege tower Board button (moved under the Classic target frame) and drop-off |
+| `_rankerPaper` | F | Ranker paper buttons and text |
+
+### Events, rankings and progression
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `_ladderKarus`, `_ladderElMorad`, `_ladderOwnKarus`, `_ladderOwnElMorad`; `LadderRow.Rank`, `Mark`, `Name`, `Clan`, `Points`, `Bonus` | F | PK ladder (`rank`) columns |
+| `_achTitleBanner`, `_achSearch`, `_achStatus`, `_achCategoryBox`, `_achListRow` | F | Achievement title banner, filters and category column |
+| `_genieReturnHome`, `_genieHuntInPlace`, `_genieHideRange`, `_genieCureCurse`, `_genieOther` | F | Genie Others page |
+| `StatBar._frac` | F | Original progress bar mirroring the vanguard countdown |
+
+The event, ranking and war windows of the event-window family (`ClassicEventFamily.WindowIds`) are restyled from their
+own controls and need no reflected member.
 
 ### Preview-only members
 

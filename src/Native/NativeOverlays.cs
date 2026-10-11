@@ -4,7 +4,7 @@ using LibreKO.Plugins;
 
 namespace KnightOnlineUiClassic.Native;
 
-/// <summary>Native world overlays that have no window id: prompts, event plates, banners, menus and loot.</summary>
+/// <summary>Native world overlays that have no window id: prompts, event plates, banners, boards and loot.</summary>
 public enum NativeOverlay
 {
     /// <summary>The temple event registration modal (a full-rect host named <c>event_registration</c>).</summary>
@@ -17,18 +17,32 @@ public enum NativeOverlay
     Death,
     /// <summary>A native confirmation dialog (party invite, duel challenge, town recall).</summary>
     Prompt,
-    /// <summary>The party window's invite-by-name panel (label, name field, Send and Cancel).</summary>
-    NamePrompt,
     /// <summary>A centre-screen broadcast banner or prompt line.</summary>
     Announcement,
     /// <summary>The zone type chip.</summary>
     Chip,
     /// <summary>A war score strip.</summary>
     Score,
-    /// <summary>A world context menu.</summary>
-    Menu,
     /// <summary>The loot window.</summary>
     Loot,
+    /// <summary>A multi-line event box with its own controls (Knight Royale sign-up, genie quick panel).</summary>
+    Board,
+    /// <summary>A centre toast plate (Monster Stone and Chaos timers).</summary>
+    Toast,
+    /// <summary>The event title chips beside the premium chip.</summary>
+    Titles,
+    /// <summary>A one-line label plate (Nereid flag and score boards).</summary>
+    LabelPlate,
+    /// <summary>A free-standing action button (siege drop-off).</summary>
+    Action,
+    /// <summary>The siege tower button, which the client puts on its own (hidden) target bar.</summary>
+    TowerButton,
+    /// <summary>The ranker statue's message paper.</summary>
+    Paper,
+    /// <summary>The Wanted list buttons, which the client puts on its own (hidden) mini map.</summary>
+    Wanted,
+    /// <summary>A label plate the client puts on its own (hidden) mini map (the Nereid monument strip).</summary>
+    MapPlate,
 }
 
 /// <summary>
@@ -51,6 +65,45 @@ public static class NativeOverlays
     internal static void Register(PluginContext context) =>
         context.Game.BecameAvailable += () => { if (NativeHudChat.World is { } world) Prepare(world); };
 
+    /// <summary>
+    /// Overlays the client builds later (or rebuilds), checked four times a second: the event plates and boards,
+    /// banners and splashes, the siege tower actions, the ranker paper and the Wanted buttons.
+    /// </summary>
+    private static readonly (string Field, NativeOverlay Part, string Name)[] Later =
+    {
+        ("_soccerBoard", NativeOverlay.Score, "soccer_score"),
+        ("_nestTimerPanel", NativeOverlay.Toast, "event_timer"),
+        ("_royaleBoard", NativeOverlay.Board, "royale_board"),
+        ("_genieSub", NativeOverlay.Board, "genie_quick"),
+        ("_eventTitleColumn", NativeOverlay.Titles, "event_titles"),
+        ("_gatherChip", NativeOverlay.Chip, "gather_chip"),
+        ("_areaBanner", NativeOverlay.Announcement, "area_banner"),
+        ("_msgOut", NativeOverlay.Announcement, "skill_message"),
+        ("_orderMessage", NativeOverlay.Announcement, "order_message"),
+        ("_killSplash", NativeOverlay.Announcement, "kill_splash"),
+        ("_nereidFlagBoard", NativeOverlay.LabelPlate, "nereid_flags"),
+        ("_nereidScoreBoard", NativeOverlay.LabelPlate, "nereid_score"),
+        ("_nereidStrip", NativeOverlay.MapPlate, "nereid_strip"),
+        ("_dropOff", NativeOverlay.Action, "siege_drop_off"),
+        ("_towerButton", NativeOverlay.TowerButton, "siege_tower"),
+        ("_rankerPaper", NativeOverlay.Paper, "ranker_paper"),
+        ("_wantedToggle", NativeOverlay.Wanted, "wanted_toggle"),
+        ("_wantedOpen", NativeOverlay.Wanted, "wanted_open"),
+    };
+
+    /// <summary>Prepares the overlays that already exist and the later ones once (safe to call repeatedly).</summary>
+    public static void PrepareLater(World world)
+    {
+        foreach (var (field, part, name) in Later)
+        {
+            if (!Native.Has(world, field) || Native.Get<Node>(world, field) is not { } node || !GodotObject.IsInstanceValid(node)
+                || node.IsQueuedForDeletion() || node.HasMeta(Prepared)) continue;
+            node.SetMeta(Prepared, true);
+            node.Name = name;
+            Apply(part, node);
+        }
+    }
+
     /// <summary>Prepares every overlay of a world; safe to call again.</summary>
     public static void Prepare(World world)
     {
@@ -60,9 +113,7 @@ public static class NativeOverlays
         Apply(NativeOverlay.Death, Named(world, "_deathPanel", "death_notice"));
         foreach (var (field, name) in new[] { ("_inviteAskDialog", "party_invite_prompt"), ("_challengeAskDialog", "duel_prompt"), ("_townRecallDialog", "town_recall_prompt") })
             Apply(NativeOverlay.Prompt, Named(world, field, name));
-        Named(world, "_inviteNameInput", "invite_name_input");
-        Apply(NativeOverlay.NamePrompt, Named(world, "_inviteNamePanel", "party_invite_name"));
-        foreach (var (field, name) in new[] { ("_upgradeNoticeLabel", "upgrade_announcement"), ("_shoutLabel", "shout_announcement"), ("_seasonalLabel", "seasonal_announcement") })
+        foreach (var (field, name) in new[] { ("_upgradeNoticeLabel", "upgrade_announcement"), ("_shoutLabel", "shout_announcement") })
             if (Native.Get<Label>(world, field)?.GetParent()?.GetParent() is PanelContainer panel) Apply(NativeOverlay.Announcement, Named(panel, name));
         Apply(NativeOverlay.Announcement, Named(world, "_battleeventBanner", "battle_announcement"));
         Apply(NativeOverlay.Announcement, Named(world, "_battleeventResult", "battle_result"));
@@ -71,9 +122,15 @@ public static class NativeOverlays
         Apply(NativeOverlay.Chip, Named(world, "_zoneabilityChip", "zone_chip"));
         Apply(NativeOverlay.Score, Named(world, "_battleeventBoard", "battle_score"));
         Apply(NativeOverlay.Score, Named(world, "_bdwScoreBanner", "border_war_score"));
-        Apply(NativeOverlay.Menu, Named(world, "_playerMenu", "player_menu"));
-        Apply(NativeOverlay.Menu, Named(world, "_partyCtxMenu", "party_menu"));
         PrepareLoot(world);
+        PrepareLater(world);
+        double next = 0;
+        world.AddChild(new NativeEventWatcher(() =>
+        {
+            if (Time.GetTicksMsec() < next || !GodotObject.IsInstanceValid(world)) return;
+            next = Time.GetTicksMsec() + 250;
+            PrepareLater(world);
+        }) { Name = "classic_overlay_later" });
     }
 
     private static void PrepareEvents(World world)
@@ -83,6 +140,7 @@ public static class NativeOverlays
         Named(world, "_joinModalTimer", "registration_timer");
         Named(world, "_joinModalBar", "registration_bar");
         Named(world, "_joinModalStatus", "registration_status");
+        Named(world, "_joinModalCount", "registration_count");
         Named(world, "_joinModalBtn", "registration_join");
         Named(world, "_joinModalCloseBtn", "registration_close");
         var countdown = Named(world, "_bifrostBanner", "event_countdown");
@@ -114,25 +172,33 @@ public static class NativeOverlays
         Apply(NativeOverlay.Leave, leave);
     }
 
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Node, World> _lootWorlds = new();
+
     private static void PrepareLoot(World world)
     {
-        var panel = Named(world, "_lootPanel", "loot_window");
-        Named(world, "_lootListBox", "loot_rows");
-        if (Native.Get<Label>(world, "_lootTitle") is { } title)
+        // The loot box is a twelve-cell grid of client item cells (entry order) with Take all and Filter under it.
+        if (Named(world, "_lootPanel", "loot_window") is not { } panel || Native.Get<ItemSlotView[]>(world, "_lootCells") is not { } cells) return;
+        for (int i = 0; i < cells.Length; i++)
         {
-            Named(title, "loot_title");
-            if (title.GetParent() is HBoxContainer header)
-            {
-                Named(header, "loot_header");
-                if (header.GetChildren().OfType<Button>().FirstOrDefault() is { } close) Named(close, "loot_close");
-            }
+            if (Named(cells[i], "loot_slot_" + i) == null) return;
+            if (i == 0) Named(cells[i].GetParent(), "loot_grid");
         }
+        if (cells[0].GetParent()?.GetParent() is Node column)
+            foreach (var actions in column.GetChildren().OfType<HBoxContainer>())
+            {
+                var buttons = actions.GetChildren().OfType<Button>().ToArray();
+                if (buttons.Length < 2) continue;
+                Named(actions, "loot_actions"); Named(buttons[0], "loot_take_all"); Named(buttons[1], "loot_filter");
+            }
+        _lootWorlds.AddOrUpdate(panel, world);
         Apply(NativeOverlay.Loot, panel);
     }
 
-    /// <summary>Takes a loot row through the client's own row click.</summary>
-    public static void TakeLoot(Control row) =>
-        row.EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
+    /// <summary>Closes the loot box through the client, as Escape does; the client's box has no close button.</summary>
+    public static void CloseLoot(Node panel)
+    {
+        if (_lootWorlds.TryGetValue(panel, out var world) && GodotObject.IsInstanceValid(world)) Native.Call(world, "CloseLoot");
+    }
 
     private static Node? Named(World world, string field, string name) => Named(Native.Get<Node>(world, field), name);
 
