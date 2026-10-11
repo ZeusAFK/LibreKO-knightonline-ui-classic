@@ -11,7 +11,9 @@ public static partial class NativeSetup
     static partial void RegisterHud(PluginContext context)
     {
         NativeLayout.WatchContentAnchors();
-        context.Game.BecameAvailable += () => NativeHudChat.Attach(context.Game);
+        var game = context.Game;
+        Action attached = () => NativeHudChat.Attach(game);
+        NativeHooks.Listen("Game.BecameAvailable", () => game.BecameAvailable += attached, () => game.BecameAvailable -= attached);
     }
 
     static partial void RegisterChat(PluginContext context)
@@ -46,12 +48,19 @@ public static class NativeHudChat
         if (source is NativeServiceWindows wrapped) source = wrapped.Inner;
         if (!Native.Has(source, "_w") || Native.Get<World>(source, "_w") is not { } world) return;
         _world = new WeakReference<World>(world);
-        Native.Set(proxy, "Source", new NativeServiceWindows(source, world));
+        var wrapper = new NativeServiceWindows(source, world);
+        if (Native.Set(proxy, "Source", wrapper))
+            NativeHooks.Hold("Game.Windows.Source", () =>
+            {
+                if (ReferenceEquals(Native.Get<IGameWindows>(proxy, "Source"), wrapper)) Native.Set(proxy, "Source", source);
+            }, world);
         HideIcons(world);
         NativeGoldLog.Attach(world);
         NativeChat.Attach(world);
         NativeWhispers.Attach(world);
     }
+
+    internal static void Reset() => _world = null;
 
     private static void HideIcons(World world)
     {

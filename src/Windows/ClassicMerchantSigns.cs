@@ -6,9 +6,10 @@ public partial class ClassicMerchantSigns : Control
 {
     private double _elapsed;
     public ClassicMerchantSigns(){MouseFilter=MouseFilterEnum.Ignore;}
-    public override void _Ready()=>GetTree().NodeAdded+=NodeAdded;
-    public override void _ExitTree()=>GetTree().NodeAdded-=NodeAdded;
-    private void NodeAdded(Node node){if(node is PanelContainer sign && sign.IsInGroup("merchant_signs"))Callable.From(()=>Style(sign)).CallDeferred();}
+    private NativeHooks.Hook? _watch;
+    public override void _EnterTree()=>_watch=NativeHooks.WatchTree("tree.merchant-signs",NodeAdded);
+    public override void _ExitTree(){_watch?.Release();_watch=null;}
+    private void NodeAdded(Node node){if(node is PanelContainer sign && sign.IsInGroup("merchant_signs"))Callable.From(()=>{if(Plugin.Active)Style(sign);}).CallDeferred();}
     public override void _Process(double delta)
     {
         _elapsed+=delta;if(_elapsed<0.25)return;_elapsed=0;

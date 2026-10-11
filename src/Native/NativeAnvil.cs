@@ -104,8 +104,9 @@ public sealed class NativeAnvil
         Choice = BuildChoice();
         InstallCompanion();
         ReplaceOpenHandler();
-        Net.I.ItemMoveResultEvent += OnItemMoveResult;
-        world.TreeExiting += () => Net.I.ItemMoveResultEvent -= OnItemMoveResult;
+        var net = Net.I;
+        NativeHooks.Listen("Net.ItemMoveResultEvent", () => net.ItemMoveResultEvent += OnItemMoveResult,
+            () => net.ItemMoveResultEvent -= OnItemMoveResult, world);
         window.VisibilityChanged += () =>
         {
             if (window.Visible && window.HasMeta("embedded_inventory")) Callable.From(KeepInventoryClosed).CallDeferred();
@@ -523,11 +524,8 @@ public sealed class NativeAnvil
     /// <summary>The anvil NPC opens the Classic selection window instead of the generic NPC menu.</summary>
     private void ReplaceOpenHandler()
     {
-        var net = Net.I;
         if (Delegate.CreateDelegate(typeof(Action<int>), _world, "OnUpgradeOpen", false, false) is not Action<int> native) return;
-        net.UpgradeOpenEvent -= native;
-        net.UpgradeOpenEvent += Open;
-        _world.TreeExiting += () => net.UpgradeOpenEvent -= Open;
+        NativeHooks.Replace(Net.I, "UpgradeOpenEvent", handler => handler.Equals(native), (Action<int>)Open, _world);
     }
 
     private void Open(int anvilId)

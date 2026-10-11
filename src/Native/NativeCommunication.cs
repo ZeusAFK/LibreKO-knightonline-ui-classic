@@ -232,10 +232,18 @@ public static class NativeCommunication
     {
         var calls = current.GetInvocationList();
         if (!calls.Any(d => d.Target == world && d.Method.Name == handler)) return;
-        if (_replyHooks.TryGetValue(evt, out var previous)) calls = calls.Where(d => d != previous).ToArray();
-        _replyHooks[evt] = before;
-        Native.Set(net, evt, Delegate.Combine(calls.Prepend(before).ToArray()));
+        if (_replyHooks.TryGetValue(evt, out var previous)) previous.Release();
+        if (Native.Get<Delegate>(net, evt) is { } now) calls = now.GetInvocationList();
+        if (!Native.Set(net, evt, Delegate.Combine(calls.Prepend(before).ToArray()))) return;
+        _replyHooks[evt] = NativeHooks.Hold("Net." + evt + " (prepended)", () =>
+        {
+            Native.Set(net, evt, Delegate.Remove(Native.Get<Delegate>(net, evt), before));
+            _replyHooks.Remove(evt);
+        }, world);
     }
 
-    private static readonly Dictionary<string, Delegate> _replyHooks = new();
+    /// <summary>The handler each network reply event runs ahead of the client's own.</summary>
+    private static readonly Dictionary<string, NativeHooks.Hook> _replyHooks = new();
+
+    internal static void Reset() => _replyHooks.Clear();
 }

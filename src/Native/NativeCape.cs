@@ -132,19 +132,14 @@ public static class NativeCape
         LookFraming.Attach(state.Look, () => net.LastEnter.Race);
         window.VisibilityChanged += () => VisibilityChanged(world, state);
         Action<bool, int, int, int, int, int> result = (ok, _, capeId, rr, gg, bb) => Result(world, state, ok, capeId, rr, gg, bb);
-        net.CapeResultEvent += result;
+        NativeHooks.Listen("Net.CapeResultEvent", () => net.CapeResultEvent += result, () => net.CapeResultEvent -= result, world);
         Action reset = () => Reset(world, state);
-        Native.Subscribe(net, "CapeResetEvent", reset);
+        Native.Subscribe(net, "CapeResetEvent", reset, world);
         // A lost connection resets every pending operation right after the cape; a cape reply for another
         // clan releases only the cape request.
         Action lost = () => ConnectionReset(world, state);
         string[] connectionResets = { "PetResetEvent", "RebirthResetEvent" };
-        foreach (string member in connectionResets) Native.Subscribe(net, member, lost);
-        world.TreeExiting += () =>
-        {
-            net.CapeResultEvent -= result;
-            foreach (string member in connectionResets) Native.Unsubscribe(net, member, lost);
-        };
+        foreach (string member in connectionResets) Native.Subscribe(net, member, lost, world);
         window.SetMeta("classic_cape_controls", 1);
         NativeWindows.Sync(window, () => Gate(world));
         if (window.Visible) Opened(world, state);

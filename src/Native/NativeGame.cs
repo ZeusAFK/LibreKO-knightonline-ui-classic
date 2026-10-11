@@ -78,6 +78,9 @@ public static class NativeGame
         get => _source ??= new ClientGame();
         set => _source = value;
     }
+
+    /// <summary>Drops the source, so a re-enabled plugin reads the running client again.</summary>
+    internal static void Reset() => _source = null;
 }
 
 public static class NativeGameExtensions

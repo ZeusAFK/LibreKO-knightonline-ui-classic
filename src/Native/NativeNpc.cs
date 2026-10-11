@@ -83,15 +83,14 @@ public static class NativeNpc
         if (Net.I == null || _subscribed.TryGetValue(world, out _)) return;
         var weakWorld = new WeakReference<World>(world);
         var net = Net.I;
-        Action<QuestView>? handler = null;
-        handler = view =>
+        Action<QuestView> handler = view =>
         {
-            if (!weakWorld.TryGetTarget(out var w) || !GodotObject.IsInstanceValid(w)) { net.QuestViewEvent -= handler; return; }
+            if (!weakWorld.TryGetTarget(out var w) || !GodotObject.IsInstanceValid(w)) return;
             if (view.Notification || !view.Open || view.Page == QuestPageKind.Conversation) return;
             QuestViewShown(w, view);
             Callable.From(() => { if (GodotObject.IsInstanceValid(w)) QuestViewShown(w, view); }).CallDeferred();
         };
-        net.QuestViewEvent += handler;
+        NativeHooks.Listen("Net.QuestViewEvent", () => net.QuestViewEvent += handler, () => net.QuestViewEvent -= handler, world);
         _subscribed.Add(world, handler);
     }
 

@@ -53,7 +53,7 @@ public partial class InventoryPortrait : SubViewportContainer
         Material=new ShaderMaterial {Shader=new Shader {Code="shader_type canvas_item; uniform sampler2D portrait_mask : filter_nearest, repeat_disable; void fragment(){ COLOR=texture(TEXTURE,UV)*COLOR; COLOR.a*=texture(portrait_mask,UV).a; }"}};
         ((ShaderMaterial)Material).SetShaderParameter("portrait_mask",ImageTexture.CreateFromImage(mask));
     }
-    public override void _ExitTree() { Plugin.Kit.Game.Inventory.Changed-=Refresh; }
+    public override void _ExitTree() { if(Plugin.Active) Plugin.Kit.Game.Inventory.Changed-=Refresh; }
     private void Refresh()
     {
         bool visible=IsInsideTree() && IsVisibleInTree();

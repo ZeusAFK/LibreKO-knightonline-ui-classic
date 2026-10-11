@@ -168,12 +168,9 @@ public static class NativeAppearance
     /// <summary>Opens the account only while no transfer is shown, pending or completed.</summary>
     private static void ReplaceOpen(World world, Net net)
     {
-        if (Native.Get<Delegate>(net, "NationTransferOpenEvent") is not { } handlers) return;
-        Delegate? remaining = handlers;
-        foreach (var handler in handlers.GetInvocationList())
-            if (handler.Target == world && handler.Method.Name == "OnNationTransferOpen") remaining = Delegate.Remove(remaining, handler);
         Action<IReadOnlyList<NationTransferCandidate>> open = candidates => OpenTransfer(world, candidates);
-        Native.Set(net, "NationTransferOpenEvent", Delegate.Combine(remaining, open));
+        NativeHooks.Replace(net, "NationTransferOpenEvent",
+            handler => handler.Target == world && handler.Method.Name == "OnNationTransferOpen", open, world);
     }
 
     public static void OpenTransfer(World world, IReadOnlyList<NationTransferCandidate> candidates)

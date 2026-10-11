@@ -1,3 +1,5 @@
+using Godot;
+using LibreKO.Network;
 using LibreKO.Plugins;
 
 namespace KnightOnlineUiClassic.Native;
@@ -38,6 +40,38 @@ public static partial class NativeSetup
         RegisterBoards(context);
         RegisterOverlays(context);
         NativeWindows.Register(context.Ui);
+    }
+
+    /// <summary>
+    /// Undoes <see cref="Register"/> when the client switches the plugin off: releases every recorded hook, removes
+    /// the plugin delegates still attached to the client's game API (the Classic HUD and windows of the World that
+    /// is about to be rebuilt) and forgets every static registry, so a new plugin instance registers exactly once.
+    /// The client removes the <see cref="PluginContext.Ui"/> registrations itself.
+    /// </summary>
+    public static void Unregister(PluginGame game)
+    {
+        int released = NativeHooks.ReleaseAll();
+        var sweep = new Dictionary<string, int>
+        {
+            ["game"] = NativeHooks.Sweep(game),
+            ["net"] = Net.I is { } net ? NativeHooks.Sweep(net) : 0,
+            ["tree"] = NativeHooks.SweepTree(),
+        };
+        NativeHooks.RecordSweep(sweep);
+        if (sweep["net"] + sweep["tree"] > 0)
+            GD.PushWarning($"[plugin:knightonline-ui-classic] shutdown removed {sweep["net"]} network and {sweep["tree"]} scene-tree handler(s) that were not recorded");
+        GD.Print($"[plugin:knightonline-ui-classic] shutdown released {released} hook(s) and {sweep["game"]} game API handler(s)");
+        NativeWindows.Reset();
+        NativeHud.Reset();
+        NativeOverlays.Reset();
+        NativeLayout.Reset();
+        FamiliarBar.Reset();
+        NativeGame.Reset();
+        NativeChat.Reset();
+        NativeQuestLog.Reset();
+        NativeCommunication.Reset();
+        NativeHudChat.Reset();
+        Native.Reset();
     }
 
     static partial void RegisterGame(PluginContext context);

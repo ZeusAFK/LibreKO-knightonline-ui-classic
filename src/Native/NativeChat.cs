@@ -45,9 +45,11 @@ public static class NativeChat
         Native.Set(chat, "StatusNotice", (Action<string>)(message => Info(chat, message)));
         if (Net.I is not { } net) return;
         Action<ChatLine> recolour = line => RecolourBubble(chat, line);
-        net.ChatEvent += recolour;
-        world.TreeExiting += () => net.ChatEvent -= recolour;
+        NativeHooks.Listen("Net.ChatEvent", () => net.ChatEvent += recolour, () => net.ChatEvent -= recolour, world);
     }
+
+    /// <summary>Forgets the rendered chat history cache.</summary>
+    internal static void Reset() => _entries.Clear();
 
     /// <summary>Adds a service or status notice to the chat as a yellow system line.</summary>
     public static void Info(object chat, string message)

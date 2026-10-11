@@ -207,6 +207,9 @@ public partial class ClassicMailPanel : Control
         Node? row = control;
         while (row != null && !row.HasMeta("mail_attachment_claimed")) row = row.GetParent();
         bool claimed = row?.GetMeta("mail_attachment_claimed", false).AsBool() ?? false;
+        // The client frames attachments in a grade slot and draws coins and experience as flat glyphs; the Classic
+        // letter shows the original bare item icon for every attachment.
+        if (control is PanelContainer slot && NativeQuestLog.IsRewardSlot(slot)) NativeQuestLog.ClassicSlot(slot);
         if (control is TextureRect icon && claimed) icon.SelfModulate = new Color(.55f, .55f, .55f);
         if (control is Label label)
         {

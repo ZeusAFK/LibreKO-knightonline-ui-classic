@@ -72,13 +72,11 @@ public static class NativeParty
         if (Net.I == null) return;
         var net = Net.I;
         var weakWorld = new WeakReference<World>(world);
-        Action<int, int, List<PartyBbsEntry>>? handler = null;
-        handler = (page, total, entries) =>
+        Action<int, int, List<PartyBbsEntry>> handler = (page, total, entries) =>
         {
-            if (!weakWorld.TryGetTarget(out var w) || !GodotObject.IsInstanceValid(w)) { net.PartyBbsListEvent -= handler; return; }
-            Listed(w);
+            if (weakWorld.TryGetTarget(out var w) && GodotObject.IsInstanceValid(w)) Listed(w);
         };
-        net.PartyBbsListEvent += handler;
+        NativeHooks.Listen("Net.PartyBbsListEvent", () => net.PartyBbsListEvent += handler, () => net.PartyBbsListEvent -= handler, world);
     }
 
     private static void Mirror(World world)

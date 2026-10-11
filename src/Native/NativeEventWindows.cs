@@ -118,8 +118,9 @@ public static class NativeEventWindows
             view.Winners = winners.OrderBy(w => w.Place).ToList();
             view.WinnersRevision++;
         };
-        detach = () => { net.LotteryJoinEvent -= joined; net.LotteryStateEvent -= opened; net.LotteryEndedEvent -= ended; };
-        net.LotteryJoinEvent += joined; net.LotteryStateEvent += opened; net.LotteryEndedEvent += ended;
+        detach = NativeHooks.Listen("Net.Lottery",
+            () => { net.LotteryJoinEvent += joined; net.LotteryStateEvent += opened; net.LotteryEndedEvent += ended; },
+            () => { net.LotteryJoinEvent -= joined; net.LotteryStateEvent -= opened; net.LotteryEndedEvent -= ended; }, world).Release;
         DetachWhenFreed(window, detach);
         NativeWindows.Sync(window, () =>
         {
@@ -163,8 +164,9 @@ public static class NativeEventWindows
             if (Gone(window, detach)) return;
             view.History = entries; view.HistoryRevision++;
         };
-        detach = () => { net.RouletteStatusEvent -= status; net.RouletteSpinEvent -= spun; net.RoulettePrizeLogEvent -= history; };
-        net.RouletteStatusEvent += status; net.RouletteSpinEvent += spun; net.RoulettePrizeLogEvent += history;
+        detach = NativeHooks.Listen("Net.Roulette",
+            () => { net.RouletteStatusEvent += status; net.RouletteSpinEvent += spun; net.RoulettePrizeLogEvent += history; },
+            () => { net.RouletteStatusEvent -= status; net.RouletteSpinEvent -= spun; net.RoulettePrizeLogEvent -= history; }, world).Release;
         DetachWhenFreed(window, detach);
         window.VisibilityChanged += () => { if (window.Visible) net.SendRoulettePrizeLog(); };
         NativeWindows.Sync(window, () =>
@@ -193,8 +195,8 @@ public static class NativeEventWindows
         unregister.Pressed += Lock;
         Action detach = null!;
         Action<bool, int, int> status = (_, _, _) => { if (!Gone(window, detach)) view.PendingSince = 0; };
-        detach = () => net.TournamentStatusEvent -= status;
-        net.TournamentStatusEvent += status;
+        detach = NativeHooks.Listen("Net.TournamentStatusEvent", () => net.TournamentStatusEvent += status,
+            () => net.TournamentStatusEvent -= status, world).Release;
         DetachWhenFreed(window, detach);
         NativeWindows.Sync(window, () =>
         {

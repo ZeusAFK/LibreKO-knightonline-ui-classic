@@ -7,8 +7,17 @@ public sealed class Plugin : IPlugin
 {
     public static UiKit Kit { get; private set; } = null!;
 
+    /// <summary>
+    /// Whether a plugin instance is running. The client keeps the assembly loaded when the theme is switched off in
+    /// Settings > Plugins, so deferred calls and nodes that outlive <see cref="Shutdown"/> check this first.
+    /// </summary>
+    public static bool Active => Kit != null;
+
+    private PluginContext? _context;
+
     public void Initialize(PluginContext context)
     {
+        _context = context;
         Kit = new UiKit(context);
         NativeSetup.Register(context);
         var ui = context.Ui;
@@ -85,8 +94,43 @@ public sealed class Plugin : IPlugin
             ((Godot.SceneTree)Godot.Engine.GetMainLoop()).Root.CallDeferred(Godot.Node.MethodName.AddChild, new ClassicCheck());
     }
 
+    /// <summary>
+    /// Runs when the client switches the theme off (and on exit). The client then removes the UI registrations and
+    /// rebuilds the World, which frees every Classic node inside it; this undoes everything else.
+    /// </summary>
     public void Shutdown()
     {
+        if (_context == null) return;
+        NativeSetup.Unregister(_context.Game);
+        FreeOutsideWorld();
         NpcPortraitCache.Clear();
+        ClassicStraightArt.Clear();
+        CharacterPageRouter.Reset();
+        Layout.ClassicNpcLayout.Reset();
+        _context = null;
+        Kit = null!;
+    }
+
+    /// <summary>Frees the plugin's nodes that live outside the World (developer check, dialogs on the root).</summary>
+    private static void FreeOutsideWorld()
+    {
+        if (Godot.Engine.GetMainLoop() is not Godot.SceneTree tree) return;
+        var plugin = typeof(Plugin).Assembly;
+        var found = new List<Godot.Node>();
+        void Visit(Godot.Node node)
+        {
+            foreach (var child in node.GetChildren())
+            {
+                if (child is LibreKO.World) continue;
+                if (child.GetType().Assembly == plugin) found.Add(child);
+                else Visit(child);
+            }
+        }
+        Visit(tree.Root);
+        foreach (var node in found)
+        {
+            node.GetParent()?.RemoveChild(node);
+            node.QueueFree();
+        }
     }
 }

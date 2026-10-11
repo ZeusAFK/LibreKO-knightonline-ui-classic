@@ -94,8 +94,12 @@ public static class Native
         return true;
     }
 
-    /// <summary>Adds a handler to a non-public C# event or delegate field.</summary>
-    public static bool Subscribe(object owner, string member, Delegate handler)
+    /// <summary>
+    /// Adds a handler to a non-public C# event or delegate field. The subscription is recorded in
+    /// <see cref="NativeHooks"/>: it ends with <see cref="Unsubscribe"/>, when <paramref name="lifetime"/> leaves the
+    /// tree, or when the plugin shuts down.
+    /// </summary>
+    public static bool Subscribe(object owner, string member, Delegate handler, Godot.Node? lifetime = null)
     {
         var type = TypeOf(owner);
         var target = owner is Type ? null : owner;
@@ -104,19 +108,23 @@ public static class Native
             var add = evt.GetAddMethod(true);
             if (add == null) return false;
             add.Invoke(target, new object[] { handler });
-            return true;
         }
-        if (Find(type, member) is FieldInfo field && typeof(Delegate).IsAssignableFrom(field.FieldType))
-        {
+        else if (Find(type, member) is FieldInfo field && typeof(Delegate).IsAssignableFrom(field.FieldType))
             field.SetValue(target, Delegate.Combine((Delegate?)field.GetValue(target), handler));
-            return true;
+        else
+        {
+            Report(owner, member);
+            return false;
         }
-        Report(owner, member);
-        return false;
+        NativeHooks.Hold(type.Name + "." + member, () => Detach(owner, member, handler), lifetime, (owner, member, handler));
+        return true;
     }
 
     /// <summary>Removes a handler added with <see cref="Subscribe"/>.</summary>
-    public static bool Unsubscribe(object owner, string member, Delegate handler)
+    public static bool Unsubscribe(object owner, string member, Delegate handler) =>
+        NativeHooks.ReleaseKey((owner, member, handler)) || Detach(owner, member, handler);
+
+    private static bool Detach(object owner, string member, Delegate handler)
     {
         var type = TypeOf(owner);
         var target = owner is Type ? null : owner;
@@ -170,6 +178,13 @@ public static class Native
     }
 
     private static Type TypeOf(object owner) => owner as Type ?? owner.GetType();
+
+    /// <summary>Forgets reported members and their listeners, so a re-enabled plugin reports again.</summary>
+    internal static void Reset()
+    {
+        _missing.Clear();
+        MemberMissing = null;
+    }
 
     private static MemberInfo? Find(Type type, string member) =>
         _members.GetOrAdd((type, member), key =>

@@ -203,6 +203,7 @@ public partial class ClassicVendorPanel : Control
     }
     public override void _ExitTree()
     {
+        if (!Plugin.Active) return;
         Plugin.Kit.Game.Inventory.Changed -= InventoryChanged; Plugin.Kit.Game.Character.Changed -= InventoryChanged;
     }
     public override void _Process(double delta)

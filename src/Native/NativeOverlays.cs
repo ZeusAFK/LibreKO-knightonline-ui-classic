@@ -62,8 +62,14 @@ public static class NativeOverlays
         list.Add(skin);
     }
 
-    internal static void Register(PluginContext context) =>
-        context.Game.BecameAvailable += () => { if (NativeHudChat.World is { } world) Prepare(world); };
+    internal static void Register(PluginContext context)
+    {
+        var game = context.Game;
+        Action attached = () => { if (NativeHudChat.World is { } world) Prepare(world); };
+        NativeHooks.Listen("Game.BecameAvailable", () => game.BecameAvailable += attached, () => game.BecameAvailable -= attached);
+    }
+
+    internal static void Reset() => _skins.Clear();
 
     /// <summary>
     /// Overlays the client builds later (or rebuilds), checked four times a second: the event plates and boards,
