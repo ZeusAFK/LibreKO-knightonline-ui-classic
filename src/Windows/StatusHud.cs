@@ -24,16 +24,19 @@ public partial class StatusHud : Control
 
     private static Func<string> Key(KeyAction action) => () => KeyBinds.Get(action) is { Assigned: true } chord ? chord.Text : "";
 
-    /// <summary>The letter row: column -1 is the original btn_quest position, the rest follow at the btn_power pitch.</summary>
-    private static readonly (string Letter,string Window,string Title,int Column,Func<PluginGame,Action>? Press,Func<string>? Key,string? Alert)[] Shortcuts =
+    /// <summary>
+    /// The icon row (plate-less <see cref="ClassicHudIcons"/>; the letters name the buttons): column -1 is the original
+    /// btn_quest position, the rest follow at the btn_power pitch.
+    /// </summary>
+    private static readonly (string Letter,string Window,string Title,int Column,Func<PluginGame,Action>? Press,Func<string>? Key,string? Alert,string Icon)[] Shortcuts =
     {
-        ("Q","quests","Quests",-1,game=>()=>CharacterWindow.ToggleQuestList(game),Key(KeyAction.Quests),null),
-        ("P","shoppingmall","Power-Up Store",0,null,Key(KeyAction.PowerUpStore),null),
-        ("A","achievements","Achievements",1,null,Key(KeyAction.Achievements),null),
-        ("D","attendance","Daily Attendance",2,null,Key(KeyAction.Attendance),null),
-        ("G","genie","Genie",3,null,Key(KeyAction.Genie),null),
-        ("E","events","Events",4,null,null,"an event starts soon"),
-        ("R","daily_rank","Daily Rank",5,null,null,"new rankings today"),
+        ("Q","quests","Quests",-1,game=>()=>CharacterWindow.ToggleQuestList(game),Key(KeyAction.Quests),null,"quests"),
+        ("P","shoppingmall","Power-Up Store",0,null,Key(KeyAction.PowerUpStore),null,"store"),
+        ("A","achievements","Achievements",1,null,Key(KeyAction.Achievements),null,"achievements"),
+        ("D","attendance","Daily Attendance",2,null,Key(KeyAction.Attendance),null,"attendance"),
+        ("G","genie","Genie",3,null,Key(KeyAction.Genie),null,"genie"),
+        ("E","events","Events",4,null,null,"an event starts soon","events"),
+        ("R","daily_rank","Daily Rank",5,null,null,"new rankings today","daily-rank"),
     };
 
     private readonly LayoutView _view;
@@ -68,7 +71,7 @@ public partial class StatusHud : Control
         var quest=source.Find("btn_quest")!;
         var power=source.Find("btn_power")!;
         int shortcutPitch=power.X-quest.X;
-        // With the 2.x menu art the original alarm clock follows R and opens the Events window.
+        // With the 2.x menu art the hourglass (the art's alarm clock spot) follows R and opens the Events window.
         var clockArt=ClassicStatusClock.Art;
         int lastColumn=Shortcuts[^1].Column+(clockArt!=null ? 1:0);
         float shortcutRight=power.X+shortcutPitch*lastColumn+power.W;
@@ -112,12 +115,12 @@ public partial class StatusHud : Control
         _view.Hide("btn_quest","btn_power");
         // The original row (Q on btn_quest, then the btn_power pitch) continues with the client's Genie,
         // Events and Daily Rank, which replace the client's own top-right icons.
-        foreach(var (letter,window,title,column,press,key,alert) in Shortcuts)
-            _shortcuts.Add(new ClassicStatusShortcut(kit,quest,letter,window,title,press?.Invoke(_game),key,alert) {
+        foreach(var (letter,window,title,column,press,key,alert,icon) in Shortcuts)
+            _shortcuts.Add(new ClassicStatusShortcut(kit,quest,letter,window,title,press?.Invoke(_game),key,alert,icon) {
                 Position=new Vector2(power.X+shortcutPitch*column,power.Y),
             });
         if(clockArt!=null)
-            _shortcuts.Add(new ClassicStatusClock(clockArt,new Vector2(quest.W,quest.H),()=>_game.Windows.Toggle("events")) {
+            _shortcuts.Add(new ClassicStatusClock(new Vector2(quest.W,quest.H),()=>_game.Windows.Toggle("events")) {
                 Position=new Vector2(power.X+shortcutPitch*lastColumn,power.Y),
             });
         _shortcuts.Add(new ClassicStatusShortcut(kit,quest,"","mail","Mail") {

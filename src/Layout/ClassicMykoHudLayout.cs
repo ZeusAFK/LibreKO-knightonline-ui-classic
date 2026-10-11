@@ -4,13 +4,13 @@ namespace KnightOnlineUiClassic.Layout;
 
 /// <summary>
 /// Names and geometry of the HUD pieces drawn on the original art read through <see cref="LocalAssets"/>: the status
-/// bar's clock and letter plates and the top-right group (premium, time, notice bars,
+/// bar's clock spot and the top-right group (premium, time, notice bars,
 /// GM List, content box). Each piece keeps the Classic design when its layouts are not found; these values only say
 /// where the plugin places native content on the art.
 /// </summary>
 public static class ClassicMykoHudLayout
 {
-    /// <summary>Letter plates (<c>btn_pus</c>, <c>btn_searchdrop</c>, <c>btn_dailyrank</c>) and the clock (<c>btn_scheduler</c>).</summary>
+    /// <summary>The status bar menu; its clock (<c>btn_scheduler</c>) marks where the row's hourglass goes.</summary>
     public const string HpMenu = "re_{nation}_hpmenu";
     public const string Notice = "re_eventnotice";
     /// <summary>The content box under the group; its frame and text style also draw the one-line time box.</summary>
@@ -19,19 +19,6 @@ public static class ClassicMykoHudLayout
     public const string Premium = "re_eventpremium";
 
     public static readonly string[] Layouts = { HpMenu, Notice, Content, Premium };
-
-    // ---- Letter plates -------------------------------------------------------------------------------
-
-    /// <summary>The letter plates sit in one column of the plate sheet, one plate every 29 pixels below P.</summary>
-    public const int PlatePitch = 29;
-
-    /// <summary>Rows below the P plate of the letters the sheet has besides P, D and R (the menu's buttons).</summary>
-    public static readonly Dictionary<string, int> SheetRows = new() { ["P"] = 0, ["D"] = 2, ["E"] = 4, ["Q"] = 5 };
-
-    /// <summary>The sheet has no A or G plate: these are drawn on the plate's letterless border and fill.</summary>
-    public const int PlateBorder = 3, PlateFillColumn = 4;
-    /// <summary>The sheet's letters: 19 pixels high, standing on row 23 of the 28-pixel plate.</summary>
-    public const int LetterFontSize = 28, LetterBaseline = 23;
 
     // ---- Notice bars and content box ------------------------------------------------------------------
 

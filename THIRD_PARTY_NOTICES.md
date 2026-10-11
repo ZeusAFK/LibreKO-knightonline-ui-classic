@@ -25,3 +25,16 @@ See LICENSE for the adapter code's AGPL-3.0 terms.
 - Hunt icon: user-supplied visual, reduced to transparent 32/64-pixel PNGs.
   The two preview fixtures are visual inputs, not captured account/game state.
   The code license does not relicense third-party artwork.
+
+- Status bar icons: glyphs from game-icons.net, https://game-icons.net, licensed under CC BY 3.0
+  (https://creativecommons.org/licenses/by/3.0/). Recoloured (nation gradient, outline, shadow, state variants)
+  by `tools/make_hud_icons.py` into `assets/textures/hud-icons`; the unmodified sources are in
+  `tools/source/game-icons`.
+  - "Scroll unfurled" by Lorc (Quests), https://game-icons.net/1x1/lorc/scroll-unfurled.html
+  - "Cut diamond" by Lorc (Power-Up Store), https://game-icons.net/1x1/lorc/cut-diamond.html
+  - "Trophy cup" by Delapouite (Achievements), https://game-icons.net/1x1/delapouite/trophy-cup.html
+  - "Calendar" by Delapouite (Daily Attendance), https://game-icons.net/1x1/delapouite/calendar.html
+  - "Magic lamp" by Lorc (Genie), https://game-icons.net/1x1/lorc/magic-lamp.html
+  - "Knight banner" by Delapouite (Events), https://game-icons.net/1x1/delapouite/knight-banner.html
+  - "Laurel crown" by Lorc (Daily Rank), https://game-icons.net/1x1/lorc/laurel-crown.html
+  - "Hourglass" by Lorc (Event Schedule), https://game-icons.net/1x1/lorc/hourglass.html

@@ -14,7 +14,12 @@ foreach ($sub in @('layouts','textures','overrides')) {
     if (Test-Path -LiteralPath $src) {
         $dst=Join-Path $InstallDir "assets\$sub"
         New-Item -ItemType Directory -Force $dst | Out-Null
-        Get-ChildItem -LiteralPath $src -File | Copy-Item -Destination $dst -Force
+        # With subfolders (textures/hud-icons).
+        foreach ($file in Get-ChildItem -LiteralPath $src -File -Recurse) {
+            $to = Join-Path $dst $file.FullName.Substring((Resolve-Path -LiteralPath $src).Path.Length + 1)
+            New-Item -ItemType Directory -Force (Split-Path $to) | Out-Null
+            Copy-Item -LiteralPath $file.FullName -Destination $to -Force
+        }
     }
 }
 # The bundled 2.x window art (src/LocalAssets.cs), mirrored with its subfolders.

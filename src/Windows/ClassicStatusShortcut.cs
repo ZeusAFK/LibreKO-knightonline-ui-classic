@@ -7,14 +7,11 @@ namespace KnightOnlineUiClassic.Windows;
 public partial class ClassicStatusShortcut : BaseButton
 {
     private readonly PluginGame _game;
-    private readonly LayoutNode _source;
     private readonly UiKit _kit;
     private readonly string _letter,_windowId,_title;
-    private readonly string? _alert;
+    private readonly string? _alert,_icon;
     private readonly Func<string>? _key;
-    private readonly Font _letterFont=new SystemFont { FontNames=new[]{"Times New Roman"},FontWeight=700 };
     private readonly Font _countFont;
-    private readonly Color _ink;
     private readonly Texture2D? _mailTexture;
     private static readonly Vector2I[] MailFrames = {
         new(7,115),new(40,115),new(7,138),new(41,138),
@@ -24,30 +21,34 @@ public partial class ClassicStatusShortcut : BaseButton
     private int _mailFrame;
     private bool _hovered,_lit;
     private double _refreshClock,_flashClock;
+    /// <summary>The button's row identity (Q P A D G E R); the row draws icons, not letters.</summary>
     public string Letter => _letter;
+    /// <summary>The <see cref="ClassicHudIcons"/> icon of a row button.</summary>
+    public string? Icon => _icon;
     public string WindowId => _windowId;
     /// <summary>Whether the button flashes for the client's attention state (events, daily rank).</summary>
     public bool Lit => _pending>0;
+    /// <summary>Whether this is a row button rather than the mail envelope.</summary>
     public bool HasBackground => _windowId!="mail";
     public Rect2 MailIconRect => new(0,1,28,20);
 
     /// <param name="press">Replaces the window toggle (Q opens a Character window page).</param>
     /// <param name="key">The client's current key binding for the tooltip, or an empty string.</param>
     /// <param name="alert">For an attention state instead of a count: no badge, this tooltip line while lit.</param>
+    /// <param name="icon">The row icon (<see cref="ClassicHudIcons.Order"/>); null for the mail envelope.</param>
     public ClassicStatusShortcut(UiKit kit,LayoutNode source,string letter,string windowId,string title,
-        Action? press=null,Func<string>? key=null,string? alert=null)
+        Action? press=null,Func<string>? key=null,string? alert=null,string? icon=null)
     {
         _kit=kit;
         _game=kit.Game;
-        _source=source;
         _letter=letter;
         _windowId=windowId;
         _title=title;
         _key=key;
         _alert=alert;
+        _icon=icon;
         if(windowId=="mail") _mailTexture=kit.Texture("classic_mail_chaos.png");
         _countFont=kit.Bold;
-        _ink=new Color(kit.Nation==1 ? "f0e3e2":"d7e9ee");
         Name="btn_"+windowId;
         Size=new Vector2(source.W,source.H);
         CustomMinimumSize=Size;
@@ -90,9 +91,8 @@ public partial class ClassicStatusShortcut : BaseButton
             QueueRedraw();
             return;
         }
-        if(_flashClock<0.6) return;
-        _flashClock%=0.6;
-        _lit=!_lit;
+        // A gentle glow pulse instead of the old plate flash.
+        _flashClock%=ClassicHudIcons.PulsePeriod;
         QueueRedraw();
     }
 
@@ -118,42 +118,11 @@ public partial class ClassicStatusShortcut : BaseButton
             if(_pending>0) DrawBadge();
             return;
         }
-        if(DrawLocalPlate()) return;
-        DrawBackground();
-        const int fontSize=22;
-        float width=_letterFont.GetStringSize(_letter,fontSize:fontSize).X;
-        var pen=new Vector2(Mathf.Round((Size.X-width)/2),
-            Mathf.Round((28-_letterFont.GetHeight(fontSize))/2+_letterFont.GetAscent(fontSize)));
-        if(IsPressed()) pen+=Vector2.One;
-        DrawStringOutline(_letterFont,pen,_letter,fontSize:fontSize,size:1,modulate:new Color(0,0,0,0.7f));
-        var ink=Disabled ? new Color("8c8c8c"):_lit ? new Color("fff1a8"):_hovered || IsPressed() ? Colors.White:_ink;
-        DrawString(_letterFont,pen,_letter,fontSize:fontSize,modulate:ink);
+        if(_icon!=null)
+            ClassicHudIcons.DrawButton(this,_icon,ClassicHudIcons.StateOf(this,_hovered),
+                _lit ? ClassicHudIcons.Pulse(_flashClock) : null);
         if(_pending<=0 || _alert!=null) return;
         DrawBadge();
-    }
-    /// <summary>The original letter plate of the local menu art, when installed (see <see cref="ClassicMykoPlates"/>).</summary>
-    private bool DrawLocalPlate()
-    {
-        int state=Disabled?ButtonState.Disabled:IsPressed()?ButtonState.Pressed:_hovered || _lit?ButtonState.Hover:ButtonState.Normal;
-        var tint=Disabled ? new Color(0.55f,0.55f,0.55f):Colors.White;
-        if(!ClassicMykoPlates.Draw(this,new Rect2(Vector2.Zero,Size),_letter,state,tint)) return false;
-        if(_pending>0 && _alert==null) DrawBadge();
-        return true;
-    }
-
-    private void DrawBackground()
-    {
-        int state=Disabled?ButtonState.Disabled:IsPressed()?ButtonState.Pressed:_hovered || _lit?ButtonState.Hover:ButtonState.Normal;
-        var part=_source.Images.First(n=>n.Tag==state);
-        var texture=_kit.Texture(part.Texture!);if(texture==null) return;
-        var origin=new Vector2(part.SrcX,part.SrcY);
-        // Original nation border and vertical fill, without the baked-in Q glyph.
-        void Slice(Rect2 target,Rect2 crop) => DrawTextureRectRegion(texture,target,new Rect2(origin+crop.Position,crop.Size));
-        Slice(new Rect2(0,0,28,3),new Rect2(0,0,28,3));
-        Slice(new Rect2(0,25,28,3),new Rect2(0,25,28,3));
-        Slice(new Rect2(0,3,4,22),new Rect2(0,3,4,22));
-        Slice(new Rect2(24,3,4,22),new Rect2(24,3,4,22));
-        Slice(new Rect2(4,3,20,22),new Rect2(4,3,1,22));
     }
 
     private void DrawMailIcon()
