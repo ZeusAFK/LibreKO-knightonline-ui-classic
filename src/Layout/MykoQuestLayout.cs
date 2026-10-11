@@ -119,7 +119,32 @@ public sealed class MykoQuestLayout
 
     // ---- Art -----------------------------------------------------------------------------------------------
 
-    public static Texture2D? Texture(LayoutNode image) => image.Texture == null ? null : Plugin.Kit.Local.Texture(image.Texture);
+    /// <summary>
+    /// Share of the art's own alpha that the dark translucent ground (window body, text boxes, cells) keeps. On the
+    /// MYKO client the world shows through these windows more than the textures' alpha (187 body, 102 cells) gives:
+    /// the owner's screenshots put the body at about 40 % see-through (alpha ~150) and the cells about a quarter darker than
+    /// the body around them (alpha ~82). Opaque art and lighter edges keep their alpha.
+    /// </summary>
+    public const float GroundAlpha = .8f;
+    /// <summary>Translucent pixels at most this bright (0..255 per channel) belong to the dark ground.</summary>
+    private const int GroundLevel = 17;
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Image, Texture2D> _ground = new();
+
+    /// <summary>The image's texture with its dark translucent ground thinned to <see cref="GroundAlpha"/>.</summary>
+    public static Texture2D? Texture(LayoutNode image) =>
+        image.Texture == null || Plugin.Kit.Local.Image(image.Texture) is not { } source ? null : _ground.GetValue(source, Ground);
+
+    private static Texture2D Ground(Image source)
+    {
+        var image = (Image)source.Duplicate();
+        if (image.IsCompressed()) image.Decompress();
+        if (image.GetFormat() != Image.Format.Rgba8) image.Convert(Image.Format.Rgba8);
+        byte[] data = image.GetData();
+        for (int i = 0; i + 3 < data.Length; i += 4)
+            if (data[i + 3] is > 0 and < 255 && data[i] <= GroundLevel && data[i + 1] <= GroundLevel && data[i + 2] <= GroundLevel)
+                data[i + 3] = (byte)Math.Round(data[i + 3] * GroundAlpha);
+        return ImageTexture.CreateFromImage(Image.CreateFromData(image.GetWidth(), image.GetHeight(), false, Image.Format.Rgba8, data));
+    }
 
     public static void Draw(CanvasItem canvas, LayoutNode image, Rect2 rect, Color? modulate = null)
     {
@@ -128,6 +153,12 @@ public sealed class MykoQuestLayout
     }
 
     public static void Draw(CanvasItem canvas, LayoutNode image, float offsetY = 0) => Draw(canvas, image, new Rect2(image.X, image.Y + offsetY, image.W, image.H));
+
+    /// <summary>
+    /// Caption ink of the viewer's action buttons (Accept, Reject, Confirm, Abandon, Close): the neutral ink of the
+    /// menu's stone buttons. The layout's green and red action inks are not used.
+    /// </summary>
+    public Color ActionInk => new(RowCaption.Color, 1);
 
     /// <summary>The state image of an original button: 0 normal, 1 pressed, 2 hover, 3 disabled.</summary>
     public static LayoutNode? State(LayoutNode button, int state) =>

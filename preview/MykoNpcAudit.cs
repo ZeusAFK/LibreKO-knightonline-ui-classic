@@ -33,11 +33,13 @@ public partial class Preview
             if (!ProjectSettings.LoadResourcePack(ProjectSettings.GlobalizePath("res://../../" + path), false)) throw new Exception("Missing live audit pack: " + path);
         GetWindow().ContentScaleMode = Window.ContentScaleModeEnum.Disabled; GetWindow().Size = new Vector2I(1000, 700);
         var backdrop = new Color("252822");
-        AddChild(new ColorRect { Color = backdrop, Size = new Vector2(1000, 700), MouseFilter = MouseFilterEnum.Ignore });
+        var ground = new ColorRect { Color = backdrop, Size = new Vector2(1000, 700), MouseFilter = MouseFilterEnum.Ignore };
+        AddChild(ground);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         string prefix = nation == 1 ? "karus" : "human";
         var checks = new List<string>();
         var screens = new List<object>();
+        var translucency = new List<object>();
         void Check(bool ok, string what) { if (!ok) throw new Exception("MYKO_NPC_AUDIT_FAIL " + prefix + ": " + what); checks.Add(what); }
 
         // Local assets are read once per kit; the audit switches them by resetting the kit's cache.
@@ -164,7 +166,7 @@ public partial class Preview
             // Frame art: the left and right border columns are drawn (not the backdrop) at mid height.
             float mid = frame.Position.Y + Mathf.Floor(frame.Size.Y / 2);
             Check(Count(image, new Rect2(frame.Position.X, mid - 4, 4, 8), c => !Near(c, backdrop, .03f)) >= 8 && Count(image, new Rect2(frame.End.X - 5, mid - 4, 4, 8), c => !Near(c, backdrop, .03f)) >= 8, name + ": frame border drawn on both sides");
-            // The original window body is translucent black (alpha 187): darker than the backdrop, not opaque.
+            // The window body is translucent black: darker than the backdrop, not opaque.
             var empty = myko.Offer ? new Vector2(40, frame.Size.Y - layout.ViewerFooter + 3) : new Vector2(40, layout.FirstRow + 1);
             var inner = image.GetPixel((int)(frame.Position.X + empty.X), (int)(frame.Position.Y + empty.Y));
             Check(inner.R < backdrop.R && inner.R > 0.005f, name + $": translucent original body ({inner})");
@@ -180,6 +182,26 @@ public partial class Preview
                 pager = myko.PageLabel?.Text, close = close.GetGlobalRect().ToString(), rail = myko.Rail!.GetGlobalRect().ToString(),
             });
             await Save(name);
+        }
+
+        // Translucency: the same state over black and over white gives each pixel's coverage (1 - (white - black)).
+        // The dark ground keeps GroundAlpha of the art's alpha: body 187 -> 150, cells 102 -> 82 over the body.
+        float Thinned(int alpha) => Mathf.Round(alpha * MykoQuestLayout.GroundAlpha) / 255f;
+        async Task Translucency(string name, (string Part, Vector2 At, float Expected)[] samples)
+        {
+            Pointer(Vector2.Zero); await Frames(2);
+            var frame = window.GetGlobalRect();
+            ground.Color = Colors.Black; await Frames(2); using var black = Shot(); await Save(name + "-on-black");
+            ground.Color = Colors.White; await Frames(2); using var white = Shot(); await Save(name + "-on-white");
+            ground.Color = backdrop; await Frames(2);
+            foreach (var (part, at, expected) in samples)
+            {
+                var p = (Vector2I)(frame.Position + at).Floor();
+                float alpha = 1 - (white.GetPixel(p.X, p.Y).R - black.GetPixel(p.X, p.Y).R);
+                Check(Math.Abs(alpha - expected) < .02f, $"{name}: {part} coverage {alpha:0.000}, expected {expected:0.000}");
+                Check(black.GetPixel(p.X, p.Y).R < .03f, $"{name}: {part} ground is black");
+                translucency.Add(new { screen = name, part, at = at.ToString(), alpha, expected });
+            }
         }
 
         // ---- 1. Without local assets: the bundled Classic dialogue ------------------------------------------
@@ -225,6 +247,7 @@ public partial class Preview
             Check(myko.Pieces.Any(p => p.Image == layout.RowPlate && p.Rect == layout.RowPart(layout.RowPlate, i)), $"row {i} plate drawn");
         }
         Check(Math.Abs((frameRect.GetCenter() - GetViewportRect().Size / 2).Length()) <= 1, "menu opens centred");
+        await Translucency("menu-hepa", new[] { ("body", new Vector2(40, layout.FirstRow + 1), Thinned(187)), ("talk box", new Vector2(300, 140), Thinned(187)) });
         // States by real pointer input: hover (tag 2), pressed (tag 1), then the client's own callback.
         var first = myko.Options[0];
         Pointer(first.GetGlobalRect().GetCenter()); await Frames(3);
@@ -303,7 +326,14 @@ public partial class Preview
         Check(actions.Count == 2 && actions[0].Caption.Text == "Accept" && actions[1].Caption.Text == "Reject", "Accept and Reject from the client");
         Check(actions[0].GetGlobalRect() == new Rect2(armorFrame.Position + new Vector2(layout.LeftAction.X, armorFrame.Size.Y - layout.ViewerFooter + layout.LeftAction.Y - layout.PagerStrip.Y), layout.LeftAction.SizeVec)
             && actions[1].GetGlobalRect().Position.X == armorFrame.Position.X + layout.RightAction.X, "actions in the original two slots");
-        Check(actions.All(a => Near(a.Caption.GetThemeColor("font_color"), new Color(layout.LeftAction.Strings.First().Color, 1))), "action captions in the original green");
+        Check(actions.All(a => Near(a.Caption.GetThemeColor("font_color"), layout.ActionInk) && Near(layout.ActionInk, new Color(layout.RowCaption.Color, 1), .001f)), "action captions in the neutral stone-button ink");
+        using (var image = Shot())
+            foreach (var action in actions)
+                Check(Count(image, action.Caption.GetGlobalRect(), c => Near(c, layout.ActionInk, .1f)) > 20 && Count(image, action.Caption.GetGlobalRect(), c => c.G > c.R + .2f || c.R > c.G + .3f) == 0,
+                    action.Caption.Text + " caption neutral on screen (no green or red ink)");
+        var cellAt = myko.Cells[0].GetGlobalRect().Position - armorFrame.Position + new Vector2(42, 23);
+        await Translucency("viewer-armor", new[] { ("body", new Vector2(40, armorFrame.Size.Y - layout.ViewerFooter + 3), Thinned(187)), ("note box", new Vector2(300, 140), Thinned(187)),
+            ("cell", cellAt, 1 - (1 - Thinned(187)) * (1 - Thinned(102))) });
         Check(myko.PageLabel?.Text == "1/1" && myko.Previous!.Disabled && myko.Next!.Disabled, "pager 1/1 with both arrows at their ends");
         // Item tooltip through the client's row, then Accept by real pointer input.
         var itemCell = myko.Cells[0];
@@ -341,7 +371,7 @@ public partial class Preview
         Pointer(Vector2.Zero);
         // In progress: Abandon and Close (the red Close of the original).
         Offer(13013, gavolt with { CanAccept = false, State = QuestViewState.InProgress, Counts = [2] }); await Frames(10); await Verify("viewer-in-progress", layout);
-        Check(myko.Actions.Select(a => a.Caption.Text).SequenceEqual(new[] { "Abandon", "Close" }) && Near(myko.Actions[1].Caption.GetThemeColor("font_color"), new Color(layout.CloseAction.Strings.First().Color, 1)), "Abandon and the red Close");
+        Check(myko.Actions.Select(a => a.Caption.Text).SequenceEqual(new[] { "Abandon", "Close" }) && myko.Actions.All(a => Near(a.Caption.GetThemeColor("font_color"), layout.ActionInk)), "Abandon and Close in the neutral caption ink");
         await Click(myko.Actions[1]); Check(!window.Visible, "Close reaches the client's close");
         Pointer(Vector2.Zero);
         // Many rewards: whole rows per page, fixed window, pager.
@@ -383,7 +413,7 @@ public partial class Preview
         await Save("fallback-after-removal");
         Close();
 
-        System.IO.File.WriteAllText(System.IO.Path.Combine(output, prefix + "-verification.json"), JsonSerializer.Serialize(new { nation = prefix, localAssets = assets, checks = checks.Count, checkList = checks, screens },
+        System.IO.File.WriteAllText(System.IO.Path.Combine(output, prefix + "-verification.json"), JsonSerializer.Serialize(new { nation = prefix, localAssets = assets, groundAlpha = MykoQuestLayout.GroundAlpha, checks = checks.Count, checkList = checks, translucency, screens },
             new JsonSerializerOptions { WriteIndented = true }));
         NpcPortraitCache.Clear(); tooltipLayer.Free(); layer.Free(); world.Free(); net.Free();
         GD.Print($"MYKO_NPC_AUDIT_OK: {prefix}, {checks.Count} checks");

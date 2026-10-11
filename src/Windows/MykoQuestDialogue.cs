@@ -349,9 +349,8 @@ public partial class MykoQuestDialogue : Control
         {
             var (frame, button) = slots[i];
             _pieces.Add((layout.ActionFrames[0], new Rect2(frame.Position + new Vector2(0, end), frame.Size)));
-            // The original's Close button is the red one; every other action uses the green caption.
-            bool close = _actions[i].Text == "Close";
-            var action = new MykoQuestAction(_actions[i], layout, close ? layout.CloseAction : layout.LeftAction) { Name = "myko_action_" + i };
+            // Every action is the same stone button with the neutral caption ink (MykoQuestLayout.ActionInk).
+            var action = new MykoQuestAction(_actions[i], layout, layout.LeftAction) { Name = "myko_action_" + i };
             _body.AddChild(action); ClassicNpcLayout.Place(action, new Rect2(button.Position + new Vector2(0, end), button.Size)); Actions.Add(action);
         }
         Fit(new Vector2(layout.ViewerWidth, layout.ViewerHeight(content)));
@@ -523,8 +522,8 @@ public partial class MykoQuestAction : MykoArtButton
     public MykoQuestAction(Button source, MykoQuestLayout layout, LayoutNode style) : base(style)
     {
         Source = source;
-        var ink = style.Strings.First(); _ink = new Color(ink.Color, 1);
-        Caption = MykoQuestLayout.Text(ink); Caption.Name = "myko_action_caption"; Caption.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); AddChild(Caption);
+        var ink = style.Strings.First(); _ink = layout.ActionInk;
+        Caption = MykoQuestLayout.Text(ink, "", _ink); Caption.Name = "myko_action_caption"; Caption.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect); AddChild(Caption);
         Pressed += () => { if (IsInstanceValid(Source) && !Source.Disabled) Source.EmitSignal(BaseButton.SignalName.Pressed); };
         Mirror();
     }
