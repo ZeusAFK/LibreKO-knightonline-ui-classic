@@ -22,7 +22,10 @@ This page covers:
   nearly all of it goes through `Native`: `Get`, `TryGet`, `Set`, `Call`, `TryCall`, `Subscribe`, `Unsubscribe`,
   `Has`, `HasMethod` and `ClientType`. Lookups walk base types and are cached. When a member is missing, `Native`
   writes `native member unavailable: <Type>.<member>` once per member, adds it to `Native.MissingMembers` and
-  raises `Native.MemberMissing`. Then it returns a default value instead of throwing. `Has`, `HasMethod` and
+  raises `Native.MemberMissing`. Then it returns a default value instead of throwing. A member that exists but no
+  longer has the type `Get`/`TryGet` read it as (a container that became another container type, a field that
+  changed width) is reported the same way, once, as `native member type changed: <Type>.<member> is <Actual>, read
+  as <Requested>`; a null value of a compatible type is not a mismatch. `Has`, `HasMethod` and
   `TryCall` do not report, so they are used for feature detection. Two cases run outside `Native`:
   - The anvil binds the client's private `OnUpgradeOpen` with `Delegate.CreateDelegate`.
   - Nested records such as `World+BagCompanion` and `World+VipWhPending` are created with `Activator`.

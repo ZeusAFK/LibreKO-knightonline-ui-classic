@@ -1,6 +1,7 @@
 using Godot;
 using LibreKO;
 using KnightOnlineUiClassic.Layout;
+using KnightOnlineUiClassic.Native;
 
 namespace KnightOnlineUiClassic.Windows;
 
@@ -31,7 +32,7 @@ public partial class ClassicIdentityPanel : Control
     private ClassicIdentityScrollRail? _formsRail;
     // The original transformation lists use dense 19-pixel one-line rows.
     public const float DisguiseRow = 19;
-    private Label? _note;
+    private Label? _note, _hint;
     public ClassicIdentityPanel(HudWindow window, Control body)
     {
         Window = window; Name = "classic_identity";
@@ -129,8 +130,8 @@ public partial class ClassicIdentityPanel : Control
     }
     private void Rename()
     {
-        var hint = Native<Label>("name_change_hint"); Original(hint, "text_explanation");
-        hint.Text = "Enter your new name. Requires a Scroll of Identity.\nYour old name will no longer be valid after the change. Choose carefully. Names must have 3-20 characters.";
+        var hint = _hint = Native<Label>("name_change_hint"); Original(hint, "text_explanation");
+        SyncRename();
         hint.AutowrapMode = TextServer.AutowrapMode.WordSmart; hint.ClipText = false;
         var label = new Label { Text = "ID", MouseFilter = MouseFilterEnum.Ignore }; AddChild(label);
         Place(label, ClassicIdentityLayout.RenameId); Font(label, 16, true);
@@ -216,8 +217,20 @@ public partial class ClassicIdentityPanel : Control
         }
         Visit(root);
     }
+    public const string RenameHint = "Enter your new name. Requires a Scroll of Identity.\nYour old name will no longer be valid after the change. Choose carefully. Names must have 3-20 characters.";
+    public const string ClanRenameHint = "Enter the new name of your clan.\nThe old clan name will no longer be valid after the change. Choose carefully. Names must have 3-20 characters.";
+    /// <summary>The client rewrites its hint on every open; the Classic text follows the character or clan mode.</summary>
+    private void SyncRename()
+    {
+        if (_hint == null) return;
+        bool clan = NativeIdentity.RenamesClan(Window);
+        string hint = clan ? ClanRenameHint : RenameHint, title = clan ? "Change Clan Name" : "Change Name";
+        if (_hint.Text != hint) _hint.Text = hint;
+        if (_title.Text != title) _title.Text = title;
+    }
     public override void _Process(double delta)
     {
+        SyncRename();
         if (_forms == null || _note == null) return;
         bool note = _note.Text.Length > 0; _note.Visible = note;
         _note.TooltipText = _note.Text;

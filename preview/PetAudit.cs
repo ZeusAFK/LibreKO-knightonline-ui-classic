@@ -86,6 +86,7 @@ public partial class Preview
             "Reopening the same familiar reuses its 2D texture");
         window.Visible = false;
         await AuditPetBar(world, net, nation, output, Require);
+        await AuditPetPlate(world, net, window, nation, output, Require);
         await AuditPetIncubationReplies(Require);
         await AuditPetHatchGuards(checks, nation, output);
         await AuditPetHatchResults(nation, output, Require);

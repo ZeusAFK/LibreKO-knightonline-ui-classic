@@ -102,7 +102,8 @@ public static class NativeNpc
     public static void QuestViewShown(World world, QuestView view)
     {
         if (Native.Get<VBoxContainer>(world, "_npcQuestContent") is not { } content || !GodotObject.IsInstanceValid(content)) return;
-        if (content.GetChildCount() == 0 || content.GetChild(0) is not RichTextLabel) return;
+        // The view opens with the client's title line (or, on older clients, its dialogue paragraph).
+        if (content.GetChildCount() == 0 || content.GetChild(0) is not (RichTextLabel or HBoxContainer)) return;
         var caption = UiTheme.Text(view.StateLabel, 13, UiTheme.Gold);
         caption.SetMeta("quest_status", (int)view.State);
         caption.SetMeta(CaptionMarker, view.QuestId);

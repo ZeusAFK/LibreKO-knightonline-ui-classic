@@ -18,7 +18,7 @@ public partial class CharacterEmbeddedPage : Control
     private ScrollContainer? _clanList;
     private Control? _noticeEdit,_clanHint;
     private Label? _clanStatus;
-    private Button? _noticeTab,_pointsTab,_unionTab;
+    private Button? _noticeTab,_pointsTab,_unionTab,_topTab;
     private Button? _leave,_ally;
     private Control? _questDetail,_questActions;
     public ClassicContentScrollRail? QuestScrollRail { get; private set; }
@@ -126,11 +126,23 @@ public partial class CharacterEmbeddedPage : Control
         ContentScroll.Visible=false;
         var card=CharacterDetailsSkin.Tree(_body).OfType<PanelContainer>().First();
         var labels=CharacterDetailsSkin.Tree(card).OfType<Label>().ToArray();
-        for(int i=0;i<labels.Length;i++) Place(labels[i],12,116+i*22,336,22);
-        var tabs=CharacterDetailsSkin.Tree(_body).OfType<HBoxContainer>().First(c=>c.GetChildren().OfType<Button>().Count(b=>b.ToggleMode)==3);
+        for(int i=0;i<labels.Length;i++) Place(labels[i],12,116+i*22,276,22);
+        // The client shows the clan mark beside the card and, for a promoted clan's chief, its registration.
+        if(CharacterDetailsSkin.Tree(card).OfType<TextureRect>().FirstOrDefault() is {} mark) Place(mark,"clan_mark");
+        if(CharacterDetailsSkin.Tree(card).OfType<Button>().FirstOrDefault() is {} symbol)
+        {
+            symbol.TooltipText=symbol.TooltipText.Length>0?symbol.TooltipText:symbol.Text;symbol.Text="Symbol";
+            Place(symbol,"clan_symbol");symbol.CustomMinimumSize=Vector2.Zero;
+        }
+        var tabs=CharacterDetailsSkin.Tree(_body).OfType<HBoxContainer>().First(c=>c.GetChildren().OfType<Button>().Count(b=>b.ToggleMode)>=3);
         var buttons=tabs.GetChildren().OfType<Button>().ToArray();
-        _noticeTab=buttons[0];_pointsTab=buttons[1];_unionTab=buttons[2];_noticeTab.Text="Notice";
-        for(int i=0;i<3;i++) { Place(buttons[i],8+i*116,210,112,22);buttons[i].CustomMinimumSize=new Vector2(0,22); }
+        _noticeTab=buttons[0];_pointsTab=buttons[1];_unionTab=buttons[2];_topTab=buttons.Length>3?buttons[3]:null;_noticeTab.Text="Notice";
+        int tabWidth=(344-(buttons.Length-1)*4)/buttons.Length;
+        for(int i=0;i<buttons.Length;i++)
+        {
+            int x=8+i*(tabWidth+4);
+            Place(buttons[i],x,210,i==buttons.Length-1?352-x:tabWidth,22);buttons[i].CustomMinimumSize=new Vector2(0,22);
+        }
         var mine=card.GetParent<Control>();
         var nativeRoot=mine.GetParent<Control>();
         var children=mine.GetChildren().OfType<Control>().ToArray();
@@ -154,16 +166,19 @@ public partial class CharacterEmbeddedPage : Control
         if(_clanStatus!=null) Place(_clanStatus,"clan_status");
         var actions=children.OfType<HBoxContainer>().Last();
         var actionButtons=actions.GetChildren().OfType<Button>().ToArray();
-        _ally=actionButtons[2];_leave=actionButtons[3];
-        for(int i=0;i<actionButtons.Length;i++)
+        Button? Action(params string[] texts) => actionButtons.FirstOrDefault(b=>texts.Contains(b.Text));
+        _ally=Action("Ally with target","Leave alliance");_leave=actionButtons.Last();
+        foreach(var (button,slot,caption) in new[]
         {
-            if(i==0) Place(actionButtons[i],"clan_refresh");
-            if(i==1) { actionButtons[i].Text="Save NP";Place(actionButtons[i],"clan_save"); }
-            if(i==2) Place(actionButtons[i],"clan_ally");
-            if(i==3) { actionButtons[i].Text="Leave";Place(actionButtons[i],"clan_leave"); }
-            actionButtons[i].CustomMinimumSize=Vector2.Zero;
+            (Action("Refresh")??actionButtons[0],"clan_refresh",(string?)null),(Action("Save Contribution"),"clan_save","Save NP"),
+            (Action("Recruitment Board"),"clan_board","Recruit"),(Action("Hand over"),"clan_handover",null),(_ally,"clan_ally",null),(_leave,"clan_leave","Leave"),
+        })
+        {
+            if(button==null) continue;
+            if(caption!=null) { if(button.TooltipText.Length==0) button.TooltipText=button.Text;button.Text=caption; }
+            Place(button,slot);button.CustomMinimumSize=Vector2.Zero;
         }
-        _noticeTab.Pressed+=()=>UpdateClanMode();_pointsTab.Pressed+=()=>UpdateClanMode();_unionTab.Pressed+=()=>UpdateClanMode();
+        foreach(var tab in buttons) tab.Pressed+=()=>UpdateClanMode();
         UpdateClanMode();
     }
     public void CloseNative() => _close?.EmitSignal(BaseButton.SignalName.Pressed);

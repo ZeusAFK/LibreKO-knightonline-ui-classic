@@ -43,7 +43,9 @@ public static class Native
             PropertyInfo property => property.GetValue(owner is Type ? null : owner),
             _ => null,
         };
-        return value is T typed ? typed : default;
+        if (value is T typed) return typed;
+        CheckType<T>(owner, member, info, value);
+        return default;
     }
 
     public static bool TryGet<T>(object owner, string member, out T value)
@@ -58,6 +60,7 @@ public static class Native
         if (raw is T typed) { value = typed; return true; }
         value = default!;
         if (info == null) Report(owner, member);
+        else CheckType<T>(owner, member, info, raw);
         return false;
     }
 
@@ -196,6 +199,22 @@ public static class Native
             }
             return null;
         });
+
+    /// <summary>
+    /// Reports once when a member exists but no longer has the type the plugin reads it as (for example a
+    /// container that became another container type). A null value of a compatible type is not a mismatch.
+    /// </summary>
+    private static void CheckType<T>(object owner, string member, MemberInfo info, object? value)
+    {
+        var declared = info switch { FieldInfo field => field.FieldType, PropertyInfo property => property.PropertyType, _ => null };
+        if (declared == null) return;
+        if (value == null && (typeof(T).IsAssignableFrom(declared) || declared.IsAssignableFrom(typeof(T))
+            || Nullable.GetUnderlyingType(typeof(T)) == declared)) return;
+        string key = TypeOf(owner).FullName + "." + member;
+        if (!_missing.TryAdd(key + " (type)", 0)) return;
+        GD.PushWarning($"[plugin:knightonline-ui-classic] native member type changed: {key} is {(value?.GetType() ?? declared).Name}, read as {typeof(T).Name}");
+        MemberMissing?.Invoke(key);
+    }
 
     private static void Report(object owner, string member)
     {

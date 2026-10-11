@@ -2,6 +2,7 @@ using Godot;
 using LibreKO;
 using LibreKO.Domain;
 using LibreKO.Network;
+using LibreKO.Plugins;
 using KnightOnlineUiClassic;
 using KnightOnlineUiClassic.Layout;
 using KnightOnlineUiClassic.Windows;
@@ -18,6 +19,7 @@ public partial class Preview
         GetWindow().ContentScaleMode = Window.ContentScaleModeEnum.Disabled; GetWindow().Size = new Vector2I(1000, 740); GetViewport().GuiEmbedSubwindows = true;
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1200, 850), MouseFilter = MouseFilterEnum.Ignore });
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
+        PluginHost.Ui.ReplaceDialogs(request => new KnightOnlineUiClassic.Windows.MessageBox(request));
         var world = new World(); var layer = (CanvasLayer)DetailCall(world, "BuildBeautyClassicUiPreview", nation)!; AddChild(layer);
         var window = layer.GetChildren().OfType<HudWindow>().Single(); var panel = ClassicGenderSkin.Apply(window.Body)!;
         window.SetMeta("content_open_anchor", true);
@@ -38,8 +40,8 @@ public partial class Preview
         }
         T Find<T>(string name) where T : Control => Descendants(panel).OfType<T>().Single(c => c.Name == name);
         var editor = Find<LookEditor>("look_editor"); var preview = Find<LookPreview>("look_preview");
-        var colour = Find<ColorPickerButton>("look_colour"); var accept = Find<Button>("look_accept");
-        bool Busy() => (bool)DetailField(world, "_changeHairInFlight")!;
+        var swatch = Find<Button>("look_palette"); var accept = Find<Button>("look_accept"); var zoom = Find<Button>("look_zoom");
+        bool Busy() => (bool)DetailField(world, "_beautyInFlight")!;
         bool NetBusy() => PreviewFixtures.ChangeHairPending(net);
         Node3D Pivot() => (Node3D)typeof(LookPreview).GetField("_pivot", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(preview)!;
         void Open() => DetailCall(world, "OpenChangeHair");
@@ -48,6 +50,15 @@ public partial class Preview
             var packet = new Packet(GameOpcodes.GS_CHANGE_HAIR); packet.WriteByte(result);
             typeof(Net).GetMethod("HandleChangeHair", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(net, new object[] { packet });
         }
+        // The client parents its notices to the world; the audit shows them above the preview.
+        Notice? TakeNotice()
+        {
+            var notice = world.GetChildren().OfType<Notice>().LastOrDefault(n => !n.IsQueuedForDeletion());
+            if (notice == null) return null;
+            world.RemoveChild(notice); AddChild(notice); return notice;
+        }
+        DialogRequest Request(Notice notice) => (DialogRequest)typeof(Notice).GetField("_request", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(notice)!;
+        void Dismiss(Notice notice) { var request = Request(notice); if (request.HasCancel) request.Cancel(); else request.Dismiss(); notice.Free(); }
         void LoadRace(int race)
         {
             DetailCall(world, "CloseChangeHair");
@@ -56,6 +67,13 @@ public partial class Preview
             foreach (var field in new[] { ("_selfRace", race), ("_selfFace", 0), ("_selfHair", me.Hair) })
                 typeof(World).GetField(field.Item1, BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(world, field.Item2);
             Open();
+        }
+        void CheckFraming(string stage, Rect2 inside)
+        {
+            var camera = preview.GetChild<SubViewport>(0).GetCamera3D();
+            var points = Descendants(Pivot()).OfType<MeshInstance3D>().Where(m => m.IsVisibleInTree() && m.Mesh != null).SelectMany(InventoryPortrait.FramingPoints).ToArray();
+            var projected = points.Select(camera.UnprojectPosition).ToArray();
+            Require(points.Length > 0 && projected.All(inside.HasPoint), stage + " complete posed body and head remain inside preview " + (projected.Length == 0 ? "empty" : $"{projected.Min(p => p.X)},{projected.Min(p => p.Y)} to {projected.Max(p => p.X)},{projected.Max(p => p.Y)}"));
         }
         async Task Capture(string state, bool popup = false)
         {
@@ -73,7 +91,7 @@ public partial class Preview
                 if (label.AutowrapMode == TextServer.AutowrapMode.Off)
                     Require(label.GetThemeFont("font").GetStringSize(label.Text, HorizontalAlignment.Left, -1, 13).X <= label.Size.X, state + " complete label text " + label.Text);
             }
-            Require(!Find<Control>("look_race_heading").Visible && !Find<Control>("look_races").Visible && editor.Race == net.LastEnter.Race, state + " beauty cannot change race");
+            Require(Descendants(editor).OfType<VBoxContainer>().All(v => v.Name != "look_races") && editor.Race == net.LastEnter.Race, state + " beauty cannot change race");
             foreach (var part in new[] { "face", "hair" }) foreach (var side in new[] { "previous", "next" })
             {
                 var button = Find<Button>("look_" + part + "_" + side);
@@ -81,21 +99,57 @@ public partial class Preview
                 int count = part == "face" ? CharacterPreview.FaceCount(editor.Race) : CharacterPreview.HairCount(editor.Race);
                 Require(button.Disabled == (Busy() || count <= 1), state + " content-derived arrow availability " + button.Name);
             }
-            Require(accept.Disabled == Busy() && colour.Disabled == (Busy() || CharacterPreview.HairCount(editor.Race) == 0) && Busy() == NetBusy(), state + " native pending controls and network guard");
+            Require(accept.Disabled == Busy() && swatch.Disabled == (Busy() || CharacterPreview.HairCount(editor.Race) == 0), state + " native pending controls");
+            Require(swatch.IsVisibleInTree() && swatch.Size.Y == 26 && swatch.Size.X >= 80 && editor.GetGlobalRect().Encloses(swatch.GetGlobalRect()) && Find<ColorRect>("look_palette_swatch").Color == editor.HairColour, state + " hair colour swatch shows the edited colour");
             Require(preview.Size == new Vector2(220, 300) && preview.ClipContents, state + " full native clipped character preview");
             Require(Pivot().GetChildCount() == 1, state + " exactly one real character model");
-            var camera = preview.GetChild<SubViewport>(0).GetCamera3D();
-            var vertices = Descendants(Pivot()).OfType<MeshInstance3D>().Where(m => m.IsVisibleInTree() && m.Mesh != null).SelectMany(InventoryPortrait.FramingPoints).ToArray();
-            var projected = vertices.Select(camera.UnprojectPosition).ToArray();
-            Require(vertices.Length > 0 && projected.All(v => new Rect2(1, 1, 218, 298).HasPoint(v)), state + " complete posed body and head remain inside preview " + (projected.Length == 0 ? "empty" : $"{projected.Min(p => p.X)},{projected.Min(p => p.Y)} to {projected.Max(p => p.X)},{projected.Max(p => p.Y)}"));
+            if (!KnightOnlineUiClassic.Native.LookFraming.Zoomed(preview)) CheckFraming(state, new Rect2(1, 1, 218, 298));
             var status = Find<Label>("look_status"); Require(status.GetLineCount() * 17 <= status.Size.Y, state + " fixed warning fits separate area");
             await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
             string file = (nation == 1 ? "karus" : "human") + "-" + state + ".png"; GetViewport().GetTexture().GetImage().SavePng(output + "/" + file);
             screens.Add(new { state, file, bounds = window.GetGlobalRect().ToString(), popup });
         }
+        async Task CaptureNotice(string state, Notice notice, string text)
+        {
+            await Frames();
+            var box = notice.GetChildren().OfType<KnightOnlineUiClassic.Windows.MessageBox>().Single();
+            Require(Descendants(box).OfType<Label>().Any(l => l.Text == text), state + " Classic message box shows the client's text: " + text);
+            Require(GetViewportRect().Encloses(Descendants(box).OfType<Control>().Single(c => c.Name == "message_art").GetGlobalRect()), state + " message box inside the viewport");
+            string file = (nation == 1 ? "karus" : "human") + "-" + state + ".png"; GetViewport().GetTexture().GetImage().SavePng(output + "/" + file);
+            screens.Add(new { state, file, notice = text });
+        }
+        HudWindow? palette = null; ClassicHairPalettePanel? palettePanel = null;
+        async Task OpenPalette()
+        {
+            await Click(swatch);
+            palette = PreviewFixtures.PrepareHairPalette(world);
+            Require(palette != null && palette.Visible && palette.GetParent() == layer, "The colour swatch opens the client's hair palette beside the shop");
+            palettePanel ??= ClassicHairPaletteSkin.Apply(palette!.Body);
+            await Frames();
+        }
+        async Task CapturePalette(string state)
+        {
+            await Frames();
+            Require(palette!.Size == ClassicHairPaletteLayout.Size, state + " fixed palette size");
+            Require(GetViewportRect().Encloses(palette.GetGlobalRect()), state + " palette inside the viewport");
+            Require(!palette.GetGlobalRect().Intersects(window.GetGlobalRect()), state + " palette does not cover the shop " + palette.GetGlobalRect() + " / " + window.GetGlobalRect());
+            foreach (var c in Descendants(palettePanel!).OfType<Control>().Where(c => c.HasMeta("look_expected_rect")))
+            {
+                var expected = c.GetMeta("look_expected_rect").AsRect2();
+                Require((c.Position - expected.Position).Length() < .1f && (c.Size - expected.Size).Length() < .1f, state + " palette declared bounds " + c.Name + " " + c.Size);
+                Require(palette.GetGlobalRect().Encloses(c.GetGlobalRect()), state + " palette-contained control " + c.Name);
+            }
+            var picker = Descendants(palettePanel!).OfType<ColorPicker>().Single();
+            var content = Descendants(picker).OfType<Control>().Where(c => c.IsVisibleInTree() && c is not ColorPicker && c.Size.X > 0).ToArray();
+            Require(content.All(c => palette.GetGlobalRect().Grow(.5f).Encloses(c.GetGlobalRect())), state + " picker field, hue strip and hex row stay inside the palette");
+            Require(ClassicHairPaletteSkin.PickerTree(picker).OfType<LineEdit>().Count(l => l.IsVisibleInTree()) == 1, state + " one hex row");
+            Require(Descendants(palettePanel!).OfType<Label>().Single(l => l.Name == "palette_prompt").Text == ItemData.Text(18905, "Please select your hair color."), state + " client's palette prompt");
+            string file = (nation == 1 ? "karus" : "human") + "-" + state + ".png"; GetViewport().GetTexture().GetImage().SavePng(output + "/" + file);
+            screens.Add(new { state, file, bounds = palette.GetGlobalRect().ToString() });
+        }
         try
         {
-            await Frames(16); window.Position = new Vector2(220, 100); await Capture("initial");
+            await Frames(16); window.Position = new Vector2(40, 100); await Capture("initial");
             Require(editor.Face == 0 && editor.HairStyle == 0 && editor.Hair == net.LastEnter.Hair, "Opening preserves zero-based face, hairstyle and saved RGB");
             foreach (var part in new[] { "face", "hair" })
             {
@@ -105,70 +159,83 @@ public partial class Preview
                 await Click(Find<Button>("look_" + part + "_next"));
                 Require((part == "face" ? editor.Face : editor.HairStyle) == 0, "Actual " + part + " next wraps to first content variant");
             }
-            await Click(colour); Require(colour.GetPopup().Visible, "Actual colour button opens native RGB picker"); await Capture("colour-popup", true);
-            Require(GetViewportRect().Encloses(new Rect2(colour.GetPopup().Position, colour.GetPopup().Size)), "RGB picker fits the desktop viewport");
-            await KeyInput(Key.Escape, colour.GetPopup()); Require(window.Visible && !colour.GetPopup().Visible && !Busy(), "Popup Escape closes only the colour picker");
-            await Click(colour);
-            IEnumerable<Node> PickerTree(Node n) { yield return n; foreach (var child in n.GetChildren(true)) foreach (var item in PickerTree(child)) yield return item; }
-            var hex = PickerTree(colour.GetPicker()).OfType<LineEdit>().Single(l => l.IsVisibleInTree() && l.Editable);
-            hex.GrabFocus(); colour.GetPopup().PushInput(new InputEventKey { Keycode = Key.A, CtrlPressed = true, Pressed = true });
-            colour.GetPopup().PushInput(new InputEventKey { Keycode = Key.A, CtrlPressed = true, Pressed = false });
-            foreach (char letter in "b95123")
-            {
-                colour.GetPopup().PushInput(new InputEventKey { Unicode = letter, Pressed = true });
-                colour.GetPopup().PushInput(new InputEventKey { Unicode = letter, Pressed = false });
-            }
-            await KeyInput(Key.Enter, colour.GetPopup());
-            Require((editor.Hair & 0xffffff) == 0xb95123 && !Busy(), "Hex Enter changes colour without submitting the service");
-            await KeyInput(Key.Escape, colour.GetPopup()); await Capture("custom-colour");
+
+            // Hair palette: the client's own window, opened from the Classic swatch.
+            await OpenPalette(); await CapturePalette("palette");
+            var picker = Descendants(palettePanel!).OfType<ColorPicker>().Single();
+            var savedColour = editor.HairColour;
+            picker.Color = new Color("2050c0");
+            await KeyInput(Key.Escape);
+            Require(!palette!.Visible && window.Visible && editor.HairColour == savedColour && !Busy(), "Palette Escape closes only the palette and keeps the colour");
+            await OpenPalette();
+            var hex = ClassicHairPaletteSkin.PickerTree(picker).OfType<LineEdit>().Single(l => l.IsVisibleInTree());
+            hex.GrabFocus(); hex.Text = "b95123"; hex.EmitSignal(LineEdit.SignalName.TextSubmitted, hex.Text); await Frames();
+            hex.ReleaseFocus();
+            await KeyInput(Key.Enter);
+            Require(!palette!.Visible && (editor.Hair & 0xffffff) == 0xb95123 && !Busy() && !NetBusy(), "Palette hex and Enter apply the colour without submitting the service");
+            await Capture("custom-colour");
+            await OpenPalette();
+            await Click(Descendants(palettePanel!).OfType<Button>().Single(b => b.Name == "palette_cancel"));
+            Require(!palette!.Visible && (editor.Hair & 0xffffff) == 0xb95123, "Palette Cancel keeps the applied colour");
+            // Without room on the right the palette opens on the shop's left.
+            window.Position = new Vector2(400, 100); await Frames();
+            await OpenPalette(); await CapturePalette("palette-left");
+            Require(palette!.Position.X + palette.Size.X <= window.Position.X, "Palette opens on the free left side");
+            await Click(Descendants(palettePanel!).OfType<Button>().Single(b => b.Name == "palette_accept"));
+            Require(!palette.Visible && (editor.Hair & 0xffffff) == 0xb95123, "Palette Apply without a change keeps the colour");
+            window.Position = new Vector2(40, 100); await Frames();
+
+            // Head zoom from the client, Classic framing when zoomed out.
+            await Click(zoom); Require(KnightOnlineUiClassic.Native.LookFraming.Zoomed(preview), "Zoom shows the face close up");
+            await Capture("zoomed");
+            await Click(Find<Button>("look_face_next")); Require(KnightOnlineUiClassic.Native.LookFraming.Zoomed(preview) && Pivot().GetChildCount() == 1, "Changing the face keeps the zoom");
+            await Click(Find<Button>("look_face_previous"));
+            await Click(zoom); Require(!KnightOnlineUiClassic.Native.LookFraming.Zoomed(preview), "Zoom toggles back"); CheckFraming("zoomed out", new Rect2(1, 1, 218, 298));
             var angle = Pivot().Rotation.Y; await Click(Find<Button>("look_turn_left")); Require(Math.Abs(Pivot().Rotation.Y - angle + Mathf.DegToRad(30)) < .01, "Native left turn rotates model");
             await Capture("turned"); await Click(Find<Button>("look_turn_right")); Require(Math.Abs(Pivot().Rotation.Y - angle) < .01, "Native right turn restores model");
-            var status = Find<Label>("look_status");
+
+            // No coupon: the client refuses with its text and closes the shop.
             await KeyInput(Key.Enter);
-            Require(!Busy() && !NetBusy() && !colour.GetPopup().Visible && status.Text == ItemData.Text(BeautyShop.NoCouponText, "You need a Makeover Coupon."),
-                "Without a Makeover Coupon Enter sends nothing and shows text 18901");
-            await Capture("no-coupon");
+            var notice = TakeNotice();
+            Require(notice != null && !Busy() && !NetBusy() && !window.Visible, "Without a Makeover Coupon Enter sends nothing and the client closes the shop");
+            await CaptureNotice("no-coupon", notice!, ItemData.Text(18901, "You do not have a Makeover Coupon.")); Dismiss(notice!);
+            Open();
             var bag = (Inventory)typeof(World).GetProperty("Inv", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(world)!;
             bag.EnsureLength(InventoryConstants.InventoryTotal);
             bag[Inventory.GridStart] = new LibreKO.Domain.ItemSlot { ItemId = BeautyShop.Coupon, Count = 3, Durability = 1 };
-            await KeyInput(Key.Enter); Require(Busy() && NetBusy(), "Enter submits one beauty request with a Makeover Coupon in the bag"); await Capture("pending");
+            await KeyInput(Key.Enter); notice = TakeNotice();
+            Require(notice != null && Request(notice).HasCancel && !Busy() && !NetBusy(), "With a coupon Enter asks the client's coupon confirmation first");
+            await CaptureNotice("confirm", notice!, "Use a Make Over Coupon to change your look?");
+            Dismiss(notice!); Require(!Busy() && !NetBusy() && window.Visible, "Declining the confirmation sends nothing");
+            await Click(accept); notice = TakeNotice(); Request(notice!).Confirm(); notice!.Free(); await Frames();
+            Require(Busy() && NetBusy(), "Confirming sends one beauty request"); await Capture("pending");
             int face = editor.Face, hair = editor.Hair;
-            await Click(Find<Button>("look_face_next")); await Click(colour); await Click(accept); await KeyInput(Key.KpEnter);
-            Require(Busy() && editor.Face == face && editor.Hair == hair && !colour.GetPopup().Visible, "Pending edit, repeated click and keypad Enter cannot replace the submitted look");
+            await Click(Find<Button>("look_face_next")); await Click(swatch); await Click(accept); await KeyInput(Key.KpEnter);
+            Require(Busy() && editor.Face == face && editor.Hair == hair && TakeNotice() == null && PreviewFixtures.PrepareHairPalette(world) is not { Visible: true },
+                "Pending edits, palette, repeated click and keypad Enter cannot replace the submitted look");
             Require(!net.SendChangeHair(0, 1, 0x543210), "Network independently refuses a second outstanding beauty request");
             Reply(99); Require(Busy() && NetBusy(), "Unknown result does not complete a pending request");
-            Reply(Net.ChangeHairOpenShop); Require(Busy() && editor.Hair == hair, "Open-shop packet cannot replace pending picks");
-            await KeyInput(Key.Escape); Require(!window.Visible && Busy() && Pivot().GetChildCount() == 0, "Escape closes preview and retains pending identity");
-            Open(); Require(!window.Visible && Busy(), "Reopen cannot replace an outstanding beauty request");
-            Reply(Net.ChangeHairResultOk);
-            Require(!window.Visible && !Busy() && !NetBusy() && net.LastEnter.Face == face && net.LastEnter.Hair == hair, "Closed late success updates the submitted network snapshot");
+            Reply(Net.ChangeHairResultFail); notice = TakeNotice();
+            Require(notice != null && !Busy() && !NetBusy() && window.Visible && !accept.Disabled && editor.Hair == hair, "Refusal unlocks the same pick and keeps the shop open");
+            await CaptureNotice("refused", notice!, ItemData.Text(18903, "Feature modification failed.")); Dismiss(notice!);
+            await Click(accept); notice = TakeNotice(); Request(notice!).Confirm(); notice!.Free();
+            Reply(Net.ChangeHairResultOk); notice = TakeNotice();
+            Require(notice != null && !window.Visible && !Busy() && !NetBusy() && net.LastEnter.Face == face && net.LastEnter.Hair == hair, "Success closes the shop and updates the network snapshot");
             Require((int)DetailField(world, "_selfFace")! == face && (int)DetailField(world, "_selfHair")! == hair, "Success updates live world appearance");
+            await CaptureNotice("applied", notice!, ItemData.Text(18902, "Feature modification succeeded.")); Dismiss(notice!);
             Open(); Require(editor.Hair == hair && editor.Face == face, "Reopen loads the newly applied appearance");
-            Reply(Net.ChangeHairResultOk); Reply(Net.ChangeHairResultFail);
-            Require(window.Visible && !Busy() && editor.Hair == hair, "Idle duplicate responses cannot alter or close a reopened editor");
-            await Click(accept); Reply(Net.ChangeHairResultFail); await Capture("refused");
-            Require(!Busy() && !accept.Disabled && editor.Hair == hair, "Refusal unlocks the same pick without changing saved appearance");
-            await KeyInput(Key.KpEnter); Require(Busy(), "Keypad Enter submits a new request after refusal");
-            await Click(Find<Button>("look_cancel")); Require(!window.Visible && Busy(), "Cancel retains an already submitted operation");
-            Reply(Net.ChangeHairResultFail); Require(!window.Visible && !Busy(), "Closed late refusal stays closed"); Open();
-            await Click(accept); net.Disconnect(expected: true);
-            Require(!Busy() && !NetBusy() && window.Visible, "Disconnect clears pending request without applying a look"); await Capture("disconnected");
-            typeof(World).GetField("_selfDead", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(world, true);
-            await Click(accept); await KeyInput(Key.Enter); Require(!Busy(), "Dead character cannot submit by mouse or Enter");
-            typeof(World).GetField("_selfDead", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(world, false);
+            Reply(Net.ChangeHairResultOk); Require(window.Visible && !Busy() && TakeNotice() == null, "Idle duplicate responses cannot alter or close a reopened editor");
+            await Click(accept); notice = TakeNotice(); Request(notice!).Confirm(); notice!.Free();
+            net.Disconnect(expected: true); notice = TakeNotice();
+            Require(!Busy() && !NetBusy() && window.Visible && notice != null, "Disconnect clears the pending request without applying a look"); Dismiss(notice!);
+            await Capture("disconnected");
             foreach (int race in nation == 1 ? new[] { 1, 2, 3, 4, 6 } : new[] { 11, 12, 13, 14 })
             {
                 LoadRace(race); await Frames();
                 for (int i = 0; i < 4; i++)
                 {
-                    editor.Load(Array.Empty<int>(), race, 0, 0x5A3820); DetailCall(world, "ShowChangeHairLook");
-                    Require(Pivot().GetChildCount() == 1 && Find<VBoxContainer>("look_races").GetChildCount() == 0, "Fast reload leaves one model and no race choices " + race + "/" + i);
-                }
-                void CheckModel(string stage)
-                {
-                    var camera = preview.GetChild<SubViewport>(0).GetCamera3D();
-                    var points = Descendants(Pivot()).OfType<MeshInstance3D>().Where(m => m.IsVisibleInTree() && m.Mesh != null).SelectMany(InventoryPortrait.FramingPoints).ToArray();
-                    Require(points.Length > 0 && points.All(point => new Rect2(1, 1, 218, 298).HasPoint(camera.UnprojectPosition(point))), "Every variant and turn fits the native preview " + race + "/" + stage);
+                    editor.Load(new[] { race }, race, 0, 0x5A3820); DetailCall(world, "ShowBeautyLook");
+                    Require(Pivot().GetChildCount() == 1, "Fast reload leaves one model " + race + "/" + i);
                 }
                 foreach (string part in new[] { "face", "hair" })
                 {
@@ -177,25 +244,23 @@ public partial class Preview
                     {
                         await Click(Find<Button>("look_" + part + "_next"));
                         Require((part == "face" ? editor.Face : editor.HairStyle) == (i + 1) % count, "Actual content variant and wrap " + race + "/" + part + "/" + i);
-                        CheckModel(part + "-" + i);
+                        CheckFraming("Every variant fits the native preview " + race + "/" + part + "-" + i, new Rect2(1, 1, 218, 298));
                     }
                 }
-                for (int i = 0; i < 8; i++) { preview.Turn(45); await Frames(2); CheckModel("turn-" + i); }
+                for (int i = 0; i < 8; i++) { preview.Turn(45); await Frames(2); CheckFraming("Every turn fits the native preview " + race + "/turn-" + i, new Rect2(1, 1, 218, 298)); }
                 await Capture("race-" + race);
             }
-            Require(CharacterPreview.HairCount(editor.Race) == 0 && colour.Disabled, "Hairless race disables a colour control that cannot affect its model");
-            var saved = net.LastEnter; saved.Hair = (7 << 24) | 0x5A3820;
-            DetailCall(world, "CloseChangeHair");
-            typeof(Net).GetMethod("SeedPreviewEnter", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(net, new object[] { saved });
-            typeof(World).GetField("_selfHair", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(world, saved.Hair);
-            Open(); await Click(colour);
-            Require(editor.Hair == saved.Hair && !colour.GetPopup().Visible, "Unavailable hair meshes preserve the saved hairstyle and RGB on reopening");
+            Require(CharacterPreview.HairCount(editor.Race) == 0 && swatch.Disabled, "Hairless race disables the hair colour swatch");
+            await Click(swatch); Require(PreviewFixtures.PrepareHairPalette(world) is not { Visible: true }, "A disabled swatch opens no palette");
+            LoadRace(nation == 1 ? 2 : 12);
             var originalPosition = window.Position; var p = Find<Control>("party_drag").GetGlobalRect().Position + new Vector2(120, 12);
             GetViewport().PushInput(new InputEventMouseMotion { Position = p, GlobalPosition = p }, true); await Frames(1);
             GetViewport().PushInput(new InputEventMouseButton { Position = p, GlobalPosition = p, ButtonIndex = MouseButton.Left, Pressed = true }, true); await Frames(1);
             var delta = new Vector2(31, 17); GetViewport().PushInput(new InputEventMouseMotion { Position = p + delta, GlobalPosition = p + delta, Relative = delta, ButtonMask = MouseButtonMask.Left }, true); await Frames(1);
             GetViewport().PushInput(new InputEventMouseButton { Position = p + delta, GlobalPosition = p + delta, ButtonIndex = MouseButton.Left, Pressed = false }, true); await Frames();
             Require((window.Position - originalPosition - delta).Length() < 1, "Actual header dragging uses native HudLayout"); await Capture("dragged");
+            await OpenPalette(); await KeyInput(Key.Escape); Require(!palette!.Visible && window.Visible, "Escape closes the open palette before the shop");
+            await KeyInput(Key.Escape); Require(!window.Visible && !Busy(), "Escape then closes the shop without submitting"); Open();
             await Click(Find<Button>("look_cancel")); Require(!window.Visible && !Busy(), "Cancel closes without submitting"); Open();
             await Click(Descendants(panel).OfType<Button>().Single(b => b.TooltipText == "Close")); Require(!window.Visible && !Busy(), "Original close artwork invokes native close");
             Open(); GetWindow().Size = new Vector2I(1200, 850); window.Position = new Vector2(320, 140); await Capture("wide-viewport");

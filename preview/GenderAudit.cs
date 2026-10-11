@@ -2,6 +2,7 @@ using Godot;
 using LibreKO;
 using LibreKO.Domain;
 using LibreKO.Network;
+using LibreKO.Plugins;
 using KnightOnlineUiClassic;
 using KnightOnlineUiClassic.Layout;
 using KnightOnlineUiClassic.Windows;
@@ -18,7 +19,10 @@ public partial class Preview
         GetWindow().ContentScaleMode = Window.ContentScaleModeEnum.Disabled; GetWindow().Size = new Vector2I(1000, 740); GetViewport().GuiEmbedSubwindows = true;
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1200, 850), MouseFilter = MouseFilterEnum.Ignore });
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
-        var world = new World(); var layer = (CanvasLayer)DetailCall(world, "BuildGenderClassicUiPreview", nation)!; AddChild(layer);
+        PluginHost.Ui.ReplaceDialogs(request => new KnightOnlineUiClassic.Windows.MessageBox(request));
+        // The client announces a completed change on the scene root, so the world joins the tree (without its game loop).
+        var world = new PetAuditWorld { ProcessMode = ProcessModeEnum.Disabled }; AddChild(world);
+        var layer = (CanvasLayer)DetailCall(world, "BuildGenderClassicUiPreview", nation)!; AddChild(layer);
         var window = layer.GetChildren().OfType<HudWindow>().Single(); var panel = ClassicGenderSkin.Apply(window.Body)!;
         window.SetMeta("content_open_anchor", true);
         var checks = new List<string>(); var screens = new List<object>();
@@ -91,6 +95,22 @@ public partial class Preview
             string file = (nation == 1 ? "karus" : "human") + "-" + state + ".png"; GetViewport().GetTexture().GetImage().SavePng(output + "/" + file);
             screens.Add(new { state, file, bounds = window.GetGlobalRect().ToString(), popup });
         }
+        // The client shows its results as notices; the audit takes them above the preview.
+        Notice? TakeNotice()
+        {
+            var notice = world.GetChildren().Concat(GetTree().Root.GetChildren()).OfType<Notice>().LastOrDefault(n => !n.IsQueuedForDeletion());
+            if (notice == null) return null;
+            notice.GetParent().RemoveChild(notice); AddChild(notice); return notice;
+        }
+        async Task CaptureNotice(string state, string text)
+        {
+            var notice = TakeNotice(); await Frames();
+            Require(notice != null && Descendants(notice).OfType<KnightOnlineUiClassic.Windows.MessageBox>().Count() == 1
+                && Descendants(notice).OfType<Label>().Any(l => l.Text == text), state + " Classic message box shows the client's text: " + text);
+            string file = (nation == 1 ? "karus" : "human") + "-" + state + ".png"; GetViewport().GetTexture().GetImage().SavePng(output + "/" + file);
+            screens.Add(new { state, file, notice = text });
+            ((DialogRequest)typeof(Notice).GetField("_request", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(notice)!).Dismiss(); notice!.Free();
+        }
         try
         {
             await Frames(16); window.Position = new Vector2(220, 100); await Capture("initial");
@@ -135,16 +155,21 @@ public partial class Preview
             await KeyInput(Key.Escape); Require(!window.Visible && Busy() && Pivot().GetChildCount() == 0, "Escape closes preview and retains pending request");
             Open(); Require(!window.Visible && Busy(), "Reopen cannot replace an outstanding gender request");
             DetailCall(world, "OnGenderChanged"); Require(!window.Visible && !Busy(), "Closed late success clears pending without reopening");
-            Open(); DetailCall(world, "OnGenderChanged"); Require(window.Visible, "Unsolicited duplicate success cannot close a new editor");
+            await CaptureNotice("changed", ItemData.Text(GenderChange.ChangedText, "Change current character"));
+            Open(); DetailCall(world, "OnGenderChanged"); Require(window.Visible && TakeNotice() == null, "Unsolicited duplicate success cannot close a new editor");
             foreach (int result in new[] { (int)Net.GenderChangeNoItem, (int)Net.GenderChangeFailed })
             {
-                await Click(accept); await Click(accept); DetailCall(world, "OnGenderChangeRefused", result); await Capture(result == Net.GenderChangeNoItem ? "missing-scroll" : "refused");
-                Require(!Busy() && !Armed() && !accept.Disabled && !colour.Disabled, "Refusal unlocks editor without changing the pick " + result);
+                await Click(accept); await Click(accept); DetailCall(world, "OnGenderChangeRefused", result);
+                Require(!Busy() && !Armed() && !window.Visible, "Refusal closes the service with the client's notice " + result);
+                await CaptureNotice(result == Net.GenderChangeNoItem ? "missing-scroll" : "refused",
+                    result == Net.GenderChangeNoItem ? ItemData.Text(GenderChange.NoItemText, "It does not have items.") : ItemData.Text(GenderChange.FailedText, "Gender change failed."));
+                Open(); Require(window.Visible && !accept.Disabled && !colour.Disabled, "Reopening after a refusal starts unlocked " + result);
             }
             await Click(accept); await Click(accept); await Click(Find<Button>("look_cancel"));
             Require(!window.Visible && Busy(), "Pending Cancel closes without clearing the sent operation");
             DetailCall(world, "OnGenderChangeRefused", (int)Net.GenderChangeNoItem);
             Require(!window.Visible && !Busy(), "Closed refusal clears pending and keeps the service closed");
+            var closedNotice = TakeNotice(); Require(closedNotice != null, "Closed refusal still explains itself with the client's notice"); closedNotice!.Free();
             Open(); var restoredColour = editor.Hair;
             DetailCall(world, "OnGenderChangeRefused", (int)Net.GenderChangeFailed);
             Require(!Busy() && editor.Hair == restoredColour && Find<Label>("look_status").Text == "", "Unsolicited refusal cannot change a reopened idle service");

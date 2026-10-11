@@ -62,7 +62,9 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     public string RaceName => W is { } w ? StarterStats.RaceName(Int(w, "_selfRace")) : "";
     public string JobName => W is { } w ? CharacterClassCatalog.SpecializationName(Int(w, "_selfClass")) : "";
     public string LevelLabel => W is { } w ? Sheet(w)?.LevelLabel ?? "" : "";
-    public string TitleName => W is { } w ? Native.Get<Button>(w, "_stTitleBtn")?.Text ?? "Title: none" : "Title: none";
+    /// <summary>The worn title; the client shows it in the Achievement window, the Classic report keeps its title button.</summary>
+    public string TitleName =>
+        Net.I is { DisplayTitleId: not 0 } net && AchievementData.TitleOf(net.DisplayTitleId) is { } title ? $"Title: {title.Name}" : "Title: none";
     public MyClanInfo Clan => Net.I?.MyClan ?? default;
     public int QuestFilter => W is { } w ? Int(w, "_questFilter") : 0;
     public int QuestKind => W is { } w && Native.Get<object>(w, "_questKind") is Enum kind ? Convert.ToInt32(kind) + 1 : 0;
