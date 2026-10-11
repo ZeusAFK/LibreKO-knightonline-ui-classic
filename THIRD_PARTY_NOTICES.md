@@ -38,3 +38,4 @@ See LICENSE for the adapter code's AGPL-3.0 terms.
   - "Knight banner" by Delapouite (Events), https://game-icons.net/1x1/delapouite/knight-banner.html
   - "Laurel crown" by Lorc (Daily Rank), https://game-icons.net/1x1/lorc/laurel-crown.html
   - "Hourglass" by Lorc (Event Schedule), https://game-icons.net/1x1/lorc/hourglass.html
+  - "Envelope" by Lorc (Mail), https://game-icons.net/1x1/lorc/envelope.html

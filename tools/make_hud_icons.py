@@ -31,12 +31,13 @@ ICONS = [
     ('events', 'delapouite_knight-banner'),
     ('daily-rank', 'lorc_laurel-crown'),
     ('time', 'lorc_hourglass'),
+    ('mail', 'lorc_envelope'),
 ]
 GLYPH, CELL, INSET = 24, 28, 2
 
 # Gradient top, gradient bottom, outline, attention glow.
 NATIONS = {
-    'human': ((255, 238, 170), (190, 132, 40), (60, 34, 8), (255, 206, 96)),
+    'human': ((255, 246, 205), (222, 172, 82), (82, 52, 16), (255, 224, 140)),
     'karus': ((250, 252, 255), (160, 168, 180), (90, 14, 14), (255, 112, 92)),
 }
 BRIGHTNESS = {'normal': 1.0, 'hover': 1.18, 'pressed': 0.78}

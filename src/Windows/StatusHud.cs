@@ -25,19 +25,22 @@ public partial class StatusHud : Control
     private static Func<string> Key(KeyAction action) => () => KeyBinds.Get(action) is { Assigned: true } chord ? chord.Text : "";
 
     /// <summary>
-    /// The icon row (plate-less <see cref="ClassicHudIcons"/>; the letters name the buttons): column -1 is the original
-    /// btn_quest position, the rest follow at the btn_power pitch.
+    /// The two icon rows (plate-less <see cref="ClassicHudIcons"/>; the letters name the buttons): column -1 is the
+    /// original btn_quest position, the rest follow at the btn_power pitch. Row 1 is Q P A D G; row 2, <see cref="RowGap"/>
+    /// pixels below it, is E R, then the hourglass (with the 2.x menu art) and mail.
     /// </summary>
-    private static readonly (string Letter,string Window,string Title,int Column,Func<PluginGame,Action>? Press,Func<string>? Key,string? Alert,string Icon)[] Shortcuts =
+    private static readonly (string Letter,string Window,string Title,int Column,int Row,Func<PluginGame,Action>? Press,Func<string>? Key,string? Alert,string Icon)[] Shortcuts =
     {
-        ("Q","quests","Quests",-1,game=>()=>CharacterWindow.ToggleQuestList(game),Key(KeyAction.Quests),null,"quests"),
-        ("P","shoppingmall","Power-Up Store",0,null,Key(KeyAction.PowerUpStore),null,"store"),
-        ("A","achievements","Achievements",1,null,Key(KeyAction.Achievements),null,"achievements"),
-        ("D","attendance","Daily Attendance",2,null,Key(KeyAction.Attendance),null,"attendance"),
-        ("G","genie","Genie",3,null,Key(KeyAction.Genie),null,"genie"),
-        ("E","events","Events",4,null,null,"an event starts soon","events"),
-        ("R","daily_rank","Daily Rank",5,null,null,"new rankings today","daily-rank"),
+        ("Q","quests","Quests",-1,0,game=>()=>CharacterWindow.ToggleQuestList(game),Key(KeyAction.Quests),null,"quests"),
+        ("P","shoppingmall","Power-Up Store",0,0,null,Key(KeyAction.PowerUpStore),null,"store"),
+        ("A","achievements","Achievements",1,0,null,Key(KeyAction.Achievements),null,"achievements"),
+        ("D","attendance","Daily Attendance",2,0,null,Key(KeyAction.Attendance),null,"attendance"),
+        ("G","genie","Genie",3,0,null,Key(KeyAction.Genie),null,"genie"),
+        ("E","events","Events",-1,1,null,null,"an event starts soon","events"),
+        ("R","daily_rank","Daily Rank",0,1,null,null,"new rankings today","daily-rank"),
     };
+    /// <summary>Vertical gap between the two icon rows.</summary>
+    private const int RowGap = 2;
 
     private readonly LayoutView _view;
     private readonly PluginGame _game;
@@ -71,9 +74,13 @@ public partial class StatusHud : Control
         var quest=source.Find("btn_quest")!;
         var power=source.Find("btn_power")!;
         int shortcutPitch=power.X-quest.X;
-        // With the 2.x menu art the hourglass (the art's alarm clock spot) follows R and opens the Events window.
+        int rowPitch=power.H+RowGap;
+        Vector2 Cell(int column,int row) => new(power.X+shortcutPitch*column,power.Y+rowPitch*row);
+        // With the 2.x menu art the hourglass (the art's alarm clock spot) follows R and opens the Events window;
+        // mail ends the second row.
         var clockArt=ClassicStatusClock.Art;
-        int lastColumn=Shortcuts[^1].Column+(clockArt!=null ? 1:0);
+        int clockColumn=Shortcuts[^1].Column+1,mailColumn=clockColumn+(clockArt!=null ? 1:0);
+        int lastColumn=Math.Max(Shortcuts.Max(s=>s.Column),mailColumn);
         float shortcutRight=power.X+shortcutPitch*lastColumn+power.W;
         Size = new Vector2(Mathf.Max(shortcutRight,Mathf.Max(_view.Size.X,background.X+background.W)),background.Y+background.H);
         _expandedSize=Size;
@@ -113,18 +120,19 @@ public partial class StatusHud : Control
         _coordinates.AddThemeConstantOverride("outline_size",1);
         _view.AddChild(_coordinates);
         _view.Hide("btn_quest","btn_power");
-        // The original row (Q on btn_quest, then the btn_power pitch) continues with the client's Genie,
-        // Events and Daily Rank, which replace the client's own top-right icons.
-        foreach(var (letter,window,title,column,press,key,alert,icon) in Shortcuts)
+        // The original row (Q on btn_quest, then the btn_power pitch) and a second row under it carry the client's
+        // Genie, Events and Daily Rank, which replace the client's own top-right icons. Both rows lie right of the
+        // status bar and above the bar's lower edge, clear of the minimap.
+        foreach(var (letter,window,title,column,row,press,key,alert,icon) in Shortcuts)
             _shortcuts.Add(new ClassicStatusShortcut(kit,quest,letter,window,title,press?.Invoke(_game),key,alert,icon) {
-                Position=new Vector2(power.X+shortcutPitch*column,power.Y),
+                Position=Cell(column,row),
             });
         if(clockArt!=null)
             _shortcuts.Add(new ClassicStatusClock(new Vector2(quest.W,quest.H),()=>_game.Windows.Toggle("events")) {
-                Position=new Vector2(power.X+shortcutPitch*lastColumn,power.Y),
+                Position=Cell(clockColumn,1),
             });
-        _shortcuts.Add(new ClassicStatusShortcut(kit,quest,"","mail","Mail") {
-            Position=new Vector2(quest.X,quest.Y+quest.H+5),
+        _shortcuts.Add(new ClassicStatusShortcut(kit,quest,"","mail","Mail",icon:"mail") {
+            Position=Cell(mailColumn,1),
         });
         foreach(var shortcut in _shortcuts) _view.AddChild(shortcut);
         Refresh();
