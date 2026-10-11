@@ -96,6 +96,43 @@ public static class NativeQuestLog
         Fill(world, rows);
     }
 
+    /// <summary>
+    /// Keeps the quest shown in Quest Details while the client reloads its quest log. A reload clears every quest
+    /// view until the server sends them again; without the legacy quest table the open journal then has no rows
+    /// and drops its selection, so the subpage fell back to the empty hint and stayed there after the views
+    /// arrived. Until the quest is listed again the subpage keeps its last details (the client leaves them in
+    /// place when it has no selection), then the selection comes back. A quest that really left the list
+    /// (abandoned, finished, filtered out) is let go.
+    /// </summary>
+    public static void KeepSelection(HudWindow window, World world)
+    {
+        if (Native.Get<Control>(world, "_questDetailBody") is not { } body || Native.Get<Control>(world, "_questDetailEmpty") is not { } empty) return;
+        int kept = -1;
+        void Keep()
+        {
+            if (!GodotObject.IsInstanceValid(world) || !GodotObject.IsInstanceValid(body) || !window.IsVisibleInTree()) return;
+            int selected = Native.Get<int>(world, "_questSelected");
+            if (selected >= 0) { kept = selected; return; }
+            if (kept < 0) return;
+            if (Native.Call(world, "QuestsInView") is List<(int QuestId, int State)> rows && rows.Any(r => r.QuestId == kept))
+            {
+                Native.Set(world, "_questSelected", kept);
+                Native.Call(world, "RefreshQuestDetail");
+                return;
+            }
+            bool reloading = Native.Get<List<QuestEntry>>(world, "_quests") is { } quests
+                && quests.Any(q => q.QuestId == kept && Native.Call(world, "QuestInFilter", q.State) is true)
+                && Native.Get<Dictionary<int, QuestView>>(world, "_questViews")?.ContainsKey(kept) != true;
+            if (reloading) { body.Visible = true; empty.Visible = false; return; }
+            kept = -1;
+            Native.Call(world, "RefreshQuestDetail");
+        }
+        window.VisibilityChanged += () => { if (!window.Visible) kept = -1; };
+        // The client hides the details in the middle of a frame; answer before that frame is drawn.
+        empty.VisibilityChanged += () => { if (empty.Visible && kept >= 0) Callable.From(Keep).CallDeferred(); };
+        NativeWindows.Sync(window, Keep);
+    }
+
     private static object Signature(World world)
     {
         int questId = Native.Get<int>(world, "_questSelected");

@@ -9,6 +9,7 @@ public static class NativeCharacterNpc
     private static readonly (string Id, NativeWindows.Preparer Prepare)[] Preparers =
     {
         ("quests", NativeQuestLog.Prepare),
+        ("quests", NativeQuestLog.KeepSelection),
         ("presets", NativeQuestLog.PreparePresets),
         ("npc_dialog", NativeNpc.Prepare),
         ("npc_dialog", (window, world) => NativeEvents.Prepare(world)),

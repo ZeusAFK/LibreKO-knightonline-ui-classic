@@ -99,6 +99,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("npc-portrait-audit")) { await CaptureNpcPortraitAudit(nation);GetTree().Quit();return; }
             if(OS.GetCmdlineUserArgs().Contains("hud-qa-audit")){await CaptureHudQaAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("hud-audit")) { await CaptureHudAudit(nation);GetTree().Quit();return; }
+            if(OS.GetCmdlineUserArgs().Contains("quest-detail-audit")){await CaptureQuestDetailAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("details-audit")) { await CaptureDetails(nation);GetTree().Quit();return; }
             if (characterAudit) { await CaptureCharacterAudit(game, nation); GetTree().Quit(); return; }
             bool detail=OS.GetCmdlineUserArgs().Contains("detail");
