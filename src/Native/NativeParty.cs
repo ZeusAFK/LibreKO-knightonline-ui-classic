@@ -37,15 +37,9 @@ public static class NativeParty
 
     public static bool IsCommander(int memberId) => Net.I?.PartyCommanderId == memberId;
 
-    /// <summary>Gives the native member menu the Classic menu look.</summary>
-    public static void StyleMemberMenu(World? world, Action<PopupMenu> style)
-    {
-        if (world != null && Native.Get<PopupMenu>(world, "_partyHudMenu") is { } menu && !menu.HasMeta("classic_menu"))
-        {
-            menu.SetMeta("classic_menu", true);
-            style(menu);
-        }
-    }
+    /// <summary>Shows the native member menu as the Classic context menu, titled with the member's name.</summary>
+    public static void PrepareMemberMenu(World? world, string name) =>
+        NativeContextMenus.MirrorPartyMenu(world)?.SetMeta(KnightOnlineUiClassic.Windows.ClassicContextMenu.TitleMeta, name);
 
     public static void PrepareBoard(HudWindow window, World world)
     {

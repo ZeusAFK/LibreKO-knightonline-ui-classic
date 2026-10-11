@@ -312,7 +312,7 @@ Upstream removed the chat-room window, the party window and the trade row lists;
 | --- | --- | --- |
 | Plugin seams `FrameWindow`, `ReplaceHud(HudPart.Party)`, `ReplacePlayerMenu`, `ReplaceTextInput`; `PluginGame.Party` (`IGameParty`) | API | Classic social frame, party list, player menu, text prompt |
 | `_ncRefresh`, `_ncPublicTab`, `_ncPrivateTab`, `_ncPublicRows`, `_ncPrivateRows` | F | Nation chat names, refresh caption |
-| `ToggleSeekParty()`, `_seekShown`, `OpenInvitePrompt()`, `ToggleRowMeter()`, `ToggleWarBoard()`, `_warBoardRowShares`, `_partyHudMenu`, `Net.PartyRowMeterMode`, `Net.PartyCommanderId` | F/M | Party list actions, row meter, member menu style, taskbar party board |
+| `ToggleSeekParty()`, `_seekShown`, `OpenInvitePrompt()`, `ToggleRowMeter()`, `ToggleWarBoard()`, `_warBoardRowShares`, `_partyHudMenu`, `Net.PartyRowMeterMode`, `Net.PartyCommanderId` | F/M | Party list actions, row meter, member menu (Classic context menu), taskbar party board |
 | `_wantedClassOpt`, `_wantedMsgInput`, `_seekFilters`, `_fullMoonRow`, `_seekHeading`, `_seekStatusLbl`, `_seekEntries`, `_seekFilter`, `_zone` | F | Party board filter panel, Full Moon Rift actions, row descriptions after the client filter |
 | `_exMyOffer`, `_exTheirOffer` (`ExOfferItem.SourceAbs/ItemId/Count/Dura`), `Inv`, `OfferSlot(int)`, `ShowItemTooltip(int, ItemSlot, string)`, `_bagPairing._openedByCompanion`, `HideMainWindow(string)`, `_exStatus`, `Net.ExchangeOtherAddEvent` | F/M/E | Classic trade grids, offering, docked inventory closed, approval withdrawn on partner change |
 | `ChatSystem.RenderText/PlainText/ItemOf` (static), whisper header buttons, `_whisperLayer` popups | M | Whisper item links and emoticons, header actions, emoticon and size popups |
@@ -370,6 +370,7 @@ control, callback, timer and position rule. All members exist on bare upstream.
 | `_upgradeNoticeLabel`, `_shoutLabel`, `_battleeventBanner`, `_battleeventResult`, `_clanBattlePanel`, `_lootPrompt` | F | Outlined broadcast lines |
 | `_zoneabilityChip`, `_battleeventBoard`, `_bdwScoreBanner` | F | Zone chip and war score plaques |
 | `_lootPanel`, `_lootCells`, `CloseLoot()` | F/M | Loot box: the client's twelve cells on two dropped-item grids, plus a close button |
+| `_lootRuleMenu`, `_lootRuleItem`, `_clanMemberMenu`, `_ctxMember`, `PopupMenu.id_pressed` | F | Loot item, party member and clan member right-click menus shown as the Classic context menu; rows emit the client's own `id_pressed` |
 
 Overlays the client builds later are prepared through their fields four times a second (`NativeOverlays.PrepareLater`):
 

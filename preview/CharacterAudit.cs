@@ -159,7 +159,9 @@ public sealed class CharacterAuditData : IGameCharacterPanel
     public string Status(string section) => section == "friends" ? "3 friends online." : "";
     public void SelectPage(string page) => SelectedPage = page;
     public void Refresh(string section) { }
-    public void Act(string action, string selection = "", string value = "") { }
+    /// <summary>The last action a page or its context menu asked for (context-menu-audit).</summary>
+    public (string Action, string Selection)? LastAct { get; private set; }
+    public void Act(string action, string selection = "", string value = "") => LastAct = (action, selection);
     public IReadOnlyList<GamePanelRow> Rows(string section) => section switch
     {
         "clan" => new[] {

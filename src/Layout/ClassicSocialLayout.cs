@@ -43,9 +43,8 @@ public static class ClassicSocialLayout
     public static Vector2 Frame(Vector2 content) =>
         new(Mathf.Max(MinimumWidth, Mathf.Ceil(content.X + Inset * 2)), Mathf.Ceil(content.Y + ContentTop + Inset));
 
-    /// <summary>Player menu: the Classic menu panel, one 22 px row per action under the player's name.</summary>
-    public const float MenuWidth = 150, MenuRow = 22, MenuInset = 6;
-    public const int MenuPadding = 4;
+    /// <summary>Player menu row height: the shared Classic context menu (<see cref="ClassicContextMenuLayout"/>).</summary>
+    public const float MenuRow = ClassicContextMenuLayout.Row;
 
     /// <summary>
     /// Text prompt on the original message box: title band, the message at its wrapped height, the original
