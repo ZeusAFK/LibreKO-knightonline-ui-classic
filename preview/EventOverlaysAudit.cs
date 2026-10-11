@@ -106,8 +106,8 @@ public partial class Preview
             await Shot(state, board);
             Clear(); world.Free();
         }
-        // Event title chips (collapsed and expanded).
-        foreach (bool expanded in new[] { false, true })
+        // Event title chips (collapsed and expanded); on the local notice art they are myko-hud-audit's.
+        foreach (bool expanded in ClassicNoticeBars.Available ? Array.Empty<bool>() : new[] { false, true })
         {
             var world = new World();
             var column = Show((Control)DetailCall(world, "BuildEventTitlesUiPreview", 3, expanded)!, new Vector2(900, 40));

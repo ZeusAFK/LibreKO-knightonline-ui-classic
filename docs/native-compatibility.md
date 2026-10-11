@@ -399,6 +399,17 @@ Overlays the client builds later are prepared through their fields four times a 
 The event, ranking and war windows of the event-window family (`ClassicEventFamily.WindowIds`) are restyled from their
 own controls and need no reflected member.
 
+### HUD on optional local art (`assets-local`)
+
+Used only when the local layouts are installed (`tools/install_local_assets.py`); without them nothing below is read.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `_eventSchedule`, `OfferBifrostJoin`, `ToggleLottery` | F/M | Events window on the scheduler art: the client's rows and its Join/Open actions (`NativeEventSchedule`) |
+| `HudWindow._header` | F | Scheduler close (the client's close button) and drag |
+| `_premiumChip`, `_clanPremiumChip`, `_clanPremiumInClan`, `_clockLabel`, `PlaceTopIcons` | F/M | Top-right group: clan premium bar and the time plate; the client's chips and clock are hidden while the group shows them (the premium chip stays as an invisible spacer so the client's remaining top icons keep clear) (`NativePremium`) |
+| `Net.GmListEvent` (`Action<IReadOnlyList<string>>`) | E | Not in the client yet. When a client adds it, the GM List bar follows it (`NativeGmList.Attach`); until then the list is empty |
+
 ### Preview-only members
 
 The preview fixtures also reach client internals that the plugin never touches at runtime. Examples are the

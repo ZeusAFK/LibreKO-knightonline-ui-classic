@@ -117,7 +117,8 @@ public partial class Preview
             GetViewport().PushInput(new InputEventMouseMotion { Position = Vector2.One, GlobalPosition = Vector2.One }); await Frames(2);
         }
 
-        // Event schedule.
+        // Event schedule (on the local scheduler art it is myko-hud-audit's).
+        if (!ClassicMykoScheduler.Available)
         {
             var (world, window) = await Open("BuildEventsUiPreview");
             var buttons = Descendants(window.Body).OfType<Button>().Where(b => b.Text is "Join" or "Open").ToArray();

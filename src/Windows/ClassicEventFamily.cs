@@ -32,6 +32,7 @@ public static class ClassicEventFamily
     {
         if (NativeApi.WindowOf(body) is not { } window || window.HasMeta(Skinned)) return null;
         window.SetMeta(Skinned, true);
+        if (window.Id == "events" && ClassicMykoScheduler.Apply(window)) return null;
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         var frame = new ClassicFrame { Name = "classic_frame", BackgroundColor = Colors.Black, BackgroundAlpha = 1 };
         window.AddChild(frame);

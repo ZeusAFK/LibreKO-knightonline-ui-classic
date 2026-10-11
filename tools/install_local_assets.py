@@ -16,6 +16,9 @@ import shutil
 from pathlib import Path
 
 DEFAULT_LAYOUTS = ['re_powerupstore']
+# HUD: letter plates and clock, event schedule, notice bars and their content box.
+DEFAULT_LAYOUTS += ['re_el_hpmenu', 're_ka_hpmenu', 're_el_scheduler', 're_ka_scheduler',
+                    're_eventnotice', 're_el_eventcontent', 're_ka_eventcontent', 're_eventpremium', 'co_time']
 
 
 def textures(node):

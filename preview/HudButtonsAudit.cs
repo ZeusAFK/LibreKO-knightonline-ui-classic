@@ -38,7 +38,9 @@ public partial class Preview
         var mail = Descendants(status).OfType<ClassicStatusShortcut>().Single(s => !s.HasBackground);
         ClassicStatusShortcut Letter(string letter) => letters.Single(s => s.Letter == letter);
         Rect2 plates = letters.Aggregate(Screen(letters[0]), (r, s) => r.Merge(Screen(s)));
-        Rect2 row = plates.Merge(Screen(mail)).Grow(6);
+        // With the local menu art the original clock follows R (opening the event schedule).
+        var clock = Descendants(status).OfType<ClassicStatusClock>().SingleOrDefault();
+        Rect2 row = plates.Merge(Screen(mail)).Merge(clock != null ? Screen(clock) : plates).Grow(6);
         async Task Shot(string state, Rect2? crop = null)
         {
             await Frames();
@@ -57,8 +59,9 @@ public partial class Preview
         }
 
         // A real left click at the plate's rendered centre: the button must receive it above every open window.
-        async Task Click(ClassicStatusShortcut button)
+        async Task Click(BaseButton button)
         {
+            string letter = (button as ClassicStatusShortcut)?.Letter ?? "clock";
             float scale = GetWindow().Size.X / GetViewportRect().Size.X;
             var at = Screen(button).GetCenter() * scale;
             int pressed = 0;
@@ -76,7 +79,7 @@ public partial class Preview
             button.Pressed -= Count;
             Input.ParseInputEvent(new InputEventMouseMotion { Position = new Vector2(1270, 790), GlobalPosition = new Vector2(1270, 790) });
             var open = Descendants(world).OfType<HudWindow>().Where(w => shown(w) && Screen(w).HasPoint(at / scale)).Select(w => w.Id).ToList();
-            Require(pressed == 1, $"{button.Letter} takes a real click at its rendered centre {at} (windows there: {string.Join(", ", open)}; picked {picked})");
+            Require(pressed == 1, $"{letter} takes a real click at its rendered centre {at} (windows there: {string.Join(", ", open)}; picked {picked})");
             if (pressed == 0) button.EmitSignal(BaseButton.SignalName.Pressed);
         }
 
@@ -94,6 +97,15 @@ public partial class Preview
         }
         Require(pitch >= first.Size.X, $"the plates do not overlap (pitch {pitch}, width {first.Size.X})");
         Require(Mathf.Abs(Screen(mail).Position.X - first.Position.X) < .01f, "the envelope stays under Q");
+        Require((clock != null) == (ClassicStatusClock.Art != null), "the clock is shown exactly when the local menu art is installed");
+        if (clock != null)
+        {
+            var c = Screen(clock);
+            Require(c.Size.IsEqualApprox(first.Size) && Mathf.Abs(c.Position.Y - first.Position.Y) < .01f && Mathf.Abs(c.Position.X - first.Position.X - pitch * letters.Length) < .01f,
+                $"the clock sits one pitch after R with the plate size ({c})");
+            Require(clock.IsVisibleInTree() && GetViewportRect().Encloses(c) && Screen(status).Encloses(c), "the clock is shown inside the status HUD and the screen");
+            bounds["clock"] = Rect(c);
+        }
         bounds["row"] = Rect(row); bounds["plates"] = Rect(plates);
 
         // ---- Tooltips: English titles with the client's key binding where it has one.
@@ -127,14 +139,15 @@ public partial class Preview
         await ToSignal(GetTree().CreateTimer(0.4), SceneTreeTimer.SignalName.Timeout);
         Require(!Letter("E").Lit && !Letter("R").Lit, "E and R are quiet without an event due or new rankings");
         await Shot("row-normal", row);
-        foreach (var s in letters) s.EmitSignal(Control.SignalName.MouseEntered);
+        var plateButtons = letters.Cast<BaseButton>().Concat(clock != null ? new BaseButton[] { clock } : Array.Empty<BaseButton>()).ToArray();
+        foreach (var s in plateButtons) s.EmitSignal(Control.SignalName.MouseEntered);
         await Shot("row-hover", row);
-        foreach (var s in letters) { s.ToggleMode = true; s.SetPressedNoSignal(true); s.QueueRedraw(); }
+        foreach (var s in plateButtons) { s.ToggleMode = true; s.SetPressedNoSignal(true); s.QueueRedraw(); }
         await Shot("row-pressed", row);
-        foreach (var s in letters) { s.SetPressedNoSignal(false); s.ToggleMode = false; s.EmitSignal(Control.SignalName.MouseExited); }
-        foreach (var s in letters) { s.Disabled = true; s.QueueRedraw(); }
+        foreach (var s in plateButtons) { s.SetPressedNoSignal(false); s.ToggleMode = false; s.EmitSignal(Control.SignalName.MouseExited); }
+        foreach (var s in plateButtons) { s.Disabled = true; s.QueueRedraw(); }
         await Shot("row-disabled", row);
-        foreach (var s in letters) { s.Disabled = false; s.QueueRedraw(); }
+        foreach (var s in plateButtons) { s.Disabled = false; s.QueueRedraw(); }
 
         // E and R carry the attention states of the replaced icons: an event starting soon, a new day's rankings.
         Set(world, "_eventsAlert", true); Set(world, "_drBlink", true);
@@ -299,6 +312,23 @@ public partial class Preview
             await Click(s);
             await Frames(6);
             Require(!windows.IsOpen(id) && (!natives.TryGetValue(id, out native) || !native()), $"{s.Letter} again closes {id}");
+        }
+        // ---- The clock: the client's Events window (on the scheduler art when installed), closed again by the clock.
+        if (clock != null)
+        {
+            var events = natives["events"];
+            Require(!windows.IsOpen("events") && !events(), "clock: events starts closed");
+            await Click(clock);
+            await Frames(8);
+            var window = Descendants(world).OfType<HudWindow>().Single(w => w.Id == "events");
+            Require(windows.IsOpen("events") && events() && shown(window), "the clock opens the client's Events window");
+            Require((window.GetNodeOrNull<ClassicSchedulerPanel>(ClassicMykoScheduler.PanelName) != null) == ClassicMykoScheduler.Available, "clock: the Events window is on the scheduler art exactly when it is installed");
+            Require(GetViewportRect().Encloses(Screen(window)), $"clock: the schedule is on screen ({Screen(window)})");
+            bounds["open-clock"] = Rect(Screen(window));
+            await Shot("open-clock");
+            await Click(clock);
+            await Frames(6);
+            Require(!windows.IsOpen("events") && !events(), "the clock again closes the Events window");
         }
         Set(world, "_eventsAlert", false);
         await Frames(4);
