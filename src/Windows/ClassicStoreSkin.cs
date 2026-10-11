@@ -6,11 +6,14 @@ namespace KnightOnlineUiClassic.Windows;
 public static class ClassicStoreSkin
 {
     public static void Extend(Control body) => body.Ready += () => Callable.From(() => Apply(body)).CallDeferred();
-    public static ClassicStorePanel? Apply(Control body)
+    public static Control? Apply(Control body)
     {
         Node? root = body; while (root != null && root is not HudWindow) root = root.GetParent();
         if (root is not HudWindow window || window.HasMeta("classic_store") || window.GetMeta("classic_store_controls", 0).AsInt32() != 1) return null;
-        window.SetMeta("classic_store", true); var panel = new ClassicStorePanel(window, body); window.AddChild(panel);
+        window.SetMeta("classic_store", true);
+        // The original Power Up Store art is optional local content; without it the store keeps the bundled Classic design.
+        Control panel = ClassicStoreMykoLayout.Art != null ? new ClassicStoreMykoPanel(window, body) : new ClassicStorePanel(window, body);
+        window.AddChild(panel);
         var overlay = window.GetChildren().OfType<Control>().Single(c => c.Name == "pus_overlay"); window.MoveChild(overlay, window.GetChildCount() - 1);
         window.ResetSize(); return panel;
     }
@@ -55,18 +58,16 @@ public partial class ClassicStorePanel : Control
     public ClassicStorePanel(HudWindow window, Control body)
     {
         Window = window; _body = body; Name = "classic_store"; TextureFilter = TextureFilterEnum.Nearest;
-        var theme = new Theme { DefaultFont = Plugin.Kit.Bold, DefaultFontSize = 13 };
+        var theme = StoreTheme();
         foreach (bool featured in new[] { false, true }) foreach (bool active in new[] { false, true })
         {
             var box = ClassicStoreLayout.Box(8, active); box.ContentMarginTop = 26;
             if (featured) box.BorderColor = new Color("bd9b59");
             theme.SetStylebox("pus_card_" + (featured ? "featured_" : "") + (active ? "active" : "normal"), "PanelContainer", box);
         }
-        theme.SetStylebox("pus_contact_normal", "PanelContainer", ClassicStoreLayout.Box(6));
-        theme.SetStylebox("pus_contact_active", "PanelContainer", ClassicStoreLayout.Box(6, true));
         Theme = theme; window.Theme = theme;
         _overlay = CharacterDetailsSkin.Tree(window).OfType<Control>().Single(c => c.Name == "pus_overlay");
-        _modals = CharacterDetailsSkin.Tree(_overlay).OfType<PanelContainer>().Where(c => c.Name.ToString() is "pus_details" or "pus_gift_box").ToArray();
+        _modals = Modals(_overlay);
         var header = window.Header!.GetChildren().OfType<HBoxContainer>().Single();
         _title = header.GetChildren().OfType<Label>().Last(); _close = header.GetChildren().OfType<Button>().Single(b => b.TooltipText == "Close");
         foreach (var child in window.GetChildren().OfType<Control>().Where(c => c != _overlay)) child.Visible = false;
@@ -79,15 +80,8 @@ public partial class ClassicStorePanel : Control
         ClassicPartySkin.Drag(this, header, ClassicStoreLayout.Drag(1024)); _grip = GetChildren().OfType<Control>().Single(c => c.Name == "party_drag");
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_shoppingmall_us").Find("btn_close")!, this, ClassicStoreLayout.Close(1024), "");
         _close.FocusMode = FocusModeEnum.All;
-        var description = CharacterDetailsSkin.Tree(_overlay).OfType<Label>().Single(c => c.Name == "pus_details_description");
-        var parent = description.GetParent(); int index = description.GetIndex();
-        var scroll = new ScrollContainer { Name = "pus_description_scroll", CustomMinimumSize = new Vector2(0, ClassicStoreLayout.DescriptionHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = description.Visible };
-        // The text keeps the Classic six-pixel gap before the scroll bar.
-        var gap = new MarginContainer { Name = "pus_description_inset", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        gap.AddThemeConstantOverride("margin_right", 6 + 10); gap.AddThemeConstantOverride("margin_left", 6 + 10);
-        parent.AddChild(scroll); parent.MoveChild(scroll, index); scroll.AddChild(gap); description.Reparent(gap); description.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        description.VisibilityChanged += () => scroll.Visible = description.Visible;
-        Watch(body); Watch(_overlay);
+        DescriptionScroll(_overlay);
+        Watch(this, body, Escape); Watch(this, _overlay, Escape);
         T Part<T>(string name) where T : Node => CharacterDetailsSkin.Tree(body).OfType<T>().Single(c => c.Name == "pus_" + name);
         // The original store keeps the search row at the top of the window and the cash display at the top of the sidebar.
         _tools = Part<BoxContainer>("tools"); _tools.SetMeta("pus_header_row", true); ((BoxContainer)_tools).Vertical = false;
@@ -107,7 +101,22 @@ public partial class ClassicStorePanel : Control
         well.AddThemeStyleboxOverride("panel", ClassicStoreLayout.Box(ClassicStoreLayout.WellMargin)); main.AddChild(well);
         column.Reparent(well); well.Draw += OpenSelectedTab;
         _categoryList.ChildEnteredTree += _ => QueueTabs(); _categoryList.ChildExitingTree += _ => QueueTabs(); QueueTabs();
-        foreach (var modal in _modals)
+        FrameModals(_modals);
+        body.MinimumSizeChanged += UpdateMinimumSize; _tools.MinimumSizeChanged += Arrange; _wallet.MinimumSizeChanged += Arrange; Resized += Arrange;
+        window.VisibilityChanged += () => { if (!window.Visible) foreach (var option in CharacterDetailsSkin.Tree(this).Concat(CharacterDetailsSkin.Tree(_overlay)).OfType<OptionButton>()) option.GetPopup().Hide(); };
+    }
+    internal static Theme StoreTheme()
+    {
+        var theme = new Theme { DefaultFont = Plugin.Kit.Bold, DefaultFontSize = 13 };
+        theme.SetStylebox("pus_contact_normal", "PanelContainer", ClassicStoreLayout.Box(6));
+        theme.SetStylebox("pus_contact_active", "PanelContainer", ClassicStoreLayout.Box(6, true));
+        return theme;
+    }
+    internal static PanelContainer[] Modals(Control overlay) => CharacterDetailsSkin.Tree(overlay).OfType<PanelContainer>().Where(c => c.Name.ToString() is "pus_details" or "pus_gift_box").ToArray();
+    /// <summary>The details and gift modals use the plain store frame.</summary>
+    internal static void FrameModals(IEnumerable<PanelContainer> modals)
+    {
+        foreach (var modal in modals)
         {
             modal.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
             var inset = modal.GetChildren().OfType<MarginContainer>().First();
@@ -116,11 +125,21 @@ public partial class ClassicStorePanel : Control
             modal.AddChild(new ClassicStoreFrame { Name = "pus_modal_frame", ShowBehindParent = true });
             CharacterDetailsSkin.Tree(modal).OfType<HBoxContainer>().First().GetChildren().OfType<Label>().FirstOrDefault()?.AddThemeColorOverride("font_color", ClassicDesign.FrameTitle);
         }
-        body.MinimumSizeChanged += UpdateMinimumSize; _tools.MinimumSizeChanged += Arrange; _wallet.MinimumSizeChanged += Arrange; Resized += Arrange;
-        window.VisibilityChanged += () => { if (!window.Visible) foreach (var option in CharacterDetailsSkin.Tree(this).Concat(CharacterDetailsSkin.Tree(_overlay)).OfType<OptionButton>()) option.GetPopup().Hide(); };
+    }
+    /// <summary>The details description scrolls inside five whole lines.</summary>
+    internal static void DescriptionScroll(Control overlay)
+    {
+        var description = CharacterDetailsSkin.Tree(overlay).OfType<Label>().Single(c => c.Name == "pus_details_description");
+        var parent = description.GetParent(); int index = description.GetIndex();
+        var scroll = new ScrollContainer { Name = "pus_description_scroll", CustomMinimumSize = new Vector2(0, ClassicStoreLayout.DescriptionHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = description.Visible };
+        // The text keeps the Classic six-pixel gap before the scroll bar.
+        var gap = new MarginContainer { Name = "pus_description_inset", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        gap.AddThemeConstantOverride("margin_right", 6 + 10); gap.AddThemeConstantOverride("margin_left", 6 + 10);
+        parent.AddChild(scroll); parent.MoveChild(scroll, index); scroll.AddChild(gap); description.Reparent(gap); description.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        description.VisibilityChanged += () => scroll.Visible = description.Visible;
     }
     /// <summary>Plugin-owned controls carry the store marker so the native restyling pass leaves them alone.</summary>
-    private static T Owned<T>(T control) where T : Control { control.SetMeta("classic_store_control", true); return control; }
+    internal static T Owned<T>(T control) where T : Control { control.SetMeta("classic_store_control", true); return control; }
     public override Vector2 _GetMinimumSize()
     {
         var size = (_body?.GetCombinedMinimumSize() ?? Vector2.Zero) + ClassicStoreLayout.Chrome;
@@ -199,16 +218,17 @@ public partial class ClassicStorePanel : Control
         if (tab == null || tab.GetRect().End.Y < _tabs.Size.Y - 0.5f) return;
         _well.DrawRect(new Rect2(tab.Position.X + 1, 0, tab.Size.X - 2, 1), Colors.Black);
     }
-    private static void Font(Control control, int size = 13)
+    internal static void Font(Control control, int size = 13)
     {
         control.AddThemeFontOverride("font", Plugin.Kit.Bold); control.AddThemeFontSizeOverride("font_size", size); control.AddThemeConstantOverride("outline_size", 0);
     }
-    private void Watch(Node node)
+    /// <summary>Gives every native store control (now and later) the Classic fonts, inputs, buttons and scroll bars.</summary>
+    internal static void Watch(Control host, Node node, Action escape)
     {
         if (node.HasMeta("classic_store_control")) return; node.SetMeta("classic_store_control", true);
-        Style(node); foreach (var child in node.GetChildren()) Watch(child); node.ChildEnteredTree += Watch;
+        Style(host, node, escape); foreach (var child in node.GetChildren()) Watch(host, child, escape); node.ChildEnteredTree += n => Watch(host, n, escape);
     }
-    private void Style(Node node)
+    private static void Style(Control host, Node node, Action escape)
     {
         if (node is not Control control) return;
         int size = control is Label l ? Math.Clamp(l.GetThemeFontSize("font_size"), 11, 13) : 13;
@@ -217,7 +237,7 @@ public partial class ClassicStorePanel : Control
         if (control is LineEdit edit)
         {
             ClassicVendorSkin.Input(edit); Font(edit); edit.TextDirection = TextDirection.Ltr; edit.KeepEditingOnTextSubmit = true;
-            edit.GuiInput += ev => { if (ev is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) { Escape(); edit.AcceptEvent(); } };
+            edit.GuiInput += ev => { if (ev is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) { escape(); edit.AcceptEvent(); } };
         }
         if (control is Button button)
         {
@@ -255,7 +275,7 @@ public partial class ClassicStorePanel : Control
             {
                 sc.CustomMinimumSize = new Vector2(0, Platform.TouchUi ? 240 : 188);
                 // Desktop: four whole rows that scroll by rows; the Friend/Clan tags keep the Classic gap before the scroll bar.
-                if (!Platform.TouchUi) Callable.From(() => AddChild(new ClassicRowScroll(sc, 188, 48))).CallDeferred();
+                if (!Platform.TouchUi) Callable.From(() => host.AddChild(new ClassicRowScroll(sc, 188, 48))).CallDeferred();
             }
             ClassicDarkFrame.ScrollBar(sc.GetVScrollBar(), 10);
         }
@@ -274,13 +294,16 @@ public partial class ClassicStorePanel : Control
             }
         }
     }
-    private void Escape()
+    private void Escape() { if (!EscapeOverlay(this, _overlay, _modals)) _close.EmitSignal(BaseButton.SignalName.Pressed); }
+    /// <summary>Escape closes an open sort popup, then an open modal; false when the store itself should close.</summary>
+    internal static bool EscapeOverlay(Control root, Control overlay, PanelContainer[] modals)
     {
-        var option = CharacterDetailsSkin.Tree(this).Concat(CharacterDetailsSkin.Tree(_overlay)).OfType<OptionButton>().FirstOrDefault(o => o.GetPopup().Visible);
-        if (option != null) { option.GetPopup().Hide(); return; }
-        var modal = _modals.FirstOrDefault(m => m.Visible && _overlay.Visible);
-        if (modal != null) CharacterDetailsSkin.Tree(modal).OfType<Button>().Single(b => b.TooltipText == "Close").EmitSignal(BaseButton.SignalName.Pressed);
-        else _close.EmitSignal(BaseButton.SignalName.Pressed);
+        var option = CharacterDetailsSkin.Tree(root).Concat(CharacterDetailsSkin.Tree(overlay)).OfType<OptionButton>().FirstOrDefault(o => o.GetPopup().Visible);
+        if (option != null) { option.GetPopup().Hide(); return true; }
+        var modal = modals.FirstOrDefault(m => m.Visible && overlay.Visible);
+        if (modal == null) return false;
+        CharacterDetailsSkin.Tree(modal).OfType<Button>().Single(b => b.TooltipText == "Close").EmitSignal(BaseButton.SignalName.Pressed);
+        return true;
     }
     public override void _UnhandledKeyInput(InputEvent ev)
     {

@@ -209,8 +209,26 @@ public static class NativeMarket
             compact = FitCompactStore(window, world, columns[0], columns[2], tools, compact);
             CentreTouchStore(window);
         });
+        window.SetMeta("classic_store_world", world);
         window.SetMeta("classic_store_controls", 1);
     }
+
+    /// <summary>
+    /// The card buttons of the local Power Up Store art: Buy opens the card's native details (which hold Buy now), and
+    /// Add to Basket is the details' native Add to cart.
+    /// </summary>
+    internal static bool StoreCardAction(HudWindow window, Control card, bool addToCart)
+    {
+        if (StoreWorld(window) is not { } world || CardEntry(world, card) is not { } entry || StorePending(window)) return false;
+        Native.Call(world, "OpenPusDetails", entry);
+        if (addToCart) Native.Call(world, "AddPusDetailsToCart");
+        return true;
+    }
+
+    /// <summary>True while a native purchase waits for the server.</summary>
+    public static bool StorePending(HudWindow window) => StoreWorld(window) is { } world && Convert.ToInt32(Native.Get<object>(world, "_pusPending")) != 0;
+
+    private static World? StoreWorld(HudWindow window) => window.HasMeta("classic_store_world") ? window.GetMeta("classic_store_world").AsGodotObject() as World : null;
 
     /// <summary>Replaces the store's search row with a box that can stack vertically on compact screens.</summary>
     private static BoxContainer Reorientable(BoxContainer row)
@@ -262,7 +280,7 @@ public static class NativeMarket
         if (box?.GetChildren().OfType<Label>().FirstOrDefault() is { } name) { name.Name = "pus_card_name"; name.TooltipText = entry.Name; }
         var overlay = card.GetChildren().OfType<Control>().LastOrDefault(c => c is not Container);
         var chips = overlay?.GetChildren().OfType<PanelContainer>().Where(c => c.TooltipText != entry.Name && c.TooltipText != "").ToArray() ?? Array.Empty<PanelContainer>();
-        foreach (var chip in chips) chip.Name = chip.TooltipText == "In your cart" ? "pus_cart_chip" : "pus_timer_chip";
+        foreach (var chip in chips) chip.Name = chip.TooltipText switch { "In your cart" => "pus_cart_chip", "Time left at this price" => "pus_timer_chip", _ => "pus_featured_badge" };
         card.ThemeChanged += () => StyleCard(world, card);
     }
 
