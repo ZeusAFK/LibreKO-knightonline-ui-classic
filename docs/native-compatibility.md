@@ -201,6 +201,7 @@ listed. Preview-only members are listed at the end.
 | `_questRewardChoice`, `_questRewardBox`, `_questRewardTitle`, `QuestRewards`, `QuestRewardName`, `QuestItemRow` | F/M | Quest Details reward rows, NPC reward choice |
 | `_questRewardSelection` (`Received`, `Chosen`), `_questRewardOptionTitle`, `_questRewardOptionBox` *(fix/quest-rewards)* | F/M | Chosen and received reward state |
 | `_npcDialogShown`, `_npcPanel`, `_npcTalkId`, `_vendorNpcId`, `_npcQuestContent`, `_questNotifications`, `_questNotificationIndex` | F | NPC dialog portrait, quest captions |
+| `Net.WarehouseNpcEvent`, `_npcMenuBox` (+ `_npcPanel`) | E/F | Inn Hostess opening window (`NativeInn` marks the client's inn choices; `ClassicInnChoice` shows them on `co_inn_us`) |
 | static `NoWeaponNpcIds`, `WantedClasses`, `AttachWeapons`; `World+Ent` `IsNpc`, `Dead`, `Name`, `Level`, `ModelId`, `NpcType`, `NpcId`, `Gear`, `Body` | F/M/P | NPC portrait factory |
 | `_presetStatPointsLbl` | F | Preset label wording |
 | `_partyMembersBox`, `_dockOrder`, `Selectable`, `Select` | F/M | Party roster, click-to-target, docking |
