@@ -27,7 +27,7 @@ public partial class StatusHud : Control
     /// <summary>The letter row: column -1 is the original btn_quest position, the rest follow at the btn_power pitch.</summary>
     private static readonly (string Letter,string Window,string Title,int Column,Func<PluginGame,Action>? Press,Func<string>? Key,string? Alert)[] Shortcuts =
     {
-        ("Q","quests","Quests",-1,game=>()=>CharacterWindow.ToggleQuestList(game),null,null),
+        ("Q","quests","Quests",-1,game=>()=>CharacterWindow.ToggleQuestList(game),Key(KeyAction.Quests),null),
         ("P","shoppingmall","Power-Up Store",0,null,Key(KeyAction.PowerUpStore),null),
         ("A","achievements","Achievements",1,null,Key(KeyAction.Achievements),null),
         ("D","attendance","Daily Attendance",2,null,Key(KeyAction.Attendance),null),

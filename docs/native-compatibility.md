@@ -183,6 +183,7 @@ listed. Preview-only members are listed at the end.
 | `_achClaimablePerTab`, `ClaimableAttendanceCount()`, `_eventsAlert`, `_drBlink` | F/M | Notification count (with public `Net.MailUnread`); events and daily rank give an attention state |
 | `_mailShown`/`ToggleMail`, `_achShown`/`ToggleAchievements`, `_attendanceShown`/`ToggleAttendance`, `_pusShown`/`ToggleShoppingMall`, `_fullMapShown`/`ToggleFullMap`, `_genieShown`/`ToggleGenie`/`CloseGenie`, `_eventsPanel`/`ToggleEvents`, `_drWindow`/`OnDailyRankIcon` | F/M | Taskbar and status-bar window toggles |
 | `_mainWindows["Character"]` `_dock`/`DockTo`, `_geniePanel` `Layout._defaultPosition`/`ReapplyDefault()`, `_pluginHud` | F/M | The docked Character window and the Genie window's first spot stay clear of the Classic status bar, letter row and minimap |
+| `_hotkeys`, `_padHotkeys` (entries for `KeyBinds.Get`/`GetPad(KeyAction.Quests)`, re-applied on `KeyBinds.Changed`) | F | The "Quest Journal" key (F10) opens the Quest list like Q; without them it opens Quest Details as before |
 | `_hotSelected`, `_hotbar`, `SelectHotAbs(int)` | F/M | Hotbar selection |
 | `_running`, `_selfSitting`, `_autoAttack`, `ToggleRunMode()`, `ToggleAutoAttack()`, `StartCameraHalfTurn()`, `ToggleEsc(bool?)` | F/M | Commands |
 | `_miniMap` | F | `MiniMapVisible` |
