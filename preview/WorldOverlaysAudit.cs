@@ -301,7 +301,12 @@ public partial class Preview
                 {
                     Expected(control, loot, $"{state} {name}");
                     Require(Inside(new Rect2(Global(loot).Position, Spec.Loot.Header.Size), Global(control)), $"{state}: {name} on the plaque");
-                    if (control is Button { Text.Length: > 0 } button) ButtonArt(button, $"{state} {name}");
+                    if (control is Button { Text.Length: > 0 } button)
+                    {
+                        ButtonArt(button, $"{state} {name}");
+                        // Take all and Filter (which opens the client's Loot Filter window) keep their native callbacks.
+                        Require(button.GetSignalConnectionList(BaseButton.SignalName.Pressed).Count > 0, $"{state}: {name} keeps its native action");
+                    }
                 }
             }
             for (int i = 0; i < lootCells.Length; i++)
