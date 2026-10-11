@@ -37,8 +37,9 @@ public partial class Preview
             string variant = touch ? stateVariant.Replace("pus-touch-", "pus-") : stateVariant;
             var world = new World(); var layer = (CanvasLayer)DetailCall(world, "BuildPowerUpStoreClassicUiPreview", variant)!; AddChild(layer);
             var window = layer.GetChildren().OfType<HudWindow>().Single(); var panel = ClassicStoreSkin.Apply(window.Body)!;
-            // The original Power Up Store art is optional local content; the audit checks whichever design is installed.
-            bool myko = panel is ClassicStoreMykoPanel; design = myko ? "myko-local-art" : "classic";
+            // The original Power Up Store art is bundled (assets/myko) and the default; store-fallback-audit turns it off.
+            bool myko = panel is ClassicStoreMykoPanel; design = myko ? "myko-art" : "classic";
+            if (myko == ClassicFallback) throw new Exception("STORE_AUDIT_FAIL: expected the " + (ClassicFallback ? "Classic fallback" : "bundled 2.x art") + " store, found " + design + " (art root " + Plugin.Kit.Local.Root + ")");
             T Find<T>(string name) where T : Control => Descendants(window).OfType<T>().Single(c => c.Name == "pus_" + name);
             var cart = (PowerUpStoreCart)DetailField(world, "_pusCart")!;
             async Task Capture(string state)

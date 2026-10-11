@@ -9,8 +9,8 @@ namespace KnightOnlineUiClassic.Windows;
 
 /// <summary>
 /// The top-right group on the original art (read through LocalAssets), top to bottom: the premium bar (<c>re_eventpremium</c>,
-/// the account premium's name), the clan premium bar while the player is in a clan, the time plate (<c>co_time</c>,
-/// the client's clock), the notice bars (<c>re_eventnotice</c>) and the GM List bar. The client's event title chips
+/// the account premium's name), the clan premium bar while the player is in a clan, the time box (the client's clock
+/// on the content box's frame and text style), the notice bars (<c>re_eventnotice</c>) and the GM List bar. The client's event title chips
 /// (server notices with a title and a message: rate events, the clan notice, notices a GM posts) become the teal
 /// bars, and the first keeps the client's expand/collapse toggle on the original + / − knob. Pressing a bar opens the
 /// content box (<c>re_*_eventcontent</c>) under the group with its details (premium time left and benefits, the
@@ -24,14 +24,13 @@ public static class ClassicNoticeBars
     public const string GmKey = "gm", PremiumKey = "premium", ClanKey = "clan";
     private const string Skinned = "classic_notice_bar";
 
-    public static bool Available => Bar != null && ClassicMykoArt.Layout(L.Content) != null && ClassicMykoArt.Layout(L.Premium) != null
-        && ClassicMykoArt.Layout(L.Time) != null;
+    public static bool Available => Bar != null && ClassicMykoArt.Layout(L.Content) != null && ClassicMykoArt.Layout(L.Premium) != null;
 
     private static LayoutNode? Bar => ClassicMykoArt.Layout(L.Notice);
 
     public static string KeyOf(string title) => "title:" + title;
 
-    /// <summary>Takes over the client's title column; false (nothing changed) without the local art.</summary>
+    /// <summary>Takes over the client's title column; false (nothing changed) without the art.</summary>
     public static bool Apply(Container column)
     {
         if (!Available) return false;
@@ -155,16 +154,16 @@ public static class ClassicNoticeBars
 }
 
 /// <summary>
-/// The group's own pieces: the premium, clan premium and GM List bars, the time plate and the content box. They
+/// The group's own pieces: the premium, clan premium and GM List bars, the time box and the content box. They
 /// follow the client's title column (which stays the client's and keeps its bars): the group is right-aligned at the
-/// client's premium chip spot, and the column is placed between the time plate and the GM List bar.
+/// client's premium chip spot, and the column is placed between the time box and the GM List bar.
 /// </summary>
 public partial class ClassicNoticeStack : Control
 {
     private readonly Container _column;
     private readonly ClassicGroupBar _premium, _clan, _gm;
     private readonly Control _time, _box, _clip, _thumb;
-    private readonly Label _timeNote, _timeValue, _text;
+    private readonly Label _timeValue, _text;
     private readonly TextureButton? _up, _down;
     private readonly Rect2 _track;
     private readonly Vector2 _textArea;
@@ -181,7 +180,7 @@ public partial class ClassicNoticeStack : Control
 
     public ClassicNoticeStack()
     {
-        _column = null!; _premium = _clan = _gm = null!; _time = _box = _clip = _thumb = null!; _timeNote = _timeValue = _text = null!;
+        _column = null!; _premium = _clan = _gm = null!; _time = _box = _clip = _thumb = null!; _timeValue = _text = null!;
         ClockText = () => null; ClanSource = () => default;
     }
 
@@ -199,28 +198,32 @@ public partial class ClassicNoticeStack : Control
         _gm.SetCaption(L.GmListTitle, true); _gm.TooltipText = L.GmListTitle;
         AddChild(_premium); AddChild(_clan);
 
-        // The time plate: the original note and value strings on the plate art.
-        var timeArt = ClassicMykoArt.Layout(L.Time)!;
-        var timeView = ClassicMykoArt.View(timeArt);
-        _time = new Control { Name = ClassicNoticeBars.TimePlate, Size = timeArt.SizeVec, CustomMinimumSize = timeArt.SizeVec, MouseFilter = MouseFilterEnum.Pass };
-        _time.AddChild(timeView);
-        _timeNote = timeView.Get<Label>("str_note")!; _timeValue = timeView.Get<Label>("str_time")!;
-        foreach (var label in new[] { _timeNote, _timeValue })
+        var art = ClassicMykoArt.Layout(L.Content)!;
+        var view = ClassicMykoArt.View(art);
+        var textNode = art.Find("text_content")!;
+        var scroll = art.Find("scroll")!;
+
+        // The time box: the content box's frame (without its scroll bar) at bar size, the clock centred in its text style.
+        _time = new Panel { Name = ClassicNoticeBars.TimePlate, Size = L.Bar, CustomMinimumSize = L.Bar, MouseFilter = MouseFilterEnum.Pass };
+        if (ClassicMykoArt.Compose(art, n => n.X < scroll.X) is { } frame)
+            _time.AddThemeStyleboxOverride("panel", new StyleBoxTexture
+            {
+                Texture = frame, TextureMarginLeft = L.TimeFrame, TextureMarginTop = L.TimeFrame, TextureMarginRight = L.TimeFrame, TextureMarginBottom = L.TimeFrame,
+            });
+        _timeValue = new Label
         {
-            label.AddThemeFontOverride("font", Plugin.Kit.Bold);
-            label.ClipText = true;
-            label.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
-            label.VerticalAlignment = VerticalAlignment.Center;
-        }
-        _timeNote.Text = L.TimeNote;
+            Name = "notice_time_value", Position = new Vector2(L.TimeFrame, 0), Size = new Vector2(L.Bar.X - 2 * L.TimeFrame, L.Bar.Y),
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, ClipText = true, MouseFilter = MouseFilterEnum.Ignore,
+        };
+        view.Style(_timeValue, textNode);
+        _timeValue.AddThemeFontOverride("font", Plugin.Kit.Bold);
+        _timeValue.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
+        _time.AddChild(_timeValue);
         AddChild(_time);
         AddChild(_gm);
 
-        var art = ClassicMykoArt.Layout(L.Content)!;
-        var view = ClassicMykoArt.View(art);
         _box = new Control { Name = ClassicNoticeBars.ContentBox, Size = art.SizeVec, CustomMinimumSize = art.SizeVec, MouseFilter = MouseFilterEnum.Stop, Visible = false };
         _box.AddChild(view);
-        var textNode = art.Find("text_content")!;
         _textArea = textNode.SizeVec;
         view.Get("text_content")!.Visible = false;
         _clip = new Control { Name = "notice_text_clip", Position = textNode.Position, Size = textNode.SizeVec, ClipContents = true, MouseFilter = MouseFilterEnum.Stop };
@@ -240,7 +243,6 @@ public partial class ClassicNoticeStack : Control
             }
         };
         // The art's scroll bar: up and down by a line, the thumb shows the position.
-        var scroll = art.Find("scroll")!;
         var buttons = scroll.Children.Where(n => n.IsButton).ToList();
         _up = buttons.Count > 0 ? view.ControlOf(buttons[0]) as TextureButton : null;
         _down = buttons.Count > 1 ? view.ControlOf(buttons[1]) as TextureButton : null;
@@ -339,7 +341,7 @@ public partial class ClassicNoticeStack : Control
         int split = clock.IndexOf(' ');
         string time = split > 0 ? clock[..split] : clock.Length > 0 ? clock : "--:--";
         string weather = split > 0 ? clock[split..].Trim() : "";
-        if (_timeValue.Text != time) _timeValue.Text = time;
+        if (_timeValue.Text != L.TimeNote + time) _timeValue.Text = L.TimeNote + time;
         _time.TooltipText = "Server time " + time + (weather.Length > 0 ? ", " + weather : "");
         if (World is { } world && GodotObject.IsInstanceValid(world)) NativePremium.HideClientChips(world, L.Bar.X);
     }

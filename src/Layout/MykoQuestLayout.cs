@@ -3,9 +3,9 @@ namespace KnightOnlineUiClassic.Layout;
 
 /// <summary>
 /// The MYKO reference client's quest NPC menu (<c>re_quest_npc_menu</c>) and quest viewer (<c>re_quest_viewer</c>),
-/// read from the player's local assets (<see cref="LocalAssets"/>). The plugin ships neither the layouts nor their
-/// art: without both local layouts the quest NPC dialogue keeps its bundled Classic design. Every rectangle below
-/// comes from the local layout files, so the composition stays editable there.
+/// read from the bundled 2.x art (<c>assets/myko</c>, <see cref="LocalAssets"/>). Without both layouts (or one of
+/// their textures) the quest NPC dialogue keeps its Classic design. Every rectangle below comes from the layout
+/// files, so the composition stays editable there.
 /// </summary>
 public sealed class MykoQuestLayout
 {

@@ -9,6 +9,16 @@ public partial class Preview : Control
 {
     private PreviewData? _windowData,_chatData;
     private PreviewData[] _proxies=Array.Empty<PreviewData>();
+    /// <summary>True in the *-fallback-audit modes, which turn the bundled 2.x art off to check the Classic fallback.</summary>
+    internal static bool ClassicFallback => OS.GetCmdlineUserArgs().Any(a => a.EndsWith("-fallback-audit"));
+    /// <summary>Turns the bundled 2.x art off for the rest of the run (points the art root at a missing folder).</summary>
+    internal static void UseClassicFallback() => UseArt(false);
+    /// <summary>Turns the bundled 2.x art on (the plugin's own resolution) or off; windows built afterwards follow it.</summary>
+    internal static void UseArt(bool on)
+    {
+        System.Environment.SetEnvironmentVariable(LocalAssets.RootVariable, on ? null : System.IO.Path.Combine(System.IO.Path.GetTempPath(), "libreko-classic-no-2x-art"));
+        if (Plugin.Active) typeof(UiKit).GetField("_local", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(Plugin.Kit, null);
+    }
     static object Create(Type type, params object?[] args) => Activator.CreateInstance(type, BindingFlags.Instance|BindingFlags.NonPublic, null, args, null)!;
     public override async void _Ready()
     {
@@ -18,6 +28,8 @@ public partial class Preview : Control
             if(auditPack.Length>0 && !ProjectSettings.LoadResourcePack(auditPack,false))throw new Exception("Missing audit resource pack: "+auditPack);
             HudLayout.PersistLayouts=false;
             PluginSettings.Enabled=false;
+            // The bundled 2.x art (assets/myko) is the default; the *-fallback-audit modes run with it turned off to check the Classic fallback.
+            if(ClassicFallback)UseClassicFallback();
             string root=System.IO.Path.GetFullPath(ProjectSettings.GlobalizePath("res://../"));
             var manifest=PluginManifest.Parse(System.IO.File.ReadAllText(root+"/plugin.json"));
             var info=(PluginInfo)Create(typeof(PluginInfo),root,manifest,PluginState.Loaded,"");
@@ -55,7 +67,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("nationtransfer-audit")){await CaptureNationTransferAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("equipview-audit")){await CaptureEquipViewAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("auction-audit")){await CaptureAuctionAudit(nation);await FinishManagedAudit();return;}
-            if(OS.GetCmdlineUserArgs().Contains("store-audit")){await CaptureStoreAudit(nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("store-audit")||OS.GetCmdlineUserArgs().Contains("store-fallback-audit")){await CaptureStoreAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("market-price-audit")){await CaptureMarketPriceAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("merchant-search-audit")){await CaptureMerchantSearchAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("chat-colours-audit")){await CaptureChatColoursAudit(nation);await FinishManagedAudit();return;}
@@ -72,7 +84,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("map-fortune-audit")){await CaptureMapFortuneAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("events-b-audit")){await CaptureEventsBAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("event-windows-audit")){await CaptureEventWindowsAudit(nation);await FinishManagedAudit();return;}
-            if(OS.GetCmdlineUserArgs().Contains("myko-hud-audit")){await CaptureMykoHudAudit(nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("myko-hud-audit")||OS.GetCmdlineUserArgs().Contains("myko-hud-fallback-audit")){await CaptureMykoHudAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("event-overlays-audit")){await CaptureEventOverlaysAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("identity-audit")){await CaptureIdentityAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("classic-services-audit")){await CaptureClassicServices(game,nation);await FinishManagedAudit();return;}

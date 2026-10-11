@@ -38,7 +38,7 @@ public partial class Preview
         var mail = Descendants(status).OfType<ClassicStatusShortcut>().Single(s => !s.HasBackground);
         ClassicStatusShortcut Letter(string letter) => letters.Single(s => s.Letter == letter);
         Rect2 plates = letters.Aggregate(Screen(letters[0]), (r, s) => r.Merge(Screen(s)));
-        // With the local menu art the original clock follows R (opening the event schedule).
+        // With the bundled 2.x menu art (the default) the original clock follows R (opening the Events window).
         var clock = Descendants(status).OfType<ClassicStatusClock>().SingleOrDefault();
         Rect2 row = plates.Merge(Screen(mail)).Merge(clock != null ? Screen(clock) : plates).Grow(6);
         async Task Shot(string state, Rect2? crop = null)
@@ -97,7 +97,7 @@ public partial class Preview
         }
         Require(pitch >= first.Size.X, $"the plates do not overlap (pitch {pitch}, width {first.Size.X})");
         Require(Mathf.Abs(Screen(mail).Position.X - first.Position.X) < .01f, "the envelope stays under Q");
-        Require((clock != null) == (ClassicStatusClock.Art != null), "the clock is shown exactly when the local menu art is installed");
+        Require((clock != null) == (ClassicStatusClock.Art != null) && (clock != null) == !ClassicFallback, "the clock is shown exactly when the 2.x menu art is installed (by default)");
         if (clock != null)
         {
             var c = Screen(clock);
@@ -313,7 +313,7 @@ public partial class Preview
             await Frames(6);
             Require(!windows.IsOpen(id) && (!natives.TryGetValue(id, out native) || !native()), $"{s.Letter} again closes {id}");
         }
-        // ---- The clock: the client's Events window (on the scheduler art when installed), closed again by the clock.
+        // ---- The clock: the client's Events window in its Classic frame, closed again by the clock.
         if (clock != null)
         {
             var events = natives["events"];
@@ -322,7 +322,7 @@ public partial class Preview
             await Frames(8);
             var window = Descendants(world).OfType<HudWindow>().Single(w => w.Id == "events");
             Require(windows.IsOpen("events") && events() && shown(window), "the clock opens the client's Events window");
-            Require((window.GetNodeOrNull<ClassicSchedulerPanel>(ClassicMykoScheduler.PanelName) != null) == ClassicMykoScheduler.Available, "clock: the Events window is on the scheduler art exactly when it is installed");
+            Require(window.GetNodeOrNull<Control>("classic_frame") != null, "clock: the Events window keeps its Classic family frame");
             Require(GetViewportRect().Encloses(Screen(window)), $"clock: the schedule is on screen ({Screen(window)})");
             bounds["open-clock"] = Rect(Screen(window));
             await Shot("open-clock");

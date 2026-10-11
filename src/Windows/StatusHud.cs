@@ -68,7 +68,7 @@ public partial class StatusHud : Control
         var quest=source.Find("btn_quest")!;
         var power=source.Find("btn_power")!;
         int shortcutPitch=power.X-quest.X;
-        // With the local menu art the original alarm clock follows R and opens the event schedule.
+        // With the 2.x menu art the original alarm clock follows R and opens the Events window.
         var clockArt=ClassicStatusClock.Art;
         int lastColumn=Shortcuts[^1].Column+(clockArt!=null ? 1:0);
         float shortcutRight=power.X+shortcutPitch*lastColumn+power.W;

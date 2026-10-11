@@ -9,5 +9,5 @@ preview/windows.cfg
 *.cs.uid
 preview/assets/**/*.import
 
-# Optional art installed locally (never committed); see tools/install_local_assets.py
+# Developer override of the bundled assets/myko art (untracked); see tools/install_local_assets.py
 assets-local/

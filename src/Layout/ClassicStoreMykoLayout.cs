@@ -4,7 +4,7 @@ namespace KnightOnlineUiClassic.Layout;
 
 /// <summary>
 /// Geometry of the Power-Up Store drawn on the original Power Up Store art (the <c>re_powerupstore</c> UIF of a
-/// 2.x Knight Online client). The art is optional local content (<see cref="LocalAssets"/>); the rectangles below
+/// 2.x Knight Online client). The art is bundled in <c>assets/myko</c> (<see cref="LocalAssets"/>); the rectangles below
 /// are the UIF's own (1024×765 stage) and name what each native control takes over.
 /// </summary>
 public static class ClassicStoreMykoLayout

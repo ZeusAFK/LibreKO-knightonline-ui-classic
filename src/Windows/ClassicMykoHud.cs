@@ -12,10 +12,10 @@ public static class ClassicMykoArt
 {
     public static string NationTag => Plugin.Kit.Nation == 1 ? "ka" : "el";
 
-    /// <summary>The installed local layout for the player's nation, or null (not installed or a texture missing).</summary>
+    /// <summary>The layout for the player's nation, or null (missing, or a texture missing).</summary>
     public static LayoutNode? Layout(string name) => Plugin.Kit.Local.Layout(name.Replace("{nation}", NationTag));
 
-    /// <summary>A view of local art; one-line texts taller than their UIF rect stay centred on it.</summary>
+    /// <summary>A view of the art; one-line texts taller than their UIF rect stay centred on it.</summary>
     public static LayoutView View(LayoutNode root)
     {
         var view = new LayoutView(Plugin.Kit, root, Plugin.Kit.Local.Texture);
@@ -31,6 +31,29 @@ public static class ClassicMykoArt
     public static Texture2D? Texture(LayoutNode image) => image.Texture == null ? null : Plugin.Kit.Local.Texture(image.Texture);
 
     public static Rect2 Source(LayoutNode image) => new(image.SrcX, image.SrcY, image.SrcW, image.SrcH);
+
+    /// <summary>
+    /// The layout's own images that <paramref name="include"/> accepts, stretched to their rects and composed into one
+    /// texture covering them from the layout's origin (for a frame drawn at another size); null when an image is missing.
+    /// </summary>
+    public static ImageTexture? Compose(LayoutNode root, Func<LayoutNode, bool> include)
+    {
+        var parts = root.Images.Where(include).ToList();
+        if (parts.Count == 0) return null;
+        int width = parts.Max(n => n.X + n.W), height = parts.Max(n => n.Y + n.H);
+        var frame = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
+        foreach (var node in parts)
+        {
+            if (node.Texture == null || Plugin.Kit.Local.Image(node.Texture) is not { } sheet) return null;
+            var part = sheet.GetRegion(new Rect2I(node.SrcX, node.SrcY, node.SrcW, node.SrcH));
+            if (part.GetFormat() != Image.Format.Rgba8) part.Convert(Image.Format.Rgba8);
+            if (node.FlipH) part.FlipX();
+            if (node.FlipV) part.FlipY();
+            part.Resize(node.W, node.H, Image.Interpolation.Nearest);
+            frame.BlendRect(part, new Rect2I(0, 0, node.W, node.H), new Vector2I(node.X, node.Y));
+        }
+        return ImageTexture.CreateFromImage(frame);
+    }
 
     /// <summary>The image of a button for a state, falling back to the normal art.</summary>
     public static LayoutNode? State(LayoutNode button, int state) =>
@@ -74,7 +97,7 @@ public static class ClassicMykoPlates
         return (texture, new Rect2(rect.Position + new Vector2(0, row * L.PlatePitch), rect.Size), baked);
     }
 
-    /// <summary>Draws the plate of <paramref name="letter"/> into <paramref name="target"/>; false without local art.</summary>
+    /// <summary>Draws the plate of <paramref name="letter"/> into <paramref name="target"/>; false without the art.</summary>
     public static bool Draw(CanvasItem canvas, Rect2 target, string letter, int state, Color tint)
     {
         if (Plate(letter, state) is not var (texture, source, baked)) return false;
@@ -107,7 +130,7 @@ public static class ClassicMykoPlates
 
 /// <summary>
 /// The original alarm clock beside the letter row (<c>btn_scheduler</c>, with the original art). Like the original it opens
-/// the event schedule: the client's Events window, whose request for the schedule goes to the server as from E.
+/// the event schedule: the client's Events window (Classic skin), whose request for the schedule goes to the server as from E.
 /// </summary>
 public partial class ClassicStatusClock : BaseButton
 {
@@ -133,7 +156,7 @@ public partial class ClassicStatusClock : BaseButton
         ButtonUp += QueueRedraw;
     }
 
-    /// <summary>The clock art the status bar uses, or null without local art.</summary>
+    /// <summary>The clock art the status bar uses, or null without the art.</summary>
     public static LayoutNode? Art => ClassicMykoArt.Layout(L.HpMenu)?.Find("btn_scheduler");
 
     public int State => ClassicMykoArt.StateOf(this, _hovered);

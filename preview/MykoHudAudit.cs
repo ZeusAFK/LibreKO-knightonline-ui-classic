@@ -9,10 +9,10 @@ using KnightOnlineUiClassic.Native;
 using KnightOnlineUiClassic.Windows;
 using L = KnightOnlineUiClassic.Layout.ClassicMykoHudLayout;
 
-// The HUD pieces on optional local art (myko-hud-audit): the status bar's letter plates and clock, the client's
-// Events window on the scheduler art and the client's event title chips as notice bars with the GM List bar and the
-// content box. Run with KNIGHTONLINE_UI_CLASSIC_LOCAL_ASSETS pointing at an installed assets-local folder, and
-// without it: then every piece must keep the bundled Classic design (no clock, the family frame, plaque chips).
+// The HUD pieces on the bundled 2.x art (myko-hud-audit): the status bar's letter plates and clock (the client's
+// Events window keeps its Classic frame) and the client's event title chips as notice bars with the time box, the GM List
+// bar and the content box. myko-hud-fallback-audit turns the art off: then every piece must keep the Classic design
+// (no clock, plaque chips).
 public partial class Preview
 {
     private async Task CaptureMykoHudAudit(int nation)
@@ -24,11 +24,12 @@ public partial class Preview
         var offline = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, offline);
         Native.Call(offline, "SeedPreviewEnter", new MyInfo { Nation = nation, Name = "Classic Preview" });
         ItemData.EnsureLoaded();
-        bool local = ClassicMykoPlates.Available && ClassicMykoScheduler.Available && ClassicNoticeBars.Available;
+        bool local = ClassicMykoPlates.Available && ClassicNoticeBars.Available;
         string variant = local ? "local" : "classic";
         string prefix = (nation == 1 ? "karus" : "human") + "-" + variant;
         var checks = new List<string>(); var screens = new List<object>(); var bounds = new Dictionary<string, object>();
         void Require(bool condition, string text) { if (!condition) throw new Exception("MYKO_HUD_AUDIT: " + text); checks.Add(text); }
+        Require(local == !ClassicFallback, "the bundled 2.x art is " + (ClassicFallback ? "off in the fallback mode" : "on by default") + " (" + Plugin.Kit.Local.Root + ")");
         async Task Frames(int count = 6) { for (int i = 0; i < count; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }
         object Rect(Rect2 r) => new { x = r.Position.X, y = r.Position.Y, w = r.Size.X, h = r.Size.Y };
         bool Inside(Rect2 outer, Rect2 inner) => outer.Grow(.5f).Encloses(inner);
@@ -63,7 +64,7 @@ public partial class Preview
             var letters = Descendants(status).OfType<ClassicStatusShortcut>().Where(s => s.HasBackground).OrderBy(s => s.GetGlobalRect().Position.X).ToArray();
             var clock = Descendants(status).OfType<ClassicStatusClock>().SingleOrDefault();
             Require(letters.Select(s => s.Letter).SequenceEqual(new[] { "Q", "P", "A", "D", "G", "E", "R" }), "the letter row stays Q P A D G E R");
-            Require(local == (clock != null), local ? "the original clock follows the letter row" : "no clock without the local art");
+            Require(local == (clock != null), local ? "the original clock follows the letter row" : "no clock without the 2.x art");
             var row = letters.Aggregate(letters[0].GetGlobalRect(), (r, s) => r.Merge(s.GetGlobalRect()));
             if (clock != null)
             {
@@ -89,99 +90,17 @@ public partial class Preview
             status.QueueFree(); await Frames(2);
         }
 
-        // ---- Events window: the scheduler art with the client's rows, or the Classic family frame.
-        async Task<(World World, HudWindow Window)> Open(Action<World>? seed = null, string fixture = "BuildEventsUiPreview", params object?[] args)
+        // ---- Events window: the clock and E open the client's Events window, which keeps its Classic family frame.
         {
             var world = new World();
-            var window = (HudWindow)DetailCall(world, fixture, args)!;
-            seed?.Invoke(world);
-            NativeEventSchedule.Bind(window, world);
+            var window = (HudWindow)DetailCall(world, "BuildEventsUiPreview")!;
             AddChild(window); window.Visible = true;
             var frame = ClassicEventFamily.Apply(window.Body);
             await Frames(8);
             window.Position = ((GetViewportRect().Size - window.Size) / 2).Round();
             await Frames(4);
-            if (!local) Require(frame != null && window.GetNodeOrNull<ClassicSchedulerPanel>(ClassicMykoScheduler.PanelName) == null, "events: the Classic family frame without the local art");
-            return (world, window);
-        }
-        void Reschedule(World world, int extra)
-        {
-            var utc = DateTime.UtcNow;
-            var slots = Enumerable.Range(0, Math.Max(0, extra)).Select(i => { var at = utc.AddMinutes(20 + 70 * i); return new EventSlot(EventKind.Temple, i % 3 == 0 ? "Border Defence War of the Ardream Plains" : "Event " + (i + 1), EventSchedule.EveryDay, at.Hour, at.Minute, 10 * (i % 8), 83); }).ToList();
-            var now = new List<EventNow> { new(EventKind.Temple, "Juraid Mountain", EventPhase.SignUp, 412, 40, 83), new(EventKind.Lottery, "Daily Lottery", EventPhase.Running, 900, 0, 0) };
-            typeof(World).GetField("_eventSchedule", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(world, extra < 0 ? null : new EventSchedule(extra == 0 ? new List<EventNow>() : now, slots, utc));
-        }
-        async Task Schedule(string state, HudWindow window, World world)
-        {
-            var panel = window.GetNode<ClassicSchedulerPanel>(ClassicMykoScheduler.PanelName);
-            panel.Refresh(); await Frames(4);
-            var box = window.GetGlobalRect();
-            Require(box.Size == new Vector2(306, 385) && panel.GetGlobalRect() == box, state + ": the window is the 306×385 scheduler art " + box);
-            Require(window.GetThemeStylebox("panel") is StyleBoxEmpty && window.GetChildren().OfType<MarginContainer>().All(m => !m.Visible), state + ": no client window chrome");
-            var schedule = NativeEventSchedule.Schedule(world);
-            var rows = schedule == null ? new List<NativeEventSchedule.Row>() : NativeEventSchedule.Rows(schedule, DateTime.UtcNow);
-            Require(panel.Shown.Select(r => r.Name).SequenceEqual(rows.Select(r => r.Name)), state + ": the rows are the client's, in its order (" + string.Join(", ", panel.Shown.Select(r => r.Name)) + ")");
-            int onPage = Math.Max(0, Math.Min(L.ScheduleRows, rows.Count - panel.PageIndex * L.ScheduleRows));
-            var visibleRows = Descendants(panel).OfType<TextureButton>().Where(b => b.Name == "btn_event" && b.IsVisibleInTree()).ToList();
-            Require(visibleRows.Count == onPage, $"{state}: {onPage} rows on page {panel.PageIndex + 1} ({visibleRows.Count} shown)");
-            foreach (var label in Descendants(panel).OfType<Label>().Where(l => l.IsVisibleInTree() && l.Text.Length > 0))
-            {
-                Require(Inside(box, label.GetGlobalRect()), state + ": inside the window: '" + label.Text + "'");
-                if (label.AutowrapMode == TextServer.AutowrapMode.Off && !label.ClipText)
-                    Require(TextWidth(label) <= label.Size.X + 1, state + ": '" + label.Text + "' fits " + label.Size);
-                if (label.ClipText && TextWidth(label) > label.Size.X) Require(label.TextOverrunBehavior == TextServer.OverrunBehavior.TrimEllipsis, state + ": long text ends with an ellipsis: " + label.Text);
-            }
-            var empty = panel.GetNode<Label>(ClassicSchedulerPanel.Empty);
-            Require(empty.Visible == (rows.Count == 0), state + ": the empty line shows only without rows");
-            var page = (Label)Descendants(panel).OfType<Label>().First(l => l.Name == ClassicSchedulerPanel.Page);
-            Require(page.Text == $"{panel.PageIndex + 1} / {panel.PageCount}", state + ": pager " + page.Text);
-            Require(Descendants(panel).OfType<Label>().Any(l => l.Text == L.TimeCaption) && Descendants(panel).OfType<Label>().First(l => l.Name == ClassicSchedulerPanel.Time).Text.Length == 5,
-                state + ": the header shows the local time");
-            bounds["schedule-" + state] = new { window = Rect(box), rows = visibleRows.Select(b => Rect(b.GetGlobalRect())).ToArray() };
-            await Shot("schedule-" + state, box.Grow(4));
-        }
-        if (local)
-        {
-            var (world, window) = await Open();
-            await Schedule("native", window, world);
-            Require(new[] { "OfferBifrostJoin", "ToggleLottery" }.All(m => Native.HasMethod(world, m)), "the Join and Open rows reach the client's own actions");
-            var panel = window.GetNode<ClassicSchedulerPanel>(ClassicMykoScheduler.PanelName);
-            Require(panel.Shown[0].Action == "Join" && panel.Shown.Skip(1).All(r => r.Action == null || r.Action == "Open"), "the temple sign-up row offers Join, as the client's row");
-            var firstRow = Descendants(panel).OfType<TextureButton>().First(b => b.Name == "btn_event" && b.IsVisibleInTree());
-            Require(firstRow.TooltipText.Contains("Click to join.") && firstRow.TooltipText.Contains("Lv 40-83"), "the row tooltip names the level band and the action: " + firstRow.TooltipText.Replace("\n", " / "));
-            var second = Descendants(panel).OfType<TextureButton>().Where(b => b.Name == "btn_event" && b.IsVisibleInTree()).ElementAt(1);
-            await Hover(second.GetGlobalRect().GetCenter());
-            await Shot("schedule-hover", window.GetGlobalRect().Grow(4));
-            second.ButtonPressed = true; second.EmitSignal(BaseButton.SignalName.Pressed); await Away();
-            Require(second.ButtonPressed, "a row stays selected");
-            await Shot("schedule-selected", window.GetGlobalRect().Grow(4));
-            Reschedule(world, 14); panel.Refresh();
-            await Schedule("page-1", window, world);
-            var next = (TextureButton)Descendants(panel).OfType<TextureButton>().First(b => b.Name == ClassicSchedulerPanel.Next);
-            var previous = (TextureButton)Descendants(panel).OfType<TextureButton>().First(b => b.Name == ClassicSchedulerPanel.Previous);
-            Require(previous.Disabled && !next.Disabled && panel.PageCount == 2, "page 1 of 2: Next only");
-            await Click(next.GetGlobalRect().GetCenter()); await Away();
-            Require(panel.PageIndex == 1 && !previous.Disabled && next.Disabled, "Next turns to page 2 by a real click");
-            await Schedule("page-2", window, world);
-            Reschedule(world, 0); panel.Refresh();
-            await Schedule("empty", window, world);
-            Reschedule(world, -1); panel.Refresh();
-            await Schedule("loading", window, world);
-            // Drag through the title strip moves the client's window; close runs the client's close.
-            var before = window.Position;
-            var grip = Descendants(panel).OfType<Control>().First(c => c.Name == "party_drag");
-            Require(grip.GetGlobalRect().Size == L.SchedulerDrag.Size, "the title strip is the drag handle");
-            var closeButton = (TextureButton)Descendants(panel).OfType<TextureButton>().First(b => b.Name == ClassicSchedulerPanel.Close);
-            var closeRect = closeButton.GetGlobalRect();
-            Require(!grip.GetGlobalRect().Intersects(closeRect), "the drag handle leaves the close button free");
-            await Click(closeRect.GetCenter());
-            Require(!window.Visible, "the close button runs the client's close");
-            window.QueueFree(); world.QueueFree(); await Frames(2);
-        }
-        else
-        {
-            var (world, window) = await Open();
-            await Shot("schedule-classic", window.GetGlobalRect().Grow(4));
+            Require(frame != null && window.GetNodeOrNull<Control>("classic_frame") != null, "events: the Classic family frame, with or without the 2.x art");
+            await Shot("events-classic", window.GetGlobalRect().Grow(4));
             window.QueueFree(); world.QueueFree(); await Frames(2);
         }
 
@@ -211,7 +130,7 @@ public partial class Preview
             if (!local)
             {
                 Require(stack == null && chips.All(c => c.GetThemeStylebox("panel") is StyleBoxEmpty && c.GetSignalConnectionList(CanvasItem.SignalName.Draw).Count > 0 && !c.HasMeta("classic_notice_bar")),
-                    tag + ": the Classic plaque chips without the local art");
+                    tag + ": the Classic plaque chips without the 2.x art");
                 await Shot("notices-classic-" + tag, column.GetGlobalRect().Grow(6));
                 layer.RemoveChild(column); column.QueueFree(); world.Free(); await Frames(2);
                 continue;
@@ -230,8 +149,26 @@ public partial class Preview
             float y = p.End.Y + L.BarGap;
             if (inClan) { var c = clan.GetGlobalRect(); Require(c.Size == L.Bar && Near(c.Position, new Vector2(right - L.Bar.X, y)), $"{tag}: the clan premium bar follows ({c})"); y = c.End.Y + L.BarGap; }
             var t = time.GetGlobalRect();
-            Require(t.Size == new Vector2(125, 19) && Near(t.Position, new Vector2(right - 125, y)), $"{tag}: the time plate follows, right-aligned ({t})");
-            Require(stack.TimeValue.Text == "14:33" && time.TooltipText == "Server time 14:33, Clear", $"{tag}: the time plate shows the client's clock ({stack.TimeValue.Text} / {time.TooltipText})");
+            Require(t.Size == L.Bar && Near(t.Position, new Vector2(right - L.Bar.X, y)), $"{tag}: the time box follows, bar-sized and right-aligned ({t})");
+            Require(stack.TimeValue.Text == L.TimeNote + "14:33" && time.TooltipText == "Server time 14:33, Clear", $"{tag}: the time box shows the client's clock ({stack.TimeValue.Text} / {time.TooltipText})");
+            // The time box is the content box in one line: its frame (without the scroll bar) and its text style, centred.
+            var contentArt = ClassicMykoArt.Layout(L.Content)!;
+            Require(time.GetThemeStylebox("panel") is StyleBoxTexture { Texture: { } frame } timeBox && frame.GetSize() == new Vector2(contentArt.W, contentArt.Images.Where(n => n.X < contentArt.Find("scroll")!.X).Max(n => n.Y + n.H))
+                && timeBox.TextureMarginLeft == L.TimeFrame && timeBox.TextureMarginRight == L.TimeFrame && timeBox.TextureMarginTop == L.TimeFrame && timeBox.TextureMarginBottom == L.TimeFrame,
+                $"{tag}: the time box is drawn on the content box's frame");
+            var tv = stack.TimeValue; var tr = tv.GetGlobalRect();
+            Require(tv.GetThemeColor("font_color") == stack.Text.GetThemeColor("font_color") && tv.GetThemeFont("font") == stack.Text.GetThemeFont("font")
+                && tv.GetThemeFontSize("font_size") == stack.Text.GetThemeFontSize("font_size"), $"{tag}: the time uses the content box's text style ({tv.GetThemeColor("font_color")})");
+            Require(Inside(t, tr) && tr.Position.X >= t.Position.X + L.TimeFrame - .5f && tr.End.X <= t.End.X - L.TimeFrame + .5f && TextWidth(tv) <= tr.Size.X && Mathf.Abs(tr.GetCenter().X - t.GetCenter().X) < .51f && Mathf.Abs(tr.GetCenter().Y - t.GetCenter().Y) < .51f
+                && tv.HorizontalAlignment == HorizontalAlignment.Center && tv.VerticalAlignment == VerticalAlignment.Center, $"{tag}: the time sits centred and whole inside the frame ({tr}, {TextWidth(tv)} px)");
+            using (var screen = GetViewport().GetTexture().GetImage())
+            {
+                Color At(float x, float yy) => screen.GetPixel((int)x, (int)yy);
+                Color border = At(t.Position.X + 2, t.GetCenter().Y), inner = At(t.Position.X + 5, t.GetCenter().Y);
+                Require(border.Luminance > inner.Luminance + .15f && At(t.GetCenter().X, t.Position.Y + 2).Luminance > inner.Luminance + .15f
+                    && At(t.GetCenter().X, t.End.Y - 2).Luminance > inner.Luminance + .15f && At(t.End.X - 3, t.GetCenter().Y).Luminance > inner.Luminance + .15f,
+                    $"{tag}: the frame border shows on all four sides of the time box ({border} over {inner})");
+            }
             y = t.End.Y + L.BarGap;
             for (int i = 0; i < chips.Count; i++)
             {
@@ -319,7 +256,7 @@ public partial class Preview
             NativeGmList.Set(new[] { "[GM]Moira", "[GM]Hepa", "[GM]Clepio" }); await Frames(3);
             Require(stack.Text.Text == "[GM]Moira\n[GM]Hepa\n[GM]Clepio", "the open GM list follows NativeGmList");
             await Shot("gm-names", Group());
-            // A removed notice closes its open box; with no notice the GM bar follows the time plate.
+            // A removed notice closes its open box; with no notice the GM bar follows the time box.
             await Click(notice.GetGlobalRect().GetCenter() - new Vector2(30, 0)); await Away();
             Net.I.EventTitles.Clear();
             // The preview world does not listen to the change event; the client's own refresh runs as live.
@@ -327,7 +264,7 @@ public partial class Preview
             ((Action?)typeof(Net).GetField("EventTitlesChangedEvent", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Net.I))?.Invoke();
             await Frames(6);
             Require(!box.Visible, "a removed notice closes its box");
-            Require(Mathf.Abs(gm.GetGlobalRect().Position.Y - time.GetGlobalRect().End.Y - L.BarGap) < .5f, "without notices the GM List bar follows the time plate " + gm.GetGlobalRect());
+            Require(Mathf.Abs(gm.GetGlobalRect().Position.Y - time.GetGlobalRect().End.Y - L.BarGap) < .5f, "without notices the GM List bar follows the time box " + gm.GetGlobalRect());
             await Shot("group-no-notices", Group());
             NativeGmList.Clear(); Premium(0, 0, 0);
             layer.RemoveChild(column); column.QueueFree(); stack.QueueFree(); world.Free(); await Frames(2);

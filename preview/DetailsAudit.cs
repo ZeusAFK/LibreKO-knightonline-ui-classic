@@ -73,6 +73,8 @@ public partial class Preview
         foreach(string id in CharacterDetailsSkin.WindowIds)
         {
             if(OS.GetCmdlineUserArgs().Contains("showcase-details") && id=="npc_dialog") continue;
+            // The NPC page is the Classic NPC dialogue, the fallback of the bundled 2.x quest windows (myko-npc-audit's).
+            UseArt(id!="npc_dialog");
             var model=new World();
             string caption=id switch { "presets"=>"Presets","titles"=>"Titles","quests"=>"Quests","character_clan_details"=>"Knights Management","clanpoint"=>"Clan Contribution","quest_target"=>"Target","quest_receipt"=>"Reward","npc_dialog"=>"Quest","userinfo"=>"User Information",_=>id };
             var panel=new HudWindow(id,caption,new Vector2(40,40),persistLayout:false);

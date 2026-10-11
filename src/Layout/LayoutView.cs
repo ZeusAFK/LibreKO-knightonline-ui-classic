@@ -17,7 +17,7 @@ public partial class LayoutView : Control
     private readonly List<(LayoutNode Node, Control Control)> _built = new();
     private readonly Dictionary<LayoutNode, Control> _byNode = new();
 
-    /// <param name="textures">Where the layout's textures come from (the bundled assets by default; local art).</param>
+    /// <param name="textures">Where the layout's textures come from (the Classic assets by default, or the 2.x art of <see cref="LocalAssets"/>).</param>
     public LayoutView(UiKit kit, LayoutNode root, Func<string, Texture2D?>? textures = null)
     {
         _kit = kit;

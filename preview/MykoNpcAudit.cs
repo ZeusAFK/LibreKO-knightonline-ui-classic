@@ -12,12 +12,12 @@ using System.Text.Json;
 public partial class Preview
 {
     /// <summary>
-    /// The quest NPC dialogue on the MYKO reference client's quest windows, installed as local assets
-    /// (re_quest_npc_menu, re_quest_viewer). First without local assets (the bundled Classic dialogue must stay),
+    /// The quest NPC dialogue on the MYKO reference client's quest windows, bundled as 2.x art in assets/myko
+    /// (re_quest_npc_menu, re_quest_viewer). First with the art turned off (the Classic fallback dialogue must stay),
     /// then with them: the talk menu and the quest viewer are captured in every state, their rendered bounds are
     /// compared with the local layouts, and every row, cell and button is driven with real pointer input into the
-    /// client's own callbacks. The local assets come from <c>LIBREKO_AUDIT_LOCAL_ASSETS</c> or the workspace's
-    /// <c>research/assets-local</c> (tools/install_local_assets.py --target research).
+    /// client's own callbacks. The art comes from <c>LIBREKO_AUDIT_LOCAL_ASSETS</c> or, by default, the
+    /// plugin's bundled <c>assets/myko</c>.
     /// </summary>
     private async Task CaptureMykoNpcAudit(int nation)
     {
@@ -25,10 +25,10 @@ public partial class Preview
         if (output.Length == 0) output = ProjectSettings.GlobalizePath("res://../../research/myko-npc-audit");
         System.IO.Directory.CreateDirectory(output);
         string assets = OS.GetEnvironment("LIBREKO_AUDIT_LOCAL_ASSETS");
-        if (assets.Length == 0) assets = ProjectSettings.GlobalizePath("res://../../research/assets-local");
+        if (assets.Length == 0) assets = ProjectSettings.GlobalizePath("res://../" + LocalAssets.Bundled);
         assets = System.IO.Path.GetFullPath(assets);
         foreach (string name in new[] { MykoQuestLayout.MenuLayout, MykoQuestLayout.ViewerLayout })
-            if (!System.IO.File.Exists(System.IO.Path.Combine(assets, "layouts", name + ".json"))) throw new Exception($"Local assets missing ({name}) in {assets}: run tools/install_local_assets.py first");
+            if (!System.IO.File.Exists(System.IO.Path.Combine(assets, "layouts", name + ".json"))) throw new Exception($"2.x art missing ({name}) in {assets}: run tools/install_local_assets.py --bundle");
         foreach (string path in new[] { "build/client/LibreKO.pck", "build/client/source-content/knightonline.pck", "build/client/source-content/content/npcs.pck", "build/client/source-content/content/weapons.pck" })
             if (!ProjectSettings.LoadResourcePack(ProjectSettings.GlobalizePath("res://../../" + path), false)) throw new Exception("Missing live audit pack: " + path);
         GetWindow().ContentScaleMode = Window.ContentScaleModeEnum.Disabled; GetWindow().Size = new Vector2I(1000, 700);

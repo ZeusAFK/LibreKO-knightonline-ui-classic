@@ -17,6 +17,13 @@ foreach ($sub in @('layouts','textures','overrides')) {
         Get-ChildItem -LiteralPath $src -File | Copy-Item -Destination $dst -Force
     }
 }
+# The bundled 2.x window art (src/LocalAssets.cs), mirrored with its subfolders.
+$myko = Join-Path $PSScriptRoot 'assets\myko'
+if (Test-Path -LiteralPath $myko) {
+    $dst = Join-Path $InstallDir 'assets\myko'
+    if (Test-Path -LiteralPath $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }
+    Copy-Item -LiteralPath $myko -Destination $dst -Recurse -Force
+}
 foreach ($file in @('index.json','theme.json')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot "assets\$file") -Destination (Join-Path $InstallDir 'assets') -Force
 }

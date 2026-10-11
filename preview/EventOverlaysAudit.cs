@@ -106,17 +106,8 @@ public partial class Preview
             await Shot(state, board);
             Clear(); world.Free();
         }
-        // Event title chips (collapsed and expanded); on the local notice art they are myko-hud-audit's.
-        foreach (bool expanded in ClassicNoticeBars.Available ? Array.Empty<bool>() : new[] { false, true })
-        {
-            var world = new World();
-            var column = Show((Control)DetailCall(world, "BuildEventTitlesUiPreview", 3, expanded)!, new Vector2(900, 40));
-            NativeOverlays.PrepareLater(world);
-            await Frames();
-            foreach (var chip in column.GetChildren().OfType<PanelContainer>()) Plaque(chip, "event title");
-            await Shot(expanded ? "event-titles-expanded" : "event-titles", column);
-            Clear(); world.Free();
-        }
+        // Event title chips: on the bundled notice art (the default) they are myko-hud-audit's; myko-hud-fallback-audit covers the Classic chips.
+        Require(ClassicNoticeBars.Available, "titles: the bundled notice art is installed (" + Plugin.Kit.Local.Root + ")");
         // Gather chip, Nereid boards.
         {
             var world = new World();

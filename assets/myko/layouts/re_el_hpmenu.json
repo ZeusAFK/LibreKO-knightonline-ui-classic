@@ -1,0 +1,1076 @@
+{
+  "type": "base",
+  "id": "",
+  "rect": [
+    -1,
+    0,
+    88,
+    59
+  ],
+  "drag": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "style": 0,
+  "tag": 0,
+  "tooltip": "",
+  "sounds": [
+    "",
+    ""
+  ],
+  "children": [
+    {
+      "type": "button",
+      "id": "btn_pus",
+      "rect": [
+        0,
+        0,
+        27,
+        28
+      ],
+      "drag": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "style": 65536,
+      "tag": 0,
+      "tooltip": "Power Up Store",
+      "sounds": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "children": [
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.48657718300819397,
+            0.5523385405540466,
+            0.5335570573806763,
+            0.6146993041038513
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            290,
+            248,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 1,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.5335570573806763,
+            0.5523385405540466,
+            0.5788590312004089,
+            0.6146993041038513
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            318,
+            248,
+            27,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 2,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.5822147727012634,
+            0.5523385405540466,
+            0.6275168061256409,
+            0.6146993041038513
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            347,
+            248,
+            27,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 3,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.48657718300819397,
+            0.5523385405540466,
+            0.531879186630249,
+            0.6146993041038513
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            290,
+            248,
+            27,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        }
+      ],
+      "version": 0,
+      "click": [
+        0,
+        0,
+        27,
+        28
+      ]
+    },
+    {
+      "type": "button",
+      "id": "btn_searchdrop",
+      "rect": [
+        30,
+        0,
+        27,
+        28
+      ],
+      "drag": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "style": 65536,
+      "tag": 0,
+      "tooltip": "Search Drop List",
+      "sounds": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "children": [
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            30,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.48657718300819397,
+            0.6815145015716553,
+            0.5335570573806763,
+            0.74387526512146
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            290,
+            306,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            30,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 1,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.5335570573806763,
+            0.6815145015716553,
+            0.5822147727012634,
+            0.74387526512146
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            318,
+            306,
+            29,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            30,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 2,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.5805369019508362,
+            0.6815145015716553,
+            0.6275168061256409,
+            0.74387526512146
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            346,
+            306,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            30,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 3,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.48657718300819397,
+            0.6815145015716553,
+            0.5335570573806763,
+            0.74387526512146
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            290,
+            306,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        }
+      ],
+      "version": 0,
+      "click": [
+        30,
+        0,
+        27,
+        28
+      ]
+    },
+    {
+      "type": "button",
+      "id": "btn_ticket",
+      "rect": [
+        60,
+        0,
+        27,
+        28
+      ],
+      "drag": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "style": 65536,
+      "tag": 0,
+      "tooltip": "Send Ticket",
+      "sounds": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "children": [
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            60,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 3,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.48657718300819397,
+            0.7461024522781372,
+            0.5335570573806763,
+            0.8084632754325867
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            290,
+            335,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            60,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 2,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.5805369019508362,
+            0.7461024522781372,
+            0.6275168061256409,
+            0.8084632754325867
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            346,
+            335,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            60,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 1,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.5335570573806763,
+            0.7461024522781372,
+            0.5805369019508362,
+            0.8084632754325867
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            318,
+            335,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            60,
+            0,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.48657718300819397,
+            0.7461024522781372,
+            0.5335570573806763,
+            0.8084632754325867
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            290,
+            335,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        }
+      ],
+      "version": 0,
+      "click": [
+        60,
+        0,
+        27,
+        28
+      ]
+    },
+    {
+      "type": "button",
+      "id": "btn_scheduler",
+      "rect": [
+        29,
+        30,
+        28,
+        28
+      ],
+      "drag": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "style": 65536,
+      "tag": 0,
+      "tooltip": "Daily Event Schedular",
+      "sounds": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "children": [
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            29,
+            30,
+            28,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\1098border.dxt",
+          "uv": [
+            0.3515625,
+            0.02734375,
+            0.41015625,
+            0.091796875
+          ],
+          "fps": 30.0,
+          "texture": "1098border.png",
+          "src": [
+            180,
+            14,
+            30,
+            33
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            29,
+            30,
+            28,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 1,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\1098border.dxt",
+          "uv": [
+            0.412109375,
+            0.02734375,
+            0.470703125,
+            0.091796875
+          ],
+          "fps": 30.0,
+          "texture": "1098border.png",
+          "src": [
+            211,
+            14,
+            30,
+            33
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            29,
+            30,
+            28,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 2,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\1098border.dxt",
+          "uv": [
+            0.47265625,
+            0.02734375,
+            0.53125,
+            0.091796875
+          ],
+          "fps": 30.0,
+          "texture": "1098border.png",
+          "src": [
+            242,
+            14,
+            30,
+            33
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            29,
+            30,
+            28,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 3,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\1098border.dxt",
+          "uv": [
+            0.533203125,
+            0.02734375,
+            0.591796875,
+            0.091796875
+          ],
+          "fps": 30.0,
+          "texture": "1098border.png",
+          "src": [
+            273,
+            14,
+            30,
+            33
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        }
+      ],
+      "version": 0,
+      "click": [
+        29,
+        30,
+        28,
+        28
+      ]
+    },
+    {
+      "type": "button",
+      "id": "btn_dailyrank",
+      "rect": [
+        0,
+        30,
+        27,
+        28
+      ],
+      "drag": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "style": 65536,
+      "tag": 0,
+      "tooltip": "Daily Rank",
+      "sounds": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "children": [
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            30,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 3,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.786912739276886,
+            0.692650318145752,
+            0.8338926434516907,
+            0.7550111413002014
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            469,
+            311,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            30,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 2,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.8808724880218506,
+            0.692650318145752,
+            0.9278523325920105,
+            0.7550111413002014
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            525,
+            311,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            30,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 1,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.8338926434516907,
+            0.692650318145752,
+            0.8825503587722778,
+            0.7550111413002014
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            497,
+            311,
+            29,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            30,
+            27,
+            28
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.786912739276886,
+            0.692650318145752,
+            0.8338926434516907,
+            0.7550111413002014
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            469,
+            311,
+            28,
+            28
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        }
+      ],
+      "version": 0,
+      "click": [
+        0,
+        30,
+        27,
+        28
+      ]
+    }
+  ],
+  "version": 0
+}

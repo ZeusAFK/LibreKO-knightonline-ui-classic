@@ -6,7 +6,7 @@ using L = KnightOnlineUiClassic.Layout.ClassicStoreMykoLayout;
 namespace KnightOnlineUiClassic.Windows;
 
 /// <summary>
-/// The Power-Up Store on the original Power Up Store art (optional local content). The native store keeps its
+/// The Power-Up Store on the original Power Up Store art (bundled 2.x art, <c>assets/myko</c>). The native store keeps its
 /// behaviour: its search, sort, categories, cards, details, cart, gift and checkout controls are moved onto the
 /// original 1024×765 composition, and the few controls the original had but the native store lacks (card Buy and
 /// Add to Basket buttons, the pager) drive the native store.

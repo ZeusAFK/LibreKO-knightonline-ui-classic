@@ -115,7 +115,7 @@ public partial class ClassicNpcOpeningChoice : Control
     private readonly Label _greeting;
     private readonly List<ClassicNpcOpeningOption> _rows = new();
     private ulong _first;
-    private Vector2 _viewport;
+    private Vector2 _viewport, _placed;
 
     /// <summary>The opening shown (<see cref="NativeNpcOpening.Inn"/>, <see cref="NativeNpcOpening.Smith"/>), null while the shared dialogue shows.</summary>
     public string? Kind { get; private set; }
@@ -163,7 +163,12 @@ public partial class ClassicNpcOpeningChoice : Control
         if (Layout == null) return;
         ulong first = _menu.GetChild(0).GetInstanceId();
         var viewport = GetViewportRect().Size;
-        if (first == _first && viewport == _viewport) return;
+        if (first == _first && viewport == _viewport)
+        {
+            // The 2.x quest menu may hand the window's size back after this view centred it in the same frame.
+            if (_window.Size != _placed) { _placed = _window.Size; _window.Position = ((_viewport - _window.Size) / 2).Floor(); }
+            return;
+        }
         _first = first; _viewport = viewport;
         Rebuild(Layout);
     }
@@ -182,6 +187,7 @@ public partial class ClassicNpcOpeningChoice : Control
         }
         Size = CustomMinimumSize = new Vector2(ClassicNpcOpeningLayout.Width, layout.Height(choices.Length, Shift));
         _window.ResetSize();
+        _placed = _window.Size;
         _window.Position = ((_viewport - _window.Size) / 2).Floor();
         QueueRedraw();
     }

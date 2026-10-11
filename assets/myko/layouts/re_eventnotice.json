@@ -1,0 +1,688 @@
+{
+  "type": "base",
+  "id": "",
+  "rect": [
+    0,
+    0,
+    169,
+    23
+  ],
+  "drag": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "style": 0,
+  "tag": 0,
+  "tooltip": "",
+  "sounds": [
+    "",
+    ""
+  ],
+  "children": [
+    {
+      "type": "button",
+      "id": "btn_notice",
+      "rect": [
+        0,
+        0,
+        169,
+        23
+      ],
+      "drag": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "style": 65536,
+      "tag": 0,
+      "tooltip": "",
+      "sounds": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "children": [
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            0,
+            169,
+            23
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.010067113675177097,
+            0.3897550106048584,
+            0.33557048439979553,
+            0.44766145944595337
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            6,
+            175,
+            194,
+            26
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            0,
+            169,
+            23
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 1,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.010067113675177097,
+            0.5144765973091125,
+            0.33557048439979553,
+            0.5723830461502075
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            6,
+            231,
+            194,
+            26
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            0,
+            169,
+            23
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 2,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.010067113675177097,
+            0.4521158039569855,
+            0.33557048439979553,
+            0.5100222826004028
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            6,
+            203,
+            194,
+            26
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            0,
+            0,
+            169,
+            23
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 3,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\by_myko3.dxt",
+          "uv": [
+            0.010067113675177097,
+            0.3897550106048584,
+            0.33557048439979553,
+            0.44766145944595337
+          ],
+          "fps": 30.0,
+          "texture": "by_myko3.png",
+          "src": [
+            6,
+            175,
+            194,
+            26
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "string",
+          "id": "txt",
+          "rect": [
+            0,
+            0,
+            169,
+            23
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 613416960,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "font": "Verdana",
+          "size": 9,
+          "bold": true,
+          "italic": false,
+          "color": "#ffffffff",
+          "text": "대박이벤트 진행중",
+          "lineSpacing": 0
+        }
+      ],
+      "version": 0,
+      "click": [
+        0,
+        0,
+        169,
+        23
+      ]
+    },
+    {
+      "type": "button",
+      "id": "btn_extention",
+      "rect": [
+        152,
+        5,
+        16,
+        16
+      ],
+      "drag": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "style": 65536,
+      "tag": 0,
+      "tooltip": "",
+      "sounds": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "children": [
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            152,
+            5,
+            16,
+            16
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\re_main_ui_01.dxt",
+          "uv": [
+            0.705078125,
+            0.791015625,
+            0.736328125,
+            0.822265625
+          ],
+          "fps": 30.0,
+          "texture": "re_main_ui_01.png",
+          "src": [
+            361,
+            405,
+            16,
+            16
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            152,
+            5,
+            16,
+            16
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 1,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\re_main_ui_01.dxt",
+          "uv": [
+            0.771484375,
+            0.791015625,
+            0.802734375,
+            0.822265625
+          ],
+          "fps": 30.0,
+          "texture": "re_main_ui_01.png",
+          "src": [
+            395,
+            405,
+            16,
+            16
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            152,
+            5,
+            16,
+            16
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 2,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\re_main_ui_01.dxt",
+          "uv": [
+            0.73828125,
+            0.791015625,
+            0.76953125,
+            0.822265625
+          ],
+          "fps": 30.0,
+          "texture": "re_main_ui_01.png",
+          "src": [
+            378,
+            405,
+            16,
+            16
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            152,
+            5,
+            16,
+            16
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 3,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\re_main_ui_01.dxt",
+          "uv": [
+            0.8046875,
+            0.791015625,
+            0.8359375,
+            0.822265625
+          ],
+          "fps": 30.0,
+          "texture": "re_main_ui_01.png",
+          "src": [
+            412,
+            405,
+            16,
+            16
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        }
+      ],
+      "version": 0,
+      "click": [
+        152,
+        5,
+        16,
+        16
+      ]
+    },
+    {
+      "type": "button",
+      "id": "btn_reduction",
+      "rect": [
+        152,
+        5,
+        16,
+        16
+      ],
+      "drag": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "style": 65536,
+      "tag": 0,
+      "tooltip": "",
+      "sounds": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "children": [
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            152,
+            5,
+            16,
+            16
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 0,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\re_main_ui_01.dxt",
+          "uv": [
+            0.705078125,
+            0.82421875,
+            0.736328125,
+            0.85546875
+          ],
+          "fps": 30.0,
+          "texture": "re_main_ui_01.png",
+          "src": [
+            361,
+            422,
+            16,
+            16
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            152,
+            5,
+            16,
+            16
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 1,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\re_main_ui_01.dxt",
+          "uv": [
+            0.771484375,
+            0.82421875,
+            0.802734375,
+            0.85546875
+          ],
+          "fps": 30.0,
+          "texture": "re_main_ui_01.png",
+          "src": [
+            395,
+            422,
+            16,
+            16
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            152,
+            5,
+            16,
+            16
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 2,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\re_main_ui_01.dxt",
+          "uv": [
+            0.73828125,
+            0.82421875,
+            0.76953125,
+            0.85546875
+          ],
+          "fps": 30.0,
+          "texture": "re_main_ui_01.png",
+          "src": [
+            378,
+            422,
+            16,
+            16
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        },
+        {
+          "type": "image",
+          "id": "",
+          "rect": [
+            152,
+            5,
+            16,
+            16
+          ],
+          "drag": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "style": 0,
+          "tag": 3,
+          "tooltip": "",
+          "sounds": [
+            "",
+            ""
+          ],
+          "children": [],
+          "version": 0,
+          "sourceTexture": "ui\\re_main_ui_01.dxt",
+          "uv": [
+            0.8046875,
+            0.82421875,
+            0.8359375,
+            0.85546875
+          ],
+          "fps": 30.0,
+          "texture": "re_main_ui_01.png",
+          "src": [
+            412,
+            422,
+            16,
+            16
+          ],
+          "flip": [
+            false,
+            false
+          ]
+        }
+      ],
+      "version": 0,
+      "click": [
+        152,
+        5,
+        16,
+        16
+      ]
+    }
+  ],
+  "version": 0
+}

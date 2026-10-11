@@ -1,0 +1,168 @@
+{
+  "source": "2.x-era Knight Online client UI (UIF window overrides), converted to the plugin layout JSON format",
+  "layouts": {
+    "re_powerupstore": {
+      "file": "layouts/re_powerupstore.json",
+      "rect": [
+        0,
+        0,
+        1024,
+        765
+      ],
+      "sha256": "df05880c75ea909267b038447c45551b3e7b13994b4338be109f0e34f5f57303",
+      "textures": [
+        "certified_2020.png",
+        "itemicon_noimage.png",
+        "pus_assets.png",
+        "pus_bg.png",
+        "re_akara_01.png",
+        "re_character_seal_02.png",
+        "re_charactercreate05.png",
+        "re_rebuy.png",
+        "re_ringupgrade.png",
+        "re_skill01.png",
+        "re_skill04.png",
+        "ui_message.png"
+      ]
+    },
+    "re_quest_npc_menu": {
+      "file": "layouts/re_quest_npc_menu.json",
+      "rect": [
+        0,
+        0,
+        373,
+        846
+      ],
+      "sha256": "830ed17fb1232e019572bfb6aa13506e105d01641858c171e12ce43ce85ee29e",
+      "textures": [
+        "ui_quest.png"
+      ]
+    },
+    "re_quest_viewer": {
+      "file": "layouts/re_quest_viewer.json",
+      "rect": [
+        0,
+        0,
+        359,
+        772
+      ],
+      "sha256": "a26d1c0c384ddfe63a841b0f37dca432981bfe60170e7c54d3d0bcbe05be6dff",
+      "textures": [
+        "re_alslaoq.png",
+        "re_quest_npc_menu01.png",
+        "skillbar_old.png",
+        "ui_challenge_05.png",
+        "ui_quest.png"
+      ]
+    },
+    "re_el_hpmenu": {
+      "file": "layouts/re_el_hpmenu.json",
+      "rect": [
+        -1,
+        0,
+        88,
+        59
+      ],
+      "sha256": "9b8841feb355cd3b09149c261e55393ab1f728f8db2a5adec0d9ba5504c3bc6e",
+      "textures": [
+        "1098border.png",
+        "by_myko3.png"
+      ]
+    },
+    "re_ka_hpmenu": {
+      "file": "layouts/re_ka_hpmenu.json",
+      "rect": [
+        -1,
+        0,
+        88,
+        59
+      ],
+      "sha256": "ee92d2935545bfee5f2809f2fc3dd6247d3a53756eb0baf330f470b7aa10fca6",
+      "textures": [
+        "1098border.png",
+        "by_myko3.png"
+      ]
+    },
+    "re_eventnotice": {
+      "file": "layouts/re_eventnotice.json",
+      "rect": [
+        0,
+        0,
+        169,
+        23
+      ],
+      "sha256": "0376c2133b99f87d708015c10bb8477da3626b3647398e11f2dfd9323f57b976",
+      "textures": [
+        "by_myko3.png",
+        "re_main_ui_01.png"
+      ]
+    },
+    "re_el_eventcontent": {
+      "file": "layouts/re_el_eventcontent.json",
+      "rect": [
+        0,
+        0,
+        169,
+        149
+      ],
+      "sha256": "b32f318b5d77d59559326b12ebed083bec6e3df33852b0db5de828c3d04d007a",
+      "textures": [
+        "by_el_new.png",
+        "main_ui_01.png"
+      ]
+    },
+    "re_ka_eventcontent": {
+      "file": "layouts/re_ka_eventcontent.json",
+      "rect": [
+        0,
+        0,
+        169,
+        149
+      ],
+      "sha256": "881a9e37f2f3e577a8325a41550a9094d6fa4c177ac043964bf293676c816ba6",
+      "textures": [
+        "by_el_new.png",
+        "by_ka_new.png",
+        "main_ui_01.png"
+      ]
+    },
+    "re_eventpremium": {
+      "file": "layouts/re_eventpremium.json",
+      "rect": [
+        0,
+        0,
+        169,
+        22
+      ],
+      "sha256": "5902199256d4f6093b0ae2aa49d837fe10f13677a02fab7a238e16337f0eb36d",
+      "textures": [
+        "by_myko3.png"
+      ]
+    }
+  },
+  "textures": {
+    "1098border.png": "bc01da59fcf1f96b17ab4a0232e02e2ff2b32ebe649f7097009d5fb6f3435d12",
+    "by_el_new.png": "6cd9057a48e3a4309b7b89d7f515d923c76a8cc0181bd8e9cdb3e10b15907de5",
+    "by_ka_new.png": "f7d76c0264ed7325f7b48bfc4b60f1ed30e4b20ce146718007ead24700dc528d",
+    "by_myko3.png": "38766aede980f49600c84dd236775f876449c41cf339d381b030ede7ac04113f",
+    "certified_2020.png": "0a4ae038ff6296e855eff61d8d14b835e6038f5d56d71a37eba8b650e8d0997c",
+    "itemicon_noimage.png": "328ff99006ffb8d3ec2d4b22cda026c79abf6438d56d81a0d4ca9ef1c9b48343",
+    "main_ui_01.png": "23677a1256439b926919f118217e6cfb9e35e7d18fda48283490f5adc2d6d760",
+    "pus_assets.png": "69cdc5ff5a3c386dd0bc4710148cb065ec2d305ba894191cf2ef275089236adc",
+    "pus_bg.png": "0cd0e71ce2b07be5da483352bb01ade5d06c0b1f9170997655a63219eae0af16",
+    "re_akara_01.png": "42efed00fb91635275e3faadea7138fa5696a31ded6a036d4207f5f87e5bb7e6",
+    "re_alslaoq.png": "75869ab3e7a9ab7fb21e5b9a1ac0c1cf0bfe6b3e60076da5b5af0db762635c14",
+    "re_character_seal_02.png": "42027c8b6828f675cee4ab34f0fc25ffa4ff56023265869d9859211b9e86fe5b",
+    "re_charactercreate05.png": "d2b3c86303cf1889716fae1db2c78e9d98afc3488e67bd8894fbcf4820411801",
+    "re_main_ui_01.png": "694344015790b6c493924e630b0d31ed857179e35a70ab32ca5674c6c90bfa99",
+    "re_quest_npc_menu01.png": "86be90fef5457704b52032b2e949429c9092e7f9696b7ccbc26d8414b38f1860",
+    "re_rebuy.png": "2c03cfc6c249784f78d23fd949df173c3744d3b23f8434403a9ac321377930ce",
+    "re_ringupgrade.png": "b7c0a7b54fd13d52788dd994d84bf26a77d8cbe99c609aa84577074c32e66d15",
+    "re_skill01.png": "a60464bcc71703fde9a9863c1e7e771c298ede1aac7e47d768dea75b6a461196",
+    "re_skill04.png": "6e0a423673a2aad918638b4828913b520faf6c0774679aafcda85839e46deaec",
+    "skillbar_old.png": "20fd2a71a28ea6c13f816c50b5865474b9f7e1136b2345dc363ab4086a609a7f",
+    "ui_challenge_05.png": "1e201665c5d59eb503a39fc7a8bcf38698de36042e6b97fdf9191d80d98d6479",
+    "ui_message.png": "a8596fcc63a2d0937de167ad7071f446c9a99a705dc11c919e106acd45358fb2",
+    "ui_quest.png": "586631b1703d2f30fc5492045725f90ee5241b87fd13b99560f2671f8bfaa608"
+  }
+}

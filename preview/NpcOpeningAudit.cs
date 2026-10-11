@@ -76,6 +76,12 @@ public partial class Preview
 
         var dialogue = (ClassicNpcDialogue)CharacterDetailsSkin.Apply(window.Body)!;
         var view = window.GetChildren().OfType<ClassicNpcOpeningChoice>().Single();
+        // Quest and talk menus show on the bundled 2.x quest menu (the default) or, in the fallback, the Classic dialogue.
+        var myko = window.GetChildren().OfType<MykoQuestDialogue>().Single();
+        bool art = MykoQuestLayout.Current != null;
+        if (art == ClassicFallback) throw new Exception("NPC opening audit: the 2.x quest menu art is " + (art ? "present" : "missing") + " at " + Plugin.Kit.Local.Root);
+        Control Shared() => art ? myko : dialogue;
+        float SharedWidth() => art ? myko.Layout!.MenuWidth : ClassicNpcLayout.Width;
         NativeNpcOpening.Prepare(window, world);
         string prefix = nation == 1 ? "karus" : "human";
         var checks = new List<string>(); var screens = new List<object>();
@@ -183,18 +189,28 @@ public partial class Preview
             async Task Open() { DetailCall(world, "CloseNpcDialog"); Npc(c.NpcName, c.NpcId, c.NpcType); c.Open(); await Frames(); }
             string name = c.State;
 
-            // The previous presentation: the shared Classic NPC dialogue with the client's choices.
-            view.ProcessMode = ProcessModeEnum.Disabled; view.Visible = false; dialogue.Visible = true;
+            // The previous presentation: the shared NPC dialogue (the 2.x quest menu, or the Classic dialogue) with the client's choices.
+            if (art)
+            {
+                // The 2.x menu stands aside while the view still holds the previous opening: let a plain menu clear it first.
+                DetailCall(world, "CloseNpcDialog");
+                DetailCall(world, "BeginNpcDialog", c.NpcName, "How can I help you?");
+                DetailCall(world, "AddNpcMenuButton", "1.   Close", (Action)(() => { }));
+                DetailCall(world, "EndNpcDialog", 1); await Frames(4);
+                Require(!view.Active, $"{name}: a plain menu clears the opening view");
+            }
+            view.ProcessMode = ProcessModeEnum.Disabled; view.Visible = false; if (!art) dialogue.Visible = true;
             await Open();
-            for (int i = 0; i < 100 && dialogue.Portrait.Visible && !dialogue.Portrait.IsReady; i++) await Frames(1);
+            for (int i = 0; i < 100 && !art && dialogue.Portrait.Visible && !dialogue.Portrait.IsReady; i++) await Frames(1);
             await Frames(4);
             using (var before = Shot()) Save(before, window.GetGlobalRect(), c.State + "-shared-dialogue", null);
-            Require(dialogue.Visible && !view.Visible, $"{name}: without the opening view the client's choices still show in the shared Classic NPC dialogue");
+            Require(Shared().Visible && !view.Visible && (!art || !dialogue.Visible), $"{name}: without the opening view the client's choices still show in the shared NPC dialogue ({(art ? "2.x quest menu" : "Classic")})");
+            if (art) Require(myko.Options.Count == Choices().Length, $"{name}: one 2.x menu row per client choice ({myko.Options.Count})");
             view.ProcessMode = ProcessModeEnum.Inherit;
 
             await Open();
             var native = Choices();
-            Require(view.Active && view.Kind == c.Kind && view.Layout == c.Layout && view.Visible && !dialogue.Visible,
+            Require(view.Active && view.Kind == c.Kind && view.Layout == c.Layout && view.Visible && !dialogue.Visible && !myko.Visible,
                 $"{name}: the client's reply shows the {c.Layout.Art} window instead of the shared NPC dialogue");
             Require(view.Rows.Count == native.Length && native.Length >= 2, $"{name}: one original text row per client choice ({native.Length})");
             Require(view.Rows.Select(r => r.Text).SequenceEqual(native.Select(b => ClassicNpcOpeningLayout.Caption(b.Text))), $"{name}: rows keep the client's captions and order: " + string.Join(" | ", native.Select(b => b.Text)));
@@ -250,18 +266,18 @@ public partial class Preview
             Require(disabledCalls == 0 && window.Visible, $"{name}: a disabled row does not press the client's choice");
             Pointer(Vector2.Zero); await Frames(2);
 
-            // Another NPC's menu afterwards returns to the shared Classic NPC dialogue.
+            // Another NPC's menu afterwards returns to the shared NPC dialogue.
             DetailCall(world, "CloseNpcDialog");
             DetailCall(world, "BeginNpcDialog", c.NpcName, "How can I help you? Select a service below.");
             DetailCall(world, "AddNpcMenuButton", "1.   Tell me more...", (Action)(() => { }));
             DetailCall(world, "AddNpcMenuButton", "2.   Close", (Action)(() => DetailCall(world, "CloseNpcDialog")));
             DetailCall(world, "EndNpcDialog", 2); await Frames(10);
-            Require(!view.Visible && dialogue.Visible && window.GetGlobalRect().Size.X == ClassicNpcLayout.Width, $"{name}: a quest or talk menu afterwards shows the shared NPC dialogue again");
+            Require(!view.Visible && Shared().Visible && Mathf.Abs(window.GetGlobalRect().Size.X - SharedWidth()) < .5f, $"{name}: a quest or talk menu afterwards shows the shared NPC dialogue again ({window.GetGlobalRect().Size.X})");
             // The running game's path: the reply raises the client's network event, the client (subscribed in its
             // Init) builds the menu and the plugin's handler marks it once that menu exists.
             c.Raise();
             await Frames(4);
-            Require(view.Visible && view.Kind == c.Kind && !dialogue.Visible && window.GetGlobalRect().Size == frame.Size && view.Rows.Count == native.Length,
+            Require(view.Visible && view.Kind == c.Kind && !dialogue.Visible && !myko.Visible && window.GetGlobalRect().Size == frame.Size && view.Rows.Count == native.Length,
                 $"{name}: the client's network event after another menu opens the {c.Layout.Art} window again");
             using (var network = Shot()) Save(network, window.GetGlobalRect(), c.State + "-network-reopen", view.Rows);
             DetailCall(world, "CloseNpcDialog"); await Frames(2);

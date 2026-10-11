@@ -11,8 +11,14 @@ using System.Text.Json;
 
 public partial class Preview
 {
+    /// <summary>
+    /// The Classic NPC dialogue (portrait, speech, cards), which is the fallback of the bundled 2.x quest windows: this
+    /// audit turns the art off first. The same conversations on the 2.x quest menu and viewer are myko-npc-audit's.
+    /// </summary>
     private async Task CaptureNpcIntegration(int nation)
     {
+        UseClassicFallback();
+        if(KnightOnlineUiClassic.Layout.MykoQuestLayout.Current!=null) throw new Exception("The 2.x quest art is still in use at "+Plugin.Kit.Local.Root);
         string output=ProjectSettings.GlobalizePath("res://../../research/npc-design-integration-audit");System.IO.Directory.CreateDirectory(output);
         if(OS.GetEnvironment("LIBREKO_AUDIT_OUTPUT_DIR") is {Length:>0} configuredOutput) output=configuredOutput;
         System.IO.Directory.CreateDirectory(output);

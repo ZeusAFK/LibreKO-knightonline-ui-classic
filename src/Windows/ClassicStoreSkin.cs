@@ -11,7 +11,7 @@ public static class ClassicStoreSkin
         Node? root = body; while (root != null && root is not HudWindow) root = root.GetParent();
         if (root is not HudWindow window || window.HasMeta("classic_store") || window.GetMeta("classic_store_controls", 0).AsInt32() != 1) return null;
         window.SetMeta("classic_store", true);
-        // The original Power Up Store art is optional local content; without it the store keeps the bundled Classic design.
+        // The original Power Up Store art is bundled (assets/myko); if it is missing the store keeps the Classic design.
         Control panel = ClassicStoreMykoLayout.Art != null ? new ClassicStoreMykoPanel(window, body) : new ClassicStorePanel(window, body);
         window.AddChild(panel);
         var overlay = window.GetChildren().OfType<Control>().Single(c => c.Name == "pus_overlay"); window.MoveChild(overlay, window.GetChildCount() - 1);

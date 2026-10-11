@@ -5,13 +5,16 @@ using KnightOnlineUiClassic.Layout;
 namespace KnightOnlineUiClassic;
 
 /// <summary>
-/// Optional art that stays on the player's machine and is never distributed with the plugin: layouts and textures
-/// in <c>assets-local/</c> next to the installed plugin (or the folder named by
-/// <see cref="RootVariable"/>). Windows that find their local layout use it; otherwise they keep the bundled design.
+/// The 2.x-era window art bundled with the plugin (<c>assets/myko</c>): converted UIF layouts and their textures for
+/// the Power-Up Store, the quest NPC windows and the HUD pieces. The root is, in order: the folder named by
+/// <see cref="RootVariable"/> (used as given, so an empty folder turns the art off), an <c>assets-local/</c> folder
+/// next to the installed plugin (an untracked developer override), or the bundled folder. Windows whose layout or one
+/// of its textures is missing keep their Classic design.
 /// </summary>
 public sealed class LocalAssets
 {
     public const string Folder = "assets-local";
+    public const string Bundled = "assets/myko";
     public const string RootVariable = "KNIGHTONLINE_UI_CLASSIC_LOCAL_ASSETS";
     private readonly Dictionary<string, LayoutNode?> _layouts = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Texture2D?> _textures = new(StringComparer.OrdinalIgnoreCase);
@@ -21,10 +24,13 @@ public sealed class LocalAssets
     public LocalAssets(string pluginRoot)
     {
         string? overridden = System.Environment.GetEnvironmentVariable(RootVariable);
-        Root = Path.GetFullPath(string.IsNullOrWhiteSpace(overridden) ? Path.Combine(pluginRoot, Folder) : overridden);
+        string developer = Path.Combine(pluginRoot, Folder);
+        Root = Path.GetFullPath(!string.IsNullOrWhiteSpace(overridden) ? overridden
+            : Directory.Exists(developer) ? developer
+            : Path.Combine(pluginRoot, Bundled));
     }
 
-    /// <summary>The local layout, or null when it (or one of its textures) is missing.</summary>
+    /// <summary>The layout, or null when it (or one of its textures) is missing.</summary>
     public LayoutNode? Layout(string name)
     {
         if (_layouts.TryGetValue(name, out var cached)) return cached;

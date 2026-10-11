@@ -10,8 +10,10 @@ using System.Text.Json;
 
 public partial class Preview
 {
+    /// <summary>NPC portraits belong to the Classic NPC dialogue, the fallback of the bundled 2.x quest windows: the art is turned off.</summary>
     private async Task CaptureNpcPortraitAudit(int nation)
     {
+        UseClassicFallback();
         var output=System.IO.Path.GetFullPath(ProjectSettings.GlobalizePath("res://../../research/npc-portraits-all-audit"));
         if(OS.GetEnvironment("LIBREKO_AUDIT_OUTPUT_DIR") is {Length:>0} configured) output=configured;
         System.IO.Directory.CreateDirectory(output);
