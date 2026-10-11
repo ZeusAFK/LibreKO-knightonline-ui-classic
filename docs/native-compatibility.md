@@ -179,9 +179,10 @@ listed. Preview-only members are listed at the end.
 | `_nearbyListed`, `_nearbyRows`, `_nearbyFirstPoll`, `RebuildNearby()` | F/M | Nearby players |
 | `_chatPalette`, `_chatPaletteSlot`, `_chatColorsDraft` | F | Chat colours palette placement and focus |
 | `ShowChatItemTip`, `ShowPlayerMenuByName` | M | Link tooltip, player menu |
-| `_mailIconButton`, `_trophy`, `_trophyBlink`, `_attendanceGift`, `_attendanceGiftBlink`, `_powerUpStoreIcon`, `QueueDockLayout()` | F/M | Hidden HUD icons |
-| `_achClaimablePerTab`, `ClaimableAttendanceCount()` | F/M | Notification count (with public `Net.MailUnread`) |
-| `_mailShown`/`ToggleMail`, `_achShown`/`ToggleAchievements`, `_attendanceShown`/`ToggleAttendance`, `_pusShown`/`ToggleShoppingMall`, `_fullMapShown`/`ToggleFullMap`, `_genieShown`/`ToggleGenie`/`CloseGenie` | F/M | Taskbar window toggles |
+| `_mailIconButton`, `_trophy`, `_trophyBlink`, `_attendanceGift`, `_attendanceGiftBlink`, `_powerUpStoreIcon`, `_genieIcon`, `_eventsIcon`, `_drIcon`, `QueueDockLayout()`, `PlaceTopIcons()` | F/M | Hidden HUD icons (the status bar's letter row opens their windows) |
+| `_achClaimablePerTab`, `ClaimableAttendanceCount()`, `_eventsAlert`, `_drBlink` | F/M | Notification count (with public `Net.MailUnread`); events and daily rank give an attention state |
+| `_mailShown`/`ToggleMail`, `_achShown`/`ToggleAchievements`, `_attendanceShown`/`ToggleAttendance`, `_pusShown`/`ToggleShoppingMall`, `_fullMapShown`/`ToggleFullMap`, `_genieShown`/`ToggleGenie`/`CloseGenie`, `_eventsPanel`/`ToggleEvents`, `_drWindow`/`OnDailyRankIcon` | F/M | Taskbar and status-bar window toggles |
+| `_mainWindows["Character"]` `_dock`/`DockTo`, `_geniePanel` `Layout._defaultPosition`/`ReapplyDefault()`, `_pluginHud` | F/M | The docked Character window and the Genie window's first spot stay clear of the Classic status bar, letter row and minimap |
 | `_hotSelected`, `_hotbar`, `SelectHotAbs(int)` | F/M | Hotbar selection |
 | `_running`, `_selfSitting`, `_autoAttack`, `ToggleRunMode()`, `ToggleAutoAttack()`, `StartCameraHalfTurn()`, `ToggleEsc(bool?)` | F/M | Commands |
 | `_miniMap` | F | `MiniMapVisible` |

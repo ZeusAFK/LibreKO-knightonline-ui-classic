@@ -80,7 +80,12 @@ public partial class Preview
         var mail=Descendants(status).OfType<ClassicStatusShortcut>().Single(b=>b.Name=="btn_mail");
         var shortcuts=Descendants(status).OfType<ClassicStatusShortcut>().ToArray();
         var letters=shortcuts.Where(s=>s.HasBackground).OrderBy(s=>s.Position.X).ToArray();
-        if(!letters.Select(s=>s.Letter).SequenceEqual(new[]{"Q","P","A","D"})) throw new Exception("The shortcut row must contain Q/P/A/D with no M");
+        if(!letters.Select(s=>s.Letter).SequenceEqual(new[]{"Q","P","A","D","G","E","R"})) throw new Exception("The shortcut row must contain Q/P/A/D/G/E/R with no M");
+        float pitch=letters[1].Position.X-letters[0].Position.X;
+        for(int i=1;i<letters.Length;i++)
+            if(letters[i].Position.X-letters[i-1].Position.X!=pitch || letters[i].Position.Y!=letters[0].Position.Y || letters[i].Size!=letters[0].Size || pitch<letters[0].Size.X)
+                throw new Exception("The shortcut row keeps one size, one baseline and the original pitch: "+letters[i].Letter);
+        if(!status.GetGlobalRect().Encloses(letters[^1].GetGlobalRect())) throw new Exception("The status HUD rectangle covers the whole shortcut row");
         if(mail.HasBackground || mail.Letter!="" || mail.Size!=new Vector2(28,28) || mail.MailIconRect.Size!=new Vector2(28,20)) throw new Exception("Mail must be a larger native envelope without a plate or letter");
         if(mail.Position.X!=letters[0].Position.X || mail.Position.Y!=letters[0].Position.Y+letters[0].Size.Y+5) throw new Exception("Mail is not aligned below Q");
         var coordinates=Descendants(status).OfType<Label>().Single(l=>l.Name=="Text_Coordinates");
@@ -124,7 +129,7 @@ public partial class Preview
             foreach(var shortcut in letters) { shortcut.ToggleMode=true;shortcut.SetPressedNoSignal(true);shortcut.QueueRedraw(); }
             await Shot("shortcuts-pressed");
             foreach(var shortcut in letters) { shortcut.SetPressedNoSignal(false);shortcut.ToggleMode=false;shortcut.EmitSignal(Control.SignalName.MouseExited); }
-            GD.Print("HUD_SHORTCUT_RESTORE_OK: Q/P/A/D native plates, no M, transparent 28x20 envelope aligned under Q");
+            GD.Print("HUD_SHORTCUT_RESTORE_OK: Q/P/A/D/G/E/R native plates, no M, transparent 28x20 envelope aligned under Q");
         }
         if(chatInkAudit && nation==1)
         {

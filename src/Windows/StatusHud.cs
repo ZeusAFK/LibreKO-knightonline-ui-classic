@@ -1,5 +1,6 @@
 using Godot;
 using KnightOnlineUiClassic.Layout;
+using LibreKO;
 using LibreKO.Plugins;
 
 namespace KnightOnlineUiClassic.Windows;
@@ -21,6 +22,20 @@ public partial class StatusHud : Control
         }
     }
 
+    private static Func<string> Key(KeyAction action) => () => KeyBinds.Get(action) is { Assigned: true } chord ? chord.Text : "";
+
+    /// <summary>The letter row: column -1 is the original btn_quest position, the rest follow at the btn_power pitch.</summary>
+    private static readonly (string Letter,string Window,string Title,int Column,Func<PluginGame,Action>? Press,Func<string>? Key,string? Alert)[] Shortcuts =
+    {
+        ("Q","quests","Quests",-1,game=>()=>CharacterWindow.ToggleQuestList(game),null,null),
+        ("P","shoppingmall","Power-Up Store",0,null,Key(KeyAction.PowerUpStore),null),
+        ("A","achievements","Achievements",1,null,Key(KeyAction.Achievements),null),
+        ("D","attendance","Daily Attendance",2,null,Key(KeyAction.Attendance),null),
+        ("G","genie","Genie",3,null,Key(KeyAction.Genie),null),
+        ("E","events","Events",4,null,null,"an event starts soon"),
+        ("R","daily_rank","Daily Rank",5,null,null,"new rankings today"),
+    };
+
     private readonly LayoutView _view;
     private readonly PluginGame _game;
     private readonly MapCanvas _map;
@@ -28,6 +43,16 @@ public partial class StatusHud : Control
     private readonly Control _dragHandle;
     private readonly Vector2 _expandedSize,_collapsedSize;
     private readonly Label _coordinates,_zoneName;
+    private readonly List<Control> _shortcuts=new();
+
+    /// <summary>
+    /// The bar with its letter row and envelope: what a docked window must leave free (the minimap below may sit
+    /// under one).
+    /// </summary>
+    /// <summary>The minimap's screen rectangle while it is shown.</summary>
+    public Rect2? MiniMapBounds => _mapGroup.IsVisibleInTree() ? _mapGroup.GetGlobalRect() : null;
+
+    public Rect2 BarBounds => _shortcuts.Aggregate(_view.Get("Img_StateBar")!.GetGlobalRect(),(bounds,shortcut)=>bounds.Merge(shortcut.GetGlobalRect()));
 
     public StatusHud()
     {
@@ -43,7 +68,7 @@ public partial class StatusHud : Control
         var quest=source.Find("btn_quest")!;
         var power=source.Find("btn_power")!;
         int shortcutPitch=power.X-quest.X;
-        float shortcutRight=power.X+shortcutPitch*2+power.W;
+        float shortcutRight=power.X+shortcutPitch*Shortcuts[^1].Column+power.W;
         Size = new Vector2(Mathf.Max(shortcutRight,Mathf.Max(_view.Size.X,background.X+background.W)),background.Y+background.H);
         _expandedSize=Size;
         _collapsedSize=new Vector2(Size.X,source.Find("Img_StateBar")!.H);
@@ -82,18 +107,16 @@ public partial class StatusHud : Control
         _coordinates.AddThemeConstantOverride("outline_size",1);
         _view.AddChild(_coordinates);
         _view.Hide("btn_quest","btn_power");
-        foreach(var (letter,window,title,column) in new[]{
-            ("Q","quests","Quests",-1),
-            ("P","shoppingmall","Power-Up Store",0),
-            ("A","achievements","Achievements",1),
-            ("D","attendance","Daily Attendance",2),
-        })
-            _view.AddChild(new ClassicStatusShortcut(kit,quest,letter,window,title) {
+        // The original row (Q on btn_quest, then the btn_power pitch) continues with the client's Genie,
+        // Events and Daily Rank, which replace the client's own top-right icons.
+        foreach(var (letter,window,title,column,press,key,alert) in Shortcuts)
+            _shortcuts.Add(new ClassicStatusShortcut(kit,quest,letter,window,title,press?.Invoke(_game),key,alert) {
                 Position=new Vector2(power.X+shortcutPitch*column,power.Y),
             });
-        _view.AddChild(new ClassicStatusShortcut(kit,quest,"","mail","Mail") {
+        _shortcuts.Add(new ClassicStatusShortcut(kit,quest,"","mail","Mail") {
             Position=new Vector2(quest.X,quest.Y+quest.H+5),
         });
+        foreach(var shortcut in _shortcuts) _view.AddChild(shortcut);
         Refresh();
     }
 

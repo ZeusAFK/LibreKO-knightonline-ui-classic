@@ -35,6 +35,9 @@ public sealed class Plugin : IPlugin
         NativeHud.Hide(NativeHudPart.AchievementsIcon);
         NativeHud.Hide(NativeHudPart.AttendanceIcon);
         NativeHud.Hide(NativeHudPart.PowerUpStoreIcon);
+        NativeHud.Hide(NativeHudPart.GenieIcon);
+        NativeHud.Hide(NativeHudPart.EventsIcon);
+        NativeHud.Hide(NativeHudPart.DailyRankIcon);
         ui.ReplaceWindow("inventory", host => new InventoryWindow(host));
         ui.ReplaceWindow("character_info", host => new CharacterWindow(host));
         ui.ReplaceWindow("skills", host => new SkillWindow(host));

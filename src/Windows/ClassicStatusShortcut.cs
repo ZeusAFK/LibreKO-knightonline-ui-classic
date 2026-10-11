@@ -10,6 +10,8 @@ public partial class ClassicStatusShortcut : BaseButton
     private readonly LayoutNode _source;
     private readonly UiKit _kit;
     private readonly string _letter,_windowId,_title;
+    private readonly string? _alert;
+    private readonly Func<string>? _key;
     private readonly Font _letterFont=new SystemFont { FontNames=new[]{"Times New Roman"},FontWeight=700 };
     private readonly Font _countFont;
     private readonly Color _ink;
@@ -23,10 +25,17 @@ public partial class ClassicStatusShortcut : BaseButton
     private bool _hovered,_lit;
     private double _refreshClock,_flashClock;
     public string Letter => _letter;
+    public string WindowId => _windowId;
+    /// <summary>Whether the button flashes for the client's attention state (events, daily rank).</summary>
+    public bool Lit => _pending>0;
     public bool HasBackground => _windowId!="mail";
     public Rect2 MailIconRect => new(0,1,28,20);
 
-    public ClassicStatusShortcut(UiKit kit,LayoutNode source,string letter,string windowId,string title)
+    /// <param name="press">Replaces the window toggle (Q opens a Character window page).</param>
+    /// <param name="key">The client's current key binding for the tooltip, or an empty string.</param>
+    /// <param name="alert">For an attention state instead of a count: no badge, this tooltip line while lit.</param>
+    public ClassicStatusShortcut(UiKit kit,LayoutNode source,string letter,string windowId,string title,
+        Action? press=null,Func<string>? key=null,string? alert=null)
     {
         _kit=kit;
         _game=kit.Game;
@@ -34,6 +43,8 @@ public partial class ClassicStatusShortcut : BaseButton
         _letter=letter;
         _windowId=windowId;
         _title=title;
+        _key=key;
+        _alert=alert;
         if(windowId=="mail") _mailTexture=kit.Texture("classic_mail_chaos.png");
         _countFont=kit.Bold;
         _ink=new Color(kit.Nation==1 ? "f0e3e2":"d7e9ee");
@@ -44,7 +55,7 @@ public partial class ClassicStatusShortcut : BaseButton
         MouseFilter=MouseFilterEnum.Stop;
         TextureFilter=TextureFilterEnum.Nearest;
         TooltipText=title;
-        Pressed+=()=>_game.Windows.Toggle(_windowId);
+        Pressed+=press ?? (()=>_game.Windows.Toggle(_windowId));
         MouseEntered+=()=> { _hovered=true; QueueRedraw(); };
         MouseExited+=()=> { _hovered=false; QueueRedraw(); };
         ButtonDown+=QueueRedraw;
@@ -52,6 +63,12 @@ public partial class ClassicStatusShortcut : BaseButton
     }
 
     public override void _Ready() => SetPending(_game.Windows.NotificationCount(_windowId));
+
+    public override string _GetTooltip(Vector2 atPosition)
+    {
+        string key=_key?.Invoke() ?? "";
+        return key.Length==0 ? TooltipText : TooltipText.Replace(_title,$"{_title} ({key})");
+    }
 
     public override void _Process(double delta)
     {
@@ -87,7 +104,7 @@ public partial class ClassicStatusShortcut : BaseButton
         _flashClock=0;
         _mailFrame=0;
         _lit=count>0;
-        TooltipText=count==0 ? _title:_windowId=="mail"
+        TooltipText=count==0 ? _title:_alert!=null ? $"{_title} — {_alert}":_windowId=="mail"
             ? $"Mail — {count} unread"
             : $"{_title} — {count} reward{(count==1 ? "":"s")} to claim";
         QueueRedraw();
@@ -110,7 +127,7 @@ public partial class ClassicStatusShortcut : BaseButton
         DrawStringOutline(_letterFont,pen,_letter,fontSize:fontSize,size:1,modulate:new Color(0,0,0,0.7f));
         var ink=Disabled ? new Color("8c8c8c"):_lit ? new Color("fff1a8"):_hovered || IsPressed() ? Colors.White:_ink;
         DrawString(_letterFont,pen,_letter,fontSize:fontSize,modulate:ink);
-        if(_pending<=0) return;
+        if(_pending<=0 || _alert!=null) return;
         DrawBadge();
     }
     private void DrawBackground()
