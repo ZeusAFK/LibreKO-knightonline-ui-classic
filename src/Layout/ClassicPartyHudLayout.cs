@@ -11,8 +11,11 @@ public static class ClassicPartyHudLayout
     public const string Art = "co_party_us";
     public const string ButtonArt = "{nation}_partyboard_us";
     public const string LayoutId = "classic_party";
-    /// <summary>Same spot as the client's party HUD: the left screen edge, under the status bars.</summary>
-    public static readonly Vector2 DefaultPosition = new(12, 176);
+    /// <summary>
+    /// The Classic party list's spot: the top-right screen edge, as the Classic party roster docked. The left
+    /// edge under the status bars, where the client puts its party HUD, holds the Classic minimap.
+    /// </summary>
+    public static Vector2 DefaultPosition(Vector2 screen) => new(Mathf.Max(0, screen.X - Width), 0);
     public const float Width = 131;
     public static readonly Rect2 Drag = new(1, 2, 123, 22);
     public const float RowsTop = 25, RowPitch = 45;

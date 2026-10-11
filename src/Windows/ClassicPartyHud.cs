@@ -66,7 +66,7 @@ public partial class ClassicPartyHud : Control
     public override void _Ready()
     {
         _party.Changed += QueueRefresh;
-        HudLayout.Attach(this, ClassicPartyHudLayout.LayoutId, _grip, () => ClassicPartyHudLayout.DefaultPosition);
+        HudLayout.Attach(this, ClassicPartyHudLayout.LayoutId, _grip, () => ClassicPartyHudLayout.DefaultPosition(GetViewportRect().Size));
         Refresh();
     }
 

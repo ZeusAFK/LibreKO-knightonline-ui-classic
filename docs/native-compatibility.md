@@ -245,6 +245,20 @@ listed. Preview-only members are listed at the end.
 | The 15 `_auction*` fields of `AuctionFields`; `_auctionTabButtons`, `_auctionPages`, `_auctionLotSlots`; const `SpecialAuctionNoHistoryText` | F | Akara's Altar names, tabs, lots |
 | `_auctionPlaceBid`, `_auctionRefresh`, `_auctionRowButtons` *(fix/auction-replies)* | F | Structural fallback without them |
 
+### Social on upstream cd63f98 (nation chat, party HUD, trade grids, boards, prompts)
+
+Upstream removed the chat-room window, the party window and the trade row lists; the `_chatRoom*`,
+`ChatRoomListEvent`, `_partyMembersBox` and `_exMineList/_exTheirsList/_exBagList` rows above no longer apply.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| Plugin seams `FrameWindow`, `ReplaceHud(HudPart.Party)`, `ReplacePlayerMenu`, `ReplaceTextInput`; `PluginGame.Party` (`IGameParty`) | API | Classic social frame, party list, player menu, text prompt |
+| `_ncRefresh`, `_ncPublicTab`, `_ncPrivateTab`, `_ncPublicRows`, `_ncPrivateRows` | F | Nation chat names, refresh caption |
+| `ToggleSeekParty()`, `_seekShown`, `OpenInvitePrompt()`, `ToggleRowMeter()`, `ToggleWarBoard()`, `_warBoardRowShares`, `_partyHudMenu`, `Net.PartyRowMeterMode`, `Net.PartyCommanderId` | F/M | Party list actions, row meter, member menu style, taskbar party board |
+| `_wantedClassOpt`, `_wantedMsgInput`, `_seekFilters`, `_fullMoonRow`, `_seekHeading`, `_seekStatusLbl`, `_seekEntries`, `_seekFilter`, `_zone` | F | Party board filter panel, Full Moon Rift actions, row descriptions after the client filter |
+| `_exMyOffer`, `_exTheirOffer` (`ExOfferItem.SourceAbs/ItemId/Count/Dura`), `Inv`, `OfferSlot(int)`, `ShowItemTooltip(int, ItemSlot, string)`, `_bagPairing._openedByCompanion`, `HideMainWindow(string)`, `_exStatus`, `Net.ExchangeOtherAddEvent` | F/M/E | Classic trade grids, offering, docked inventory closed, approval withdrawn on partner change |
+| `ChatSystem.RenderText/PlainText/ItemOf` (static), whisper header buttons, `_whisperLayer` popups | M | Whisper item links and emoticons, header actions, emoticon and size popups |
+
 ### Identity and appearance
 
 | Member | Kind | Used for |
