@@ -60,11 +60,21 @@ public partial class ClassicSocialFrame : Container
         foreach (var side in new[] { "left", "top", "right", "bottom" }) _content.AddThemeConstantOverride("margin_" + side, 0);
         AddChild(_content);
         ClassicSocialStyle.Watch(_content);
+        if (frame.Id == "command_list") Callable.From(() => CommandRows(_content)).CallDeferred();
         foreach (var part in GetChildren().OfType<Control>())
             part.SizeFlagsHorizontal = part.SizeFlagsVertical = SizeFlags.Fill;
     }
 
     public Control Content => _content;
+
+    /// <summary>Command list: the group list shows exactly its groups, the command list whole rows that scroll by rows.</summary>
+    private static void CommandRows(Control content)
+    {
+        if (!IsInstanceValid(content)) return;
+        var lists = ClassicSocialStyle.Descendants(content).OfType<ItemList>().ToArray();
+        for (int i = 0; i < lists.Length && i < 2; i++)
+            if (!lists[i].HasNode("classic_list_rows")) lists[i].AddChild(new ClassicListRows(lists[i], fitRows: i == 0));
+    }
 
     public override Vector2 _GetMinimumSize() =>
         _content == null ? Vector2.Zero : ClassicSocialLayout.Frame(_content.GetCombinedMinimumSize());
@@ -96,7 +106,7 @@ public static class ClassicSocialStyle
     public static Color ButtonInk => new("efd9b4");
     public static Color ButtonDisabledInk => new("887e70");
     public static Color Online => new("91c678");
-    public static Color Rule => new(ClassicDesign.Karus ? "77746e" : "8e7545");
+    public static Color Rule => ClassicDarkFrame.Line;
     public static Color RowRule => new("544a37");
     public static Color SelectedEdge => new("e7c773");
 
@@ -126,6 +136,15 @@ public static class ClassicSocialStyle
             Callable.From(() => { if (GodotObject.IsInstanceValid(child) && !child.IsQueuedForDeletion()) Apply(child); }).CallDeferred();
         };
         foreach (var child in node.GetChildren()) Watch(root, child);
+    }
+
+    public static IEnumerable<Node> Descendants(Node node)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            yield return child;
+            foreach (var inner in Descendants(child)) yield return inner;
+        }
     }
 
     public static void Apply(Node node)
@@ -168,7 +187,7 @@ public static class ClassicSocialStyle
     /// <summary>Maps a native ink to the Classic palette; inks without a Classic counterpart stay.</summary>
     public static Color? ClassicInk(Color native)
     {
-        if (native == UiTheme.Gold || native == UiTheme.GoldBright || native == UiTheme.GoldVivid) return ClassicDesign.Heading;
+        if (native == UiTheme.Gold || native == UiTheme.GoldBright || native == UiTheme.GoldVivid) return ClassicDarkFrame.Heading;
         if (native == UiTheme.TextHi || native == new Color("f1ead9")) return ClassicDesign.Text;
         if (native == UiTheme.TextLo || native == UiTheme.TextDim) return ClassicDesign.Muted;
         if (native == UiTheme.Good) return Online;
@@ -199,9 +218,9 @@ public static class ClassicSocialStyle
         foreach (var state in new[] { "normal", "hover", "disabled" }) button.AddThemeStyleboxOverride(state, RowBox(false));
         foreach (var state in new[] { "pressed", "hover_pressed" }) button.AddThemeStyleboxOverride(state, RowBox(true));
         button.AddThemeColorOverride("font_color", ClassicDesign.Text);
-        button.AddThemeColorOverride("font_hover_color", ClassicDesign.Heading);
-        button.AddThemeColorOverride("font_pressed_color", ClassicDesign.Heading);
-        button.AddThemeColorOverride("font_hover_pressed_color", ClassicDesign.Heading);
+        button.AddThemeColorOverride("font_hover_color", ClassicDarkFrame.Heading);
+        button.AddThemeColorOverride("font_pressed_color", ClassicDarkFrame.Heading);
+        button.AddThemeColorOverride("font_hover_pressed_color", ClassicDarkFrame.Heading);
         button.Alignment = button.GetParent() is HBoxContainer ? HorizontalAlignment.Center : HorizontalAlignment.Left;
     }
 
@@ -249,7 +268,7 @@ public static class ClassicSocialStyle
         foreach (var state in new[] { "normal", "hover", "pressed", "hover_pressed", "focus", "disabled" })
             check.AddThemeStyleboxOverride(state, new StyleBoxEmpty { ContentMarginRight = 4 });
         foreach (var state in new[] { "font_color", "font_focus_color" }) check.AddThemeColorOverride(state, ClassicDesign.Text);
-        foreach (var state in new[] { "font_hover_color", "font_pressed_color", "font_hover_pressed_color" }) check.AddThemeColorOverride(state, ClassicDesign.Heading);
+        foreach (var state in new[] { "font_hover_color", "font_pressed_color", "font_hover_pressed_color" }) check.AddThemeColorOverride(state, ClassicDarkFrame.Heading);
         check.AddThemeColorOverride("font_disabled_color", ClassicDesign.Muted);
         check.FocusMode = Control.FocusModeEnum.None;
     }
@@ -270,17 +289,17 @@ public static class ClassicSocialStyle
     /// <summary>The Classic drop-down and context menu: black panel, gold line, selected-row hover.</summary>
     public static void Menu(PopupMenu menu)
     {
-        var panel = ClassicDesign.InputBox();
+        var panel = ClassicDarkFrame.InputBox();
         panel.BgColor = new Color(0, 0, 0, .94f);
         panel.SetContentMarginAll(4);
         menu.AddThemeStyleboxOverride("panel", panel);
-        var hover = new StyleBoxFlat { BgColor = ClassicReportDesign.SelectedRow };
+        var hover = new StyleBoxFlat { BgColor = ClassicDarkFrame.SelectedRow };
         hover.SetContentMarginAll(0);
         menu.AddThemeStyleboxOverride("hover", hover);
         menu.AddThemeFontOverride("font", Plugin.Kit.Bold);
         menu.AddThemeFontSizeOverride("font_size", ClassicSocialLayout.FontSize);
         menu.AddThemeColorOverride("font_color", ClassicDesign.Text);
-        menu.AddThemeColorOverride("font_hover_color", ClassicDesign.Heading);
+        menu.AddThemeColorOverride("font_hover_color", ClassicDarkFrame.Heading);
         menu.AddThemeColorOverride("font_disabled_color", ClassicDesign.Muted);
         menu.AddThemeConstantOverride("v_separation", 6);
         menu.AddThemeConstantOverride("item_start_padding", 6);
@@ -292,7 +311,7 @@ public static class ClassicSocialStyle
         Font(input, true, ClassicDesign.FontSize);
         foreach (var state in new[] { "normal", "focus", "read_only" })
         {
-            var box = ClassicDesign.InputBox();
+            var box = ClassicDarkFrame.InputBox();
             box.ContentMarginRight += input.GetThemeStylebox("normal") is { } native ? Math.Max(0, native.ContentMarginRight - 6) : 0;
             input.AddThemeStyleboxOverride(state, box);
         }
@@ -307,7 +326,7 @@ public static class ClassicSocialStyle
     private static void Text(TextEdit text)
     {
         Font(text, false, ClassicDesign.FontSize);
-        foreach (var state in new[] { "normal", "focus", "read_only" }) text.AddThemeStyleboxOverride(state, ClassicDesign.InputBox());
+        foreach (var state in new[] { "normal", "focus", "read_only" }) text.AddThemeStyleboxOverride(state, ClassicDarkFrame.InputBox());
         text.AddThemeColorOverride("font_color", ClassicDesign.Text);
         text.AddThemeColorOverride("font_readonly_color", ClassicDesign.Muted);
         text.AddThemeColorOverride("font_placeholder_color", ClassicDesign.Muted);
@@ -317,16 +336,16 @@ public static class ClassicSocialStyle
 
     private static void List(ItemList list)
     {
-        var panel = ClassicDesign.InputBox(); panel.SetContentMarginAll(4);
+        var panel = ClassicDarkFrame.InputBox(); panel.SetContentMarginAll(4);
         list.AddThemeStyleboxOverride("panel", panel);
         list.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
         foreach (var state in new[] { "selected", "selected_focus" }) list.AddThemeStyleboxOverride(state, RowBox(true));
-        list.AddThemeStyleboxOverride("hovered", new StyleBoxFlat { BgColor = ClassicReportDesign.SelectedRow });
+        list.AddThemeStyleboxOverride("hovered", new StyleBoxFlat { BgColor = ClassicDarkFrame.SelectedRow });
         list.AddThemeFontOverride("font", Plugin.Kit.Bold);
         list.AddThemeFontSizeOverride("font_size", ClassicSocialLayout.FontSize);
         list.AddThemeColorOverride("font_color", ClassicDesign.Text);
-        list.AddThemeColorOverride("font_hovered_color", ClassicDesign.Heading);
-        list.AddThemeColorOverride("font_selected_color", ClassicDesign.Heading);
+        list.AddThemeColorOverride("font_hovered_color", ClassicDarkFrame.Heading);
+        list.AddThemeColorOverride("font_selected_color", ClassicDarkFrame.Heading);
         list.AddThemeConstantOverride("outline_size", 0);
         ScrollBar(list.GetVScrollBar());
     }
@@ -338,19 +357,8 @@ public static class ClassicSocialStyle
         ScrollBar(scroll.GetVScrollBar());
     }
 
-    /// <summary>The Messenger's scroll bar: dark track with the frame line, the action button art as grabber.</summary>
-    public static void ScrollBar(ScrollBar bar)
-    {
-        bar.CustomMinimumSize = new Vector2(10, 0); bar.FocusMode = Control.FocusModeEnum.None;
-        var track = new StyleBoxFlat { BgColor = new Color("17130e"), BorderColor = new Color("8b795c") }; track.SetBorderWidthAll(1);
-        bar.AddThemeStyleboxOverride("scroll", track);
-        bar.AddThemeStyleboxOverride("scroll_focus", track);
-        foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-        {
-            var box = ClassicDesign.ButtonBox(state == "grabber_highlight" ? "hover" : state == "grabber_pressed" ? "pressed" : "normal");
-            box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-        }
-    }
+    /// <summary>The shared dark-frame scroll bar at the Messenger's 10 px width.</summary>
+    public static void ScrollBar(ScrollBar bar) => ClassicDarkFrame.ScrollBar(bar, 10);
 
     /// <summary>A list row: transparent with the Messenger's row rule, or the gold selection frame.</summary>
     public static StyleBoxFlat RowBox(bool selected)
@@ -379,7 +387,7 @@ public static class ClassicSocialStyle
             panel.SetMeta("social_selected", selected);
             return;
         }
-        var section = ClassicDesign.SectionBox(0);
+        var section = ClassicDarkFrame.SectionBox(0);
         section.SetContentMargin(Side.Left, 1); section.SetContentMargin(Side.Right, 1);
         section.SetContentMargin(Side.Top, 1); section.SetContentMargin(Side.Bottom, 1);
         panel.AddThemeStyleboxOverride("panel", section);

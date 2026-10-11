@@ -53,6 +53,8 @@ public enum NativeOverlay
 public static class NativeOverlays
 {
     public const string Urgent = "overlay_urgent", Registered = "overlay_registered";
+    /// <summary>Meta on the order message: the area banner it must stay below while both are shown.</summary>
+    public const string StackBelow = "overlay_stack_below";
     private const string Prepared = "classic_overlays";
     private static readonly Dictionary<NativeOverlay, List<Action<Node>>> _skins = new();
 
@@ -108,6 +110,11 @@ public static class NativeOverlays
             node.Name = name;
             Apply(part, node);
         }
+        // The client draws the order message (top 110) over the area banner's title (top 100); the skin stacks them.
+        if (Native.Has(world, "_orderMessage") && Native.Has(world, "_areaBanner")
+            && Native.Get<Control>(world, "_orderMessage") is { } order && GodotObject.IsInstanceValid(order) && !order.HasMeta(StackBelow)
+            && Native.Get<Control>(world, "_areaBanner") is { } area && GodotObject.IsInstanceValid(area))
+            order.SetMeta(StackBelow, area);
     }
 
     /// <summary>Prepares every overlay of a world; safe to call again.</summary>

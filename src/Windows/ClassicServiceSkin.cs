@@ -378,18 +378,7 @@ public partial class ClassicServicePanel : Control
         }
         if (control is ItemSlotView item) item.AddThemeStyleboxOverride("panel", _cell);
     }
-    private static void Scroll(ScrollContainer scroll)
-    {
-        var track = new StyleBoxFlat { BgColor = new Color("171715"), BorderColor = new Color("bfa777") };
-        track.SetBorderWidthAll(1); track.SetContentMarginAll(0);
-        var bar = scroll.GetVScrollBar(); bar.AddThemeStyleboxOverride("scroll", track);
-        foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-        {
-            var box = ClassicDesign.ButtonBox(state == "grabber_highlight" ? "hover" : state == "grabber_pressed" ? "pressed" : "normal");
-            box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-        }
-        bar.CustomMinimumSize = new Vector2(12, 0); bar.FocusMode = FocusModeEnum.None;
-    }
+    private static void Scroll(ScrollContainer scroll) => ClassicDarkFrame.ScrollBar(scroll.GetVScrollBar());
     private static void Watch(Control root, Action<Control> style)
     {
         void Visit(Node node)

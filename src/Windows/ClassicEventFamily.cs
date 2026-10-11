@@ -47,12 +47,24 @@ public static class ClassicEventFamily
         int width = Spec.BodyWidth(window.Id);
         if (width > 0) window.Body.CustomMinimumSize = new Vector2(width, window.Body.CustomMinimumSize.Y);
         Restyle(window.Body);
+        if (window.Id == "nestindun") FitDescription(window.Body);
         Native.NativeWindows.OnDescendantAdded(window.Body, node => Callable.From(() =>
         {
             if (GodotObject.IsInstanceValid(node)) Restyle(node);
         }).CallDeferred());
         window.ResetSize();
         return frame;
+    }
+
+    /// <summary>
+    /// Monster Stone: the client reserves a fixed 160-pixel block for the stone's description, which leaves an empty
+    /// band under a one-line text. The block keeps its width and takes the height of its text, so the question and
+    /// the buttons follow the description at the column's gap and the window fits its content.
+    /// </summary>
+    private static void FitDescription(Control body)
+    {
+        if (Tree(body).OfType<Label>().FirstOrDefault(l => l.AutowrapMode != TextServer.AutowrapMode.Off && l.CustomMinimumSize.Y > 0) is { } text)
+            text.CustomMinimumSize = new Vector2(text.CustomMinimumSize.X, 0);
     }
 
     private static void Header(HudWindow window)
@@ -132,7 +144,7 @@ public static class ClassicEventFamily
             switch (control)
             {
                 case ItemSlotView slot: ClassicSlotLook.Attach(slot, light => ClassicProgressionPanel.CellBox(light)); break;
-                case CheckBox or CheckButton: ClassicProgressionPanel.StyleCheck((BaseButton)control); break;
+                case CheckBox or CheckButton: Check((Button)control); break;
                 case OptionButton option: Action(option); ClassicProgressionPanel.StylePopup(option.GetPopup()); option.Alignment = HorizontalAlignment.Left; break;
                 case Button button: StyleButton(button); break;
                 case Label label: StyleLabel(label); break;
@@ -190,6 +202,15 @@ public static class ClassicEventFamily
         Action(button);
     }
 
+    /// <summary>The original check socket with its caption in the family's Arial Bold and light ink (both nations).</summary>
+    private static void Check(Button check)
+    {
+        ClassicProgressionPanel.StyleCheck(check);
+        ClassicEventPanel.Bold(check, null, Spec.SmallFont);
+        foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color" })
+            check.AddThemeColorOverride(state, ClassicDarkFrame.Value);
+    }
+
     /// <summary>The event windows' service button: original art per state, Arial Bold in the button ink.</summary>
     public static void Action(Button button)
     {
@@ -224,24 +245,8 @@ public static class ClassicEventFamily
         scroll.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
     }
 
-    /// <summary>The event windows' scroll bar: a dark track with a thin gold line and the service button art as grabber.</summary>
-    public static void ScrollBar(ScrollBar bar)
-    {
-        var track = new StyleBoxFlat { BgColor = new Color("171715"), BorderColor = new Color("bfa777") };
-        track.SetBorderWidthAll(1); track.SetContentMarginAll(0);
-        var grabber = Plugin.Kit.Layout("co_change_bill_us").Find("btn_ok")!;
-        bar.AddThemeStyleboxOverride("scroll", track);
-        bar.AddThemeStyleboxOverride("scroll_focus", track);
-        foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-        {
-            var part = grabber.Images.FirstOrDefault(n => n.Tag == (state == "grabber_pressed" ? 1 : state == "grabber_highlight" ? 2 : 0)) ?? grabber.Images.First();
-            var box = new StyleBoxTexture { Texture = Plugin.Kit.Texture(part.Texture!), RegionRect = new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH) };
-            box.SetTextureMarginAll(3); box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-        }
-        bar.FocusMode = Control.FocusModeEnum.None;
-        if (bar is VScrollBar) bar.CustomMinimumSize = new Vector2(12, bar.CustomMinimumSize.Y);
-        else bar.CustomMinimumSize = new Vector2(bar.CustomMinimumSize.X, 12);
-    }
+    /// <summary>The event windows' scroll bar: the shared dark-frame bar (<see cref="ClassicDarkFrame.ScrollBar"/>).</summary>
+    public static void ScrollBar(ScrollBar bar) => ClassicDarkFrame.ScrollBar(bar);
 
     private static void Rich(RichTextLabel rich)
     {
@@ -275,9 +280,9 @@ public static class ClassicEventFamily
 
     private static void List(ItemList list)
     {
-        var panel = ClassicDesign.InputBox(); panel.BgColor = Colors.Black; panel.SetContentMarginAll(3);
+        var panel = ClassicDarkFrame.InputBox(); panel.BgColor = Colors.Black; panel.SetContentMarginAll(3);
         list.AddThemeStyleboxOverride("panel", panel); list.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
-        var selected = new StyleBoxFlat { BgColor = ClassicReportDesign.SelectedRow };
+        var selected = new StyleBoxFlat { BgColor = ClassicDarkFrame.SelectedRow };
         foreach (var state in new[] { "selected", "selected_focus" }) list.AddThemeStyleboxOverride(state, selected);
         list.AddThemeFontOverride("font", Plugin.Kit.Bold); list.AddThemeFontSizeOverride("font_size", Spec.SmallFont);
         list.AddThemeColorOverride("font_color", ClassicEventPanel.Ink); list.AddThemeColorOverride("font_selected_color", new Color("ffe094"));
@@ -302,7 +307,7 @@ public static class ClassicEventFamily
             box = inset;
         }
         else if (selected)
-            box = new StyleBoxFlat { BgColor = ClassicReportDesign.SelectedRow };
+            box = new StyleBoxFlat { BgColor = ClassicDarkFrame.SelectedRow };
         else
             box = new StyleBoxFlat { BgColor = Colors.Transparent };
         box.ContentMarginLeft = Math.Max(0, margins.L); box.ContentMarginTop = Math.Max(0, margins.T);

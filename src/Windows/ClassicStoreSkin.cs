@@ -257,11 +257,7 @@ public partial class ClassicStorePanel : Control
                 // Desktop: four whole rows that scroll by rows; the Friend/Clan tags keep the Classic gap before the scroll bar.
                 if (!Platform.TouchUi) Callable.From(() => AddChild(new ClassicRowScroll(sc, 188, 48))).CallDeferred();
             }
-            var bar = sc.GetVScrollBar(); bar.CustomMinimumSize = new Vector2(10, 0); bar.AddThemeStyleboxOverride("scroll", ClassicStoreLayout.Box(0));
-            foreach (string state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-            {
-                var box = ClassicDesign.ButtonBox(state == "grabber" ? "normal" : state == "grabber_highlight" ? "hover" : "pressed"); box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-            }
+            ClassicDarkFrame.ScrollBar(sc.GetVScrollBar(), 10);
         }
         if (control is PanelContainer panel)
         {

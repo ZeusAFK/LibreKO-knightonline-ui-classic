@@ -161,6 +161,16 @@ public partial class Preview
             var opened = await Open("command-list"); var (world, window) = opened;
             await Capture(window, "command-list");
             var groups = (ItemList)DetailField(world, "_cmdGroups")!;
+            var entries = (ItemList)DetailField(world, "_cmdEntries")!;
+            float pitch = entries.GetItemRect(1, false).Position.Y - entries.GetItemRect(0, false).Position.Y;
+            float frame = entries.GetThemeStylebox("panel").GetMinimumSize().Y;
+            Require(!groups.GetVScrollBar().Visible && Math.Abs(groups.Size.Y - frame - groups.ItemCount * pitch) < .5f,
+                "command list: the group list shows exactly its groups, without an empty band or a scroll bar");
+            float shown = (entries.Size.Y - frame) / pitch;
+            Require(Math.Abs(shown - Mathf.Round(shown)) < .02f, $"command list: the command list shows whole rows ({shown:0.00})");
+            entries.GetVScrollBar().Value = pitch * 1.4; await Frames();
+            Require(Math.Abs(entries.GetVScrollBar().Value % pitch) < .01, "command list: the command list scrolls by whole rows");
+            entries.GetVScrollBar().Value = 0; await Frames();
             groups.Select(2); groups.EmitSignal(ItemList.SignalName.ItemSelected, 2L); await Frames();
             Require(((ItemList)DetailField(world, "_cmdEntries")!).ItemCount > 0, "command list: another group lists its commands natively");
             await Capture(window, "command-list-group");

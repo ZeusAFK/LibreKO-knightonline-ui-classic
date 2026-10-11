@@ -128,9 +128,7 @@ public partial class ClassicAuctionPanel : Control
             if (c is ScrollContainer scroll)
             {
                 scroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
-                var bar = scroll.GetVScrollBar(); bar.CustomMinimumSize = new Vector2(10, 0);
-                bar.AddThemeStyleboxOverride("scroll", Box(0));
-                foreach (string state in new[] { "grabber", "grabber_highlight", "grabber_pressed" }) bar.AddThemeStyleboxOverride(state, ClassicDesign.ButtonBox(state == "grabber" ? "normal" : "hover"));
+                ClassicDarkFrame.ScrollBar(scroll.GetVScrollBar(), 10);
             }
         }
         foreach (var child in node.GetChildren()) Watch(child);

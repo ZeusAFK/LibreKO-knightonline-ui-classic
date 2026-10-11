@@ -52,11 +52,7 @@ public partial class ClassicGenderPanel : Control
             Find<Label>("transfer_characters_heading").AddThemeColorOverride("font_color", ClassicDesign.Heading);
             var scroll = Find<ScrollContainer>("transfer_scroll"); Place(scroll, ClassicNationTransferLayout.Characters);
             scroll.CustomMinimumSize = ClassicNationTransferLayout.Characters.Size;
-            var rail = scroll.GetVScrollBar(); rail.CustomMinimumSize = new Vector2(12, 0);
-            var track = new StyleBoxFlat { BgColor = new Color("17130e"), BorderColor = new Color("8b795c") }; track.SetBorderWidthAll(1);
-            rail.AddThemeStyleboxOverride("scroll", track); rail.FocusMode = FocusModeEnum.None;
-            foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-            { var box = ClassicDesign.ButtonBox(state == "grabber_highlight" ? "hover" : state == "grabber_pressed" ? "pressed" : "normal"); box.SetContentMarginAll(0); rail.AddThemeStyleboxOverride(state, box); }
+            ClassicDarkFrame.ScrollBar(scroll.GetVScrollBar());
             var candidates = Find<VBoxContainer>("transfer_characters"); candidates.ChildEnteredTree += StyleCandidate;
             foreach (var child in candidates.GetChildren()) StyleCandidate(child);
         }

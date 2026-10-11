@@ -164,6 +164,10 @@ public partial class Preview
             await Frames();
             foreach (var label in Descendants(banner).OfType<Label>().Concat(Descendants(order).OfType<Label>()).Where(l => l.Visible))
                 Require(label.GetThemeFont("font") == Plugin.Kit.Bold && label.GetThemeConstant("outline_size") > 0, "banner: outlined Arial Bold '" + label.Text + "'");
+            await Frames();
+            var areaLines = Descendants(banner).OfType<Label>().Where(l => l.Visible && l.Text.Length > 0).Select(l => l.GetGlobalRect()).ToArray();
+            foreach (var line in Descendants(order).OfType<Label>().Where(l => l.Visible && l.Text.Length > 0))
+                Require(areaLines.All(area => !area.Intersects(line.GetGlobalRect())), "banners: the order message is stacked below the area banner, not drawn over it");
             await Shot("banners", splash);
             order.QueueFree(); Clear(); world.Free();
         }

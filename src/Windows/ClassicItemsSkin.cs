@@ -47,6 +47,10 @@ public partial class ClassicItemsPanel : Control
     private readonly Dictionary<string, List<Control>> _pages = new();
     private readonly List<Control> _dynamic = new();
     private string _page = "";
+    private readonly Label?[] _helpTitles = new Label?[2], _helpTexts = new Label?[2];
+    private readonly ScrollContainer?[] _helpScrolls = new ScrollContainer?[2];
+    private readonly Button?[] _helpButtons = new Button?[2];
+    private float[]? _helpHeights;
 
     public ClassicItemsPanel(HudWindow window, Control body)
     {
@@ -81,7 +85,7 @@ public partial class ClassicItemsPanel : Control
     private void Resize(string page)
     {
         _page = page;
-        Size = CustomMinimumSize = ClassicItemsLayout.Size(Window.Id, page);
+        Size = CustomMinimumSize = Window.Id == "char_seal" && page is "" or "help" ? HelpSize : ClassicItemsLayout.Size(Window.Id, page);
         _frame.Size = Size;
     }
 
@@ -156,7 +160,7 @@ public partial class ClassicItemsPanel : Control
     {
         Font(check, 12);
         foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color" })
-            check.AddThemeColorOverride(state, ClassicReportDesign.Value);
+            check.AddThemeColorOverride(state, ClassicDarkFrame.Value);
         var art = Plugin.Kit.Layout("{nation}_chat_us").Find("btn_check_normal")!;
         foreach (string state in new[] { "unchecked", "checked", "unchecked_disabled", "checked_disabled" })
             check.AddThemeIconOverride(state, ClassicChatControls.Atlas(art.Images.First(i => i.Tag == (state.StartsWith("unchecked") ? 0 : 1))));
@@ -167,9 +171,9 @@ public partial class ClassicItemsPanel : Control
 
     private static void Input(LineEdit input)
     {
-        Font(input, 12); input.AddThemeColorOverride("font_color", ClassicReportDesign.Value);
+        Font(input, 12); input.AddThemeColorOverride("font_color", ClassicDarkFrame.Value);
         input.AddThemeColorOverride("font_placeholder_color", ClassicDesign.Muted);
-        foreach (string state in new[] { "normal", "focus", "read_only" }) input.AddThemeStyleboxOverride(state, ClassicDesign.InputBox());
+        foreach (string state in new[] { "normal", "focus", "read_only" }) input.AddThemeStyleboxOverride(state, ClassicDarkFrame.InputBox());
     }
 
     private static StyleBoxTexture InventoryCell()
@@ -203,26 +207,15 @@ public partial class ClassicItemsPanel : Control
 
     private static void StylePopup(PopupMenu menu)
     {
-        var panel = ClassicDesign.InputBox(); panel.BgColor = Colors.Black; panel.SetContentMarginAll(4);
+        var panel = ClassicDarkFrame.InputBox(); panel.BgColor = Colors.Black; panel.SetContentMarginAll(4);
         menu.AddThemeStyleboxOverride("panel", panel);
-        var hover = new StyleBoxFlat { BgColor = ClassicReportDesign.SelectedRow, BorderColor = CaptionInk }; hover.SetBorderWidthAll(1);
+        var hover = new StyleBoxFlat { BgColor = ClassicDarkFrame.SelectedRow, BorderColor = CaptionInk }; hover.SetBorderWidthAll(1);
         menu.AddThemeStyleboxOverride("hover", hover);
         menu.AddThemeFontOverride("font", Plugin.Kit.Bold); menu.AddThemeFontSizeOverride("font_size", 12);
-        menu.AddThemeColorOverride("font_color", ClassicReportDesign.Value); menu.AddThemeColorOverride("font_hover_color", ClassicDesign.FrameTitle);
+        menu.AddThemeColorOverride("font_color", ClassicDarkFrame.Value); menu.AddThemeColorOverride("font_hover_color", ClassicDesign.FrameTitle);
     }
 
-    private static void Scroll(ScrollBar bar)
-    {
-        var track = new StyleBoxFlat { BgColor = new Color("171715"), BorderColor = new Color("bfa777") };
-        track.SetBorderWidthAll(1); track.SetContentMarginAll(0);
-        bar.AddThemeStyleboxOverride("scroll", track);
-        foreach (var state in new[] { "grabber", "grabber_highlight", "grabber_pressed" })
-        {
-            var box = ClassicDesign.ButtonBox(state == "grabber_highlight" ? "hover" : state == "grabber_pressed" ? "pressed" : "normal");
-            box.SetContentMarginAll(0); bar.AddThemeStyleboxOverride(state, box);
-        }
-        bar.FocusMode = FocusModeEnum.None;
-    }
+    private static void Scroll(ScrollBar bar) => ClassicDarkFrame.ScrollBar(bar, bar.CustomMinimumSize.X > 0 ? bar.CustomMinimumSize.X : 12);
 
     /// <summary>Styles controls the client builds later (rule rows, keypad keys) as they enter the tree.</summary>
     private void Watch(Node root, Action<Control> style)
@@ -248,8 +241,8 @@ public partial class ClassicItemsPanel : Control
         var jar = Find<TextureRect>("exp_seal_jar");
         var jarRect = ClassicItemsLayout.ExpJar.Grow(-ItemCountStyle.Inset);
         Place(jar, jarRect); jar.StretchMode = TextureRect.StretchModeEnum.Scale; jar.MouseFilter = MouseFilterEnum.Stop;
-        var percent = Find<Label>("exp_seal_percent"); Place(percent, ClassicItemsLayout.ExpPercent); Ink(percent, ClassicReportDesign.Value);
-        var amount = Find<Label>("exp_seal_amount"); Place(amount, ClassicItemsLayout.ExpAmount); Ink(amount, ClassicReportDesign.Caption);
+        var percent = Find<Label>("exp_seal_percent"); Place(percent, ClassicItemsLayout.ExpPercent); Ink(percent, ClassicDarkFrame.Value);
+        var amount = Find<Label>("exp_seal_amount"); Place(amount, ClassicItemsLayout.ExpAmount); Ink(amount, ClassicDarkFrame.Caption);
         if (Maybe<Label>("exp_seal_caption") is { } caption) caption.Visible = false;
         Caption("EXP Seal", ClassicItemsLayout.ExpCaption);
         Button(Find<Button>("exp_seal_on"), ClassicItemsLayout.ExpOn, "ON");
@@ -287,7 +280,7 @@ public partial class ClassicItemsPanel : Control
     private void TimedList()
     {
         var notice = Find<Label>("timed_notice"); Place(notice, ClassicItemsLayout.TimedNotice);
-        notice.AutowrapMode = TextServer.AutowrapMode.WordSmart; notice.ClipText = false; Ink(notice, ClassicReportDesign.Caption, HorizontalAlignment.Center);
+        notice.AutowrapMode = TextServer.AutowrapMode.WordSmart; notice.ClipText = false; Ink(notice, ClassicDarkFrame.Caption, HorizontalAlignment.Center);
         for (int row = 0; row < LibreKO.Domain.TimedItems.RowsPerPage; row++)
         {
             Find<Control>("timed_row_" + row).Visible = false;
@@ -297,7 +290,7 @@ public partial class ClassicItemsPanel : Control
             Place(Find<Label>("timed_time_" + row), ClassicItemsLayout.TimedTime(row), "rows");
         }
         var bar = Find<VScrollBar>("timed_scroll"); Place(bar, ClassicItemsLayout.TimedScroll, "rows"); Scroll(bar);
-        var hide = Find<Label>("timed_hide_label"); Place(hide, ClassicItemsLayout.TimedHideLabel); Ink(hide, ClassicReportDesign.Caption, HorizontalAlignment.Right);
+        var hide = Find<Label>("timed_hide_label"); Place(hide, ClassicItemsLayout.TimedHideLabel); Ink(hide, ClassicDarkFrame.Caption, HorizontalAlignment.Right);
         var check = Find<CheckBox>("timed_hide"); Place(check, ClassicItemsLayout.TimedHide); Check(check);
     }
 
@@ -317,7 +310,7 @@ public partial class ClassicItemsPanel : Control
             foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color" })
                 grade.AddThemeColorOverride(state, colour);
         }
-        var priceLabel = Find<Label>("loot_price_label"); Place(priceLabel, ClassicItemsLayout.LootPriceLabel); Ink(priceLabel, ClassicReportDesign.Value);
+        var priceLabel = Find<Label>("loot_price_label"); Place(priceLabel, ClassicItemsLayout.LootPriceLabel); Ink(priceLabel, ClassicDarkFrame.Value);
         var price = Find<SpinBox>("loot_price"); Place(price, ClassicItemsLayout.LootPrice); Input(price.GetLineEdit());
         // A plain Classic number field: typed or wheeled, without the engine's arrow buttons.
         foreach (string icon in new[] { "updown", "up", "down", "up_hover", "down_hover", "up_pressed", "down_pressed", "up_disabled", "down_disabled" })
@@ -336,7 +329,7 @@ public partial class ClassicItemsPanel : Control
             if (control is Label label)
             {
                 Font(label); label.VerticalAlignment = VerticalAlignment.Center;
-                if (label.Text == "No item rules yet.") Ink(label, ClassicReportDesign.Caption, HorizontalAlignment.Center);
+                if (label.Text == "No item rules yet.") Ink(label, ClassicDarkFrame.Caption, HorizontalAlignment.Center);
                 // Long item names end in an ellipsis inside the list instead of widening it.
                 if (label.SizeFlagsHorizontal.HasFlag(SizeFlags.Expand))
                 {
@@ -358,19 +351,22 @@ public partial class ClassicItemsPanel : Control
 
     private void CharacterSeal()
     {
+        var help = ClassicItemsLayout.SealHelpDefault;
         for (int i = 0; i < 2; i++)
         {
-            var title = Find<Label>("cs_help_title_" + i); Place(title, ClassicItemsLayout.SealHelpTitle(i), "help");
+            var title = Find<Label>("cs_help_title_" + i); Place(title, ClassicItemsLayout.SealHelpTitle(help, i), "help");
             Ink(title, ClassicDesign.FrameTitle, HorizontalAlignment.Center);
             var text = Find<Label>("cs_help_text_" + i);
             var scroll = new ScrollContainer { Name = "cs_help_scroll_" + i, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-            AddChild(scroll); var rect = ClassicItemsLayout.SealHelpText(i); scroll.Position = rect.Position; scroll.Size = rect.Size;
+            AddChild(scroll); var rect = ClassicItemsLayout.SealHelpText(help, i); scroll.Position = rect.Position; scroll.Size = rect.Size;
             scroll.SetMeta(ExpectedRect, rect); Scroll(scroll.GetVScrollBar()); Page("help", scroll);
             text.Reparent(scroll, false); text.CustomMinimumSize = Vector2.Zero; text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            text.AutowrapMode = TextServer.AutowrapMode.WordSmart; Font(text); Ink(text, ClassicReportDesign.Value);
+            text.AutowrapMode = TextServer.AutowrapMode.WordSmart; Font(text); Ink(text, ClassicDarkFrame.Value);
+            _helpTitles[i] = title; _helpScrolls[i] = scroll; _helpTexts[i] = text;
         }
-        Button(Find<Button>("cs_seal"), ClassicItemsLayout.SealPageLeft(ClassicItemsLayout.SealHelpButtons), null, "help");
-        Button(Find<Button>("cs_unseal"), ClassicItemsLayout.SealPageRight(ClassicItemsLayout.SealHelpButtons), null, "help");
+        float buttons = ClassicItemsLayout.SealHelpButtonsTop(help);
+        Button(_helpButtons[0] = Find<Button>("cs_seal"), ClassicItemsLayout.SealPageLeft(buttons), null, "help");
+        Button(_helpButtons[1] = Find<Button>("cs_unseal"), ClassicItemsLayout.SealPageRight(buttons), null, "help");
 
         var selectTitle = Find<Label>("cs_select_title"); Place(selectTitle, ClassicItemsLayout.SealTitle, "select");
         Ink(selectTitle, ClassicDesign.FrameTitle, HorizontalAlignment.Center);
@@ -379,13 +375,13 @@ public partial class ClassicItemsPanel : Control
             Place(slot, ClassicItemsLayout.SealSlot(i), "select");
             slot.Alignment = HorizontalAlignment.Left; slot.ClipText = true; slot.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         }
-        var prompt = Find<Label>("cs_select_prompt"); Place(prompt, ClassicItemsLayout.SealPrompt, "select"); Ink(prompt, ClassicReportDesign.Caption, HorizontalAlignment.Center);
+        var prompt = Find<Label>("cs_select_prompt"); Place(prompt, ClassicItemsLayout.SealPrompt, "select"); Ink(prompt, ClassicDarkFrame.Caption, HorizontalAlignment.Center);
         Button(Find<Button>("cs_select_ok"), ClassicItemsLayout.SealPageLeft(ClassicItemsLayout.SealSelectButtons), null, "select");
         Button(Find<Button>("cs_select_cancel"), ClassicItemsLayout.SealPageRight(ClassicItemsLayout.SealSelectButtons), null, "select");
 
         var codeTitle = Find<Label>("cs_code_title"); Place(codeTitle, ClassicItemsLayout.SealTitle, "code"); Ink(codeTitle, ClassicDesign.FrameTitle, HorizontalAlignment.Center);
         var stars = Find<Label>("cs_code_stars"); Place(stars, ClassicItemsLayout.SealStars, "code");
-        stars.AddThemeStyleboxOverride("normal", ClassicDesign.InputBox()); Ink(stars, ClassicReportDesign.Value, HorizontalAlignment.Center);
+        stars.AddThemeStyleboxOverride("normal", ClassicDarkFrame.InputBox()); Ink(stars, ClassicDarkFrame.Value, HorizontalAlignment.Center);
         stars.AddThemeFontSizeOverride("font_size", 16);
         var keys = Find<GridContainer>("cs_keys"); Place(keys, ClassicItemsLayout.SealKeys, "code");
         keys.AddThemeConstantOverride("h_separation", (int)ClassicItemsLayout.SealKeyGap); keys.AddThemeConstantOverride("v_separation", (int)ClassicItemsLayout.SealKeyGap);
@@ -405,19 +401,50 @@ public partial class ClassicItemsPanel : Control
         Button(Find<Button>("cs_code_cancel"), ClassicItemsLayout.SealPageRight(ClassicItemsLayout.SealCodeButtons), null, "code");
     }
 
+    /// <summary>The help page at the measured height of its two texts (each up to the layout's maximum, then scrolled).</summary>
+    private void LayoutHelp()
+    {
+        var heights = new float[2];
+        for (int i = 0; i < 2; i++)
+        {
+            if (_helpTexts[i] is not { } text || !IsInstanceValid(text) || text.Size.X <= 0) return;
+            heights[i] = Mathf.Min(ClassicItemsLayout.SealHelpTextMax, Mathf.Ceil(text.GetCombinedMinimumSize().Y));
+        }
+        if (_helpHeights != null && heights.SequenceEqual(_helpHeights)) return;
+        _helpHeights = heights;
+        for (int i = 0; i < 2; i++)
+        {
+            Move(_helpTitles[i]!, ClassicItemsLayout.SealHelpTitle(heights, i));
+            Move(_helpScrolls[i]!, ClassicItemsLayout.SealHelpText(heights, i));
+        }
+        float buttons = ClassicItemsLayout.SealHelpButtonsTop(heights);
+        Move(_helpButtons[0]!, ClassicItemsLayout.SealPageLeft(buttons));
+        Move(_helpButtons[1]!, ClassicItemsLayout.SealPageRight(buttons));
+        Resize(_page);
+        PlaceFrameControls();
+    }
+
+    private static void Move(Control control, Rect2 rect)
+    {
+        control.Position = rect.Position; control.Size = rect.Size; control.SetMeta(ExpectedRect, rect);
+    }
+
+    /// <summary>The help page's size: its measured content once the texts are laid out.</summary>
+    public Vector2 HelpSize => _helpHeights != null ? ClassicItemsLayout.SealHelpSize(_helpHeights) : ClassicItemsLayout.Size("char_seal");
+
     private void SyncCharacterSeal()
     {
         int picked = Window.GetMeta("cs_picked", -1).AsInt32();
         for (int i = 0; Maybe<Button>("cs_slot_" + i) is { } slot; i++)
         {
             bool selected = i == picked;
-            var row = new StyleBoxFlat { BgColor = selected ? ClassicReportDesign.SelectedRow : new Color(0, 0, 0, 0),
+            var row = new StyleBoxFlat { BgColor = selected ? ClassicDarkFrame.SelectedRow : new Color(0, 0, 0, 0),
                 BorderColor = selected ? CaptionInk : Separator };
             row.BorderWidthBottom = 1; if (selected) row.SetBorderWidthAll(1);
             row.SetContentMargin(Side.Left, 8); row.SetContentMargin(Side.Right, 8);
             foreach (string state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" })
                 slot.AddThemeStyleboxOverride(state, state == "focus" ? new StyleBoxEmpty() : row);
-            slot.AddThemeColorOverride("font_color", selected ? ClassicDesign.FrameTitle : ClassicReportDesign.Value);
+            slot.AddThemeColorOverride("font_color", selected ? ClassicDesign.FrameTitle : ClassicDarkFrame.Value);
             slot.AddThemeColorOverride("font_hover_color", ClassicDesign.FrameTitle);
             slot.AddThemeColorOverride("font_pressed_color", ClassicDesign.FrameTitle);
             slot.AddThemeColorOverride("font_disabled_color", ClassicDesign.Muted * new Color(1, 1, 1, .8f));
@@ -438,7 +465,7 @@ public partial class ClassicItemsPanel : Control
                 Font(label); label.VerticalAlignment = VerticalAlignment.Center;
                 // Captions in the original caption ink, values in the value ink, as on the Character Report.
                 bool caption = label.GetIndex() % 2 == 0;
-                label.AddThemeColorOverride("font_color", caption ? ClassicReportDesign.Caption : ClassicReportDesign.Value);
+                label.AddThemeColorOverride("font_color", caption ? ClassicDarkFrame.Caption : ClassicDarkFrame.Value);
             }
         }
         Button(Find<Button>("sheet_achievements_button"), ClassicItemsLayout.SheetAchievementsButton);
@@ -453,7 +480,7 @@ public partial class ClassicItemsPanel : Control
         }
         var achievements = Find<Label>("sheet_achievements"); Place(achievements, ClassicItemsLayout.SheetAchievements, "achievements");
         achievements.AutowrapMode = TextServer.AutowrapMode.WordSmart; achievements.ClipText = false; achievements.VerticalAlignment = VerticalAlignment.Top;
-        Ink(achievements, ClassicReportDesign.Caption);
+        Ink(achievements, ClassicDarkFrame.Caption);
     }
 
     // Frame and state -----------------------------------------------------------------------------
@@ -468,7 +495,7 @@ public partial class ClassicItemsPanel : Control
             foreach (var (key, controls) in _pages)
                 if (Window.Id == "char_seal") foreach (var control in controls) control.Visible = key == (page == "" ? "help" : page);
         }
-        if (Window.Id == "char_seal") SyncCharacterSeal();
+        if (Window.Id == "char_seal") { SyncCharacterSeal(); if (_page is "" or "help") LayoutHelp(); }
         if (Window.Id == "exp_seal") SyncExpSeal();
         if (Window.Id == "timed_items")
         {
