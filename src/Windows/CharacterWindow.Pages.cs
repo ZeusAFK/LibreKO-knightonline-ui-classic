@@ -18,8 +18,6 @@ public partial class CharacterWindow
     private double _elapsed;
     private Button? _titleButton;
     private OptionButton? _questFilter, _questKind;
-    private PopupMenu? _contextMenu;
-    private readonly List<(string Action, string Selection)> _contextActions = new();
     private bool _dialogsStyled;
     private LineEdit? _friendName;
     private IGameCharacterPanel? Panel => _game.Windows.CharacterPanel;
@@ -398,16 +396,9 @@ public partial class CharacterWindow
 
     private void ShowContext(string key, string id)
     {
-        _contextMenu ??= new PopupMenu();
-        StylePopup(_contextMenu);
-        if (_contextMenu.GetParent() == null) { AddChild(_contextMenu); _contextMenu.IdPressed += item => { if (item >= 0 && item < _contextActions.Count) { var a = _contextActions[(int)item]; Panel?.Act(a.Action, a.Selection); } }; }
-        _contextMenu.Clear(); _contextActions.Clear();
-        void Add(string text, string action, bool enabled = true)
-        {
-            _contextMenu.AddItem(text, _contextActions.Count);
-            _contextMenu.SetItemDisabled(_contextMenu.ItemCount - 1, !enabled);
-            _contextActions.Add((action, id));
-        }
+        // The shared Classic context menu, titled with the row's name (the quest or the clan for those lists).
+        var rows = new List<ClassicMenuRow>();
+        void Add(string text, string action, bool enabled = true) => rows.Add(new ClassicMenuRow(action, text, () => Panel?.Act(action, id), enabled));
         var row = _lists[key].Selection;
         if (key == "friends") { Add("Private", "friend_private", row?.Online == true); Add("Invite to party", "friend_party", row?.Online == true); Add("Delete", "friend_remove"); }
         else if (key == "quest") { Add("Details", "quest_details"); Add("Track / Untrack", "quest_track", row?.Trackable == true); Add("Abandon", "quest_abandon", row?.Abandonable == true); Add("Turn in", "quest_complete", row?.Claimable == true); }
@@ -422,9 +413,11 @@ public partial class CharacterWindow
             Add("Private", "clan_private", id != _game.Character.Name); Add("Invite to party", "clan_party", id != _game.Character.Name && row?.Online == true); Add("User information", "clan_info");
             if (Panel?.Clan.IsChief == true && id != _game.Character.Name) { Add("Appoint vice-chief", "clan_appoint"); Add("Hand over leadership", "clan_handover"); Add("Expel from clan", "clan_remove"); }
         }
-        _contextMenu.ResetSize(); _contextMenu.Position = (Vector2I)GetViewport().GetMousePosition(); _contextMenu.Popup();
+        string? title = row is { } r ? key == "quest" || key.StartsWith("union") ? r.Cells.FirstOrDefault() : r.Id : null;
+        ClassicContextMenu.Open(this, "character_menu", title, null, ClassicPointer.At(this), rows);
     }
 
+    /// <summary>The quest filter drop-downs (the row menus use <see cref="ClassicContextMenu"/>).</summary>
     private static void StylePopup(PopupMenu menu)
     {
         menu.AddThemeStyleboxOverride("panel", ClassicDesign.InputBox());

@@ -146,7 +146,7 @@ public partial class ClassicPartyHudRow : Control
         if (click.ButtonIndex == MouseButton.Left) { _hud.Party.Pick(_member.Id); AcceptEvent(); }
         else if (click.ButtonIndex == MouseButton.Right)
         {
-            NativeParty.StyleMemberMenu(_hud.World, ClassicSocialStyle.Menu);
+            NativeParty.PrepareMemberMenu(_hud.World, _member.Name);
             _hud.Party.ShowMemberMenu(_member.Id);
             AcceptEvent();
         }

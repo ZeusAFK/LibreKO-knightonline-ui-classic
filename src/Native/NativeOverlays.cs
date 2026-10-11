@@ -118,6 +118,7 @@ public static class NativeOverlays
             && Native.Get<Control>(world, "_orderMessage") is { } order && GodotObject.IsInstanceValid(order) && !order.HasMeta(StackBelow)
             && Native.Get<Control>(world, "_areaBanner") is { } area && GodotObject.IsInstanceValid(area))
             order.SetMeta(StackBelow, area);
+        NativeContextMenus.PrepareLater(world);
     }
 
     /// <summary>Prepares every overlay of a world; safe to call again.</summary>
@@ -139,6 +140,7 @@ public static class NativeOverlays
         Apply(NativeOverlay.Score, Named(world, "_battleeventBoard", "battle_score"));
         Apply(NativeOverlay.Score, Named(world, "_bdwScoreBanner", "border_war_score"));
         PrepareLoot(world);
+        NativeContextMenus.Prepare(world);
         PrepareLater(world);
         double next = 0;
         world.AddChild(new NativeEventWatcher(() =>

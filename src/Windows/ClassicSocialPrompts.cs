@@ -6,76 +6,16 @@ using Message = KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message;
 namespace KnightOnlineUiClassic.Windows;
 
 /// <summary>
-/// The Classic player menu for the client's player-menu seam: the player's name over the client's own rows
-/// on the Classic menu panel (black, the gold line, the selected-row hover). A click outside or Escape closes it.
+/// The Classic player menu for the client's player-menu seam: the shared <see cref="ClassicContextMenu"/> with the
+/// player's name over the client's own rows. The client places it on its own layer and closes it.
 /// </summary>
-public partial class ClassicPlayerMenu : Control
+public partial class ClassicPlayerMenu : ClassicContextMenu
 {
-    private readonly PlayerMenuRequest _request = null!;
-    private readonly PanelContainer _panel = null!;
-
     public ClassicPlayerMenu() { }
 
     public ClassicPlayerMenu(PlayerMenuRequest request)
-    {
-        _request = request;
-        Name = "classic_player_menu";
-        SetAnchorsPreset(LayoutPreset.FullRect);
-        MouseFilter = MouseFilterEnum.Stop;
-        GuiInput += ev => { if (ev is InputEventMouseButton { Pressed: true }) { _request.Close(); AcceptEvent(); } };
-        _panel = new PanelContainer { Name = "player_menu_panel", MouseFilter = MouseFilterEnum.Stop };
-        var box = ClassicDarkFrame.InputBox(); box.BgColor = new Color(0, 0, 0, .94f); box.SetContentMarginAll(ClassicSocialLayout.MenuPadding);
-        _panel.AddThemeStyleboxOverride("panel", box);
-        AddChild(_panel);
-        var rows = new VBoxContainer { Name = "player_menu_rows" };
-        rows.AddThemeConstantOverride("separation", 0);
-        _panel.AddChild(rows);
-        var title = new Label { Name = "player_menu_name", Text = request.Name, MouseFilter = MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(ClassicSocialLayout.MenuWidth, ClassicSocialLayout.MenuRow) };
-        title.VerticalAlignment = VerticalAlignment.Center; title.ClipText = true; title.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-        ClassicSocialStyle.Font(title, true, ClassicSocialLayout.HeadingSize);
-        title.AddThemeColorOverride("font_color", ClassicDarkFrame.Heading);
-        title.AddThemeStyleboxOverride("normal", new StyleBoxEmpty { ContentMarginLeft = ClassicSocialLayout.MenuInset });
-        rows.AddChild(title);
-        rows.AddChild(new HSeparator { Name = "player_menu_rule" });
-        ((HSeparator)rows.GetChild(1)).AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = ClassicSocialStyle.Rule, Thickness = 1 });
-        foreach (var row in request.Rows)
-        {
-            var button = new Button { Name = "player_menu_" + row.Key, Text = row.Caption, FocusMode = FocusModeEnum.None, Alignment = HorizontalAlignment.Left };
-            button.CustomMinimumSize = new Vector2(ClassicSocialLayout.MenuWidth, ClassicSocialLayout.MenuRow);
-            ClassicSocialStyle.Font(button, true, ClassicSocialLayout.FontSize);
-            var normal = new StyleBoxEmpty { ContentMarginLeft = ClassicSocialLayout.MenuInset, ContentMarginRight = ClassicSocialLayout.MenuInset };
-            var hover = new StyleBoxFlat { BgColor = ClassicDarkFrame.SelectedRow, ContentMarginLeft = ClassicSocialLayout.MenuInset, ContentMarginRight = ClassicSocialLayout.MenuInset };
-            button.AddThemeStyleboxOverride("normal", normal);
-            button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
-            foreach (var state in new[] { "hover", "pressed", "hover_pressed" }) button.AddThemeStyleboxOverride(state, hover);
-            button.AddThemeColorOverride("font_color", ClassicDesign.Text);
-            foreach (var state in new[] { "font_hover_color", "font_pressed_color", "font_hover_pressed_color" }) button.AddThemeColorOverride(state, ClassicDarkFrame.Heading);
-            var run = row.Run;
-            button.Pressed += () => run();
-            rows.AddChild(button);
-        }
-    }
-
-    public override void _Ready() => Callable.From(Place).CallDeferred();
-
-    /// <summary>Opens at the cursor and stays on screen, as the client's menu does.</summary>
-    private void Place()
-    {
-        if (!IsInsideTree()) return;
-        var room = GetViewportRect().Size;
-        var size = _panel.GetCombinedMinimumSize();
-        var at = _request.Position + new Vector2(2, 2);
-        at.X = Mathf.Clamp(at.X, 0, Mathf.Max(0, room.X - size.X));
-        at.Y = Mathf.Clamp(at.Y, 0, Mathf.Max(0, room.Y - size.Y));
-        _panel.Position = at.Round(); _panel.Size = size;
-    }
-
-    public override void _UnhandledKeyInput(InputEvent ev)
-    {
-        if (ev is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) return;
-        _request.Close();
-        GetViewport().SetInputAsHandled();
-    }
+        : base("player_menu", request.Name, null, request.Position,
+            request.Rows.Select(r => new ClassicMenuRow(r.Key, r.Caption, r.Run)).ToList(), request.Close) { }
 }
 
 /// <summary>

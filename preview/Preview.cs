@@ -36,7 +36,7 @@ public partial class Preview : Control
             _proxies=proxies.Cast<PreviewData>().ToArray();
             _chatData=(PreviewData)proxies[Array.FindIndex(attach.GetParameters(),p=>p.ParameterType==typeof(IGameChat))];
             bool characterAudit = OS.GetCmdlineUserArgs().Contains("character-audit");
-            if (characterAudit || OS.GetCmdlineUserArgs().Contains("details-audit") || OS.GetCmdlineUserArgs().Contains("hud-audit"))
+            if (characterAudit || OS.GetCmdlineUserArgs().Contains("details-audit") || OS.GetCmdlineUserArgs().Contains("hud-audit") || OS.GetCmdlineUserArgs().Contains("context-menu-audit"))
                 foreach (var proxy in proxies) ((PreviewData)proxy).CharacterAudit = new CharacterAuditData(nation) { ClanFlag=OS.GetCmdlineUserArgs().Contains("details-audit")?LibreKO.Network.ClanTypes.Accredited5:LibreKO.Network.ClanTypes.Training };
             attach.Invoke(game,proxies);
             NativeGame.Source=PreviewNative.Create(attach.GetParameters().Zip(proxies,(p,x)=>(p.ParameterType,(PreviewData)x)).ToDictionary(e=>e.Item1,e=>e.Item2));
@@ -86,6 +86,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("upstream-integration-audit")){await CaptureUpstreamIntegration(game,nation);GetTree().Quit();return;}
             if(OS.GetCmdlineUserArgs().Contains("merchant-palette")){await CaptureMerchantPalette(nation);GetTree().Quit();return;}
             if(OS.GetCmdlineUserArgs().Contains("upstream-npc-audit")){await CaptureUpstreamNpcAudit(game,nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("context-menu-audit")){await CaptureContextMenuAudit(game,nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("world-overlays-audit")){await CaptureWorldOverlaysAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("forgotten-temple-audit")){await CaptureForgottenTempleAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("merchant-audit")){await CaptureMerchantAudit(game,nation);GetTree().Quit();return;}
