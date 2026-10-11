@@ -1,6 +1,7 @@
 using System.Collections;
 using Godot;
 using LibreKO;
+using KnightOnlineUiClassic.Layout;
 
 namespace KnightOnlineUiClassic.Native;
 
@@ -15,14 +16,18 @@ public static class NativeCommandList
 {
     public const string Gate = "classic_command_controls";
 
-    /// <summary>One command as the client lists it.</summary>
-    public sealed record Row(string Id, string ClientGroup, string Text, string Tooltip, bool Available, object Entry);
+    /// <summary>
+    /// One command as the client lists it. Rows without a client <c>CommandEntry</c> (the Genie rows) are client
+    /// actions the Classic list runs itself; they are listed after the entries the client runs.
+    /// </summary>
+    public sealed record Row(string Id, string ClientGroup, string Text, string Tooltip, bool Available, object? Entry);
 
     internal static void Register() => NativeWindows.Prepare("command_list", Prepare);
 
     /// <summary>Names the native lists, reads the client's rows and hands both to the Classic window.</summary>
     public static void Prepare(HudWindow window, World world)
     {
+        PlaceAndEscape(window, world);
         if (window.HasMeta(Gate)) return;
         var groups = Native.Get<ItemList>(world, "_cmdGroups");
         var entries = Native.Get<ItemList>(world, "_cmdEntries");
@@ -100,9 +105,64 @@ public static class NativeCommandList
         {
             int index = list.AddItem(row.Text);
             list.SetItemTooltip(index, row.Tooltip);
-            shown.Add(row.Entry);
+            // Rows past the client's entries are not the client's: its activation handler ignores them.
+            if (row.Entry != null && shown.Count == index) shown.Add(row.Entry);
             style(list, index, row);
         }
+    }
+
+    private const string PlacedMeta = "classic_command_placed";
+
+    /// <summary>
+    /// The window opens at the right edge of the screen, vertically centred, beside the Classic HUD on that side
+    /// (<see cref="ClassicCommandListLayout.OpenSpot"/>). It is the client's default position for the window, so a
+    /// position the player dragged it to (saved in <c>windows.cfg</c>) still wins, and resetting window positions
+    /// brings it back here. The client's Escape order has no entry for the command list; the entry goes ahead of
+    /// the main windows and the whispers (its last two entries).
+    /// </summary>
+    private static void PlaceAndEscape(HudWindow window, World world)
+    {
+        if (window.HasMeta(PlacedMeta)) return;
+        window.SetMeta(PlacedMeta, true);
+        window.DockTo(() => OpenSpot(window, world));
+        const int TrailingEntries = 2;
+        if (Native.Get<List<(Func<bool> IsOpen, Action Close)>>(world, "_escapeStack") is not { } stack) return;
+        bool Open() => GodotObject.IsInstanceValid(window) && window.Visible;
+        void Close() { if (GodotObject.IsInstanceValid(window)) window.Visible = false; }
+        stack.Insert(Math.Max(0, stack.Count - TrailingEntries), (Open, Close));
+    }
+
+    /// <summary>Where the window opens now: <see cref="ClassicCommandListLayout.OpenSpot"/> for this screen and HUD.</summary>
+    public static Vector2 OpenSpot(HudWindow window, World world)
+    {
+        if (!GodotObject.IsInstanceValid(window)) return Vector2.Zero;
+        if (!window.IsInsideTree()) return window.Position;
+        var hud = GodotObject.IsInstanceValid(world) ? HudRects(world) : new List<Rect2>();
+        return ClassicCommandListLayout.OpenSpot(window.GetViewportRect().Size, Footprint(window), hud);
+    }
+
+    public static Vector2 Footprint(Control window)
+    {
+        var min = window.GetCombinedMinimumSize();
+        return new Vector2(Mathf.Max(window.Size.X, min.X), Mathf.Max(window.Size.Y, min.Y)) * window.Scale;
+    }
+
+    /// <summary>
+    /// The HUD the window should not cover: the Classic HUD parts (party list, Info, taskbar, …), the client's Genie
+    /// quick panel and the client's own docking obstacles (clock, premium chip, …).
+    /// </summary>
+    public static List<Rect2> HudRects(World world)
+    {
+        var rects = new List<Rect2>();
+        if (!world.IsInsideTree()) return rects;
+        foreach (var layer in world.GetChildren().OfType<CanvasLayer>())
+            foreach (var hud in Native.Descendants(layer).OfType<NationHud>())
+                foreach (var part in hud.GetChildren().OfType<Control>())
+                    if (part.IsVisibleInTree()) rects.Add(part.GetGlobalRect());
+        if (Native.Get<Control>(world, "_genieSub") is { } genie && GodotObject.IsInstanceValid(genie) && genie.IsVisibleInTree()) rects.Add(genie.GetGlobalRect());
+        try { if (Native.TryCall(world, "DockHudRects", out var dock) && dock is IEnumerable<Rect2> client) rects.AddRange(client); }
+        catch (Exception) { }
+        return rects.Where(r => r.HasArea()).ToList();
     }
 
     /// <summary>Runs a listed row the way a double click does (the client's <c>ItemActivated</c> handler).</summary>
