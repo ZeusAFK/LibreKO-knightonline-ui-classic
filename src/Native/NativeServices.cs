@@ -274,17 +274,24 @@ public sealed class NativeRepair
 
     private readonly HudWindow _panel;
     private readonly World _world;
+    private readonly KnightOnlineUiClassic.Windows.ClassicRepairHammer _hammer;
     private bool _shown, _pending;
 
     private NativeRepair(HudWindow panel, World world)
     {
         _panel = panel;
         _world = world;
+        _hammer = new KnightOnlineUiClassic.Windows.ClassicRepairHammer(() => Classic && Shown) { Name = "classic_repair_hammer" };
     }
+
+    /// <summary>The hammer swing of the repair mode prepared on this repair window.</summary>
+    public static KnightOnlineUiClassic.Windows.ClassicRepairHammer? HammerOf(HudWindow panel) =>
+        panel.GetNodeOrNull<KnightOnlineUiClassic.Windows.ClassicRepairHammer>("classic_repair_hammer");
 
     public static void Attach(HudWindow panel, World world)
     {
         var repair = new NativeRepair(panel, world);
+        panel.AddChild(repair._hammer);
         panel.VisibilityChanged += () =>
         {
             if (!panel.Visible || !repair.Classic) return;
@@ -327,6 +334,7 @@ public sealed class NativeRepair
         if (shown == _shown && pending == _pending) return;
         _shown = shown;
         _pending = pending;
+        if (!shown) _hammer.Stop();
         GameCursor.Set(shown ? pending ? GameCursorKind.RepairAlt : GameCursorKind.Repair : GameCursorKind.Arrow);
     }
 
@@ -334,7 +342,11 @@ public sealed class NativeRepair
     private void Take(int slot)
     {
         if (!Shown) return;
-        if (!InFlight && Affordable(slot)) Native.Call(_world, "RepairTakeFromBag", slot);
+        if (!InFlight && Affordable(slot))
+        {
+            Native.Call(_world, "RepairTakeFromBag", slot);
+            if (InFlight) _hammer.Strike();
+        }
         Sync();
     }
 
@@ -342,7 +354,11 @@ public sealed class NativeRepair
     {
         if (!Shown || InFlight) return;
         int first = Native.Call(_world, "RepairableSlots") is IEnumerable<int> slots ? slots.DefaultIfEmpty(-1).First() : -1;
-        if (first < 0 || Affordable(first)) Native.Call(_world, "RepairAll");
+        if (first < 0 || Affordable(first))
+        {
+            Native.Call(_world, "RepairAll");
+            if (InFlight) _hammer.Strike();
+        }
         Sync();
     }
 
@@ -368,6 +384,8 @@ public sealed class NativeRepair
     private void OnResult(bool ok, int money)
     {
         if (!ok && _pending && Classic) Native.Call(_world, "CombatNotice", Failed);
+        // The client's handler ran first: Repair All has already sent its next item.
+        if (ok && Classic && InFlight) _hammer.Strike();
         Sync();
     }
 }
