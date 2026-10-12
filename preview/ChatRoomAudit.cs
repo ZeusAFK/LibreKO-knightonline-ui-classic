@@ -27,6 +27,8 @@ public partial class Preview
         GetWindow().ContentScaleMode = Window.ContentScaleModeEnum.Disabled; GetWindow().Size = new Vector2I(1100, 640);
         GetViewport().GuiEmbedSubwindows = true;
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1100, 640), MouseFilter = MouseFilterEnum.Ignore });
+        // The installed content: item data (links, tooltips, text table) and the emoticon sheet.
+        if (!ProjectSettings.LoadResourcePack(ProjectSettings.GlobalizePath("res://../../build/client/source-content/knightonline.pck"), false)) throw new Exception("Missing existing content pack");
         var offline = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, offline);
         ItemData.EnsureLoaded();
         var voice = VoiceChat.Ensure(this);
@@ -103,6 +105,12 @@ public partial class Preview
                 Require(cell.Size == new Vector2(Spec.Cell, Spec.Cell) && cell.GetThemeStylebox("normal") is StyleBoxTexture, state + ": icon action in the Classic cell " + cell.Name + " " + cell.Size);
             var input = Named<LineEdit>(content, "room_input");
             if (input.IsVisibleInTree()) Require(input.Size.Y == Spec.RowHeight && input.GetThemeStylebox("normal") is StyleBoxFlat { BorderColor: var line } && line == ClassicDarkFrame.Line, state + ": Classic composer field");
+            if (input.IsVisibleInTree())
+            {
+                var face = Named<TextureButton>(input, "room_emoticons");
+                Require(face.TextureNormal != null && face.Size == new Vector2(Spec.EmoticonSize, Spec.EmoticonSize) && input.GetGlobalRect().Grow(-3).Encloses(face.GetGlobalRect())
+                    && Mathf.Abs(face.GetGlobalRect().GetCenter().Y - input.GetGlobalRect().GetCenter().Y) <= 0.5f, state + ": the emoticon button sits inside the composer field " + face.GetGlobalRect());
+            }
             var log = Named<ScrollContainer>(content, "room_log_scroll").GetGlobalRect();
             foreach (var bubble in Descendants(content).OfType<PanelContainer>().Where(p => p.HasMeta("room_bubble")))
             {
@@ -183,6 +191,46 @@ public partial class Preview
             await Capture(window, "minimized-unread");
             Press(Descendants(frame).OfType<BaseButton>().Single(b => b.Name == "btn_open")); await Frames(6);
             Require(!window.Minimized && !frame.Unread && frame.Size == Spec.Size(true, true), "text: Restore expands the room and clears the blink");
+            Done(opened);
+        }
+        // Item links and emoticons in posts (installed item data and emoticon sheet): the grade-coloured link opens
+        // the client's item tooltip; emoticons sit inline on the text line inside the Classic post field.
+        {
+            var opened = await Open("text"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
+            DetailCall(world, "BuildItemTooltip");
+            var tipLayer = (CanvasLayer)DetailField(world, "_itemTipLayer")!; world.RemoveChild(tipLayer); AddChild(tipLayer);
+            var texts = Descendants(frame).OfType<RichTextLabel>().Where(r => r.Name == "room_post_text").ToArray();
+            Require(texts.Length > 0 && texts.All(r => r.GetThemeFont("normal_font") == Plugin.Kit.ChatStrong && r.GetThemeFontSize("normal_font_size") == Spec.LineSize), "links: post text in the Classic chat font");
+            const int linked = 156210008;
+            Require(ItemData.Get(linked) != null, "links: the installed item data knows the linked item " + linked);
+            var link = texts.SingleOrDefault(r => r.Text.Contains("[url=i:" + linked + "]"));
+            Require(link != null && link.Text.Contains("[color=#" + ItemGrade.Tint(linked).ToHtml(false) + "][lb]" + ItemData.DisplayName(linked) + "[rb]"),
+                "links: the item link shows the item name in its grade colour " + ItemGrade.Tint(linked).ToHtml(false));
+            var faces = texts.Where(r => r.Text.Contains("[img") && r.Text.Contains(Emoticons.SheetPath)).ToArray();
+            Require(ResourceLoader.Exists(Emoticons.SheetPath) && faces.Length >= 2, "links: emoticons render from the installed sheet (" + faces.Length + " posts)");
+            // Scroll the linked post into view and check that the link and the emoticons stay inside their fields.
+            var logScroll = Named<ScrollContainer>(frame, "room_log_scroll");
+            foreach (var rich in faces.Append(link!))
+            {
+                var bubble = rich.GetParent<Control>();
+                while (bubble is not PanelContainer) bubble = bubble.GetParent<Control>();
+                var inner = bubble.GetGlobalRect().Grow(-1);
+                Require(inner.Encloses(rich.GetGlobalRect()), "links: post text inside its Classic field " + rich.GetGlobalRect() + " / " + bubble.GetGlobalRect());
+                Require(rich.GetContentHeight() <= rich.Size.Y + 0.5f && rich.Size.Y >= Spec.LineSize, "links: no clipped line in a post with links or emoticons (" + rich.GetContentHeight() + " / " + rich.Size.Y + ")");
+            }
+            logScroll.EnsureControlVisible(link!); await Frames(4);
+            link!.EmitSignal(RichTextLabel.SignalName.MetaClicked, "i:" + linked); await Frames(4);
+            var tip = (Control)DetailField(world, "_itemTipPanel")!;
+            Require(world.ItemTooltipVisible && Descendants(tip).OfType<Label>().Any(l => l.Text.Contains(ItemData.DisplayName(linked).Trim())), "links: clicking the link opens the client's tooltip for the item");
+            window.Position = new Vector2(40, 40); await Frames(2);
+            tip.Position = new Vector2(window.GetGlobalRect().End.X + 12, 40); await Frames(3);
+            string tipFile = prefix + "-links-tooltip.png";
+            GetViewport().GetTexture().GetImage().SavePng(output + "/" + tipFile); screens.Add(new { state = "links-tooltip", file = tipFile, bounds = window.GetGlobalRect().ToString() });
+            link.EmitSignal(RichTextLabel.SignalName.MetaHoverEnded, "i:" + linked); await Frames(2);
+            Require(!world.ItemTooltipVisible, "links: leaving the link hides the tooltip");
+            logScroll.ScrollVertical = 0; await Frames(3);
+            await Capture(window, "links-top");
+            tipLayer.QueueFree();
             Done(opened);
         }
         // Leader in a call: in-call controls, selected and speaking roster rows, enabled leader actions.

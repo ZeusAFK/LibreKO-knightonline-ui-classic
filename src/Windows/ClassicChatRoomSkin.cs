@@ -351,7 +351,7 @@ public partial class ClassicChatRoomFrame : Container
     /// <summary>
     /// Takes the client's header actions (leave the room, channel list) onto the Classic title row and dresses the
     /// room. Called by the preparer once the client has built the room; the dressing runs again whenever the room
-    /// opens, after any generic styling that ran in between.
+    /// opens, for the controls the client rebuilt meanwhile.
     /// </summary>
     public void Bind(HudWindow window)
     {
@@ -385,9 +385,6 @@ public partial class ClassicChatRoomFrame : Container
     public void Dress()
     {
         if (!Plugin.Active || !IsInstanceValid(this) || _window == null || !IsInstanceValid(_window)) return;
-        // The generic Classic extender gives every native window its art and theme; the room has its own frame.
-        _window.Theme = null;
-        foreach (var stray in _window.GetChildren().OfType<ClassicFrame>().ToArray()) { _window.RemoveChild(stray); stray.QueueFree(); }
         // The client sizes the body for its 380 px log; the Classic log and the members column set the width.
         _window.Body.CustomMinimumSize = Vector2.Zero;
         if (Find<HBoxContainer>("room_main") is { } main) main.AddThemeConstantOverride("separation", (int)Spec.ColumnGap);
@@ -446,6 +443,14 @@ public partial class ClassicChatRoomFrame : Container
             ClassicSocialStyle.Input(input);
             foreach (var state in new[] { "normal", "focus", "read_only" })
                 if (input.GetThemeStylebox(state) is StyleBoxFlat box) box.ContentMarginRight = Spec.EmoticonRoom;
+            // The client's 20 px emoticon button nearly fills the Classic field; it takes the inline emoticon size.
+            foreach (var face in input.GetChildren().OfType<TextureButton>())
+            {
+                face.Name = "room_emoticons";
+                face.CustomMinimumSize = new Vector2(Spec.EmoticonSize, Spec.EmoticonSize);
+                face.OffsetLeft = -Spec.EmoticonInset - Spec.EmoticonSize; face.OffsetRight = -Spec.EmoticonInset;
+                face.OffsetTop = -Spec.EmoticonSize / 2; face.OffsetBottom = Spec.EmoticonSize / 2;
+            }
         }
         if (Find<HBoxContainer>("room_record_strip") is { } strip)
         {

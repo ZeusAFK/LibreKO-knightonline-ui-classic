@@ -339,8 +339,10 @@ above are no longer read.
 | Member | Kind | Used for |
 | --- | --- | --- |
 | `IGameParty.RowMeterMode`, `RowMeterShare`, `CycleRowMeter`, `ToggleWarBoard`, `MoveRow`, `AutoRejoin`, `AutoRejoinTip`, `ToggleAutoRejoin`, `CommanderBarHidden`, `ShowCommanderBar`; `GamePartyMember.HpLook` | API | Classic party list: row meter, War Board action, Move up / Move down arrows in the client's row order, automatic re-invite, commander bar restore, HP look art |
-| `HudPart.WarBoard`; `IGameParty.WarBoardOpen`, `WarBoardMode`, `WarBoardAlpha`, `WarBoardRows`, `SetWarBoardMode`, `SetWarBoardAlpha` | API | Classic Party War Board (`ClassicWarBoard`); the client keeps the requests, their cooldown and the ranking (the cooldown digits are not in the API and are not shown) |
+| `HudPart.WarBoard`; `IGameParty.WarBoardOpen`, `WarBoardMode`, `WarBoardAlpha`, `WarBoardRows`, `SetWarBoardMode`, `SetWarBoardAlpha` | API | Classic Party War Board (`ClassicWarBoard`); the client keeps the requests, their cooldown and the ranking |
+| `_warBoardCool` (`Label`) | F | The client's 5 s tab cooldown (not in the API): its seconds show right of the Classic tabs while the client holds a changed tab; missing, the board shows no digits |
 | `IGameParty.UserVoteHere`, `UserVote(id)`; `IGameUserVote` (`Title`, `SelectPrompt`, `Reasons`, `CostLine`, `AskQuestion`, `AskReason`, `AskSeconds`, `AskSecondsLeft`, `NoticeTitle`, `NoticeLines`, `Send`, `CancelSelect`, `Answer`, `CloseNotice`); `UserVote` constants | API | Classic `user_vote`, `user_vote_ask`, `user_vote_notice` on the message box (`ClassicUserVoteSkin`); the client's member menu offers User Vote in Juraid and answers Draw when the countdown ends |
+| `IGameUserVote` proxy `Source` (one or more facade proxies) → bridge `_w`; `_userVoteAskShown` (`UserVoteAsk.Reason`) | F | Only when the client's text table lacks the reason texts (43790-43793, it returns "Reason n" or an empty reason line): the reasons and a received vote's listed reason show English captions (`NativeUserVote`); the client's text is used whenever present |
 | `IGameUserInfo.Card` (`GameUserCard`, `GameRankRibbon`, `GameUserRankRow`), `Changed`; `UserInfoCard.PodiumPlaces`; resource `res://assets/ui/daily_rank/medal_{n}.png` | API | Classic character card (`ClassicUserInfoCard`); the client's card body stays hidden in the window, its Confirm button below the Classic card |
 | `_fullMoonRow` buttons (Enter, Party Board, Auto Entry) | F | Named `seek_full_moon_enter/shout/auto` for the Classic party board's Full Moon row |
 | `OpenClanMemo()` | M | Clan memo from the clan page's own-row menu and the Knights Management Memo action |
@@ -452,6 +454,12 @@ the room or `VoiceChat`; the plugin subscribes no room or voice event (it reads 
 | `ChatSystem.ChatEntry.Place`; `ChatCategory.NoahKnights/ChatRoom/All`, `ChatType.NoahKnights` (34); `IGameCharacter.NoahKnight` | F/API | Room lines show `[ Zone ]`; the Classic chat masks with `ChatCategory.All` (saved filters migrate with `chat.filter_rev` 2 like the client's `ChatPrefs`); Noah Knights tab (`\|`) only for Noah Knights, who lose Clan and Alliance. `IGameChat.Lines` carries rendered BBCode only, so the Classic chat keeps reading `_store` for its own format |
 | `IGameCommands.Run(KeyAction.ToggleRun/AutoAttack)`, `ShowExitMenu()` | API | Replace the reflected `ToggleRunMode`, `ToggleAutoAttack`, `ToggleEsc(true)`; `StartCameraHalfTurn` has no key action and stays reflected |
 | `WhisperLinks.Linkify/IsWebLink` | M | Whisper notices with web links open them, as the client does |
+| `EmoticonPicker.InputButton` (the `TextureButton` in `_roomInput`) | F | Named `room_emoticons` and set to the inline emoticon size inside the Classic composer field |
+
+`chat_room`, `user_vote`, `user_vote_ask`, `user_vote_notice` and `repurchase` are excluded from the generic
+`ClassicSkin` window extender in `Plugin.cs`; their skins no longer undo its theme and stray frame. Item links and
+emoticons in room posts need the installed content (`items.json`, `assets/ui/emoticons/sheet.png`), which
+`chat-room-audit` mounts from `build/client/source-content/knightonline.pck`.
 
 ### Preview-only members
 

@@ -11,7 +11,8 @@ namespace KnightOnlineUiClassic.Windows;
 /// The Classic Party War Board in place of the client's board (<see cref="HudPart.WarBoard"/>), driven by the
 /// plugin party API: the plain Classic frame, the Damage and Healing tabs, the background transparency the client
 /// saves, and one row per ranked member with the client's class colour behind the share. The client keeps the
-/// requests, their cooldown and the ranking; the board shows only while the client has it open.
+/// requests, their cooldown and the ranking; the board shows only while the client has it open. The facade has no
+/// tab cooldown, so its seconds are mirrored from the client's own cooldown label beside the tabs.
 /// </summary>
 public partial class ClassicWarBoard : Control
 {
@@ -21,14 +22,15 @@ public partial class ClassicWarBoard : Control
     private readonly HSlider _alpha = null!;
     private readonly Button _damage = null!, _healing = null!;
     private readonly ClassicWarBoardRow[] _rows = new ClassicWarBoardRow[PartyWarBoard.MaxRows];
-    private readonly Label _empty = null!;
+    private readonly Label _empty = null!, _cooldown = null!;
+    private readonly Func<World?>? _world;
     private bool _queued, _syncing;
 
     public ClassicWarBoard() { }
 
-    public ClassicWarBoard(IGameParty party)
+    public ClassicWarBoard(IGameParty party, Func<World?>? world = null)
     {
-        _party = party;
+        _party = party; _world = world;
         Name = "classic_war_board"; MouseFilter = MouseFilterEnum.Stop; TextureFilter = TextureFilterEnum.Nearest; Visible = false;
         _frame = new ClassicFrame { Name = "war_board_frame", BackgroundColor = Colors.Black };
         AddChild(_frame);
@@ -63,6 +65,13 @@ public partial class ClassicWarBoard : Control
         ClassicSocialStyle.Font(_empty, false, ClassicSocialLayout.FontSize);
         _empty.AddThemeColorOverride("font_color", ClassicDesign.Muted);
         Place(_empty, Spec.Row(0));
+        _cooldown = new Label { Name = "war_board_cooldown", Visible = false, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Pass, TooltipText = "The board changes when the cooldown ends" };
+        ClassicSocialStyle.Font(_cooldown, true, Spec.CooldownSize);
+        _cooldown.AddThemeColorOverride("font_color", Spec.CooldownInk);
+        _cooldown.AddThemeColorOverride("font_outline_color", Colors.Black);
+        _cooldown.AddThemeConstantOverride("outline_size", 3);
+        Place(_cooldown, Spec.Cooldown);
         Resized += Layout;
     }
 
@@ -108,6 +117,16 @@ public partial class ClassicWarBoard : Control
     }
 
     public override void _ExitTree() => _party.Changed -= QueueRefresh;
+
+    public override void _Process(double delta)
+    {
+        if (!Visible) return;
+        // The client counts the tab cooldown down on its own (replaced) board; show its seconds beside the tabs.
+        var cool = _world?.Invoke() is { } world && GodotObject.IsInstanceValid(world) ? KnightOnlineUiClassic.Native.Native.Get<Label>(world, "_warBoardCool") : null;
+        bool shown = cool is { Visible: true } && cool.Text.Length > 0;
+        if (_cooldown.Visible != shown) _cooldown.Visible = shown;
+        if (shown && _cooldown.Text != cool!.Text) _cooldown.Text = cool.Text;
+    }
 
     private void QueueRefresh()
     {

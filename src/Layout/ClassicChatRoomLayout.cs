@@ -26,8 +26,11 @@ public static class ClassicChatRoomLayout
     /// <summary>Whole 22 px member rows, as in the nation chat lists.</summary>
     public const float RosterRow = 22;
     public const float VolumeWidth = 96;
-    /// <summary>Room the emoticon button takes at the right end of the composer input (the client's 20 px button and its 4 px inset).</summary>
-    public const float EmoticonRoom = 34;
+    /// <summary>
+    /// The client's emoticon button at the right end of the composer input, at the inline emoticon size so it sits
+    /// inside the 24 px field with the cells' margin; the text stops before it.
+    /// </summary>
+    public const float EmoticonSize = 16, EmoticonInset = 5, EmoticonRoom = EmoticonSize + EmoticonInset * 2;
     /// <summary>The original whisper minimize button (co_whisper_open_us btn_hide).</summary>
     public static readonly Vector2 MinimizeSize = new(19, 15);
 

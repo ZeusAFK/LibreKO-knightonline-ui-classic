@@ -27,7 +27,7 @@ public sealed class Plugin : IPlugin
         ui.ReplaceHud(HudPart.Chat, () => new NationHud(() => new ChatWindow()));
         ui.ReplaceHud(HudPart.CombatLog, () => new NationHud(() => new LogWindow()));
         ui.ReplaceHud(HudPart.Party, () => new NationHud(() => new ClassicPartyHud(Kit.Game.Party, () => NativeHudChat.World)));
-        ui.ReplaceHud(HudPart.WarBoard, () => new NationHud(() => new ClassicWarBoard(Kit.Game.Party)));
+        ui.ReplaceHud(HudPart.WarBoard, () => new NationHud(() => new ClassicWarBoard(Kit.Game.Party, () => NativeHudChat.World)));
         NativeHud.StyleWhispers(ClassicWhisperSkin.Apply, ClassicWhisperSkin.Line);
         ui.HideHud(HudPart.MiniMap);
         ui.HideHud(HudPart.Launcher);
@@ -44,7 +44,7 @@ public sealed class Plugin : IPlugin
         ui.ReplaceWindow("skills", host => new SkillWindow(host));
         // Keep native modern windows functional and apply the classic frame theme.
         foreach(var id in ui.WindowIds)
-            if(id is not ("inventory" or "character_info" or "skills" or "vendor" or "party" or "seek_party" or "exchange" or "anvil" or "vipwarehouse_pin" or "chat_colors" or "merchantsearch" or "marketprice" or "shoppingmall" or "specialauction" or "equipview" or "genderchange" or "changehair" or "nationtransfer" or "rebirth" or "cape" or "pet" or "pethatch") && !ClassicCommunicationSkin.WindowIds.Contains(id) && !ClassicMailSkin.WindowIds.Contains(id) && !ClassicCouncilRate.WindowIds.Contains(id) && !ClassicSiegeSkin.WindowIds.Contains(id) && !ClassicIdentitySkin.WindowIds.Contains(id) && !ClassicServiceSkin.WindowIds.Contains(id) && !ClassicStorageSkin.WindowIds.Contains(id) && !ClassicMerchantSkin.WindowIds.Contains(id) && !CharacterDetailsSkin.WindowIds.Contains(id) && !ClassicKingSkin.WindowIds.Contains(id) && !ClassicEventsSkin.WindowIds.Contains(id) && !ClassicProgressionSkin.WindowIds.Contains(id) && !ClassicMapFortuneSkin.WindowIds.Contains(id) && !ClassicBoardSkin.WindowIds.Contains(id) && !ClassicCommandListSkin.WindowIds.Contains(id) && id != ClassicQuestNotice.WindowId)
+            if(id is not ("inventory" or "character_info" or "skills" or "vendor" or "party" or "seek_party" or "exchange" or "anvil" or "vipwarehouse_pin" or "chat_colors" or "merchantsearch" or "marketprice" or "shoppingmall" or "specialauction" or "equipview" or "genderchange" or "changehair" or "nationtransfer" or "rebirth" or "cape" or "pet" or "pethatch" or "chat_room" or "user_vote" or "user_vote_ask" or "user_vote_notice" or "repurchase") && !ClassicCommunicationSkin.WindowIds.Contains(id) && !ClassicMailSkin.WindowIds.Contains(id) && !ClassicCouncilRate.WindowIds.Contains(id) && !ClassicSiegeSkin.WindowIds.Contains(id) && !ClassicIdentitySkin.WindowIds.Contains(id) && !ClassicServiceSkin.WindowIds.Contains(id) && !ClassicStorageSkin.WindowIds.Contains(id) && !ClassicMerchantSkin.WindowIds.Contains(id) && !CharacterDetailsSkin.WindowIds.Contains(id) && !ClassicKingSkin.WindowIds.Contains(id) && !ClassicEventsSkin.WindowIds.Contains(id) && !ClassicProgressionSkin.WindowIds.Contains(id) && !ClassicMapFortuneSkin.WindowIds.Contains(id) && !ClassicBoardSkin.WindowIds.Contains(id) && !ClassicCommandListSkin.WindowIds.Contains(id) && id != ClassicQuestNotice.WindowId)
                 ui.ExtendWindow(id, ClassicSkin.ExtendWindow);
         ui.ExtendWindow("chat_colors", ClassicChatColoursSkin.Extend);
         ui.ExtendWindow("merchantsearch", ClassicMerchantSearchSkin.Extend);

@@ -543,7 +543,11 @@ public partial class Preview
         int ribbons=card.GetChildren().OfType<ClassicRankRibbon>().Count();
         if(full && (card.GetNode<Label>("clan_value_0").Text!="NightWatch" || ribbons!=info.Summary.Count+info.Rows.Count*3)) throw new Exception("userinfo: clan block or rank marks missing ("+ribbons+")");
         if(!full && (!card.HasNode("clan_none") || card.HasNode("clan_mark") || ribbons!=info.Rows.Count*3)) throw new Exception("userinfo: a clanless card shows the empty clan line and the client's unranked rows ("+ribbons+")");
-        GD.Print($"USER_INFO_CARD_OK full={full} size={card.Size} ribbons={ribbons}");
+        // The installed content carries the client's ribbon art (simple_rank_mark_*); every count sits on it.
+        var counted=card.GetChildren().OfType<ClassicRankRibbon>().Where(r=>!string.IsNullOrEmpty(r.Ribbon.Count)).ToArray();
+        bool ribbonArt=ResourceLoader.Exists("res://assets/ui/daily_rank/marks/simple_rank_mark_0_0.png");
+        if(ribbonArt && counted.Any(r=>r.Ribbon.Ribbon==null)) throw new Exception("userinfo: a rank count without the client's ribbon art");
+        GD.Print($"USER_INFO_CARD_OK full={full} size={card.Size} ribbons={ribbons} art={ribbonArt} counted={counted.Length}");
     }
 
     private static IEnumerable<Node> Descendants(Node node) { yield return node;foreach(var child in node.GetChildren()) foreach(var item in Descendants(child)) yield return item; }

@@ -50,8 +50,6 @@ public partial class ClassicRepurchasePanel : Control
         var title = grip.GetChildren().OfType<Label>().Last();
         var close = grip.GetChildren().OfType<Button>().Single(b => b.TooltipText == "Close");
         foreach (var child in window.GetChildren().OfType<Control>()) child.Visible = false;
-        // The generic Classic window theme (applied to every listed id) gives way to the composition below.
-        window.Theme = null;
         window.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         AddChild(new ClassicFrame { Name = "repurchase_frame", Size = Size, BackgroundAlpha = 1, BackgroundColor = Colors.Black });
         var list = new Panel { Name = "repurchase_list", Position = Spec.List.Position, Size = Spec.List.Size, MouseFilter = MouseFilterEnum.Ignore };

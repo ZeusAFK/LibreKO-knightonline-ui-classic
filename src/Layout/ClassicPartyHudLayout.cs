@@ -57,6 +57,10 @@ public static class ClassicPartyHudLayout
         public static Rect2 Close(float width) => ClassicFrame.Close(width);
         public static readonly Rect2 Drag = new(8, 8, 138, 36);
         public static Rect2 Tab(int index) => new(16 + index * 74, 46, 72, 20);
+        /// <summary>The client's tab cooldown (seconds until a changed tab is requested), right of the tabs.</summary>
+        public static readonly Rect2 Cooldown = new(166, 46, Width - 16 - 166, 20);
+        public static readonly Color CooldownInk = Color.Color8(255, 128, 128);
+        public const int CooldownSize = 16;
         public const float RowsTop = 74;
         public static Rect2 Row(int index) => new(16, RowsTop + index * (RowHeight + RowGap), Width - 32, RowHeight);
         public const float Icon = 16;

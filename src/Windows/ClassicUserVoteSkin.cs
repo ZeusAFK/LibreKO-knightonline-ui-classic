@@ -3,6 +3,7 @@ using LibreKO;
 using LibreKO.Domain;
 using LibreKO.Plugins;
 using KnightOnlineUiClassic.Layout;
+using KnightOnlineUiClassic.Native;
 using Message = KnightOnlineUiClassic.Layout.ClassicOverlayLayout.Message;
 using Spec = KnightOnlineUiClassic.Layout.ClassicUserVoteLayout;
 
@@ -92,7 +93,8 @@ public partial class ClassicUserVoteDialog : Control
     {
         float y = Text("vote_prompt", _vote.SelectPrompt, Spec.Top, ClassicWorldOverlays.MessageText) + Spec.LineGap;
         var group = new ButtonGroup();
-        var reasons = _vote.Reasons;
+        // The client's reason texts, or English captions where its text table has none.
+        var reasons = NativeUserVote.Reasons(_vote);
         for (int i = 0; i < reasons.Count; i++)
         {
             int reason = i + 1;
@@ -122,7 +124,8 @@ public partial class ClassicUserVoteDialog : Control
     private float BuildAsk()
     {
         float y = Text("vote_question", _vote.AskQuestion, Spec.Top, ClassicWorldOverlays.MessageText);
-        if (_vote.AskReason.Length > 0) y = Text("vote_reason", _vote.AskReason, y + 4, ClassicDesign.FrameTitle);
+        string reason = NativeUserVote.AskReason(_vote);
+        if (reason.Length > 0) y = Text("vote_reason", reason, y + 4, ClassicDesign.FrameTitle);
         y += Spec.LineGap;
         _bar = new ProgressBar { Name = "vote_countdown", ShowPercentage = false, MaxValue = _vote.AskSeconds, Value = _vote.AskSecondsLeft, MouseFilter = MouseFilterEnum.Ignore };
         ClassicWorldOverlays.ProgressBar(_bar, false);

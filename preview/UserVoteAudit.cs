@@ -94,6 +94,13 @@ public partial class Preview
         var select = await VoteWindow("_userVoteSelect", "vote-select");
         var reasons = select.GetChildren().OfType<CheckBox>().ToArray();
         Require(reasons.Length == UserVote.Reasons && reasons[0].ButtonPressed && reasons.Count(r => r.ButtonPressed) == 1, "select: four reasons, the first picked");
+        // The client's reason texts; where its text table has none (it returns "Reason n"), the English captions.
+        string[] reasonCaptions = { "Inappropriate language", "Intentional disturbance", "Long-term inactivity", "Other (30 letters max)" };
+        var expectedReasons = vote.Reasons.Select((text, i) => text == $"Reason {i + 1}" ? reasonCaptions[i] : text).ToArray();
+        Require(reasons.Select(r => r.Text).SequenceEqual(expectedReasons) && reasons.All(r => !r.Text.StartsWith("Reason ")), "select: reason captions " + string.Join(" / ", reasons.Select(r => r.Text)));
+        Require(select.GetNode<LineEdit>("vote_other").PlaceholderText == expectedReasons[3], "select: the field shows the other reason's caption");
+        foreach (var reason in reasons)
+            Require(reason.GetThemeFont("font").GetStringSize(reason.Text, HorizontalAlignment.Left, -1, reason.GetThemeFontSize("font_size")).X + 30 <= reason.Size.X, "select: caption fits its row " + reason.Text);
         Require(select.GetNode<Label>("vote_prompt").Text.Contains("LongCharacterName1234"), "select: the prompt names the member");
         Require(select.GetNode<Label>("vote_cost").Text.Length > 0 && select.GetNode<Label>("vote_cost").GetThemeColor("font_color") == ClassicDesign.FrameTitle, "select: the cost line in gold");
         await Shot("vote-select");
@@ -134,7 +141,9 @@ public partial class Preview
         Require(Get<HudWindow?>("_userVoteAsk") == null, "ask: Yes answers through the client and frees the window");
         DetailCall(world, "OnUserVoteAsk", new UserVoteAsk("Rikka", 2, ""));
         ask = await VoteWindow("_userVoteAsk", "vote-ask-listed-reason");
-        Require(vote.AskReason.Length == 0 ? !ask.HasNode("vote_reason") : ask.GetNode<Label>("vote_reason").Text == vote.AskReason, "ask: a listed reason shows the client's text");
+        string listed = vote.AskReason.Length > 0 ? vote.AskReason : reasonCaptions[1];
+        Require(ask.HasNode("vote_reason") && ask.GetNode<Label>("vote_reason").Text == listed, "ask: a listed reason shows the client's text, or its caption when the client has none: " + listed);
+        await Shot("vote-ask-listed-reason");
         Set("_userVoteAskUntil", Now() - 1);
         DetailCall(world, "UserVoteTick", Now());
         await Frames(2);
@@ -158,7 +167,7 @@ public partial class Preview
         float savedAlpha = PluginHost.Game.Party.WarBoardAlpha; byte savedMode = Config.PartyBoardMode;
         var hud = new CanvasLayer { Layer = 64 }; AddChild(hud);
         var party = new ClassicPartyHud(PluginHost.Game.Party, () => world); hud.AddChild(party);
-        var board = new ClassicWarBoard(PluginHost.Game.Party); hud.AddChild(board);
+        var board = new ClassicWarBoard(PluginHost.Game.Party, () => world); hud.AddChild(board);
         await Frames(4);
         Require(!board.Visible, "war board: hidden until the client opens it");
         party.GetNode<Control>("party_actions").GetChildren().OfType<Button>().Single(b => b.Text == "War Board").EmitSignal(BaseButton.SignalName.Pressed);
@@ -183,6 +192,20 @@ public partial class Preview
         healing.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames(4);
         Require(PluginHost.Game.Party.WarBoardMode == PartyWarBoard.ModeHealing && healing.ButtonPressed && !damage.ButtonPressed, "war board: Healing switches the client's board mode");
+        // The tab changed within five seconds of the last request: the client holds it and counts down.
+        var cooldown = board.GetNode<Label>("war_board_cooldown");
+        DetailCall(world, "WarBoardTick", Now()); await Frames(4);
+        var nativeCool = Get<Label>("_warBoardCool");
+        Require(nativeCool.Visible && cooldown.Visible && cooldown.Text == nativeCool.Text && int.TryParse(cooldown.Text, out int seconds) && seconds is >= 1 and <= 5,
+            "war board: the client's tab cooldown shows beside the tabs (" + cooldown.Text + ")");
+        Require(cooldown.GetRect() == ClassicPartyHudLayout.WarBoard.Cooldown && !cooldown.GetRect().Intersects(healing.GetRect()) && new Rect2(Vector2.Zero, board.Size).Encloses(cooldown.GetRect()),
+            "war board: the cooldown sits right of the tabs inside the board " + cooldown.GetRect());
+        var coolFont = cooldown.GetThemeFont("font"); int coolSize = cooldown.GetThemeFontSize("font_size");
+        Require(coolFont.GetStringSize(cooldown.Text, HorizontalAlignment.Left, -1, coolSize).X <= cooldown.Size.X && coolFont.GetHeight(coolSize) <= cooldown.Size.Y + 1, "war board: the cooldown digits fit their place");
+        await Shot("war-board-cooldown");
+        Set("_warBoardSentAt", Now() - PartyWarBoard.BoardTabSeconds - 1);
+        DetailCall(world, "WarBoardTick", Now()); await Frames(4);
+        Require(!nativeCool.Visible && !cooldown.Visible, "war board: the cooldown hides once the client sends the held tab");
         var alpha = board.GetNode<HSlider>("war_board_alpha");
         alpha.Value = .5;
         await Frames(4);
