@@ -34,7 +34,8 @@ public partial class Preview
         var windows = PluginHost.Game.Windows;
 
         var status = Descendants(world).OfType<StatusHud>().Single(s => s.IsVisibleInTree());
-        var letters = Descendants(status).OfType<ClassicStatusShortcut>().Where(s => s.HasBackground).OrderBy(s => Screen(s).Position.X).ToArray();
+        // Two rows (plugin be6856d): Q P A D G, then E R; the list runs row by row.
+        var letters = Descendants(status).OfType<ClassicStatusShortcut>().Where(s => s.HasBackground).OrderBy(s => Screen(s).Position.Y).ThenBy(s => Screen(s).Position.X).ToArray();
         var mail = Descendants(status).OfType<ClassicStatusShortcut>().Single(s => !s.HasBackground);
         ClassicStatusShortcut Letter(string letter) => letters.Single(s => s.Letter == letter);
         Rect2 plates = letters.Aggregate(Screen(letters[0]), (r, s) => r.Merge(Screen(s)));
@@ -83,26 +84,32 @@ public partial class Preview
             if (pressed == 0) button.EmitSignal(BaseButton.SignalName.Pressed);
         }
 
-        // ---- The row: Q P A D G E R on the original plate, one size, one baseline, the original pitch.
-        Require(letters.Select(s => s.Letter).SequenceEqual(new[] { "Q", "P", "A", "D", "G", "E", "R" }), "the row is Q P A D G E R (" + string.Join(" ", letters.Select(s => s.Letter)) + ")");
+        // ---- The rows: Q P A D G, and under them E R, the clock and mail; one size, one baseline per row, the original pitch.
+        Require(letters.Select(s => s.Letter).SequenceEqual(new[] { "Q", "P", "A", "D", "G", "E", "R" }), "the rows are Q P A D G / E R (" + string.Join(" ", letters.Select(s => s.Letter)) + ")");
         var first = Screen(letters[0]);
         float pitch = Screen(letters[1]).Position.X - first.Position.X;
+        float rowPitch = Screen(Letter("E")).Position.Y - first.Position.Y;
+        Vector2 Cell(int column, int row) => first.Position + new Vector2(pitch * column, rowPitch * row);
         for (int i = 0; i < letters.Length; i++)
         {
             var r = Screen(letters[i]);
+            var at = i < 5 ? Cell(i, 0) : Cell(i - 5, 1);
             bounds[letters[i].Letter] = Rect(r);
-            Require(r.Size.IsEqualApprox(first.Size) && Mathf.Abs(r.Position.Y - first.Position.Y) < .01f && Mathf.Abs(r.Position.X - first.Position.X - pitch * i) < .01f,
-                $"{letters[i].Letter} sits at the row pitch {pitch} with the plate size {first.Size} ({r})");
+            Require(r.Size.IsEqualApprox(first.Size) && (r.Position - at).Abs() is var d && d.X < .01f && d.Y < .01f,
+                $"{letters[i].Letter} sits in its row at the pitch {pitch} with the plate size {first.Size} ({r}, expected {at})");
             Require(letters[i].IsVisibleInTree() && GetViewportRect().Encloses(r) && Screen(status).Encloses(r), $"{letters[i].Letter} is shown inside the status HUD and the screen");
         }
         Require(pitch >= first.Size.X, $"the plates do not overlap (pitch {pitch}, width {first.Size.X})");
-        Require(Mathf.Abs(Screen(mail).Position.X - first.Position.X) < .01f, "the envelope stays under Q");
+        Require(Mathf.Abs(rowPitch - first.Size.Y - 2) < .01f, $"the second row sits 2 px under the first (row pitch {rowPitch}, height {first.Size.Y})");
+        int mailColumn = 2 + (clock != null ? 1 : 0);
+        Require((Screen(mail).Position - Cell(mailColumn, 1)).Abs() is var md && md.X < .01f && md.Y < .01f && Screen(mail).Size.IsEqualApprox(first.Size),
+            $"the envelope ends the second row ({Screen(mail)}, expected {Cell(mailColumn, 1)})");
         Require((clock != null) == (ClassicStatusClock.Art != null) && (clock != null) == !ClassicFallback, "the clock is shown exactly when the 2.x menu art is installed (by default)");
         if (clock != null)
         {
             var c = Screen(clock);
-            Require(c.Size.IsEqualApprox(first.Size) && Mathf.Abs(c.Position.Y - first.Position.Y) < .01f && Mathf.Abs(c.Position.X - first.Position.X - pitch * letters.Length) < .01f,
-                $"the clock sits one pitch after R with the plate size ({c})");
+            Require(c.Size.IsEqualApprox(first.Size) && (c.Position - Cell(2, 1)).Abs() is var cd && cd.X < .01f && cd.Y < .01f,
+                $"the clock sits one pitch after R in the second row with the plate size ({c})");
             Require(clock.IsVisibleInTree() && GetViewportRect().Encloses(c) && Screen(status).Encloses(c), "the clock is shown inside the status HUD and the screen");
             bounds["clock"] = Rect(c);
         }

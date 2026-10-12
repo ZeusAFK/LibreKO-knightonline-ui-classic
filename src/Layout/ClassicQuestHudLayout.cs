@@ -50,6 +50,8 @@ public static class ClassicQuestHudLayout
     {
         public const float Height = ClassicOverlayLayout.Plaque.Height, Inset = ClassicOverlayLayout.Plaque.Inset, PadY = 3;
         public const int FontSize = 12;
+        /// <summary>Gap between the clan bonus chip's "Clan" and its O/X marks.</summary>
+        public const int BonusGap = 6;
         /// <summary>Original tooltip: black at 187/255 behind white Arial Bold 10 pt (13 px).</summary>
         public static readonly Color TooltipGround = new(0, 0, 0, 187f / 255f);
         public const int TooltipFont = 13, TooltipPadX = 6, TooltipPadY = 4;

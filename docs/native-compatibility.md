@@ -187,6 +187,11 @@ listed. Preview-only members are listed at the end.
 | `_hotSelected`, `_hotbar`, `SelectHotAbs(int)` | F/M | Hotbar selection |
 | `_running`, `_selfSitting`, `_autoAttack`, `ToggleRunMode()`, `ToggleAutoAttack()`, `StartCameraHalfTurn()`, `ToggleEsc(bool?)` | F/M | Commands |
 | `_miniMap` | F | `MiniMapVisible` |
+| `_clanBonusChip`, `_clanBonusMarks` (3277df5) | F | Clan online-bonus chip named `clan_bonus_chip` and skinned as a Classic plaque ("Clan" and the O/X marks); hidden while the 2.x top-right group shows its clan bonus bar (`NativeQuestHud`, `NativePremium.HideClientChips`) |
+| Public: `IGameTarget.QuestDrops` (`GameTargetDrop`) | API | Quest-item rows under the Classic target frame (`TargetFrame`); replaces nothing (the native `_targetDropRows` sit in the replaced `HudPart.TargetFrame`) |
+| Public: `IGameMap.NpcKind`, `NpcKindPresent`, `PickNpcKind`, `MiniMap.Blip.Diamond`, `NpcFinder.KindCaptions` | API | Classic NPC finder over the status minimap (`ClassicNpcList`) and its gold diamonds above the frame art (`MapCanvas.Markers`) |
+| Public: `GameLogLine.Kind` | API | Info log tabs All/Status/Item/System (`LogWindow`), the client's `TabbedLog` tabs |
+| Public: `PremiumNames.Name`, `PremiumText`/`PremiumFallback`, `Net.ClanOnlineCount`, `Net.NoClanBonus`, `ClanBonusCard` | API | Premium names from the text table in the approved title case (`NativePremium.ClassicCase`, "Gold Premium: 2d 4h" on the plaque, time and benefits in its tooltip/box); clan bonus marks and text (`NativePremium.BonusOf/BonusLines`) |
 | `HudLayout._corner`, `_resizing`, `_dragging`, `_dragMoved`, `_resizeOriginMouse`, `_resizeOriginPosition`, `_resizeOriginSize`, `Frozen`, `MinimumSize`, `Place(Vector2,Vector2)` | F/P/M | Legacy grip, seam snapping |
 
 ### Character and NPC

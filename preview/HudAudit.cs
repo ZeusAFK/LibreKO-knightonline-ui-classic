@@ -79,15 +79,25 @@ public partial class Preview
         if(infoDrag.Position.X!=info.Size.X-64 || infoDrag.MouseFilter!=MouseFilterEnum.Stop || infoRail.Position.X+infoRail.Size.X!=info.Size.X-3 || infoLog.Position.X!=4 || infoLog.GetRect().End.X>=infoRail.Position.X) throw new Exception("Info drag and scroll controls must share the right edge");
         var mail=Descendants(status).OfType<ClassicStatusShortcut>().Single(b=>b.Name=="btn_mail");
         var shortcuts=Descendants(status).OfType<ClassicStatusShortcut>().ToArray();
-        var letters=shortcuts.Where(s=>s.HasBackground).OrderBy(s=>s.Position.X).ToArray();
-        if(!letters.Select(s=>s.Letter).SequenceEqual(new[]{"Q","P","A","D","G","E","R"})) throw new Exception("The shortcut row must contain Q/P/A/D/G/E/R with no M");
-        float pitch=letters[1].Position.X-letters[0].Position.X;
-        for(int i=1;i<letters.Length;i++)
-            if(letters[i].Position.X-letters[i-1].Position.X!=pitch || letters[i].Position.Y!=letters[0].Position.Y || letters[i].Size!=letters[0].Size || pitch<letters[0].Size.X)
-                throw new Exception("The shortcut row keeps one size, one baseline and the original pitch: "+letters[i].Letter);
-        if(!status.GetGlobalRect().Encloses(letters[^1].GetGlobalRect())) throw new Exception("The status HUD rectangle covers the whole shortcut row");
-        if(mail.HasBackground || mail.Letter!="" || mail.Size!=new Vector2(28,28) || mail.MailIconRect.Size!=new Vector2(28,20)) throw new Exception("Mail must be a larger native envelope without a plate or letter");
-        if(mail.Position.X!=letters[0].Position.X || mail.Position.Y!=letters[0].Position.Y+letters[0].Size.Y+5) throw new Exception("Mail is not aligned below Q");
+        // Two icon rows (plugin be6856d): Q P A D G on the original btn_quest/btn_power row, then E R, the hourglass
+        // (with the 2.x menu art) and mail on a second row 2 px below, starting under Q at the same pitch.
+        var letters=shortcuts.Where(s=>s.HasBackground).ToArray();
+        float topRow=letters.Min(s=>s.Position.Y);
+        var rowOne=letters.Where(s=>s.Position.Y==topRow).OrderBy(s=>s.Position.X).ToArray();
+        var rowTwo=letters.Where(s=>s.Position.Y!=topRow).OrderBy(s=>s.Position.X).ToArray();
+        if(!rowOne.Select(s=>s.Letter).SequenceEqual(new[]{"Q","P","A","D","G"}) || !rowTwo.Select(s=>s.Letter).SequenceEqual(new[]{"E","R"}))
+            throw new Exception("The shortcut rows must be Q P A D G and E R with no M: "+string.Join(" ",rowOne.Select(s=>s.Letter))+" / "+string.Join(" ",rowTwo.Select(s=>s.Letter)));
+        float pitch=rowOne[1].Position.X-rowOne[0].Position.X;
+        float rowPitch=rowTwo[0].Position.Y-rowOne[0].Position.Y;
+        foreach(var (row,i) in rowOne.Select((s,i)=>(s,i)).Concat(rowTwo.Select((s,i)=>(s,i))))
+            if(row.Position.X!=rowOne[0].Position.X+pitch*i || row.Position.Y!=(rowOne.Contains(row)?topRow:topRow+rowPitch) || row.Size!=rowOne[0].Size || pitch<rowOne[0].Size.X)
+                throw new Exception("The shortcut rows keep one size, one baseline per row and the original pitch: "+row.Letter);
+        if(rowPitch-rowOne[0].Size.Y!=2) throw new Exception("The second row sits 2 px under the first: "+rowPitch);
+        foreach(var letter in letters)
+            if(!status.GetGlobalRect().Encloses(letter.GetGlobalRect())) throw new Exception("The status HUD rectangle covers the whole shortcut rows: "+letter.Letter);
+        if(mail.HasBackground || mail.Letter!="" || mail.Size!=new Vector2(28,28) || mail.MailIconRect.Size!=mail.Size) throw new Exception("Mail must be a plate-less envelope glyph in a full row cell");
+        int mailColumn=2+(Descendants(status).OfType<ClassicStatusClock>().Any()?1:0);
+        if(mail.Position.X!=rowOne[0].Position.X+pitch*mailColumn || mail.Position.Y!=topRow+rowPitch) throw new Exception("Mail does not end the second row ("+mail.Position+")");
         var coordinates=Descendants(status).OfType<Label>().Single(l=>l.Name=="Text_Coordinates");
         if(coordinates.Text!="764, 416" || coordinates.Position!=new Vector2(155,58) || coordinates.Size.X!=117 || coordinates.Size.Y>16) throw new Exception("HUD coordinates exceed the native parchment field");
         var zoneName=Descendants(status).OfType<Label>().Single(l=>l.Name=="Text_ZoneName");

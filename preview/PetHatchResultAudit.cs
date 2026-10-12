@@ -145,7 +145,7 @@ public partial class Preview
                     "Received " + service + " success presents the native result text and normal color");
                 require(transform ? !action.Disabled && Find<ItemSlotView>("pet_hatch_stage_2").Item.Count == 1 : name.Text.Length == 0 && action.Disabled && stage.Item.IsEmpty,
                     "Received " + service + " success restores correct next-operation eligibility");
-                var lines = Field<Queue<string>>("_combatLogLines"); int logCount = lines.Count, mutationCount = mutations;
+                var lines = Field<TabbedLog>("_combatLog").Lines(LogTab.All); int logCount = lines.Count, mutationCount = mutations;
                 require(logCount == 1 && lines.Last().Contains(transform ? "transformed into" : "hatched from the egg"), "Received " + service + " success reaches the native Info log once");
                 Receive(success); await Frames(); require(mutations == mutationCount && lines.Count == logCount && status.Text.Length > 0, "Duplicate " + service + " success cannot alter the trainer or repeat its Info notification");
                 await Capture("success");

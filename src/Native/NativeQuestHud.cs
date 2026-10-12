@@ -13,6 +13,8 @@ public enum NativeQuestHudPart
     PremiumChip,
     /// <summary>The clan premium chip.</summary>
     ClanPremiumChip,
+    /// <summary>The clan online-bonus chip under the premium chip (3277df5: "Clan" and the O/X marks with a tooltip).</summary>
+    ClanBonusChip,
 }
 
 /// <summary>
@@ -26,6 +28,7 @@ public static class NativeQuestHud
     public const string TrackerFold = "quest_tracker_fold", TrackerCount = "quest_tracker_count";
     public const string PremiumName = "premium_chip", PremiumLabel = "premium_label", PremiumDot = "premium_dot";
     public const string ClanPremiumName = "clan_premium_chip", ClanPremiumLabel = "clan_premium_label", ClanPremiumDot = "clan_premium_dot";
+    public const string ClanBonusName = "clan_bonus_chip", ClanBonusMarks = "clan_bonus_marks";
     private const string Prepared = "classic_quest_hud";
     private static readonly Dictionary<NativeQuestHudPart, List<Action<Control>>> _skins = new();
 
@@ -51,6 +54,8 @@ public static class NativeQuestHud
         PrepareTracker(world);
         PreparePremium(world, "_premiumChip", "_premiumLabel", "_premiumDot", PremiumName, PremiumLabel, PremiumDot, NativeQuestHudPart.PremiumChip);
         PreparePremium(world, "_clanPremiumChip", "_clanPremiumLabel", "_clanPremiumDot", ClanPremiumName, ClanPremiumLabel, ClanPremiumDot, NativeQuestHudPart.ClanPremiumChip);
+        // The clan bonus chip has no status dot; its marks label is the second child of its row.
+        PreparePremium(world, "_clanBonusChip", "_clanBonusMarks", null, ClanBonusName, ClanBonusMarks, null, NativeQuestHudPart.ClanBonusChip);
     }
 
     /// <summary>The tracker panel with its row column, header, count and fold button named for the skin.</summary>
@@ -68,15 +73,15 @@ public static class NativeQuestHud
         Apply(NativeQuestHudPart.Tracker, panel);
     }
 
-    private static void PreparePremium(World world, string chipField, string labelField, string dotField,
-        string chipName, string labelName, string dotName, NativeQuestHudPart part)
+    private static void PreparePremium(World world, string chipField, string labelField, string? dotField,
+        string chipName, string labelName, string? dotName, NativeQuestHudPart part)
     {
         if (Native.Get<PanelContainer>(world, chipField) is not { } chip || !GodotObject.IsInstanceValid(chip) || chip.HasMeta(Prepared)) return;
         if (Native.Get<Label>(world, labelField) is not { } label) return;
         chip.SetMeta(Prepared, true);
         chip.Name = chipName;
         label.Name = labelName;
-        if (Native.Get<Panel>(world, dotField) is { } dot) dot.Name = dotName;
+        if (dotField != null && dotName != null && Native.Get<Panel>(world, dotField) is { } dot) dot.Name = dotName;
         Apply(part, chip);
     }
 

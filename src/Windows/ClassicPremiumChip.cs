@@ -6,11 +6,14 @@ using Spec = KnightOnlineUiClassic.Layout.ClassicQuestHudLayout.Premium;
 namespace KnightOnlineUiClassic.Windows;
 
 /// <summary>
-/// The account and clan premium chips as Classic information plaques, like the event title chips beside them.
-/// 1.298 showed premium only as a yellow line on the login screen (el_login_intro_us "Premium"); in the world the
-/// status keeps the client's text ("Gold Premium: 2d 4h", "No Premium", "Clan Premium · 3d"): the plaque ink
-/// while a premium runs, the muted plaque ink without one. The client's status dot gives way to the ink. The
-/// benefits tooltip is the original tooltip (co_tooltip_us): translucent black behind white Arial Bold.
+/// The account, clan premium and clan bonus chips as Classic information plaques, like the event title chips beside
+/// them. 1.298 showed premium only as a yellow line on the login screen (el_login_intro_us "Premium"); in the world
+/// the account plaque keeps the approved caption "Gold Premium: 2d 4h" (the client's text-table name in the Classic
+/// casing with the time left; since 3277df5 the client's own chip shows the name alone and moves the time into its
+/// tooltip) or "No Premium", the clan plaque the client's text ("Clan Premium · 3d"), the bonus plaque the client's
+/// "Clan" and O/X marks: the plaque ink while a premium runs, the muted plaque ink without one. The client's status
+/// dot gives way to the ink. The benefits tooltip is the original tooltip (co_tooltip_us): translucent black behind
+/// white Arial Bold, with the name, the time left and the client's benefit lines.
 /// </summary>
 public static class ClassicPremiumChip
 {
@@ -18,11 +21,12 @@ public static class ClassicPremiumChip
 
     public static void Register()
     {
-        NativeQuestHud.Extend(NativeQuestHudPart.PremiumChip, node => Apply((PanelContainer)node));
-        NativeQuestHud.Extend(NativeQuestHudPart.ClanPremiumChip, node => Apply((PanelContainer)node));
+        NativeQuestHud.Extend(NativeQuestHudPart.PremiumChip, node => Apply((PanelContainer)node, ClassicPremiumChipKind.Account));
+        NativeQuestHud.Extend(NativeQuestHudPart.ClanPremiumChip, node => Apply((PanelContainer)node, ClassicPremiumChipKind.Clan));
+        NativeQuestHud.Extend(NativeQuestHudPart.ClanBonusChip, node => Apply((PanelContainer)node, ClassicPremiumChipKind.ClanBonus));
     }
 
-    public static void Apply(PanelContainer chip)
+    public static void Apply(PanelContainer chip, ClassicPremiumChipKind kind = ClassicPremiumChipKind.Clan)
     {
         if (chip.HasMeta(Skinned)) return;
         chip.SetMeta(Skinned, true);
@@ -31,7 +35,8 @@ public static class ClassicPremiumChip
         chip.Draw += () => ClassicPlaqueArt.Draw(chip, new Rect2(Vector2.Zero, chip.Size));
         chip.CustomMinimumSize = new Vector2(chip.CustomMinimumSize.X, Spec.Height);
         chip.Theme = Tooltip();
-        foreach (var row in chip.GetChildren().OfType<HBoxContainer>()) row.AddThemeConstantOverride("separation", 0);
+        // The bonus chip keeps a word gap between "Clan" and its marks; the premium chips have one caption.
+        foreach (var row in chip.GetChildren().OfType<HBoxContainer>()) row.AddThemeConstantOverride("separation", kind == ClassicPremiumChipKind.ClanBonus ? Spec.BonusGap : 0);
         // The status dot's meaning moves into the caption ink.
         foreach (var dot in Native.Native.Descendants(chip).OfType<Panel>())
             if (dot.GetParent() is CenterContainer wrap) wrap.Visible = false;
@@ -44,7 +49,7 @@ public static class ClassicPremiumChip
             label.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
             label.VerticalAlignment = VerticalAlignment.Center;
         }
-        chip.AddChild(new ClassicPremiumInk(labels) { Name = "classic_premium_ink" });
+        chip.AddChild(new ClassicPremiumInk(chip, labels, kind) { Name = "classic_premium_ink" });
         chip.QueueRedraw();
     }
 
@@ -67,29 +72,54 @@ public static class ClassicPremiumChip
     }
 }
 
+/// <summary>Which chip a plaque skins; the account chip also gets its Classic caption and tooltip.</summary>
+public enum ClassicPremiumChipKind { Account, Clan, ClanBonus }
+
 /// <summary>
 /// Keeps the chip caption in the plaque ink: the client recolours it on every status change (gold while a
-/// premium runs, grey without one); that state becomes the plaque ink or the muted plaque ink.
+/// premium runs, grey without one); that state becomes the plaque ink or the muted plaque ink. The account chip's
+/// caption and tooltip follow <see cref="NativePremium"/> (the client's premium state read through the network
+/// state): the client writes its own name-only caption on every status change and this rewrites it.
 /// </summary>
 public partial class ClassicPremiumInk : Node
 {
+    private readonly PanelContainer? _chip;
     private readonly Label[] _labels;
+    private readonly ClassicPremiumChipKind _kind;
     public ClassicPremiumInk() { _labels = Array.Empty<Label>(); }
-    public ClassicPremiumInk(Label[] labels) { _labels = labels; ProcessPriority = int.MaxValue - 1; Sync(); }
+    public ClassicPremiumInk(PanelContainer chip, Label[] labels, ClassicPremiumChipKind kind)
+    {
+        _chip = chip; _labels = labels; _kind = kind;
+        ProcessPriority = int.MaxValue - 1;
+        Sync();
+    }
     public override void _Process(double delta) => Sync();
 
     /// <summary>Whether the client shows a running premium (its gold caption).</summary>
     public static bool Active(Color native) => native.IsEqualApprox(UiTheme.GoldBright) || native.IsEqualApprox(UiTheme.Gold);
 
+    /// <summary>The account plaque caption: the Classic name with the time left, or "No Premium".</summary>
+    public static string Caption(NativePremium.Account account) =>
+        account.Active ? $"{account.Name}: {NativePremium.ShortDuration(account.Hours)}" : account.Name;
+
     private void Sync()
     {
+        NativePremium.Account? account = _kind == ClassicPremiumChipKind.Account ? NativePremium.Current(LibreKO.Network.Net.I) : null;
+        if (account is { } state && _chip != null && GodotObject.IsInstanceValid(_chip))
+        {
+            string tooltip = state.Active ? NativePremium.Details(state) : "";
+            if (_chip.TooltipText != tooltip) _chip.TooltipText = tooltip;
+        }
         foreach (var label in _labels)
         {
             if (!GodotObject.IsInstanceValid(label)) continue;
+            if (account is { } current && label.Text != Caption(current)) label.Text = Caption(current);
             var shown = label.GetThemeColor("font_color");
             if (shown == ClassicWorldOverlays.PlaqueInk || shown == Layout.ClassicQuestHudLayout.PlaqueMuted) continue;
-            label.SetMeta("premium_active", Active(shown));
-            label.AddThemeColorOverride("font_color", Active(shown) ? ClassicWorldOverlays.PlaqueInk : Layout.ClassicQuestHudLayout.PlaqueMuted);
+            // The bonus chip's "Clan" title is the client's dim text; on the plaque both labels keep the plaque ink.
+            bool active = _kind == ClassicPremiumChipKind.ClanBonus || (account?.Active ?? Active(shown));
+            label.SetMeta("premium_active", active);
+            label.AddThemeColorOverride("font_color", active ? ClassicWorldOverlays.PlaqueInk : Layout.ClassicQuestHudLayout.PlaqueMuted);
         }
     }
 }

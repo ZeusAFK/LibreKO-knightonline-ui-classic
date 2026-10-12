@@ -109,6 +109,24 @@ public partial class MapCanvas : Control
     private static readonly Color Background = new(0.03f, 0.035f, 0.045f);
     private static readonly Color PlayerColor = new(1f, 0.95f, 0.6f);
     private const float PlayerArrow = 6f;
+    /// <summary>NPC-finder spots (3277df5 <c>Blip.Diamond</c>) stay on the map edge when out of range, this far in (the client's 7 px).</summary>
+    public const float DiamondInset = 7f;
+    private static readonly Color DiamondEdge = new(0f, 0f, 0f, 0.8f);
+    private Control? _markers;
+
+    /// <summary>
+    /// Where the NPC-finder diamonds are drawn instead of the map: a control over the frame art (the status bar's
+    /// parchment rim covers the map's edge, where out-of-range spots wait).
+    /// </summary>
+    public Control? Markers
+    {
+        get => _markers;
+        set
+        {
+            _markers = value;
+            if (value != null) value.Draw += () => DrawDiamonds(value);
+        }
+    }
 
     private readonly PluginGame _game;
     private int _zoom = DefaultZoom;
@@ -156,8 +174,11 @@ public partial class MapCanvas : Control
         }
         float pxPerWorld = Size.X * 0.5f / radius;
         var mid = Size * 0.5f;
+        if (_markers != null && GodotObject.IsInstanceValid(_markers)) _markers.QueueRedraw();
+        else DrawDiamonds(this);
         foreach (var b in _showBlips ? m.Blips : Array.Empty<MiniMap.Blip>())
         {
+            if (b.Diamond) continue;
             var p = mid + new Vector2((b.X - m.X) * pxPerWorld, -(b.Z - m.Z) * pxPerWorld);
             if (p.X < 0 || p.Y < 0 || p.X > Size.X || p.Y > Size.Y) continue;
             if (b.Hollow) DrawArc(p, b.Radius, 0f, Mathf.Tau, 16, b.Color, 1.5f, true);
@@ -173,5 +194,25 @@ public partial class MapCanvas : Control
             mid - dir * PlayerArrow * 0.7f + side * PlayerArrow * 0.6f,
             mid - dir * PlayerArrow * 0.7f - side * PlayerArrow * 0.6f,
         }, PlayerColor);
+    }
+
+    /// <summary>
+    /// The picked NPC kind's spots as gold diamonds, kept on the edge while out of range (the client's rule), drawn on
+    /// <paramref name="canvas"/> (this map, or the <see cref="Markers"/> control laid over it at the same rectangle).
+    /// </summary>
+    private void DrawDiamonds(CanvasItem canvas)
+    {
+        var m = _game.Map;
+        float pxPerWorld = Size.X * 0.5f / ZoomRadii[_zoom];
+        var mid = Size * 0.5f;
+        var low = new Vector2(DiamondInset, DiamondInset);
+        foreach (var b in m.Blips)
+        {
+            if (!b.Diamond) continue;
+            var at = (mid + new Vector2((b.X - m.X) * pxPerWorld, -(b.Z - m.Z) * pxPerWorld)).Clamp(low, Size - low);
+            var points = new[] { at + new Vector2(0f, -b.Radius), at + new Vector2(b.Radius, 0f), at + new Vector2(0f, b.Radius), at + new Vector2(-b.Radius, 0f) };
+            canvas.DrawColoredPolygon(points, b.Color);
+            canvas.DrawPolyline(new[] { points[0], points[1], points[2], points[3], points[0] }, DiamondEdge, 1f, true);
+        }
     }
 }
