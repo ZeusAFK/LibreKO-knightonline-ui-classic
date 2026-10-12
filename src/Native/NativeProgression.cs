@@ -1,6 +1,7 @@
 using System.Collections;
 using Godot;
 using LibreKO;
+using LibreKO.Domain;
 using LibreKO.Network;
 using LibreKO.Plugins;
 
@@ -191,14 +192,22 @@ public static class NativeProgression
         return true;
     }
 
+    /// <summary>
+    /// The Genie page: 28 skill cells (Attack 8, Recovery 8, Support 12 with a party check under each), the mode
+    /// toggles per column, the potion, familiar and monster options, the Misc settings and the "Set Others" rows.
+    /// The mode toggles are named by their <see cref="GenieMode"/> (<c>genie_mode_attack</c> …) and the Set Others
+    /// rows by their native order; every control keeps its native callback.
+    /// </summary>
     private static bool PrepareGenie(HudWindow window, World world)
     {
         var slots = Native.Get<Button[]>(world, "_genieSlots");
-        var modes = Native.Get<CheckButton[]>(world, "_genieModes");
+        var modes = Native.Get<IDictionary>(world, "_genieModes");
+        var party = Native.Get<CheckBox[]>(world, "_genieParty");
         var start = Native.Get<Button>(world, "_genieStart");
         var monsters = Native.Get<ItemList>(world, "_genieMonsterList");
         var scrolls = Native.Get<Button[]>(world, "_genieScrollButtons");
-        if (slots == null || modes == null || start == null || monsters == null || scrolls == null || slots.Any(s => s == null)) return false;
+        if (slots == null || modes == null || party == null || start == null || monsters == null || scrolls == null
+            || slots.Any(s => s == null) || party.Any(p => p == null)) return false;
         if (slots[0].GetParent()?.GetParent() is not VBoxContainer firstColumn || firstColumn.GetParent() is not HBoxContainer columns
             || columns.GetParent() is not VBoxContainer main || main.GetParent() is not TabContainer tabs) return false;
         tabs.Name = "genie_tabs"; main.Name = "genie_main";
@@ -208,18 +217,26 @@ public static class NativeProgression
         if (page is not VBoxContainer misc) return false;
         misc.Name = "genie_misc";
         for (int i = 0; i < slots.Length; i++) slots[i].Name = "genie_slot_" + i;
-        for (int i = 0; i < modes.Length; i++) Named(modes[i], "genie_mode_" + i);
+        for (int i = 0; i < party.Length; i++) party[i].Name = "genie_party_" + i;
+        foreach (DictionaryEntry mode in modes) Named(mode.Value as Node, GenieModeName(mode.Key));
         int column = 0;
         foreach (var box in columns.GetChildren().OfType<VBoxContainer>())
         {
-            Named(box.GetChildren().OfType<Label>().FirstOrDefault(), "genie_skill_title_" + column);
+            var labels = box.GetChildren().OfType<Label>().ToArray();
+            Named(labels.FirstOrDefault(), "genie_skill_title_" + column);
+            // The support column's note under its cells (the party check tooltip says the same).
+            if (labels.Length > 1) Named(labels[^1], "genie_skill_hint_" + column);
             Named(box.GetChildren().OfType<GridContainer>().FirstOrDefault(), "genie_skill_grid_" + column++);
         }
-        // Potion options: title, HP check, HP potion, HP threshold, MP check, MP potion, MP threshold.
+        NameSpin(Native.Get<SpinBox>(world, "_genieRecovery"), "genie_recovery");
+        // Potion options: title, HP check, HP potion, HP threshold, MP …, Familiar potion check, potion, threshold.
         Named(Native.Get<Button>(world, "_genieHpSelect"), "genie_hp_item");
         Named(Native.Get<Button>(world, "_genieMpSelect"), "genie_mp_item");
+        Named(Native.Get<Button>(world, "_geniePetSelect"), "genie_pet_item");
+        Named(Native.Get<CheckButton>(world, "_geniePetPotion"), "genie_pet_potion");
         NameSpin(Native.Get<SpinBox>(world, "_genieHp"), "genie_hp");
         NameSpin(Native.Get<SpinBox>(world, "_genieMp"), "genie_mp");
+        NameSpin(Native.Get<SpinBox>(world, "_geniePetPercent"), "genie_pet");
         if (Native.Get<SpinBox>(world, "_genieHp")?.GetParent()?.GetParent() is VBoxContainer potions)
             Named(potions.GetChildren().OfType<Label>().FirstOrDefault(), "genie_potion_title");
         monsters.Name = "genie_monster_list";
@@ -242,7 +259,6 @@ public static class NativeProgression
         Named(Native.Get<CheckButton>(world, "_genieAutoScrolls"), "genie_auto_scrolls");
         for (int i = 0; i < scrolls.Length; i++) Named(scrolls[i], "genie_scroll_" + i);
         Named(Native.Get<Label>(world, "_genieScrollStatus"), "genie_scroll_status");
-        Named(Native.Get<CheckButton>(world, "_genieAutoHammer"), "genie_auto_hammer");
         NameSpin(Native.Get<SpinBox>(world, "_genieHammerThreshold"), "genie_hammer_threshold");
         Named(Native.Get<Label>(world, "_genieHammerStatus"), "genie_hammer_status");
         Named(Native.Get<Label>(world, "_genieTip"), "genie_tip");
@@ -254,10 +270,10 @@ public static class NativeProgression
         Before(Native.Get<SpinBox>(world, "_genieRange")?.GetParent(), "genie_settings_title");
         Before(code, "genie_ptcode_title");
         Before(Native.Get<CheckButton>(world, "_genieAutoScrolls"), "genie_scrolls_title");
-        Before(Native.Get<CheckButton>(world, "_genieAutoHammer"), "genie_hammer_title");
+        Before(Native.Get<SpinBox>(world, "_genieHammerThreshold")?.GetParent(), "genie_hammer_title");
         Before(Native.Get<Label>(world, "_genieTip"), "genie_daily_title");
         int hints = code is Control edit ? items.IndexOf(edit) : -1;
-        string[] hintNames = { "genie_ptcode_hint", "genie_combo_hint", "genie_leader_hint" };
+        string[] hintNames = { "genie_ptcode_hint", "genie_leader_hint" };
         for (int i = 0; hints >= 0 && i < hintNames.Length && hints + 1 + i < items.Count; i++) Named(items[hints + 1 + i] as Label, hintNames[i]);
         if (scrolls[0].GetParent() is HBoxContainer scrollRow)
         {
@@ -266,7 +282,7 @@ public static class NativeProgression
             if (at >= 0 && at + 1 < items.Count) Named(items[at + 1] as Label, "genie_scroll_hint");
         }
         Named(misc.GetChildren().OfType<HSeparator>().FirstOrDefault(), "genie_rule");
-        // Movement and curse options under the range, and the return-to-town rules ("Set Others").
+        // Movement and curse options under the range, and the return-to-town and automation rules ("Set Others").
         Named(Native.Get<CheckButton>(world, "_genieReturnHome"), "genie_return_home");
         Named(Native.Get<CheckButton>(world, "_genieHuntInPlace"), "genie_hunt_in_place");
         Named(Native.Get<CheckButton>(world, "_genieHideRange"), "genie_hide_range");
@@ -279,6 +295,7 @@ public static class NativeProgression
                 {
                     toggle.Name = "genie_other_" + row + "_toggle";
                     line.Name = "genie_other_" + row;
+                    line.SetMeta("genie_other", Convert.ToInt32(other.Key));
                     Named(line.GetChildren().OfType<SpinBox>().FirstOrDefault(), "genie_other_" + row + "_count");
                     if (row++ == 0 && items.IndexOf(line) is var at and > 0) Named(items[at - 1] as Label, "genie_others_title");
                 }
@@ -296,6 +313,9 @@ public static class NativeProgression
         });
         return true;
     }
+
+    /// <summary>The Classic name of a mode toggle: <c>genie_mode_</c> and the <see cref="GenieMode"/> name in lower case.</summary>
+    public static string GenieModeName(object mode) => "genie_mode_" + (mode is GenieMode flag ? flag.ToString() : mode.ToString() ?? "").ToLowerInvariant();
 
     private static void NameSpin(SpinBox? spin, string name)
     {

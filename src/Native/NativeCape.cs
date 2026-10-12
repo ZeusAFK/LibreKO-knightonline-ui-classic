@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Godot;
 using LibreKO;
+using LibreKO.Domain;
 using LibreKO.Network;
 using LibreKO.Plugins;
 
@@ -16,7 +17,10 @@ public static partial class NativeSetup
 /// original paged catalogue (four patterns, six colours per page), custom dye, an eligibility gate that
 /// matches the server's refusals, and a cost confirmation that freezes the chosen cape and colour. The
 /// client keeps the choice, sliders, purchase request and result; the plugin owns the catalogue pages,
-/// the preview and the confirmation.
+/// the preview and the confirmation. The client's own cape texts are used where it has them: the voucher rule and
+/// refusal (<see cref="CapeShop"/>, text 10322), the confirmation wording (10316/10318/10321, Clan CONT and Noah lines)
+/// and "Now equipped" (10313). The client's CONT and note lines stay in its hidden column: the Classic price line
+/// carries the CONT cost and the cape name's tooltip carries the note.
 /// </summary>
 public static class NativeCape
 {
@@ -27,7 +31,6 @@ public static class NativeCape
     private const int NoCape = -1;
     private const int PatternSampleColour = 1;
     private const int SwatchSize = 46;
-    private const int CastellanGradeLimit = 3;
     private const int TryAgainText = 16810;
     private static readonly int[] UnsoldCapes = { 97, 98, 99 };
 
@@ -251,11 +254,7 @@ public static class NativeCape
         int index = state.ColourIds.IndexOf(capeId);
         if (index >= 0) state.ColourPage = index / ColoursPerPage;
         RefreshPages(world, state);
-        Native.Get<Label>(world, "_capeChosenLbl")!.Text = def.M > 0 ? $"{def.Name} (pattern {def.M})" : def.Name;
-        var requirement = Native.Get<Label>(world, "_capeReqLbl")!;
-        requirement.Text = NeedName(def).Replace(" grade ", "\nGrade ");
-        Native.Get<Label>(world, "_capePriceLbl")!.Text = CostText(world);
-        requirement.AddThemeColorOverride("font_color", Clan.InClan && !Allowed(def) ? UiTheme.Bad : UiTheme.TextLo);
+        Describe(world, def);
         RefreshPreview(world);
         Gate(world);
     }
@@ -296,18 +295,15 @@ public static class NativeCape
         ticket.Disabled = !editing;
         RefreshPages(world, state);
         int choice = Native.Get<int>(world, "_capeChoice");
-        if (choice >= 0)
-        {
-            Native.Get<Label>(world, "_capePriceLbl")!.Text = CostText(world);
-            if (Cape.TryGet(choice, out var def))
-                Native.Get<Label>(world, "_capeReqLbl")!.AddThemeColorOverride("font_color", Allowed(def) ? UiTheme.TextLo : UiTheme.Bad);
-        }
+        // The client rewrites the chosen column when the clan changes (its own SelectCape); the Classic lines win.
+        if (choice >= 0 && Cape.TryGet(choice, out var def)) Describe(world, def);
         var clan = Clan;
         Native.Get<Label>(world, "_capeHint")!.Text =
             !clan.InClan ? "Join a clan to buy a cape."
             : !clan.IsChief ? "Only the clan chief can change the cape."
             : clan.Flag < ClanTypes.Promoted ? "Your clan must be promoted (Official) before buying a cape."
             : Native.Get<bool>(world, "_selfDead") ? "You cannot change a cape while dead."
+            : ticket.ButtonPressed && !VoucherAllowed(choice) ? ItemData.Text(CapeShop.VoucherRefusedText, "You cannot purchase this item using exchange voucher")
             : ticket.ButtonPressed ? "A castellan ticket is required. Only eligible capes can be purchased."
             : $"Custom dye costs {DyePoints.ToString("n0", System.Globalization.CultureInfo.InvariantCulture)} clan points.";
     }
@@ -324,18 +320,42 @@ public static class NativeCape
         if (choice >= 0)
         {
             if (!Cape.TryGet(choice, out var def)) return false;
-            if (ticket) return def.Price == 0 && clan.Grade <= CastellanGradeLimit;
+            // The client's voucher rule: only castle capes are sold for the exchange voucher.
+            if (ticket) return CapeShop.VoucherAllowed(def.Castle);
             if (!Allowed(def)) return false;
         }
         else if (ticket) return false;
         return !dye || ClanTypes.AcceptsDonations(clan.Flag);
     }
 
+    private static bool VoucherAllowed(int capeId) => Cape.TryGet(capeId, out var def) && CapeShop.VoucherAllowed(def.Castle);
+
+    /// <summary>The Classic info box lines of a chosen cape: name (note as tooltip), cost and grade.</summary>
+    private static void Describe(World world, Cape.CapeDef def)
+    {
+        var chosen = Native.Get<Label>(world, "_capeChosenLbl")!;
+        string name = def.M > 0 ? $"{def.Name} (pattern {def.M})" : def.Name;
+        if (chosen.Text != name) chosen.Text = name;
+        // The client's note line: "Now equipped" or the cape's description.
+        string note = Native.Has(world, "_capeNoteLbl") ? Native.Get<Label>(world, "_capeNoteLbl")?.Text ?? "" : "";
+        chosen.TooltipText = note.Length > 0 ? name + "\n" + note : name;
+        var requirement = Native.Get<Label>(world, "_capeReqLbl")!;
+        string need = NeedName(def).Replace(" grade ", "\nGrade ");
+        if (requirement.Text != need) requirement.Text = need;
+        requirement.AddThemeColorOverride("font_color", Clan.InClan && !Allowed(def) ? UiTheme.Bad : UiTheme.TextLo);
+        var price = Native.Get<Label>(world, "_capePriceLbl")!;
+        string cost = CostText(world);
+        if (price.Text != cost) price.Text = cost;
+    }
+
     private static string CostText(World world)
     {
-        if (Native.Get<CheckBox>(world, "_capeTicket")!.ButtonPressed) return "1 castellan ticket";
-        Cape.TryGet(Native.Get<int>(world, "_capeChoice"), out var def);
+        int choice = Native.Get<int>(world, "_capeChoice");
+        if (Native.Get<CheckBox>(world, "_capeTicket")!.ButtonPressed && VoucherAllowed(choice)) return "1 castellan ticket";
+        Cape.TryGet(choice, out var def);
         var (r, g, b) = Dye(world);
+        if (choice >= 0 && choice == Native.Get<int>(world, "_capeCurrent") && r == 0 && g == 0 && b == 0)
+            return ItemData.Text(CapeShop.NowEquippedText, "Now equipped");
         int points = def.Points + (r != 0 || g != 0 || b != 0 ? DyePoints : 0);
         var costs = new List<string>();
         if (def.Price > 0) costs.Add($"{def.Price:n0} Noahs");
@@ -423,11 +443,29 @@ public static class NativeCape
         if (!CanApply(world)) { Gate(world); return; }
         byte op = Native.Get<CheckBox>(world, "_capeTicket")!.ButtonPressed ? Net.CapeOpTicket : Net.CapeOpBuy;
         int revision = ++state.Revision;
-        string name = capeId >= 0 && Cape.TryGet(capeId, out var chosen) ? chosen.Name : "Current cape";
         var layer = Native.Get<Node>(world, "_capeLayer") ?? world;
-        state.Notice = Notice.Confirm(layer, $"Apply {name}?\n{CostText(world)}", "Buy", "Cancel",
+        state.Notice = Notice.Confirm(layer, ConfirmText(world, capeId, op == Net.CapeOpTicket), "Buy", "Cancel",
             () => Submit(world, revision, op, capeId, (byte)r, (byte)g, (byte)b), () => Cancel(world, revision), title: Title);
         Gate(world);
+    }
+
+    /// <summary>The client's confirmation wording (texts 10316/10318, or 10321 for the voucher) with the cape's cost.</summary>
+    public static string ConfirmText(World world, int capeId, bool voucher)
+    {
+        if (voucher) return ItemData.Text(CapeShop.VoucherConfirmText, "Do you wish to purchase with the exchange voucher?");
+        var (r, g, b) = Dye(world);
+        bool painting = r != 0 || g != 0 || b != 0;
+        Cape.TryGet(capeId, out var def);
+        int cont = capeId < 0 ? CapeShop.PaintCont : CapeShop.ContCost(def.Points, painting);
+        string contLine = CapeShop.Fill(ItemData.Text(CapeShop.ContLineText, "%s Clan CONT"), CapeShop.Amount(cont));
+        string noahLine = CapeShop.Fill(ItemData.Text(CapeShop.NoahLineText, "%s Noah"), CapeShop.Amount(capeId < 0 ? 0 : def.Price));
+        bool castle = capeId >= 0 && def.Castle;
+        string fallback = castle
+            ? "If you are not a member of current Castellan clan,\n%s\n%s will be used.\nDo you wish to continue with the purchase?"
+            : "Purchase price:\n%s\n%s\nDo you wish to purchase it?";
+        string text = CapeShop.Fill(ItemData.Text(CapeShop.ConfirmText(castle), fallback), contLine, noahLine);
+        // The retail strings break lines with stray spaces around them.
+        return string.Join('\n', text.Split('\n').Select(line => line.Trim()));
     }
 
     private static void Submit(World world, int revision, byte op, int capeId, byte r, byte g, byte b)

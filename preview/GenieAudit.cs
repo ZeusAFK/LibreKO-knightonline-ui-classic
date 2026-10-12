@@ -212,6 +212,9 @@ public partial class Preview
                 Require(Math.Abs(gauge.GetGlobalRect().GetCenter().Y - toggle.GetGlobalRect().GetCenter().Y) <= 1, state + ": the gauge is centred on the time row");
                 Require(gauge.GetGlobalRect().Position.Y >= head.GetGlobalRect().End.Y && !gauge.GetGlobalRect().Intersects(toggle.GetGlobalRect()), state + ": the gauge sits on the time row beside Start/Stop");
                 Require(rows.All(r => r.IsVisibleInTree() == !minimised), state + (minimised ? ": the monster rows are folded away" : ": the three monster rows are shown"));
+                if (!minimised)
+                    Require(rows.All(r => Math.Abs(r.Size.Y - rows[0].Size.Y) < .5f) && Math.Abs(rows[2].GetGlobalRect().Position.Y - rows[1].GetGlobalRect().Position.Y - (rows[1].GetGlobalRect().Position.Y - rows[0].GetGlobalRect().Position.Y)) < .5f,
+                        state + ": the monster rows are evenly spaced, the last one (no action button since 3277df5) included: " + string.Join(" / ", rows.Select(r => R(r.GetGlobalRect()))));
                 var last = minimised ? toggle.GetParent<Control>().GetGlobalRect() : rows[^1].GetGlobalRect();
                 Require(Math.Abs(box.End.Y - last.End.Y - top) <= 1, state + ": the frame fits its rows (bottom padding " + (box.End.Y - last.End.Y) + ")");
                 bounds[state] = new { panel = R(box), caption = R(head.GetGlobalRect()), minimise = R(minimise.GetGlobalRect()), close = R(close.GetGlobalRect()),
@@ -276,11 +279,11 @@ public partial class Preview
             // R Attack is the Genie's basic attack: with Attack Mode on it selects a monster from the list (all monsters
             // when the list is empty) within its range of the start point, walks into reach and runs the client's auto
             // attack (the R key's attack), relayed as GS_GENIE_SYSTEM 2/3. Attack skills, when set, are cast in between.
-            var modes = (CheckButton[])Get(world, "_genieModes")!;
-            var skills = (int[])Get(world, "_genieSkills")!;
-            Array.Clear(skills);
-            var modeNames = Enum.GetNames(typeof(World).GetNestedType("GenieModeFlag", flags)!).ToList();
-            CheckButton Mode(string name) => modes[modeNames.IndexOf(name)];
+            var modes = (System.Collections.IDictionary)Get(world, "_genieModes")!;
+            // The client replaces its GenieSetup wholesale when options arrive; read it again for every edit.
+            GenieSetup Setup() => (GenieSetup)Get(world, "_genie")!;
+            Array.Clear(Setup().Attack);
+            CheckButton Mode(GenieMode mode) => (CheckButton)modes[mode]!;
             var mobIndex = (System.Collections.IDictionary?)Get(world, "_mobIndex");
             int model = mobIndex?.Keys.Cast<object>().Select(Convert.ToInt32).FirstOrDefault() ?? 1;
             int nextMob = 30001;
@@ -338,7 +341,7 @@ public partial class Preview
                 return new Vector2(a.X - b.X, a.Z - b.Z).Length();
             }
 
-            Mode("Attack").ButtonPressed = true; Mode("BasicAttack").ButtonPressed = true; Mode("Combo").ButtonPressed = false; Mode("LeaderTarget").ButtonPressed = false;
+            Mode(GenieMode.Attack).ButtonPressed = true; Mode(GenieMode.BasicAttack).ButtonPressed = true; Mode(GenieMode.Combo).ButtonPressed = false; Mode(GenieMode.LeaderTarget).ButtonPressed = false;
             monsters.Clear(); DetailCall(world, "RefreshGenieMonsters");
 
             // 1. A monster in reach: selected and attacked.
@@ -398,7 +401,7 @@ public partial class Preview
             await Despawn(outside);
 
             // 7. R Attack off, no skills: no swings.
-            Mode("BasicAttack").ButtonPressed = false;
+            Mode(GenieMode.BasicAttack).ButtonPressed = false;
             int idle = await Spawn(1.0f);
             var none = await Watch(3);
             Finding("R Attack off, no skills", none, Count(none, RelayAttack) == 0, "no basic swings");
@@ -409,7 +412,7 @@ public partial class Preview
             // not castable with this gear) the Genie must close in and swing, then cast again once a skill is ready.
             // A melee skill reaches further than the basic attack (weapon + radii + 2 against weapon + half the radii);
             // a ranged spell much further. The fixture switches the character's class for the mage case.
-            Mode("BasicAttack").ButtonPressed = true;
+            Mode(GenieMode.BasicAttack).ButtonPressed = true;
             var learned = typeof(World).GetMethod("SkillRequirementMet", flags)!;
             // The fixture character has spent no skill points; it gets enough in every tree to own its class skills.
             var slots = Net.I.Mastery.ToArray(); Array.Fill(slots, (byte)80); Net.I.Mastery.Seed(slots);
@@ -421,12 +424,13 @@ public partial class Preview
             {
                 typeof(World).GetField("_selfClass", flags)!.SetValue(world, classCode);
                 var skill = LibreKO.Domain.SkillData.ForClass(classCode)
-                    .Where(k => k.IsEnemy && k.Range > 0 && (bool)learned.Invoke(world, new object[] { k })!
+                    // Anger Explosion casts only in rage mode (3277df5, SkillUsable.AngerAllows); the fixture has no rage.
+                    .Where(k => k.IsEnemy && k.Range > 0 && (bool)learned.Invoke(world, new object[] { k })! && LibreKO.Domain.SkillUsable.AngerAllows(k.Id, Net.I.AngerFull)
                         && (ranged ? LibreKO.Domain.SkillReach.Kind(k.Type1, k.Type2) != LibreKO.Domain.SkillReach.KindMelee && k.Range >= 10
                                    : LibreKO.Domain.SkillReach.Kind(k.Type1, k.Type2) == LibreKO.Domain.SkillReach.KindMelee))
                     .OrderBy(k => k.Range).FirstOrDefault();
                 if (skill == null) { checks.Add($"{label}: class {classCode} has no learned {(ranged ? "ranged" : "melee")} attack skill; skipped"); typeof(World).GetField("_selfClass", flags)!.SetValue(world, ownClass); return; }
-                Array.Clear(skills); skills[0] = skill.Id; DetailCall(world, "RefreshGenieSlots");
+                Array.Clear(Setup().Attack); Setup().Attack[0] = skill.Id; DetailCall(world, "RefreshGenieSlots");
                 Call(world, "StopAutoAttack");
                 int probe = await Spawn(1.0f);
                 float reach = BasicReach(probe);
@@ -456,7 +460,7 @@ public partial class Preview
                 string readyText = $"{label}: once {skill.Name} is ready the Genie casts it (when the gear allows it) or keeps swinging ({Count(ready, RelayMagic)} magic, {Count(ready, RelayAttack)} attacks, castable {gear})";
                 if (approachFixed) Require(readyOk, readyText);
                 else checks.Add((readyOk ? "" : "KNOWN CORE DEFECT (no GenieApproach in this client): ") + readyText);
-                skills[0] = 0; DetailCall(world, "RefreshGenieSlots");
+                Setup().Attack[0] = 0; DetailCall(world, "RefreshGenieSlots");
                 Call(world, "StopAutoAttack");
                 await Despawn(mob);
                 typeof(World).GetField("_selfClass", flags)!.SetValue(world, ownClass);
@@ -466,7 +470,7 @@ public partial class Preview
             await SkillCase("mage", nation * 100 + 9, true, "no-mana");
 
             // Stop the Genie (after the client's toggle cooldown); the panel returns to Start.
-            Mode("BasicAttack").ButtonPressed = true;
+            Mode(GenieMode.BasicAttack).ButtonPressed = true;
             Call(world, "ToggleGenieRun");
             await Until(() => !net.GenieRunning, "the Genie stops");
             await Server(5, 1, 118); await Frames(4);

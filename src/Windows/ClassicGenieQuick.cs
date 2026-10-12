@@ -49,6 +49,10 @@ public static class ClassicGenieQuick
         parts.Settings.Reparent(time, false);
         foreach (var button in new[] { parts.Toggle, parts.Settings }) button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         parts.Toggle.CustomMinimumSize = Spec.Toggle; parts.Settings.CustomMinimumSize = Spec.Settings;
+        // Since 3277df5 the last monster row has no action button (its check adds the selected monster); every row
+        // keeps the button height so the rows stay evenly spaced.
+        float rowHeight = parts.Rows.Select(r => r.GetCombinedMinimumSize().Y).DefaultIfEmpty(0).Max();
+        foreach (var row in parts.Rows) row.CustomMinimumSize = new Vector2(row.CustomMinimumSize.X, rowHeight);
         ClassicEventPanel.Bold(parts.Points, ClassicEventPanel.Ink, Spec.TimeFont);
         parts.Points.AddThemeConstantOverride("outline_size", Spec.TimeOutline);
         parts.Points.AddThemeColorOverride("font_outline_color", Colors.Black);

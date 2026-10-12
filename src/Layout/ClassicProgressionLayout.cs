@@ -1,5 +1,6 @@
 using Godot;
 using KnightOnlineUiClassic.Windows;
+using LibreKO.Domain;
 
 namespace KnightOnlineUiClassic.Layout;
 
@@ -22,7 +23,7 @@ public static class ClassicProgressionLayout
         "achievements" => new(530, 566),
         "attendance" => new(492, 552),
         "rank" => new(Rank.Width, Rank.Height),
-        "genie" => new(530, 550),
+        "genie" => new(530, 556),
         _ => throw new ArgumentOutOfRangeException(nameof(id)),
     };
 
@@ -100,88 +101,133 @@ public static class ClassicProgressionLayout
         }
     }
 
+    /// <summary>
+    /// The Genie pages. Main: the three skill columns (Attack 8 cells, Recovery 8, Support 12 with a party check
+    /// under each cell) with their mode toggles, the monster list with its hint, the run line and the footer.
+    /// Misc: the settings (range, movement, party code), the daily reward, the potion options (HP, MP, Familiar)
+    /// and the automatic scrolls. Others: the client's "Set Others" rows and the Genie Hammer threshold.
+    /// </summary>
     private static Dictionary<string, Rect2> Genie()
     {
         var rects = new Dictionary<string, Rect2>
         {
-            ["genie_potion_title"] = new(14, 276, 240, 20),
-            ["genie_mode_6"] = new(12, 298, 246, 20),
-            ["genie_hp_item"] = new(14, 320, 242, 26),
-            ["genie_hp_label"] = new(14, 348, 160, 22),
-            ["genie_hp"] = new(176, 348, 80, 22),
-            ["genie_mode_7"] = new(12, 372, 246, 20),
-            ["genie_mp_item"] = new(14, 394, 242, 26),
-            ["genie_mp_label"] = new(14, 422, 160, 22),
-            ["genie_mp"] = new(176, 422, 80, 22),
-            ["genie_monster_title"] = new(274, 276, 240, 20),
-            ["genie_monster_list"] = new(274, 298, 242, 118),
-            ["genie_monster_add"] = new(274, 422, 119, Row),
-            ["genie_monster_remove"] = new(397, 422, 119, Row),
-            ["genie_hint"] = new(12, 458, 506, 18),
-            ["genie_run"] = new(12, 478, 506, 20),
-            ["genie_start"] = new(12, 500, 120, Row),
-            ["genie_save"] = new(136, 500, 120, Row),
-            ["genie_spirit"] = new(372, 500, 150, Row),
+            // Main: monster list, hint, run line and footer.
+            ["genie_monster_title"] = new(14, 358, 240, 20),
+            ["genie_monster_list"] = new(14, 380, 242, GenieMonsterRows * GenieMonsterRow + 6),
+            ["genie_monster_add"] = new(268, 380, 123, Row),
+            ["genie_monster_remove"] = new(395, 380, 123, Row),
+            ["genie_hint"] = new(268, 408, 250, 46),
+            ["genie_run"] = new(12, 498, 506, 18),
+            ["genie_start"] = new(12, 524, 120, Row),
+            ["genie_save"] = new(136, 524, 120, Row),
+            ["genie_spirit"] = new(372, 524, 150, Row),
 
+            // Misc, left: settings and the daily reward.
             ["genie_settings_title"] = new(14, 120, 240, 20),
             ["genie_range_label"] = new(14, 142, 160, 22),
             ["genie_range"] = new(176, 142, 80, 22),
-            ["genie_auto_party"] = new(12, 168, 246, 20),
-            ["genie_ptcode_title"] = new(14, 192, 240, 20),
-            ["genie_ptcode"] = new(14, 214, 242, Row),
-            ["genie_ptcode_hint"] = new(14, 240, 242, 34),
-            ["genie_combo_hint"] = new(14, 274, 242, 34),
-            ["genie_leader_hint"] = new(14, 308, 242, 34),
-            ["genie_daily_title"] = new(14, 356, 240, 20),
-            ["genie_tip"] = new(14, 378, 242, 58),
-            ["genie_daily_status"] = new(14, 438, 242, 34),
-            ["genie_claim"] = new(14, 476, 160, Row),
-            ["genie_scrolls_title"] = new(274, 120, 240, 20),
-            ["genie_auto_scrolls"] = new(272, 142, 246, 20),
-            ["genie_scroll_hint"] = new(274, 216, 242, 34),
-            ["genie_scroll_status"] = new(274, 252, 242, 34),
-            ["genie_hammer_title"] = new(274, 298, 240, 20),
-            ["genie_auto_hammer"] = new(272, 320, 246, 20),
-            ["genie_hammer_threshold_label"] = new(274, 344, 160, 22),
-            ["genie_hammer_threshold"] = new(436, 344, 80, 22),
-            ["genie_hammer_status"] = new(274, 370, 242, 34),
+            ["genie_return_home"] = new(12, 166, 246, 20),
+            ["genie_hunt_in_place"] = new(12, 186, 246, 20),
+            ["genie_hide_range"] = new(12, 206, 246, 20),
+            ["genie_cure_curse"] = new(12, 226, 246, 20),
+            ["genie_auto_party"] = new(12, 248, 246, 20),
+            ["genie_ptcode_title"] = new(14, 270, 240, 20),
+            ["genie_ptcode"] = new(14, 292, 242, Row),
+            ["genie_ptcode_hint"] = new(14, 320, 242, 46),
+            ["genie_leader_hint"] = new(14, 368, 242, 32),
+            ["genie_daily_title"] = new(14, 416, 240, 20),
+            ["genie_tip"] = new(14, 438, 242, 34),
+            ["genie_daily_status"] = new(14, 474, 242, 34),
+            ["genie_claim"] = new(14, 514, 160, Row),
+            // Misc, right: potions (HP, MP, Familiar) and the automatic scrolls.
+            ["genie_potion_title"] = new(274, 120, 240, 20),
+            ["genie_mode_hppotion"] = new(272, 142, 246, 20),
+            ["genie_hp_item"] = new(274, 164, 242, 26),
+            ["genie_hp_label"] = new(274, 192, 160, 22),
+            ["genie_hp"] = new(436, 192, 80, 22),
+            ["genie_mode_mppotion"] = new(272, 216, 246, 20),
+            ["genie_mp_item"] = new(274, 238, 242, 26),
+            ["genie_mp_label"] = new(274, 266, 160, 22),
+            ["genie_mp"] = new(436, 266, 80, 22),
+            ["genie_pet_potion"] = new(272, 290, 246, 20),
+            ["genie_pet_item"] = new(274, 312, 242, 26),
+            ["genie_pet_label"] = new(274, 340, 160, 22),
+            ["genie_pet"] = new(436, 340, 80, 22),
+            ["genie_scrolls_title"] = new(274, 378, 240, 20),
+            ["genie_auto_scrolls"] = new(272, 400, 246, 20),
+            ["genie_scroll_hint"] = new(274, 470, 242, 30),
+            ["genie_scroll_status"] = new(274, 502, 242, 30),
+
+            // Others: the Set Others rows, then the Genie Hammer threshold.
+            ["genie_others_title"] = new(14, 120, 300, 20),
+            ["genie_hammer_title"] = new(14, 444, 300, 20),
+            ["genie_hammer_threshold_label"] = new(14, 466, 200, 22),
+            ["genie_hammer_threshold"] = new(216, 466, 80, 22),
+            ["genie_hammer_status"] = new(14, 494, 498, 30),
         };
         for (int group = 0; group < 3; group++)
         {
             int x = Margin + group * 172;
             rects["genie_skill_title_" + group] = new(x + 6, 120, 158, 20);
-            for (int cell = 0; cell < 8; cell++)
-                rects["genie_slot_" + (group * 8 + cell)] = new(x + 7 + cell % 4 * 40, 142 + cell / 4 * 40, 36, 36);
-            int[] modes = { new[] { 0, 1, 2 }[group], new[] { 3, 4, 5 }[group] };
-            rects["genie_mode_" + modes[0]] = new(x + 4, 222, 162, 20);
-            rects["genie_mode_" + modes[1]] = new(x + 4, 242, 162, 20);
+            int cells = GenieCells[group], first = GenieFirstCell(group), pitch = group == 2 ? GenieSupportPitch : GenieCellPitch;
+            for (int cell = 0; cell < cells; cell++)
+            {
+                rects["genie_slot_" + (first + cell)] = new(x + 7 + cell % 4 * GenieCellPitch, GenieCellsTop + cell / 4 * pitch, Cell36, Cell36);
+                if (group == 2)
+                    rects["genie_party_" + cell] = new(x + 7 + cell % 4 * GenieCellPitch + (Cell36 - GeniePartyWidth) / 2,
+                        GenieCellsTop + Cell36 + 1 + cell / 4 * pitch, GeniePartyWidth, GeniePartyHeight);
+            }
+            int modesTop = GenieCellsTop + (cells + 3) / 4 * pitch + 2;
+            string[] modes = GenieColumnModes[group];
+            for (int i = 0; i < modes.Length; i++) rects[modes[i]] = new(x + 4, modesTop + i * 20, 162, 20);
+            if (group == 1)
+            {
+                rects["genie_recovery_label"] = new(x + 4, modesTop + modes.Length * 20 + 4, 162, 20);
+                rects["genie_recovery"] = new(x + 4, modesTop + modes.Length * 20 + 26, 80, 22);
+            }
         }
-        for (int i = 0; i < 4; i++) rects["genie_scroll_" + i] = new(278 + i * 49, 166, Cell, Cell);
-        // Others page: the movement options, then the return-to-town rules with their potion counts.
-        string[] options = { "genie_return_home", "genie_hunt_in_place", "genie_hide_range", "genie_cure_curse" };
-        for (int i = 0; i < options.Length; i++) rects[options[i]] = new(18, 122 + i * Row, 498, 20);
-        rects["genie_others_title"] = new(14, 224, 300, 20);
-        for (int i = 0; i < GenieOtherRows; i++) rects["genie_other_" + i] = new(18, 252 + i * 24, 498, Row);
+        for (int i = 0; i < 4; i++) rects["genie_scroll_" + i] = new(278 + i * 49, 422, Cell, Cell);
+        for (int i = 0; i < GenieOtherRows; i++) rects["genie_other_" + i] = new(18, 142 + i * 26, 498, Row);
         return rects;
     }
+
+    /// <summary>Skill cells per column (Attack, Recovery, Support), the first cell of each column and the cell geometry.</summary>
+    public static int[] GenieCells => new[] { GenieSetup.AttackCells, GenieSetup.RecoveryCells, GenieSetup.SupportCells };
+    public static int GenieFirstCell(int group) => group switch { 0 => 0, 1 => GenieSetup.AttackCells, _ => GenieSetup.AttackCells + GenieSetup.RecoveryCells };
+    public const int Cell36 = 36, GenieCellPitch = 40, GenieCellsTop = 142;
+    /// <summary>The monster list shows whole rows: five of the client's 19-pixel list rows inside its 3-pixel padding.</summary>
+    public const int GenieMonsterRows = 5, GenieMonsterRow = 19;
+    /// <summary>The party check under a support cell: the chat check art (14 x 15) in a 16-pixel box centred under the cell.</summary>
+    public const int GeniePartyWidth = 16, GeniePartyHeight = 16;
+    /// <summary>Support cells leave room for the party check under each cell.</summary>
+    public const int GenieSupportPitch = Cell36 + 1 + GeniePartyHeight;
+    private static string[][] GenieColumnModes => new[]
+    {
+        new[] { "genie_mode_attack", "genie_mode_basicattack", "genie_mode_combo" },
+        new[] { "genie_mode_recovery" },
+        new[] { "genie_mode_support", "genie_mode_leadertarget" },
+    };
 
     /// <summary>Named control rectangle, or null when the control is not placed by the layout.</summary>
     public static Rect2? Rect(string id, string name) =>
         Controls.TryGetValue(id, out var rects) && rects.TryGetValue(name, out var rect) ? rect : null;
 
-    /// <summary>Return-to-town rules on the Others page.</summary>
-    public const int GenieOtherRows = 7;
+    /// <summary>The client's "Set Others" rows (return-to-town rules, hammer, spirit, familiar feeding, mace) on the Others page.</summary>
+    public static int GenieOtherRows => GenieTownReturn.OtherRows.Length;
 
-    /// <summary>The genie page of a control: 0 Main, 1 Misc (settings, scrolls, hammer, daily reward), 2 Others.</summary>
+    /// <summary>The genie page of a control: 0 Main, 1 Misc (settings, potions, scrolls, daily reward), 2 Others (Set Others, hammer).</summary>
     public static int GeniePage(string name) =>
-        name is "genie_return_home" or "genie_hunt_in_place" or "genie_hide_range" or "genie_cure_curse" or "genie_others_title"
+        name is "genie_others_title" or "genie_hammer_title" or "genie_hammer_threshold_label" or "genie_hammer_threshold" or "genie_hammer_status"
             || name.StartsWith("genie_other_") ? 2 : GenieMisc(name) ? 1 : 0;
 
     private static bool GenieMisc(string name) => name is "genie_settings_title" or "genie_range_label" or "genie_range" or "genie_auto_party"
-        or "genie_ptcode_title" or "genie_ptcode" or "genie_ptcode_hint" or "genie_combo_hint" or "genie_leader_hint" or "genie_daily_title"
+        or "genie_return_home" or "genie_hunt_in_place" or "genie_hide_range" or "genie_cure_curse"
+        or "genie_ptcode_title" or "genie_ptcode" or "genie_ptcode_hint" or "genie_leader_hint" or "genie_daily_title"
         or "genie_tip" or "genie_daily_status" or "genie_claim" or "genie_scrolls_title" or "genie_auto_scrolls" or "genie_scroll_hint"
-        or "genie_scroll_status" or "genie_hammer_title" or "genie_auto_hammer" or "genie_hammer_threshold_label" or "genie_hammer_threshold"
-        or "genie_hammer_status" || name.StartsWith("genie_scroll_") && name.Length == "genie_scroll_0".Length;
+        or "genie_scroll_status" or "genie_potion_title" or "genie_mode_hppotion" or "genie_mode_mppotion" or "genie_pet_potion"
+        or "genie_hp_item" or "genie_hp_label" or "genie_hp" or "genie_mp_item" or "genie_mp_label" or "genie_mp"
+        or "genie_pet_item" or "genie_pet_label" or "genie_pet"
+        || name.StartsWith("genie_scroll_") && name.Length == "genie_scroll_0".Length;
 
     private static LayoutNode Node(string type, string id, Rect2 rect) =>
         new() { Type = type, Id = id, X = (int)rect.Position.X, Y = (int)rect.Position.Y, W = (int)rect.Size.X, H = (int)rect.Size.Y };
@@ -229,21 +275,20 @@ public static class ClassicProgressionLayout
                 }
                 break;
             case "genie":
-                for (int group = 0; group < 3; group++) Section("genie_skill_frame_" + group, new(Margin + group * 172, 116, 170, 150));
-                Section("genie_potion_frame", new(Margin, 272, 254, 180));
-                Section("genie_monster_frame", new(268, 272, 254, 180));
-                Section("genie_settings_frame", new(Margin, 116, 254, 232));
-                Section("genie_daily_frame", new(Margin, 352, 254, 156));
-                Section("genie_scrolls_frame", new(268, 116, 254, 174));
-                Section("genie_hammer_frame", new(268, 294, 254, 118));
-                Section("genie_options_frame", new(Margin, 116, 514, 98));
-                Section("genie_others_frame", new(Margin, 246, 514, 178));
+                for (int group = 0; group < 3; group++) Section("genie_skill_frame_" + group, new(Margin + group * 172, 116, 170, 232));
+                Section("genie_monster_frame", new(Margin, 354, 514, 136));
+                Section("genie_settings_frame", new(Margin, 116, 254, 290));
+                Section("genie_daily_frame", new(Margin, 412, 254, 134));
+                Section("genie_potion_frame", new(268, 116, 254, 252));
+                Section("genie_scrolls_frame", new(268, 374, 254, 172));
+                Section("genie_others_frame", new(Margin, 116, 514, 318));
+                Section("genie_hammer_frame", new(Margin, 440, 514, 106));
                 break;
         }
         return root;
     }
 
     /// <summary>The page of a genie inset.</summary>
-    public static int GenieFramePage(string name) => name is "genie_settings_frame" or "genie_daily_frame" or "genie_scrolls_frame" or "genie_hammer_frame" ? 1
-        : name is "genie_options_frame" or "genie_others_frame" ? 2 : 0;
+    public static int GenieFramePage(string name) => name is "genie_settings_frame" or "genie_daily_frame" or "genie_scrolls_frame" or "genie_potion_frame" ? 1
+        : name is "genie_others_frame" or "genie_hammer_frame" ? 2 : 0;
 }

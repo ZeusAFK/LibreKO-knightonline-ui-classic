@@ -144,7 +144,9 @@ public static class NativeEquipView
         Clear(state);
         if (result != Net.EquipmentViewResult.Accepted)
         {
-            state.Status.Text = result switch
+            // The client's own refusal (its text table: 44785, 44787, 44789) when it has written one.
+            string native = Native.Get<Label>(world, "_equipViewStatus")?.Text ?? "";
+            state.Status.Text = native.Length > 0 && native != "Requesting…" ? native : result switch
             {
                 Net.EquipmentViewResult.NotInSameRegion => $"{state.Pending} is not in this region.",
                 Net.EquipmentViewResult.CannotChooseYourself => "You cannot inspect yourself.",

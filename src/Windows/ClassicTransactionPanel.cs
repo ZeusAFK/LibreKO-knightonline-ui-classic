@@ -186,16 +186,6 @@ public partial class ClassicVendorPanel : Control
         foreach (var frame in _frames) frame.OwnerCell.EmitSignal(Control.SignalName.MouseExited);
     }
     public void Page(int delta) { if (!ModalOpen) { CancelHeldItem(); _pager.Step(delta); } }
-    public void BuyPrice(ItemSlotView source)
-    {
-        if (source.Item.IsEmpty) return;
-        var layer = CharacterDetailsSkin.Tree(GetTree().Root).OfType<CanvasLayer>().FirstOrDefault(l => l.Layer == 85);
-        var stack = layer == null ? null : CharacterDetailsSkin.Tree(layer).OfType<VBoxContainer>().FirstOrDefault();
-        if (stack == null || !stack.IsVisibleInTree()) return;
-        foreach (var old in stack.GetChildren().OfType<Label>().Where(l => l.Name == "trade_buy_price").ToArray()) { stack.RemoveChild(old); old.QueueFree(); }
-        var price = ClassicNpcLayout.Text($"Buying Price : {ItemData.BuyPrice(source.Item.ItemId):n0} {(_currency.Text.Length == 0 ? "gold" : "NP")}", 11, true, ClassicDesign.Heading);
-        price.Name = "trade_buy_price"; stack.AddChild(price); stack.MoveChild(price, Math.Min(3, stack.GetChildCount()-1));
-    }
     private void InventoryChanged() => _bagDirty = true;
     public override void _EnterTree()
     {
@@ -266,7 +256,8 @@ public partial class ClassicTradeCatalogueSlot : Control
     public ClassicTradeCatalogueSlot(ItemSlotView source, ClassicVendorPanel owner)
     {
         _source = source; _owner = owner; MouseFilter = MouseFilterEnum.Stop;
-        MouseEntered += () => { if (!_owner.ModalOpen) { _source.EmitSignal(Control.SignalName.MouseEntered); _owner.BuyPrice(_source); } };
+        // The client's catalogue hover shows the item tooltip with its own "Purchasing Price" line (tariff included).
+        MouseEntered += () => { if (!_owner.ModalOpen) _source.EmitSignal(Control.SignalName.MouseEntered); };
         MouseExited += () => _source.EmitSignal(Control.SignalName.MouseExited);
     }
     public override void _GuiInput(InputEvent ev)

@@ -245,8 +245,45 @@ public partial class Preview
             // The genie quick panel on the same layer gets its Classic box as the live overlay check gives it.
             NativeOverlays.PrepareLater(world);
             await Frames();
-            var slots = Enumerable.Range(0, 24).Select(i => Named<Button>(panel, "genie_slot_" + i)).ToArray();
-            Require(slots.All(s => s.Size == new Vector2(36, 36) && s.GetThemeStylebox("normal") is StyleBoxTexture), view + " 24 skill slots on Classic cells");
+            int cellCount = ClassicProgressionLayout.GenieCells.Sum();
+            var slots = Enumerable.Range(0, cellCount).Select(i => Named<Button>(panel, "genie_slot_" + i)).ToArray();
+            Require(slots.All(s => s.Size == new Vector2(36, 36) && s.GetThemeStylebox("normal") is StyleBoxTexture), view + " " + cellCount + " skill slots on Classic cells");
+            for (int group = 0; group < 3; group++)
+            {
+                var frame = panel.Frame.Get("genie_skill_frame_" + group)!.GetGlobalRect();
+                int first = ClassicProgressionLayout.GenieFirstCell(group), cells = ClassicProgressionLayout.GenieCells[group];
+                Require(Enumerable.Range(first, cells).All(i => frame.Encloses(slots[i].GetGlobalRect())), view + " column " + group + " cells inside their inset");
+            }
+            // Support cells carry the client's party check centred under each cell; the mode toggles sit under the cells.
+            var party = Enumerable.Range(0, GenieSetup.SupportCells).Select(i => Named<CheckBox>(panel, "genie_party_" + i)).ToArray();
+            var supportFrame = panel.Frame.Get("genie_skill_frame_2")!.GetGlobalRect();
+            int supportFirst = ClassicProgressionLayout.GenieFirstCell(2);
+            for (int i = 0; i < party.Length; i++)
+            {
+                var cell = slots[supportFirst + i].GetGlobalRect(); var check = party[i].GetGlobalRect();
+                Require(party[i].IsVisibleInTree() && supportFrame.Encloses(check) && party[i].GetThemeIcon("checked") is AtlasTexture, view + " Classic party check under support cell " + i);
+                Require(check.Position.Y >= cell.End.Y && Math.Abs(check.GetCenter().X - cell.GetCenter().X) <= 1 && check.Size == new Vector2(ClassicProgressionLayout.GeniePartyWidth, ClassicProgressionLayout.GeniePartyHeight),
+                    view + " party check " + i + " centred under its cell " + check);
+            }
+            var modeNames = new[] { ("genie_mode_attack", 0), ("genie_mode_basicattack", 0), ("genie_mode_combo", 0), ("genie_mode_recovery", 1), ("genie_mode_support", 2), ("genie_mode_leadertarget", 2) };
+            foreach (var (mode, group) in modeNames)
+            {
+                var toggle = Named<CheckButton>(panel, mode);
+                var frame = panel.Frame.Get("genie_skill_frame_" + group)!.GetGlobalRect();
+                Require(toggle.IsVisibleInTree() && frame.Encloses(toggle.GetGlobalRect()) && toggle.GetGlobalRect().Position.Y >= slots[ClassicProgressionLayout.GenieFirstCell(group)].GetGlobalRect().End.Y,
+                    view + " " + mode + " under its column's cells");
+            }
+            var recovery = Named<SpinBox>(panel, "genie_recovery");
+            Require(recovery.IsVisibleInTree() && panel.Frame.Get("genie_skill_frame_1")!.GetGlobalRect().Encloses(recovery.GetGlobalRect()) && Named<Label>(panel, "genie_recovery_label").IsVisibleInTree(),
+                view + " recovery percent with its caption in the Recovery column");
+            var monsterList = Named<ItemList>(panel, "genie_monster_list");
+            if (monsterList.ItemCount > 1)
+            {
+                float pitch = monsterList.GetItemRect(1).Position.Y - monsterList.GetItemRect(0).Position.Y;
+                Require(Math.Abs(monsterList.Size.Y - 6 - ClassicProgressionLayout.GenieMonsterRows * pitch) < .5f, view + " monster list shows whole rows (" + pitch + " px rows)");
+            }
+            var monsterFrame = panel.Frame.Get("genie_monster_frame")!.GetGlobalRect();
+            Require(new[] { "genie_monster_list", "genie_monster_add", "genie_monster_remove", "genie_hint" }.All(n => monsterFrame.Encloses(Named<Control>(panel, n).GetGlobalRect())), view + " monster list, its actions and the hint inside the monster inset");
             await Capture(window, view + "-main");
             var start = Named<Button>(panel, "genie_start");
             if (view == "configured")
@@ -261,9 +298,18 @@ public partial class Preview
                 Require(picker.Visible && (int)DetailField(world, "_genieEditingSlot")! == 1, "Skill cell opens the native skill picker");
                 Require(picker.GetThemeStylebox("panel") is StyleBoxFlat { BgColor.A: 1 }, "Skill picker uses the Classic popup material");
                 await Capture(window, "skill-picker"); picker.Hide(); await Frames(2);
-                var mode = Named<CheckButton>(panel, "genie_mode_0"); bool was = mode.ButtonPressed;
+                var mode = Named<CheckButton>(panel, "genie_mode_attack"); bool was = mode.ButtonPressed;
+                var nativeModes = (System.Collections.IDictionary)DetailField(world, "_genieModes")!;
+                Require(ReferenceEquals(nativeModes[GenieMode.Attack], mode), "The Attack Mode toggle is the client's own GenieMode.Attack control");
                 mode.EmitSignal(BaseButton.SignalName.Pressed); mode.ButtonPressed = !was;
-                Require(((CheckButton[])DetailField(world, "_genieModes")!)[0].ButtonPressed == !was, "Mode toggles are the native settings controls");
+                Require(((GenieSetup)DetailField(world, "_genie")!).Has(GenieMode.Attack) == !was, "Mode toggles are the native settings controls");
+                mode.ButtonPressed = was;
+                var setup = (GenieSetup)DetailField(world, "_genie")!;
+                bool wasParty = party[2].ButtonPressed; party[2].ButtonPressed = !wasParty;
+                Require(setup.SupportParty[2] == !wasParty, "A party check writes the client's SupportParty flag of its cell");
+                party[2].ButtonPressed = wasParty;
+                Require(party.Where((p, i) => setup.Support[i] == 0).All(p => !p.ButtonPressed) && party.Any(p => p.ButtonPressed), "Ticked party checks follow the configured support cells");
+                recovery.Value = 42; Require(setup.RecoveryPercent == 42, "The recovery percent is the client's own setting");
                 Require(Connected(Named<Button>(panel, "genie_spirit")) && Connected(Named<Button>(panel, "genie_save")) && Connected(start), "Start, Save Settings and Spirit of Genie keep native callbacks");
             }
             if (view == "running") Require(start.Text == "Stop" && !start.Disabled, "Running genie offers Stop");
@@ -274,6 +320,23 @@ public partial class Preview
             Require(!Named<Control>(panel, "genie_slot_0").IsVisibleInTree() && Named<Control>(panel, "genie_ptcode").IsVisibleInTree(), view + " pages never overlap");
             var claim = Named<Button>(panel, "genie_claim");
             Require(claim.Disabled == (view == "claimed"), view + " daily reward button follows the native status");
+            var options = new[] { "genie_return_home", "genie_hunt_in_place", "genie_hide_range", "genie_cure_curse", "genie_auto_party", "genie_ptcode" }.Select(n => Named<Control>(panel, n)).ToArray();
+            var settingsFrame = panel.Frame.Get("genie_settings_frame")!.GetGlobalRect();
+            Require(options.All(o => o.IsVisibleInTree() && settingsFrame.Encloses(o.GetGlobalRect())), view + " movement, curse and party options inside the settings inset");
+            var potionFrame = panel.Frame.Get("genie_potion_frame")!.GetGlobalRect();
+            var potions = new[] { "genie_potion_title", "genie_mode_hppotion", "genie_hp_item", "genie_hp", "genie_mode_mppotion", "genie_mp_item", "genie_mp", "genie_pet_potion", "genie_pet_item", "genie_pet" }.Select(n => Named<Control>(panel, n)).ToArray();
+            Require(potions.All(p => p.IsVisibleInTree() && potionFrame.Encloses(p.GetGlobalRect())), view + " HP, MP and Familiar potion options inside the potion inset");
+            Require(potions.OfType<Button>().Where(b => b.Name.ToString().EndsWith("_item")).All(b => b.GetThemeStylebox("normal") is StyleBoxTexture && b.Alignment == HorizontalAlignment.Left), view + " the three potion pickers on Classic buttons");
+            var home = Named<CheckButton>(panel, "genie_return_home"); bool wasHome = home.ButtonPressed; home.ButtonPressed = !wasHome;
+            Require(((CheckButton)DetailField(world, "_genieReturnHome")!).ButtonPressed == !wasHome, view + " options are the client's own settings controls");
+            home.ButtonPressed = wasHome;
+            var pet = Named<CheckButton>(panel, "genie_pet_potion"); bool wasPet = pet.ButtonPressed; pet.ButtonPressed = !wasPet;
+            Require(((GenieSetup)DetailField(world, "_genie")!).Has(GenieMoreMode.PetPotion) == !wasPet, view + " the Familiar potion toggle writes the client's PetPotion mode");
+            pet.ButtonPressed = wasPet;
+            foreach (var hint in new[] { "genie_ptcode_hint", "genie_leader_hint", "genie_scroll_hint", "genie_scroll_status", "genie_daily_status", "genie_hint" }.Select(n => Named<Label>(panel, n)))
+                Require(hint.GetVisibleLineCount() == hint.GetLineCount(), view + " every line of " + hint.Name + " is shown (" + hint.GetLineCount() + ")");
+            foreach (var check in Descendants(panel).OfType<CheckButton>().Where(c => c.IsVisibleInTree()))
+                Require(check.TooltipText.Length > 0 && (check.ClipText || check.GetMinimumSize().X <= check.Size.X), view + " " + check.Name + " ends in an ellipsis with its full text as tooltip");
             await Capture(window, view + "-misc");
             if (view == "configured")
             {
@@ -283,19 +346,22 @@ public partial class Preview
             }
             var othersTab = Named<Button>(panel, "genie_tab_others");
             othersTab.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-            Require(panel.GenieShownPage == 2 && ((TabContainer)Named<Control>(window, "genie_tabs")).CurrentTab == 1, view + " Others tab shows the client's movement and return-to-town options");
-            var options = new[] { "genie_return_home", "genie_hunt_in_place", "genie_hide_range", "genie_cure_curse" }.Select(n => Named<CheckButton>(panel, n)).ToArray();
-            var optionsFrame = panel.Frame.Get("genie_options_frame")!.GetGlobalRect();
-            Require(options.All(o => o.IsVisibleInTree() && optionsFrame.Encloses(o.GetGlobalRect())), view + " movement and curse options inside their inset");
+            Require(panel.GenieShownPage == 2 && ((TabContainer)Named<Control>(window, "genie_tabs")).CurrentTab == 1, view + " Others tab shows the client's Set Others rows and the hammer");
             var rules = Enumerable.Range(0, ClassicProgressionLayout.GenieOtherRows).Select(i => Named<HBoxContainer>(panel, "genie_other_" + i)).ToArray();
+            Require(rules.Length == GenieTownReturn.OtherRows.Length, view + " every Set Others row of the client (" + rules.Length + ")");
             var rulesFrame = panel.Frame.Get("genie_others_frame")!.GetGlobalRect();
-            Require(rules.All(r => r.IsVisibleInTree() && rulesFrame.Encloses(r.GetGlobalRect())), view + " every return-to-town rule inside its inset");
+            Require(rules.All(r => r.IsVisibleInTree() && rulesFrame.Encloses(r.GetGlobalRect())), view + " every Set Others row inside its inset");
+            Require(Named<Label>(panel, "genie_hammer_status").GetVisibleLineCount() == Named<Label>(panel, "genie_hammer_status").GetLineCount(), view + " the hammer note shows every line");
+            for (int i = 0; i < rules.Length; i++) Require(rules[i].GetMeta("genie_other").AsInt32() == (int)GenieTownReturn.OtherRows[i].Option, view + " row " + i + " is the client's " + GenieTownReturn.OtherRows[i].Option + " rule");
             Require(rules.Count(r => r.GetChildren().OfType<SpinBox>().Any(c => c.IsVisibleInTree())) == 2, view + " HP and MP rules keep their potion counts");
             Require(rules.All(r => r.GetChildren().OfType<CheckButton>().All(t => t.TooltipText == t.Text && t.GetGlobalRect().End.X <= r.GetGlobalRect().End.X + .5f)), view + " long rules are clipped inside their row with their text as tooltip");
+            var hammerFrame = panel.Frame.Get("genie_hammer_frame")!.GetGlobalRect();
+            Require(new[] { "genie_hammer_title", "genie_hammer_threshold_label", "genie_hammer_threshold", "genie_hammer_status" }.All(n => Named<Control>(panel, n).IsVisibleInTree() && hammerFrame.Encloses(Named<Control>(panel, n).GetGlobalRect())), view + " the hammer threshold and its note inside the hammer inset");
             Require(!Named<Control>(panel, "genie_ptcode").IsVisibleInTree() && !Named<Control>(panel, "genie_slot_0").IsVisibleInTree(), view + " Others page never overlaps Main or Misc");
-            var home = options[0]; bool wasHome = home.ButtonPressed; home.ButtonPressed = !wasHome;
-            Require(((CheckButton)DetailField(world, "_genieReturnHome")!).ButtonPressed == !wasHome, view + " options are the client's own settings controls");
-            home.ButtonPressed = wasHome;
+            var feed = rules[Array.FindIndex(GenieTownReturn.OtherRows, r => r.Option == GenieOther.FeedFamiliar)].GetChildren().OfType<CheckButton>().First();
+            bool wasFeed = feed.ButtonPressed; feed.ButtonPressed = !wasFeed;
+            Require(((GenieSetup)DetailField(world, "_genie")!).Has(GenieOther.FeedFamiliar) == !wasFeed, view + " the familiar feeding row writes the client's FeedFamiliar rule");
+            feed.ButtonPressed = wasFeed;
             await Capture(window, view + "-others");
             Named<Button>(panel, "genie_tab_main").EmitSignal(BaseButton.SignalName.Pressed); await Frames();
             Require(panel.GenieShownPage == 0, view + " Main tab returns to the main page");
