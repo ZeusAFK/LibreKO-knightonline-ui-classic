@@ -288,6 +288,8 @@ public class PreviewData : DispatchProxy
     public bool WithUnreadMail;
     public Func<int>? MailUnreadCount;
     public Func<string,object?>? Values;
+    /// <summary>Answers by member name and arguments (e.g. IGameMap.NpcKindPresent(kind)); null falls through.</summary>
+    public Func<string,object?[]?,object?>? Calls;
     public Func<GameNpcPortrait?>? NpcPortraitSource;
     public Func<int,bool,string,IReadOnlyList<string>>? ChatReader;
     public IReadOnlyList<LibreKO.Domain.NearbyRow> NearbyRows=Array.Empty<LibreKO.Domain.NearbyRow>();
@@ -300,6 +302,7 @@ public class PreviewData : DispatchProxy
         var type=method!.ReturnType;
         string name=method.Name;
         if(Values?.Invoke(name) is {} value) return value;
+        if(Calls?.Invoke(name,args) is {} called) return called;
         if(name=="ReadHistory") return ChatReader?.Invoke((int)args![0]!, (bool)args[1]!, (string)args[2]!) ?? Array.Empty<string>();
         if(name=="NearbyPlayers") return NearbyRows;
         if(name=="Send") {LastSent=(string)args![0]!;return null;}

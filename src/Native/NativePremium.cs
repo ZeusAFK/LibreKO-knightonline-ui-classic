@@ -25,15 +25,64 @@ public static class NativePremium
         return new(true, name, net.PremiumHours, net.PremiumBonuses);
     }
 
-    /// <summary>The premium name as the client's chip composes it (3277df5): the type's text and the "Premium" word.</summary>
+    /// <summary>
+    /// The premium name from the client's text table (3277df5: <c>PremiumNames.Name</c> and the "Premium" word) in
+    /// the Classic casing the approved plaques show: "Gold Premium", "DC Premium" (short abbreviations stay upper
+    /// case, as the former client's names did), or "Premium" alone for a type the table lacks.
+    /// </summary>
     private static string PremiumName(int type)
     {
-        string premium = ItemData.Text(PremiumNames.PremiumText, PremiumNames.PremiumFallback);
-        return PremiumNames.Name(type) is { } name ? $"{ItemData.Text(name.Text, name.Fallback)} {premium}" : premium;
+        string premium = ClassicCase(ItemData.Text(PremiumNames.PremiumText, PremiumNames.PremiumFallback));
+        return PremiumNames.Name(type) is { } name ? $"{ClassicCase(ItemData.Text(name.Text, name.Fallback))} {premium}" : premium;
+    }
+
+    /// <summary>"GOLD" → "Gold", "DC" and "EXP" unchanged (abbreviations of up to three letters), word by word.</summary>
+    internal static string ClassicCase(string text)
+    {
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < words.Length; i++)
+        {
+            string word = words[i];
+            if (word.Length <= 3 && word.All(char.IsUpper)) continue;
+            words[i] = char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant();
+        }
+        return string.Join(" ", words);
+    }
+
+    /// <summary>The short time left the former chip caption carried: "2d 4h", "3d", "5h".</summary>
+    public static string ShortDuration(int hours)
+    {
+        if (hours < 24) return $"{Math.Max(0, hours)}h";
+        int days = hours / 24, rem = hours % 24;
+        return rem > 0 ? $"{days}d {rem}h" : $"{days}d";
     }
 
     public static Clan ClanOf(World? world, Net? net) =>
         new(world != null && Native.Get<bool>(world, "_clanPremiumInClan"), net?.ClanPremiumActive == true, net?.ClanPremiumEndsAt ?? 0);
+
+    /// <summary>
+    /// The clan online bonus the client's chip shows (3277df5 <c>_clanBonusChip</c>): the online count the server
+    /// sends (<see cref="Net.NoClanBonus"/> until it does), the O/X marks and the tooltip lines, all from the public
+    /// <see cref="ClanBonusCard"/> rules and the text table.
+    /// </summary>
+    public readonly record struct ClanBonus(bool Shown, int Online, string Marks, string Tooltip);
+
+    public static ClanBonus BonusOf(Net? net, int? online = null)
+    {
+        int count = online ?? net?.ClanOnlineCount ?? Net.NoClanBonus;
+        bool shown = count != Net.NoClanBonus && net?.MyClan.InClan == true;
+        return BonusLines(shown, count);
+    }
+
+    /// <summary>The marks and tooltip for a known online count (the group bar reads the count through its own source).</summary>
+    public static ClanBonus BonusLines(bool shown, int online)
+    {
+        if (!shown) return new(false, online, "", "");
+        string marks = ClanBonusCard.Marks(online, ItemData.Text(ClanBonusCard.OnText, ClanBonusCard.OnFallback), ItemData.Text(ClanBonusCard.OffText, ClanBonusCard.OffFallback));
+        string tooltip = ClanBonusCard.Tooltip(online, ItemData.Text(ClanBonusCard.NeedText, ClanBonusCard.NeedFallback), ItemData.Text(ClanBonusCard.BonusText, ClanBonusCard.BonusFallback));
+        // The client's bonus text indents its lines (" \n "); the Classic box shows them flush.
+        return new(true, online, marks, string.Join("\n", tooltip.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0)));
+    }
 
     /// <summary>"2 days 4 hours", "5 hours", "45 minutes".</summary>
     public static string Duration(long seconds)
@@ -67,12 +116,13 @@ public static class NativePremium
         world != null && Native.Get<RichTextLabel>(world, "_clockLabel") is { } label && GodotObject.IsInstanceValid(label) ? label.GetParsedText().Trim() : null;
 
     /// <summary>
-    /// Hides the client's clan premium chip and clock while the group shows them. The account premium chip stays as an
-    /// invisible spacer <paramref name="width"/> wide: the client lines its remaining top icons up left of it.
+    /// Hides the client's clan premium chip, clan bonus chip and clock while the group shows them. The account premium
+    /// chip stays as an invisible spacer <paramref name="width"/> wide: the client lines its remaining top icons up
+    /// left of it.
     /// </summary>
     public static void HideClientChips(World world, float width)
     {
-        foreach (var field in new[] { "_clanPremiumChip", "_clockLabel" })
+        foreach (var field in new[] { "_clanPremiumChip", "_clanBonusChip", "_clockLabel" })
             if (Native.Get<CanvasItem>(world, field) is { Visible: true } native) native.Visible = false;
         if (Native.Get<Control>(world, "_premiumChip") is not { } chip || chip.Modulate.A == 0) return;
         chip.Modulate = Colors.Transparent;

@@ -45,6 +45,7 @@ public partial class StatusHud : Control
     private readonly LayoutView _view;
     private readonly PluginGame _game;
     private readonly MapCanvas _map;
+    private readonly ClassicNpcList _npcList;
     private readonly Control _mapGroup;
     private readonly Control _dragHandle;
     private readonly Vector2 _expandedSize,_collapsedSize;
@@ -57,6 +58,9 @@ public partial class StatusHud : Control
     /// </summary>
     /// <summary>The minimap's screen rectangle while it is shown.</summary>
     public Rect2? MiniMapBounds => _mapGroup.IsVisibleInTree() ? _mapGroup.GetGlobalRect() : null;
+
+    /// <summary>The minimap's NPC finder list.</summary>
+    public ClassicNpcList NpcList => _npcList;
 
     public Rect2 BarBounds => _shortcuts.Aggregate(_view.Get("Img_StateBar")!.GetGlobalRect(),(bounds,shortcut)=>bounds.Merge(shortcut.GetGlobalRect()));
 
@@ -98,6 +102,15 @@ public partial class StatusHud : Control
         _map=new MapCanvas(_game) { Position=new Vector2(area.X-group.X,area.Y-group.Y),Size=area.SizeVec };
         _mapGroup.AddChild(_map);
         _mapGroup.MoveChild(_map,0);
+        // The NPC finder over the map (above the parchment hole's ragged edge): its diamonds, "N" in the lower left
+        // corner and the list over the map.
+        var markers=new Control { Name="npc_markers",Position=_map.Position,Size=_map.Size,MouseFilter=MouseFilterEnum.Ignore };
+        _mapGroup.AddChild(markers);
+        _map.Markers=markers;
+        _npcList=new ClassicNpcList(_game);
+        _npcList.Place(new Rect2(_map.Position,_map.Size));
+        _mapGroup.AddChild(_npcList);
+        _mapGroup.AddChild(_npcList.Button);
         _view.OnPressed("Btn_ZoomIn",()=>_map.Zoom(-1));
         _view.OnPressed("Btn_ZoomOut",()=>_map.Zoom(1));
         CentreInBar("Text_HP","Progress_HP");
@@ -180,6 +193,7 @@ public partial class StatusHud : Control
         if (_view.Get("Text_Version") is Label zone) zone.TooltipText=_game.Map.ZoneName;
         _view.SetText("Text_HP", $"{c.Hp}/{c.MaxHp}");
         _view.SetText("Text_MSP", $"{c.Mp}/{c.MaxMp}");
+        _npcList.Refresh();
         _map.QueueRedraw();
     }
 

@@ -9,7 +9,9 @@ namespace KnightOnlineUiClassic.Windows;
 
 /// <summary>
 /// The top-right group on the original art (read through LocalAssets), top to bottom: the premium bar (<c>re_eventpremium</c>,
-/// the account premium's name), the clan premium bar while the player is in a clan, the time box (the client's clock
+/// the account premium's name), the clan premium bar while the player is in a clan, the clan bonus bar while the
+/// server reports the clan's online count (3277df5: "Clan Bonus" and the client's O/X marks; its content is the
+/// client's bonus text), the time box (the client's clock
 /// on the content box's frame and text style), the notice bars (<c>re_eventnotice</c>) and the GM List bar. The client's event title chips
 /// (server notices with a title and a message: rate events, the clan notice, notices a GM posts) become the teal
 /// bars, and the first keeps the client's expand/collapse toggle on the original + / − knob. Pressing a bar opens the
@@ -20,8 +22,10 @@ namespace KnightOnlineUiClassic.Windows;
 public static class ClassicNoticeBars
 {
     public const string StackName = "classic_notice_stack", GmBar = "notice_gm_list", PremiumBar = "notice_premium",
-        ClanBar = "notice_clan_premium", TimePlate = "notice_time", ContentBox = "notice_content", Caption = "notice_caption", Knob = "notice_knob";
-    public const string GmKey = "gm", PremiumKey = "premium", ClanKey = "clan";
+        ClanBar = "notice_clan_premium", BonusBar = "notice_clan_bonus", TimePlate = "notice_time", ContentBox = "notice_content", Caption = "notice_caption", Knob = "notice_knob";
+    public const string GmKey = "gm", PremiumKey = "premium", ClanKey = "clan", BonusKey = "clanbonus";
+    /// <summary>The clan bonus bar: its tooltip title, and its caption before the client's O/X marks (the client's chip says "Clan").</summary>
+    public const string BonusTitle = "Clan Bonus", BonusCaption = "Clan";
     private const string Skinned = "classic_notice_bar";
 
     public static bool Available => Bar != null && ClassicMykoArt.Layout(L.Content) != null && ClassicMykoArt.Layout(L.Premium) != null;
@@ -114,10 +118,10 @@ public static class ClassicNoticeBars
             canvas.DrawTextureRectRegion(texture, new Rect2(Vector2.Zero, L.Bar), ClassicMykoArt.Source(image));
     }
 
-    /// <summary>The art of a bar of the group (premium, clan premium, GM List).</summary>
+    /// <summary>The art of a bar of the group (premium, clan premium, clan bonus, GM List).</summary>
     public static LayoutNode? BarArt(string key) => key switch
     {
-        PremiumKey or ClanKey => ClassicMykoArt.Layout(L.Premium)?.Find("btn_premium"),
+        PremiumKey or ClanKey or BonusKey => ClassicMykoArt.Layout(L.Premium)?.Find("btn_premium"),
         _ => Bar?.Find("btn_notice"),
     };
 
@@ -161,7 +165,7 @@ public static class ClassicNoticeBars
 public partial class ClassicNoticeStack : Control
 {
     private readonly Container _column;
-    private readonly ClassicGroupBar _premium, _clan, _gm;
+    private readonly ClassicGroupBar _premium, _clan, _bonus, _gm;
     private readonly Control _time, _box, _clip, _thumb;
     private readonly Label _timeValue, _text;
     private readonly TextureButton? _up, _down;
@@ -177,11 +181,13 @@ public partial class ClassicNoticeStack : Control
     public Func<string?> ClockText { get; set; }
     /// <summary>The clan premium; the client's by default.</summary>
     public Func<NativePremium.Clan> ClanSource { get; set; }
+    /// <summary>The clan's online count for the bonus bar (<see cref="Net.NoClanBonus"/> hides it); the client's by default.</summary>
+    public Func<int> BonusSource { get; set; }
 
     public ClassicNoticeStack()
     {
-        _column = null!; _premium = _clan = _gm = null!; _time = _box = _clip = _thumb = null!; _timeValue = _text = null!;
-        ClockText = () => null; ClanSource = () => default;
+        _column = null!; _premium = _clan = _bonus = _gm = null!; _time = _box = _clip = _thumb = null!; _timeValue = _text = null!;
+        ClockText = () => null; ClanSource = () => default; BonusSource = () => Net.NoClanBonus;
     }
 
     public ClassicNoticeStack(Container column)
@@ -190,13 +196,15 @@ public partial class ClassicNoticeStack : Control
         World = AncestorWorld(column);
         ClockText = () => NativePremium.Clock(World);
         ClanSource = () => NativePremium.ClanOf(World, Net.I);
+        BonusSource = () => Net.I?.ClanOnlineCount ?? Net.NoClanBonus;
         MouseFilter = MouseFilterEnum.Ignore;
         TextureFilter = TextureFilterEnum.Nearest;
         _premium = new ClassicGroupBar(this, ClassicNoticeBars.PremiumKey) { Name = ClassicNoticeBars.PremiumBar };
         _clan = new ClassicGroupBar(this, ClassicNoticeBars.ClanKey) { Name = ClassicNoticeBars.ClanBar };
+        _bonus = new ClassicGroupBar(this, ClassicNoticeBars.BonusKey) { Name = ClassicNoticeBars.BonusBar };
         _gm = new ClassicGroupBar(this, ClassicNoticeBars.GmKey) { Name = ClassicNoticeBars.GmBar };
         _gm.SetCaption(L.GmListTitle, true); _gm.TooltipText = L.GmListTitle;
-        AddChild(_premium); AddChild(_clan);
+        AddChild(_premium); AddChild(_clan); AddChild(_bonus);
 
         var art = ClassicMykoArt.Layout(L.Content)!;
         var view = ClassicMykoArt.View(art);
@@ -272,6 +280,8 @@ public partial class ClassicNoticeStack : Control
 
     public Control PremiumBar => _premium;
     public Control ClanBar => _clan;
+    public Control BonusBar => _bonus;
+    public string BonusCaption => _bonus.Caption.Text;
     public Control TimePlate => _time;
     public Label TimeValue => _timeValue;
     public Control GmBar => _gm;
@@ -294,6 +304,7 @@ public partial class ClassicNoticeStack : Control
     private string? TextOf(string key) => key switch
     {
         ClassicNoticeBars.ClanKey => NativePremium.ClanDetails(ClanSource()),
+        ClassicNoticeBars.BonusKey => Bonus() is { Shown: true } bonus ? bonus.Tooltip : null,
         ClassicNoticeBars.PremiumKey => NativePremium.Details(NativePremium.Current(Net.I)),
         _ => ClassicNoticeBars.TextOf(key),
     };
@@ -304,6 +315,7 @@ public partial class ClassicNoticeStack : Control
         Sync();
         string? text = OpenKey == null ? null : TextOf(OpenKey);
         if (OpenKey == ClassicNoticeBars.ClanKey && !_clan.Visible) text = null;
+        if (OpenKey == ClassicNoticeBars.BonusKey && !_bonus.Visible) text = null;
         if (OpenKey != null && text == null) OpenKey = null;
         _box.Visible = OpenKey != null;
         if (text != null && _text.Text != text) { _text.Text = text; _scroll = 0; }
@@ -313,7 +325,7 @@ public partial class ClassicNoticeStack : Control
         _text.ResetSize();
         _text.Size = new Vector2(_clip.Size.X, Math.Max(_clip.Size.Y, _text.GetLineCount() * _text.GetLineHeight()));
         ScrollBy(0);
-        foreach (var bar in new[] { _premium, _clan, _gm }) bar.QueueRedraw();
+        foreach (var bar in new[] { _premium, _clan, _bonus, _gm }) bar.QueueRedraw();
         if (GodotObject.IsInstanceValid(_column)) foreach (var chip in _column.GetChildren().OfType<CanvasItem>()) chip.QueueRedraw();
     }
 
@@ -327,7 +339,13 @@ public partial class ClassicNoticeStack : Control
         if (_down != null) _down.Disabled = _scroll >= MaxScroll;
     }
 
-    /// <summary>Premium and clan captions, the clock, and the client's own chips and clock kept hidden.</summary>
+    private NativePremium.ClanBonus Bonus()
+    {
+        int online = BonusSource();
+        return NativePremium.BonusLines(ClanSource().InClan && online != Net.NoClanBonus, online);
+    }
+
+    /// <summary>Premium, clan and bonus captions, the clock, and the client's own chips and clock kept hidden.</summary>
     public void Sync()
     {
         var account = NativePremium.Current(Net.I);
@@ -337,6 +355,13 @@ public partial class ClassicNoticeStack : Control
         _clan.Visible = clan.InClan;
         _clan.SetCaption(clan.Active ? "Clan Premium" : "Clan: No Premium", clan.Active);
         _clan.TooltipText = clan.Active ? "Clan Premium (click for the time left)" : "Clan: No Premium";
+        var bonus = Bonus();
+        _bonus.Visible = bonus.Shown;
+        if (bonus.Shown)
+        {
+            _bonus.SetCaption(ClassicNoticeBars.BonusCaption + "   " + bonus.Marks, true);
+            _bonus.TooltipText = ClassicNoticeBars.BonusTitle + ": " + bonus.Online + " online (click for the bonus)";
+        }
         string clock = ClockText() ?? "";
         int split = clock.IndexOf(' ');
         string time = split > 0 ? clock[..split] : clock.Length > 0 ? clock : "--:--";
@@ -353,7 +378,7 @@ public partial class ClassicNoticeStack : Control
         if (_syncClock >= 0.25) { _syncClock = 0; Sync(); }
         // Right-aligned at the client's premium chip spot: premium, clan premium, time, the client's notice bars, GM List.
         float right = GetViewportRect().Size.X - L.GroupRight, y = L.GroupTop;
-        foreach (var part in new Control[] { _premium, _clan, _time })
+        foreach (var part in new Control[] { _premium, _clan, _bonus, _time })
         {
             if (!part.Visible) continue;
             SetPlace(part, new Vector2(right - part.Size.X, y));
@@ -370,7 +395,7 @@ public partial class ClassicNoticeStack : Control
     public override void _Input(InputEvent input)
     {
         if (OpenKey == null || input is not InputEventMouseButton { Pressed: true } click) return;
-        var parts = new List<Control> { _premium, _clan, _gm, _box };
+        var parts = new List<Control> { _premium, _clan, _bonus, _gm, _box };
         if (GodotObject.IsInstanceValid(_column)) parts.AddRange(_column.GetChildren().OfType<Control>());
         if (parts.Any(p => p.IsVisibleInTree() && ScreenRect(p).HasPoint(click.Position))) return;
         OpenKey = null;

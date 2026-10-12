@@ -363,8 +363,10 @@ public partial class Preview
             chip.Position = new Vector2(500, 60); chip.Size = Vector2.Zero; chip.ResetSize(); await Frames();
             return chip.GetGlobalRect();
         }
-        // TODO(port-3277): PremiumNames lost its type constants (names now come from the text table); 5 = Gold,
-        // 13 = Switching (no longer in the client's name table, so it reads as plain premium).
+        // PremiumNames has no type constants since 3277df5 (the names come from the client's text table): 5 is Gold,
+        // 13 (Switching) is no longer in the table and reads as plain "Premium". The client's chip now shows the name
+        // alone ("GOLD PREMIUM") with the time in its tooltip; the Classic plaque keeps the approved title-case caption
+        // with the time ("Gold Premium: 2d 4h") and the name, time and benefits in its tooltip.
         const int goldPremium = 5, switchingPremium = 13;
         var chipRect = await Status(1, goldPremium, 52);
         Save(chipRect, "premium-native");
@@ -382,9 +384,11 @@ public partial class Preview
             Require(label.GetGlobalRect().Position.X - rect.Position.X == PremiumSpec.Inset && rect.End.X - label.GetGlobalRect().End.X == PremiumSpec.Inset, state + ": even caption insets");
             Require(!Descendants(plate).OfType<Panel>().Any(p => p.IsVisibleInTree()), state + ": the client's status dot gives way to the ink");
         }
-        foreach (var (status, type, hours, state, active) in new[] { (0, 0, 0, "premium-none", false), (1, goldPremium, 52, "premium-gold", true), (2, 0, 5, "premium-pc-room", true), (1, switchingPremium, 719, "premium-long", true) })
+        foreach (var (status, type, hours, state, active, caption) in new[] { (0, 0, 0, "premium-none", false, "No Premium"), (1, goldPremium, 52, "premium-gold", true, "Gold Premium: 2d 4h"),
+            (2, 0, 5, "premium-pc-room", true, "PC Room: 5h"), (1, switchingPremium, 719, "premium-long", true, "Premium: 29d 23h") })
         {
             chipRect = await Status(status, type, hours);
+            Require(chipLabel.Text == caption, state + ": the approved caption '" + caption + "' (shown '" + chipLabel.Text + "')");
             CheckChip(chip, chipLabel, state, active);
             Save(chipRect, state, new { text = chipLabel.Text });
         }
@@ -403,8 +407,8 @@ public partial class Preview
         var tipBox = tip!.GetThemeStylebox("panel", "TooltipPanel") as StyleBoxFlat;
         Require(tipBox != null && tipBox.BgColor.IsEqualApprox(PremiumSpec.TooltipGround), "Tooltip uses the original translucent black ground");
         var tipLabel = Descendants(tip).OfType<Label>().FirstOrDefault();
-        Require(tipLabel != null && tipLabel.Text.Contains("Gold Premium") && tipLabel.Text.Contains("EXP +10%") && tipLabel.GetThemeFont("font") == Plugin.Kit.Bold && tipLabel.GetThemeColor("font_color") == Colors.White,
-            "Tooltip keeps the client's benefits text in white Arial Bold");
+        Require(tipLabel != null && tipLabel.Text.StartsWith("Gold Premium\n2 days 4 hours left\n") && tipLabel.Text.Contains("EXP +10%") && tipLabel.GetThemeFont("font") == Plugin.Kit.Bold && tipLabel.GetThemeColor("font_color") == Colors.White,
+            "Tooltip keeps the name, the time left and the client's benefits text in white Arial Bold: " + tipLabel?.Text.Replace("\n", " / "));
         var tipRect = new Rect2(tip.Position, tip.Size);
         Save(chip.GetGlobalRect().Merge(tipRect), "premium-tooltip", new { tooltip = tipLabel!.Text, rect = tipRect.ToString() });
         await Move(Vector2.Zero); await Frames(4);
@@ -428,6 +432,24 @@ public partial class Preview
             CheckChip(clanChip, clanLabel, state, active);
             Save(clanChip.GetGlobalRect(), state, new { text = clanLabel.Text });
         }
+
+        // The clan online-bonus chip (3277df5): the client's "Clan" and O/X marks on the same plaque, its tooltip kept.
+        var bonusChip = (PanelContainer)DetailCall(premiumWorld, "BuildClanBonusUiPreview")!;
+        bonusChip.GetParent()?.RemoveChild(bonusChip); chipLayer.AddChild(bonusChip);
+        bonusChip.SetAnchorsPreset(Control.LayoutPreset.TopLeft); bonusChip.GrowHorizontal = Control.GrowDirection.End;
+        NativeQuestHud.Prepare(premiumWorld);
+        bonusChip.Position = new Vector2(500, 180); bonusChip.Size = Vector2.Zero; bonusChip.ResetSize(); await Frames();
+        Require(bonusChip.Name == NativeQuestHud.ClanBonusName && bonusChip.HasMeta(ClassicPremiumChip.Skinned), "clan-bonus: the preparer names the client's clan bonus chip and the skin applies");
+        var bonusRect = bonusChip.GetGlobalRect();
+        var bonusLabels = Descendants(bonusChip).OfType<Label>().Where(l => l.IsVisibleInTree()).ToArray();
+        var bonusMarks = (Label)bonusChip.FindChild(NativeQuestHud.ClanBonusMarks, true, false)!;
+        Require(bonusRect.Size.Y == PremiumSpec.Height, "clan-bonus: information plaque height " + bonusRect.Size);
+        Require(bonusLabels.Length == 2 && bonusLabels.All(l => l.GetThemeFont("font") == Plugin.Kit.Bold && l.GetThemeColor("font_color") == ClassicWorldOverlays.PlaqueInk
+            && bonusRect.Encloses(l.GetGlobalRect()) && Width(l, l.Text) <= l.Size.X), "clan-bonus: 'Clan' and the marks in the plaque ink, inside the plaque");
+        Require(bonusMarks.Text == NativePremium.BonusLines(true, 24).Marks && bonusChip.TooltipText.Length > 0, "clan-bonus: the client's marks for 24 online ('" + bonusMarks.Text + "') and its tooltip");
+        Require(bonusLabels[1].GetGlobalRect().Position.X - bonusLabels[0].GetGlobalRect().End.X == PremiumSpec.BonusGap, "clan-bonus: a word gap between 'Clan' and the marks");
+        Require(bonusLabels[0].GetGlobalRect().Position.X - bonusRect.Position.X == PremiumSpec.Inset && bonusRect.End.X - bonusLabels[^1].GetGlobalRect().End.X == PremiumSpec.Inset, "clan-bonus: even caption insets");
+        Save(bonusRect, "clan-bonus", new { title = bonusLabels[0].Text, marks = bonusMarks.Text, tooltip = bonusChip.TooltipText });
 
         System.IO.File.WriteAllText(System.IO.Path.Combine(output, prefix + "-premium-quest.json"), JsonSerializer.Serialize(new { nation = prefix, checks, screens },
             new JsonSerializerOptions { WriteIndented = true }));

@@ -61,16 +61,20 @@ public partial class Preview
         // ---- Status bar: letter plates and the clock.
         {
             var status = new StatusHud(); AddChild(status); await Frames(8);
-            var letters = Descendants(status).OfType<ClassicStatusShortcut>().Where(s => s.HasBackground).OrderBy(s => s.GetGlobalRect().Position.X).ToArray();
+            // Two rows (plugin be6856d): Q P A D G, then E R, the clock and mail.
+            var letters = Descendants(status).OfType<ClassicStatusShortcut>().Where(s => s.HasBackground).OrderBy(s => s.GetGlobalRect().Position.Y).ThenBy(s => s.GetGlobalRect().Position.X).ToArray();
             var clock = Descendants(status).OfType<ClassicStatusClock>().SingleOrDefault();
-            Require(letters.Select(s => s.Letter).SequenceEqual(new[] { "Q", "P", "A", "D", "G", "E", "R" }), "the letter row stays Q P A D G E R");
+            Require(letters.Select(s => s.Letter).SequenceEqual(new[] { "Q", "P", "A", "D", "G", "E", "R" }), "the letter rows stay Q P A D G / E R");
+            Require(letters.Take(5).All(s => s.GetGlobalRect().Position.Y == letters[0].GetGlobalRect().Position.Y) && letters.Skip(5).All(s => s.GetGlobalRect().Position.Y == letters[5].GetGlobalRect().Position.Y)
+                && letters[5].GetGlobalRect().Position.Y - letters[0].GetGlobalRect().End.Y == 2 && letters[5].GetGlobalRect().Position.X == letters[0].GetGlobalRect().Position.X,
+                "the second row starts under Q, 2 px below the first");
             Require(local == (clock != null), local ? "the original clock follows the letter row" : "no clock without the 2.x art");
             var row = letters.Aggregate(letters[0].GetGlobalRect(), (r, s) => r.Merge(s.GetGlobalRect()));
             if (clock != null)
             {
-                var last = letters[^1].GetGlobalRect(); float pitch = letters[1].GetGlobalRect().Position.X - letters[0].GetGlobalRect().Position.X;
+                var last = letters.Single(s => s.Letter == "R").GetGlobalRect(); float pitch = letters[1].GetGlobalRect().Position.X - letters[0].GetGlobalRect().Position.X;
                 var c = clock.GetGlobalRect();
-                Require(Near(c.Position, last.Position + new Vector2(pitch, 0)) && c.Size == last.Size, $"the clock sits one pitch after R with the plate size ({c} after {last})");
+                Require(Near(c.Position, last.Position + new Vector2(pitch, 0)) && c.Size == last.Size, $"the clock sits one pitch after R in the second row with the plate size ({c} after {last})");
                 Require(status.GetGlobalRect().Grow(.5f).Encloses(c) && Inside(GetViewportRect(), c), "the clock lies inside the status HUD and the screen");
                 Require(clock.GetSignalConnectionList(BaseButton.SignalName.Pressed).Count > 0 && clock.TooltipText == ClassicStatusClock.Title, "the clock opens the event schedule");
                 bounds["clock"] = Rect(c);
@@ -139,6 +143,10 @@ public partial class Preview
             bool inClan = expanded; long clanEnds = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + (3 * 24 + 2) * 3600 + 120;
             stack!.ClockText = () => "14:33  Clear";
             stack.ClanSource = () => new NativePremium.Clan(inClan, expanded, expanded ? clanEnds : 0);
+            // The clan online bonus (3277df5): 24 members online lights three of six marks.
+            const int bonusOnline = 24;
+            stack.BonusSource = () => inClan ? bonusOnline : Net.NoClanBonus;
+            var bonusLines = NativePremium.BonusLines(true, bonusOnline);
             stack.Sync(); await Frames(4);
             var gm = stack.GmBar; var box = stack.Box; var premium = stack.PremiumBar; var clan = stack.ClanBar; var time = stack.TimePlate;
             float right = 1280 - L.GroupRight;
@@ -148,6 +156,18 @@ public partial class Preview
             Require(clan.Visible == inClan, $"{tag}: the clan premium bar shows only in a clan");
             float y = p.End.Y + L.BarGap;
             if (inClan) { var c = clan.GetGlobalRect(); Require(c.Size == L.Bar && Near(c.Position, new Vector2(right - L.Bar.X, y)), $"{tag}: the clan premium bar follows ({c})"); y = c.End.Y + L.BarGap; }
+            var bonusBar = stack.BonusBar;
+            Require(bonusBar.Visible == inClan, $"{tag}: the clan bonus bar shows only while the server reports the clan's online count");
+            if (inClan)
+            {
+                var bb = bonusBar.GetGlobalRect();
+                Require(bb.Size == L.Bar && Near(bb.Position, new Vector2(right - L.Bar.X, y)), $"{tag}: the clan bonus bar follows the clan premium bar ({bb})");
+                var bonusCaption = Descendants(bonusBar).OfType<Label>().Single();
+                Require(stack.BonusCaption == ClassicNoticeBars.BonusCaption + "   " + bonusLines.Marks && bonusCaption.GetThemeColor("font_color") == Colors.White
+                    && TextWidth(bonusCaption) <= bonusCaption.Size.X, $"{tag}: the clan bonus bar shows the client's marks in white ('{stack.BonusCaption}', {TextWidth(bonusCaption)} px)");
+                bounds[$"{tag}-bonus"] = Rect(bb);
+                y = bb.End.Y + L.BarGap;
+            }
             var t = time.GetGlobalRect();
             Require(t.Size == L.Bar && Near(t.Position, new Vector2(right - L.Bar.X, y)), $"{tag}: the time box follows, bar-sized and right-aligned ({t})");
             Require(stack.TimeValue.Text == L.TimeNote + "14:33" && time.TooltipText == "Server time 14:33, Clear", $"{tag}: the time box shows the client's clock ({stack.TimeValue.Text} / {time.TooltipText})");
@@ -188,7 +208,7 @@ public partial class Preview
             Require(g.Size == L.Bar && Near(g.Position, new Vector2(right - L.Bar.X, y)), $"{tag}: the GM List bar follows the last notice bar ({g})");
             Require(!box.Visible, tag + ": the content box starts closed");
             foreach (var (name, control) in new (string, Control)[] { ("premium", premium), ("clan", clan), ("time", time), ("gm", gm) }) if (control.Visible) bounds[$"{tag}-{name}"] = Rect(control.GetGlobalRect());
-            Rect2 Group() => new Control[] { premium, clan, time, gm }.Concat(column.GetChildren().OfType<Control>()).Where(c => c.IsVisibleInTree())
+            Rect2 Group() => new Control[] { premium, clan, stack.BonusBar, time, gm }.Concat(column.GetChildren().OfType<Control>()).Where(c => c.IsVisibleInTree())
                 .Aggregate(p, (r, c) => r.Merge(c.GetGlobalRect())).Merge(box.Visible ? box.GetGlobalRect() : p).Grow(6);
             // Premium: none (muted), then active; a click shows the time left and the benefits, again or outside closes.
             Require(stack.PremiumCaption == "No Premium" && ((Label)Descendants(premium).OfType<Label>().Single()).GetThemeColor("font_color") == L.Muted, tag + ": no premium reads 'No Premium' in the muted ink");
@@ -197,7 +217,8 @@ public partial class Preview
             Require(box.Visible && stack.OpenKey == ClassicNoticeBars.PremiumKey && stack.Text.Text.StartsWith("No Premium"), tag + ": the premium bar opens 'No Premium' details");
             await Click(p.GetCenter()); await Away();
             Require(!box.Visible, tag + ": pressing the premium bar again closes the box");
-            // TODO(port-3277): PremiumNames lost its type constants (names now come from the text table); 5 = Gold.
+            // PremiumNames has no type constants since 3277df5 (the names come from the text table); 5 is Gold. The bar
+            // keeps the approved title case ("Gold Premium"), not the table's upper case.
             const int goldPremium = 5;
             Premium(1, goldPremium, 52, new PremiumBonus(PremiumBonusKind.Experience, 10), new PremiumBonus(PremiumBonusKind.Drops, 5));
             stack.Sync(); await Frames(3);
@@ -215,6 +236,12 @@ public partial class Preview
                 Require(box.Visible && stack.Text.Text.StartsWith("Clan Premium\n3 days 2 hours left"), "the clan premium bar shows the clan's time left: " + stack.Text.Text.Replace("\n", " / "));
                 await Shot("clan-open", Group());
                 await Click(clan.GetGlobalRect().GetCenter()); await Away();
+                await Click(stack.BonusBar.GetGlobalRect().GetCenter()); await Away();
+                Require(box.Visible && stack.OpenKey == ClassicNoticeBars.BonusKey && stack.Text.Text == bonusLines.Tooltip && !stack.Text.Text.Contains("%d"),
+                    "the clan bonus bar shows the client's bonus text: " + stack.Text.Text.Replace("\n", " / "));
+                await Shot("clan-bonus-open", Group());
+                await Click(stack.BonusBar.GetGlobalRect().GetCenter()); await Away();
+                Require(!box.Visible, "pressing the clan bonus bar again closes the box");
             }
             await Hover(chips[0].GetGlobalRect().GetCenter() - new Vector2(30, 0));
             await Shot("group-" + tag + "-hover", Group());
