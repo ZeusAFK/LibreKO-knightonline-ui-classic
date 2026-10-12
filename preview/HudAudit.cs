@@ -79,15 +79,20 @@ public partial class Preview
         if(infoDrag.Position.X!=info.Size.X-64 || infoDrag.MouseFilter!=MouseFilterEnum.Stop || infoRail.Position.X+infoRail.Size.X!=info.Size.X-3 || infoLog.Position.X!=4 || infoLog.GetRect().End.X>=infoRail.Position.X) throw new Exception("Info drag and scroll controls must share the right edge");
         var mail=Descendants(status).OfType<ClassicStatusShortcut>().Single(b=>b.Name=="btn_mail");
         var shortcuts=Descendants(status).OfType<ClassicStatusShortcut>().ToArray();
-        var letters=shortcuts.Where(s=>s.HasBackground).OrderBy(s=>s.Position.X).ToArray();
-        if(!letters.Select(s=>s.Letter).SequenceEqual(new[]{"Q","P","A","D","G","E","R"})) throw new Exception("The shortcut row must contain Q/P/A/D/G/E/R with no M");
-        float pitch=letters[1].Position.X-letters[0].Position.X;
-        for(int i=1;i<letters.Length;i++)
-            if(letters[i].Position.X-letters[i-1].Position.X!=pitch || letters[i].Position.Y!=letters[0].Position.Y || letters[i].Size!=letters[0].Size || pitch<letters[0].Size.X)
-                throw new Exception("The shortcut row keeps one size, one baseline and the original pitch: "+letters[i].Letter);
-        if(!status.GetGlobalRect().Encloses(letters[^1].GetGlobalRect())) throw new Exception("The status HUD rectangle covers the whole shortcut row");
-        if(mail.HasBackground || mail.Letter!="" || mail.Size!=new Vector2(28,28) || mail.MailIconRect.Size!=new Vector2(28,20)) throw new Exception("Mail must be a larger native envelope without a plate or letter");
-        if(mail.Position.X!=letters[0].Position.X || mail.Position.Y!=letters[0].Position.Y+letters[0].Size.Y+5) throw new Exception("Mail is not aligned below Q");
+        // Two icon rows (plugin be6856d): Q P A D G, then E R under Q and P, followed by the hourglass and mail.
+        var letters=shortcuts.Where(s=>s.HasBackground).OrderBy(s=>s.Position.Y).ThenBy(s=>s.Position.X).ToArray();
+        if(!letters.Select(s=>s.Letter).SequenceEqual(new[]{"Q","P","A","D","G","E","R"})) throw new Exception("The shortcut rows must contain Q/P/A/D/G and E/R with no M");
+        var rows=letters.GroupBy(s=>s.Position.Y).Select(g=>g.OrderBy(s=>s.Position.X).ToArray()).ToArray();
+        if(rows.Length!=2 || rows[0].Length!=5 || rows[1].Length!=2) throw new Exception("The shortcuts form two rows: Q P A D G over E R");
+        float pitch=rows[0][1].Position.X-rows[0][0].Position.X;
+        foreach(var row in rows)
+            for(int i=1;i<row.Length;i++)
+                if(row[i].Position.X-row[i-1].Position.X!=pitch || row[i].Size!=letters[0].Size || pitch<letters[0].Size.X)
+                    throw new Exception("Each shortcut row keeps one size, one baseline and the original pitch: "+row[i].Letter);
+        if(rows[1][0].Position.X!=rows[0][0].Position.X || rows[1][0].Position.Y<rows[0][0].GetRect().End.Y) throw new Exception("The second row starts under Q, below the first row");
+        foreach(var letter in letters) if(!status.GetGlobalRect().Encloses(letter.GetGlobalRect())) throw new Exception("The status HUD rectangle covers the shortcut rows: "+letter.Letter);
+        if(mail.HasBackground || mail.Letter!="" || mail.Size!=letters[0].Size || mail.MailIconRect.Size!=mail.Size) throw new Exception("Mail must be a native envelope cell without a plate or letter");
+        if(mail.Position.Y!=rows[1][0].Position.Y || mail.Position.X<=rows[1][^1].Position.X || (mail.Position.X-rows[1][^1].Position.X)%pitch!=0) throw new Exception("Mail ends the second row on the row pitch");
         var coordinates=Descendants(status).OfType<Label>().Single(l=>l.Name=="Text_Coordinates");
         if(coordinates.Text!="764, 416" || coordinates.Position!=new Vector2(155,58) || coordinates.Size.X!=117 || coordinates.Size.Y>16) throw new Exception("HUD coordinates exceed the native parchment field");
         var zoneName=Descendants(status).OfType<Label>().Single(l=>l.Name=="Text_ZoneName");
@@ -168,11 +173,11 @@ public partial class Preview
             Add(5,"Merchant","Looking for a party.");
             var read=type.GetMethod("ClassicHistory",BindingFlags.Instance|BindingFlags.NonPublic)!;
             _chatData!.ChatReader=(mask,time,colors)=>(IReadOnlyList<string>)read.Invoke(system,new object[]{mask,time,colors})!;
-            var all=_chatData.ChatReader(1023,false,"");
+            var all=_chatData.ChatReader(ChatWindow.AllCategories,false,"");
             if(all.Count!=3 || !all[0].Contains("[url=i:156211038]") || !all[0].Contains("Raptor(+8)") || all[0].Contains("<LINK>")) throw new Exception("Classic item links do not render native item metadata");
             var party=_chatData.ChatReader(4,true,"");
             if(party.Count!=1 || !party[0].Contains("14:32") || !party[0].Contains("Guardian")) throw new Exception("Classic filters and timestamps failed");
-            if(!_chatData.ChatReader(1023,false,"ff80ff,ff9a3c,5fd95f,46d3c0,6fb7ff")[0].Contains("#ff80ff")) throw new Exception("Classic custom channel ink failed");
+            if(!_chatData.ChatReader(ChatWindow.AllCategories,false,"ff80ff,ff9a3c,5fd95f,46d3c0,6fb7ff")[0].Contains("#ff80ff")) throw new Exception("Classic custom channel ink failed");
             chatLog.Set(all);
             var input=(LineEdit)typeof(ChatWindow).GetField("_input",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(chat)!;
             input.GrabFocus();input.Clear();
@@ -237,7 +242,7 @@ public partial class Preview
             var jump=new Button();type.GetField("_jumpPill",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(system,jump);
             type.GetField("_scroll",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(system,nativeLog);
             bool immediate=false;
-            void Published(string text)=>immediate=((IReadOnlyList<string>)read.Invoke(system,new object[]{1023,false,""})!).Any(l=>l.Contains("Immediate message"));
+            void Published(string text)=>immediate=((IReadOnlyList<string>)read.Invoke(system,new object[]{ChatWindow.AllCategories,false,""})!).Any(l=>l.Contains("Immediate message"));
             LibreKO.Plugins.PluginHost.Game.Chat.LineAdded+=Published;
             var fresh=entryType.GetMethod("Player",BindingFlags.Public|BindingFlags.Static)!.Invoke(null,new object[]{(byte)1,"Canbo",nation,false,"Immediate message"});
             type.GetMethod("AddEntry",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(system,new[]{fresh});

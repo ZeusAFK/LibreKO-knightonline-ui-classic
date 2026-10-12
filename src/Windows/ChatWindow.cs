@@ -13,8 +13,13 @@ public partial class ChatWindow : Control
     private static readonly (string Name, string Prefix)[] Channels =
     {
         ("All", ""), ("Private", "@"), ("Shout", "!"), ("Party", "#"),
-        ("Clan", "$"), ("Nation", "%"), ("Alliance", "&"),
+        ("Clan", "$"), ("Noah", "|"), ("Nation", "%"), ("Alliance", "&"),
     };
+    /// <summary>Every chat category, including the Noah Knights and chat room lines of 3277df5.</summary>
+    public const int AllCategories = (int)LibreKO.Domain.ChatCategory.All;
+    private const int FilterRevision = 2;
+    /// <summary>The Noah Knights tab shows only for Noah Knights, and hides Clan and Alliance for them (the client's rule).</summary>
+    public static bool Applies(string prefix, bool noahKnight) => prefix switch { "|" => noahKnight, "$" or "&" => !noahKnight, _ => true };
     private const string PrefixChars = "@!#$%&~|\\/+";
     private readonly PluginGame _game = Plugin.Kit.Game;
     private readonly LogText _log;
@@ -37,6 +42,7 @@ public partial class ChatWindow : Control
     private string _colors="";
     private int _fontSize;
     private bool _appendQueued;
+    private bool _noahKnight;
 
 
     public ChatWindow()
@@ -49,7 +55,7 @@ public partial class ChatWindow : Control
         _surface.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _background = ClassicChatControls.Backdrop();
         _surface.AddChild(_background);
-        _filter=Plugin.Kit.Context.Settings.GetInt("chat.filter",1023)&1023;
+        _filter=LoadFilter();
         _timestamps=Plugin.Kit.Context.Settings.GetBool("chat.timestamps",false);
         _fontSize=Plugin.Kit.Context.Settings.GetInt("chat.font_size",13);
         if(_fontSize is not (12 or 13 or 15)) _fontSize=13;
@@ -107,6 +113,7 @@ public partial class ChatWindow : Control
         _game.Chat.InputRequested += FocusInput;
         NativeGame.Source.ChannelRequested += FocusChannel;
         _game.BecameAvailable += Reload;
+        _game.Character.Changed += RefreshNoah;
         _layout ??= NativeLayout.Attach(this, "classic_chat", _title, DefaultPosition,
             resizable: true, defaultSize: DefaultSize, minimumSize: Minimum, resizeCorner: HudLayout.Corner.TopRight,
             backgroundOpacityChanged: _ => _transparency.Cycle(),legacyResizeGrip:true, resizeSnapPeerId:"classic_log");
@@ -123,6 +130,42 @@ public partial class ChatWindow : Control
         _game.Chat.InputRequested -= FocusInput;
         NativeGame.Source.ChannelRequested -= FocusChannel;
         _game.BecameAvailable -= Reload;
+        _game.Character.Changed -= RefreshNoah;
+    }
+
+    /// <summary>
+    /// The saved category filter. Filters saved before the Noah Knights and chat room categories existed (masked
+    /// with 1023) gain both where they show General, as the client's own chat preferences do (rev 2).
+    /// </summary>
+    private static int LoadFilter()
+    {
+        var settings = Plugin.Kit.Context.Settings;
+        int filter = settings.GetInt("chat.filter", AllCategories);
+        if (settings.GetInt("chat.filter_rev", 1) < FilterRevision)
+        {
+            if ((filter & (int)LibreKO.Domain.ChatCategory.General) != 0)
+                filter |= (int)(LibreKO.Domain.ChatCategory.NoahKnights | LibreKO.Domain.ChatCategory.ChatRoom);
+            settings.SetInt("chat.filter", filter & AllCategories);
+            settings.SetInt("chat.filter_rev", FilterRevision);
+        }
+        return filter & AllCategories;
+    }
+
+    private void RefreshNoah()
+    {
+        bool noah = _game.Available && _game.Character.NoahKnight;
+        if (noah == _noahKnight) return;
+        _noahKnight = noah;
+        if (!Applies(_prefix, noah)) FocusTab("");
+        Arrange();
+    }
+
+    private void FocusTab(string prefix)
+    {
+        _prefix = prefix;
+        for (int i = 0; i < _tabs.Count; i++)
+            if (_tabs[i].GetChildren().OfType<BaseButton>().FirstOrDefault() is { } button)
+                button.SetPressedNoSignal(Channels[i].Prefix == prefix);
     }
 
     private void Arrange()
@@ -133,13 +176,17 @@ public partial class ChatWindow : Control
         _title.Size = new Vector2(64, 24);
         _footer.Position = new Vector2(0, footer);
         _footer.Size = new Vector2(DefaultSize.X, 24);
-        float width = (DefaultSize.X - 64) / Channels.Length;
-        for (int i = 0; i < _tabs.Count; i++)
+        int shown = Channels.Count(c => Applies(c.Prefix, _noahKnight));
+        float width = (DefaultSize.X - 64) / shown;
+        for (int i = 0, slot = 0; i < _tabs.Count; i++)
         {
-            float left = Mathf.Round(64 + i * width);
-            float right = Mathf.Round(64 + (i + 1) * width);
+            _tabs[i].Visible = Applies(Channels[i].Prefix, _noahKnight);
+            if (!_tabs[i].Visible) continue;
+            float left = Mathf.Round(64 + slot * width);
+            float right = Mathf.Round(64 + (slot + 1) * width);
             _tabs[i].Position = new Vector2(left, footer);
             _tabs[i].Size = new Vector2(right - left, 24);
+            slot++;
         }
         _log.Position = new Vector2(24, 4);
         _log.Size = new Vector2(Size.X - 44, footer - 32);
@@ -150,7 +197,11 @@ public partial class ChatWindow : Control
     }
 
     private Vector2 DefaultPosition() => new(4, GetViewport().GetVisibleRect().Size.Y - Taskbar.BarHeight - Size.Y - 4);
-    private void Reload() => _log.Set(_game.Chat.ReadHistory(_filter,_timestamps,_colors));
+    private void Reload()
+    {
+        RefreshNoah();
+        _log.Set(_game.Chat.ReadHistory(_filter,_timestamps,_colors));
+    }
     // The client publishes a line before it stores it, so the structured history is read once the
     // dispatch has finished; several lines in one frame refresh the log once.
     private void Append(string bbcode)
@@ -203,10 +254,7 @@ public partial class ChatWindow : Control
 
     private void FocusChannel(string prefix)
     {
-        _prefix = prefix;
-        for (int i = 0; i < _tabs.Count; i++)
-            if (_tabs[i].GetChildren().OfType<BaseButton>().FirstOrDefault() is { } button)
-                button.SetPressedNoSignal(Channels[i].Prefix == prefix);
+        FocusTab(prefix);
         FocusInput();
     }
 

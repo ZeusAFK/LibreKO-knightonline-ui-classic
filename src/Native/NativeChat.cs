@@ -18,7 +18,7 @@ public static class NativeChat
     private const int PublishedFallback = 200;
     private const ulong NearbyPollMs = 5000;
 
-    private sealed record Entry(long Seq, int Category, byte Type, string Name, int Nation, bool Gm, string Text, string Bbcode, DateTime Time)
+    private sealed record Entry(long Seq, int Category, byte Type, string Name, int Nation, bool Gm, string Text, string Bbcode, DateTime Time, string Place)
     {
         public string? Rendered;
         public string? RenderedInk;
@@ -78,7 +78,7 @@ public static class NativeChat
         if (line.Type == 2 || line.CharId < 0 && line.Name.Length == 0) return;
         if (Native.Get<System.Collections.IDictionary>(chat, "_bubbles") is not { } bubbles || !bubbles.Contains(line.CharId)) return;
         if (bubbles[line.CharId] is not { } bubble || Native.Get<Label3D>(bubble, "Label") is not { } label) return;
-        var colour = new Color("#" + ClassicChatFormat.Channel(line.Type).Color);
+        var colour = new Color("#" + ClassicChatFormat.Channel(line.Type, line.Nation).Color);
         colour.A = label.Modulate.A;
         label.Modulate = colour;
     }
@@ -90,8 +90,14 @@ public static class NativeChat
     /// </summary>
     public static IReadOnlyList<string> ReadHistory(int mask, bool timestamps, string colors)
     {
-        if (NativeHudChat.World is not { } world || ChatOf(world) is not { } chat
-            || Native.Get<System.Collections.IEnumerable>(chat, "_store") is not { } store) return Plugin.Kit.Game.Chat.History;
+        if (NativeHudChat.World is not { } world || ChatOf(world) is not { } chat) return Plugin.Kit.Game.Chat.History;
+        return ReadHistory(chat, mask, timestamps, colors) ?? Plugin.Kit.Game.Chat.History;
+    }
+
+    /// <summary>The Classic history of one client chat store (the audits read a store they fill themselves).</summary>
+    public static IReadOnlyList<string>? ReadHistory(object chat, int mask, bool timestamps, string colors)
+    {
+        if (Native.Get<System.Collections.IEnumerable>(chat, "_store") is not { } store) return null;
         var overrides = colors.Split(',');
         var result = new List<string>();
         var present = new HashSet<long>();
@@ -100,7 +106,7 @@ public static class NativeChat
             var entry = Read(raw);
             present.Add(entry.Seq);
             if (entry.Category == (int)ChatCategory.Whisper || (entry.Category & mask) == 0) continue;
-            string hex = ClassicChatFormat.Channel(entry.Type).Color;
+            string hex = ClassicChatFormat.Channel(entry.Type, entry.Nation).Color;
             int slot = ClassicChatFormat.ColourSlot(entry.Type);
             if (slot >= 0 && overrides.Length == 5 && Color.HtmlIsValid(overrides[slot])) hex = overrides[slot];
             string line = Render(entry, hex);
@@ -119,7 +125,8 @@ public static class NativeChat
         if (_entries.TryGetValue(seq, out var cached)) return cached;
         var entry = new Entry(seq, (int)Native.Get<ChatCategory>(raw, "Category"), Native.Get<byte>(raw, "Type"),
             Native.Get<string>(raw, "Name") ?? "", Native.Get<int>(raw, "Nation"), Native.Get<bool>(raw, "Gm"),
-            Native.Get<string>(raw, "Text") ?? "", Native.Get<string>(raw, "Bbcode") ?? "", Native.Get<DateTime>(raw, "Time"));
+            Native.Get<string>(raw, "Text") ?? "", Native.Get<string>(raw, "Bbcode") ?? "", Native.Get<DateTime>(raw, "Time"),
+            Native.Get<string>(raw, "Place") ?? "");
         _entries[seq] = entry;
         return entry;
     }
@@ -130,7 +137,7 @@ public static class NativeChat
         if (entry.Rendered != null && entry.RenderedInk == hex) return entry.Rendered;
         string body = ChatSystemType is { } type && Native.Call(type, "RenderText", entry.Text, hex) is string text
             ? text : $"[color=#{hex}]{ClassicChatFormat.Esc(entry.Text)}[/color]";
-        entry.Rendered = ClassicChatFormat.Line(entry.Type, entry.Name, entry.Nation, entry.Gm, entry.Text, hex, body, links: true);
+        entry.Rendered = ClassicChatFormat.Line(entry.Type, entry.Name, entry.Nation, entry.Gm, entry.Text, hex, body, links: true, place: entry.Place);
         entry.RenderedInk = hex;
         return entry.Rendered;
     }

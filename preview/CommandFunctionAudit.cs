@@ -145,7 +145,9 @@ public partial class Preview
             var chat = Get(world, "Chat")!;
             var classicChat = Descendants(world).OfType<ChatWindow>().Single();
             var classicInput = (LineEdit)typeof(ChatWindow).GetField("_input", flags)!.GetValue(classicChat)!;
-            var log = (Queue<string>)Get(world, "_combatLogLines")!;
+            // 3277df5: the combat log is a TabbedLog (All/Status/Item/System); a fresh one per observation keeps only its lines.
+            TabbedLog Log() => (TabbedLog)Get(world, "_combatLog")!;
+            void ClearLog() => Set(world, "_combatLog", new TabbedLog((int)(typeof(World).GetField("CombatLogMaxLines", flags)?.GetRawConstantValue() ?? 200)));
             object exitIdle = Get(world, "_battleTimer")!;
             string[] stateFields = { "_running", "_sitRequestPending", "_achShown", "_merchantMenuShown", "_seekShown", "_nationChatShown", "_marketPriceShown",
                 "_tradeRequestsBlocked", "_partyRequestsBlocked", "_exitArmed", "_vipWhShown", "_genieShown", "_escShown" };
@@ -155,7 +157,7 @@ public partial class Preview
 
             async Task<Dictionary<string, object?>> Observe(string label, Func<Task> act)
             {
-                log.Clear(); while (sent.TryDequeue(out _)) { }
+                ClearLog(); while (sent.TryDequeue(out _)) { }
                 var before = State(); var dialogs = Dialogs();
                 string? error = null;
                 try { await act(); } catch (Exception e) { error = e.GetType().Name + ": " + e.Message; }
@@ -168,7 +170,7 @@ public partial class Preview
                 foreach (var dialog in opened) if (dialog is MessageBox box) box.QueueFree(); else if (dialog is AcceptDialog accept) accept.Hide();
                 return new Dictionary<string, object?>
                 {
-                    ["run"] = label, ["requests"] = packets, ["messages"] = log.Select(Clean).ToList(), ["state"] = changed,
+                    ["run"] = label, ["requests"] = packets, ["messages"] = Log().Lines(LogTab.All).Select(Clean).ToList(), ["state"] = changed,
                     ["chat"] = classicInput.Text, ["dialog"] = dialogText, ["error"] = error,
                 };
             }

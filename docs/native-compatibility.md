@@ -408,6 +408,25 @@ Used only when the layouts are found (bundled in `assets/myko`, see `src/LocalAs
 | `_premiumChip`, `_clanPremiumChip`, `_clanPremiumInClan`, `_clockLabel`, `PlaceTopIcons` | F/M | Top-right group: clan premium bar and the time box; the client's chips and clock are hidden while the group shows them (the premium chip stays as an invisible spacer so the client's remaining top icons keep clear) (`NativePremium`) |
 | `Net.GmListEvent` (`Action<IReadOnlyList<string>>`) | E | Not in the client yet. When a client adds it, the GM List bar follows it (`NativeGmList.Attach`); until then the list is empty |
 
+### Chat rooms, voice and chat categories on upstream 3277df5
+
+The nation chat rooms open a group-chat style room window (`chat_room`). The Classic room (`ClassicChatRoomSkin`,
+`ClassicChatRoomLayout`, preparer `NativeChatRoom`) frames the client's own room through `FrameWindow("chat_room")`;
+posts, voice notes, the voice call, the roster, the popups and every callback stay native. No plugin facade covers
+the room or `VoiceChat`; the plugin subscribes no room or voice event (it reads the client's controls and tweens).
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| Plugin seam `FrameWindow("chat_room")`, `WindowFrame.SetDragHandle/Close/TitleChanged`, `HudWindow.SetMinimized/Minimized/MinimizedChanged/Body` | API | Classic frame, compact whisper bar when minimized, title `Name (n/max)` |
+| `_roomScroll`, `_roomLog`, `_roomOlder`, `_roomComposerRow`, `_roomInput`, `_roomRecord`, `_roomSend`, `_roomRecordStrip`, `_roomRecordClock`, `_roomRecordLevel`, `_roomVoiceRow`, `_roomMembersToggle`, `_roomConfigButton`, `_roomJoin`, `_roomDeafen`, `_roomVolume`, `_roomMic`, `_roomVoiceGear`, `_roomVoiceLeave`, `_roomMembersColumn`, `_roomRosterRows`, `_roomRosterEmpty`, `_roomLeaderBox`, `_roomLeaderHandOver`, `_roomLeaderKick`, `_roomChannelsButton`, `HudWindow._header` (door and channel-list header icons) | F | Names for the skin and the audit; all must exist or the room keeps the plain Classic frame around the client's content |
+| `_roomLayer` (popups: `_roomConfig`, `_roomVoiceSettings`, `_roomPeerPopup`, `_roomMemberMenu`, `_roomEmoticons`) | F | Classic menu panel on the popups as the client creates them |
+| `_roomBlink` (`Tween`) | F | The minimized blink becomes the whisper attention blink on the compact bar |
+| Roster row `StyleBoxFlat` (`UiTheme.Row` colours: `RowHover` selected, `7fd98b` speaking) | Look | Classic row state mirrored each frame |
+| `_ncPubOpen`, `_ncPriOpen`, `_ncMembersTitle`, `_ncMembersCount`, `_ncMemberRows` | F | Nation chat Open buttons, members title and summary in the body |
+| `ChatSystem.ChatEntry.Place`; `ChatCategory.NoahKnights/ChatRoom/All`, `ChatType.NoahKnights` (34); `IGameCharacter.NoahKnight` | F/API | Room lines show `[ Zone ]`; the Classic chat masks with `ChatCategory.All` (saved filters migrate with `chat.filter_rev` 2 like the client's `ChatPrefs`); Noah Knights tab (`\|`) only for Noah Knights, who lose Clan and Alliance. `IGameChat.Lines` carries rendered BBCode only, so the Classic chat keeps reading `_store` for its own format |
+| `IGameCommands.Run(KeyAction.ToggleRun/AutoAttack)`, `ShowExitMenu()` | API | Replace the reflected `ToggleRunMode`, `ToggleAutoAttack`, `ToggleEsc(true)`; `StartCameraHalfTurn` has no key action and stays reflected |
+| `WhisperLinks.Linkify/IsWebLink` | M | Whisper notices with web links open them, as the client does |
+
 ### Preview-only members
 
 The preview fixtures also reach client internals that the plugin never touches at runtime. Examples are the
