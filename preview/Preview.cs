@@ -73,6 +73,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("chat-colours-audit")){await CaptureChatColoursAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("communication-audit")){await CaptureCommunicationAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("social-audit")){await CaptureSocialAudit(nation);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("user-vote-audit")){await CaptureUserVoteAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("command-audit")){await CaptureCommandListAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("command-function-audit")){await CaptureCommandFunctionAudit(nation, info);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("genie-audit")){await CaptureGenieAudit(nation, info);await FinishManagedAudit();return;}

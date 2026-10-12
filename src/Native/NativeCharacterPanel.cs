@@ -131,9 +131,17 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
             "friends" => Native.Get<Label>(w, "_friendStatus")?.Text ?? "",
             "clan" => Native.Get<Label>(w, "_clanStatus")?.Text ?? "",
             "union" => Native.Get<string>(w, "_allianceNotice") ?? "",
+            "clan_bonus" => ClanBonus() is { } online ? ClanBonusCard.Marks(online, ItemData.Text(ClanBonusCard.OnText, ClanBonusCard.OnFallback),
+                ItemData.Text(ClanBonusCard.OffText, ClanBonusCard.OffFallback)) : "",
+            "clan_bonus_tip" => ClanBonus() is { } count ? ClanBonusCard.Tooltip(count, ItemData.Text(ClanBonusCard.NeedText, ClanBonusCard.NeedFallback),
+                ItemData.Text(ClanBonusCard.BonusText, ClanBonusCard.BonusFallback)) : "",
             _ => "",
         };
     }
+
+    /// <summary>The clan online bonus the server last reported (3277df5), or null before a report or outside a clan.</summary>
+    private static int? ClanBonus() =>
+        Net.I is { } net && net.MyClan.InClan && net.ClanOnlineCount != Net.NoClanBonus ? net.ClanOnlineCount : null;
 
     public IReadOnlyList<GamePanelRow> Rows(string section)
     {
@@ -148,7 +156,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
                     var job = CharacterClassCatalog.DisplayName(m.Class);
                     var seen = m.IsOnline ? "Online" : $"Offline: {m.HoursSinceLogin} hours";
                     rows.Add(new(m.Name, new[] { ClanRanks.Name(m.Fame), m.Name, m.Level.ToString(), job },
-                        $"{m.Name}\n{ClanRanks.Name(m.Fame)} · Lv {m.Level} · {CharacterClassCatalog.SpecializationName(m.Class)}\n{seen}\n{m.Memo}",
+                        $"{m.Name}\n{ClanRanks.Name(m.Fame)} · Lv {m.Level} · {CharacterClassCatalog.SpecializationName(m.Class)}\n{seen}" + (string.IsNullOrEmpty(m.Memo) ? "" : $"\nMemo: {m.Memo}"),
                         m.IsOnline ? new Color("fff0c8") : new Color("b5b5b5"), m.IsOnline));
                 }
                 break;
@@ -237,6 +245,8 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
             case "clan_private": if (member && other) MemberAction(w, selection, MemberWhisper); return;
             case "clan_party": if (member && other) MemberAction(w, selection, MemberParty); return;
             case "clan_info": if (member) Call(w, "RequestUserInformation", selection); return;
+            // The client's memo prompt (3277df5): the Classic text prompt with the member's current memo.
+            case "clan_memo": if (Clan.InClan) Native.TryCall(w, "OpenClanMemo", out _); return;
             case "clan_appoint": if (member && other && Clan.IsChief) MemberAction(w, selection, MemberAppoint); return;
             case "clan_handover": if (member && other && Clan.IsChief) MemberAction(w, selection, MemberHandover); return;
             case "clan_remove":

@@ -323,6 +323,22 @@ Upstream removed the chat-room window, the party window and the trade row lists;
 | `ToggleGenie()`, `ToggleGenieFromSub()` (fallback `ToggleGenieRun()`), `_genieShown`, `_genieRequestPending`, `_geniePoints`, `_genieDeadline`, `_genieRunLabel`, `_geniePanel` (its "Use Spirit of Genie" button), `CountInBackpack(int)`, static `SpiritOfGenieItem`, `Net.GenieRunning` | F/M | Genie rows of the command list (`NativeGenieCommands`): each runs the client's own action and is greyed while the client's state refuses it, with the client's status line as the reason. Missing members drop the Genie group. |
 | `ChatSystem._input` | F | Prefill the client opens the chat with ("/PM ", "/RoyalOrder ") taken into the Classic chat input (`NativeChat.TakeTyped`) |
 
+### Party, user vote, user card and clan page on upstream 3277df5
+
+The party list, war board, user vote windows and character card use the plugin facades the client added in
+3277df5; the reflected `ToggleRowMeter()`, `ToggleWarBoard()` and `_warBoardRowShares` of the cd63f98 social row
+above are no longer read.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `IGameParty.RowMeterMode`, `RowMeterShare`, `CycleRowMeter`, `ToggleWarBoard`, `MoveRow`, `AutoRejoin`, `AutoRejoinTip`, `ToggleAutoRejoin`, `CommanderBarHidden`, `ShowCommanderBar`; `GamePartyMember.HpLook` | API | Classic party list: row meter, War Board action, Move up / Move down arrows in the client's row order, automatic re-invite, commander bar restore, HP look art |
+| `HudPart.WarBoard`; `IGameParty.WarBoardOpen`, `WarBoardMode`, `WarBoardAlpha`, `WarBoardRows`, `SetWarBoardMode`, `SetWarBoardAlpha` | API | Classic Party War Board (`ClassicWarBoard`); the client keeps the requests, their cooldown and the ranking (the cooldown digits are not in the API and are not shown) |
+| `IGameParty.UserVoteHere`, `UserVote(id)`; `IGameUserVote` (`Title`, `SelectPrompt`, `Reasons`, `CostLine`, `AskQuestion`, `AskReason`, `AskSeconds`, `AskSecondsLeft`, `NoticeTitle`, `NoticeLines`, `Send`, `CancelSelect`, `Answer`, `CloseNotice`); `UserVote` constants | API | Classic `user_vote`, `user_vote_ask`, `user_vote_notice` on the message box (`ClassicUserVoteSkin`); the client's member menu offers User Vote in Juraid and answers Draw when the countdown ends |
+| `IGameUserInfo.Card` (`GameUserCard`, `GameRankRibbon`, `GameUserRankRow`), `Changed`; `UserInfoCard.PodiumPlaces`; resource `res://assets/ui/daily_rank/medal_{n}.png` | API | Classic character card (`ClassicUserInfoCard`); the client's card body stays hidden in the window, its Confirm button below the Classic card |
+| `_fullMoonRow` buttons (Enter, Party Board, Auto Entry) | F | Named `seek_full_moon_enter/shout/auto` for the Classic party board's Full Moon row |
+| `OpenClanMemo()` | M | Clan memo from the clan page's own-row menu and the Knights Management Memo action |
+| `Net.ClanOnlineCount`, `Net.NoClanBonus`, `ClanBonusCard` (public) | API | Clan online bonus line on the Classic clan page |
+
 ### Identity and appearance
 
 | Member | Kind | Used for |

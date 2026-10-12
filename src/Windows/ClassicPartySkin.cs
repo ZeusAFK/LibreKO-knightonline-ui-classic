@@ -82,6 +82,8 @@ public partial class ClassicPartyBoard : Control
     private readonly Label _title;
     private readonly Label? _heading;
     private readonly Button _inviteByName;
+    private readonly Label _filterCaption;
+    private readonly HBoxContainer _filterRow, _moonRow;
     private Control? _selected;
     public ClassicPartyBoard(Control body, Control grip, Button close)
     {
@@ -144,8 +146,9 @@ public partial class ClassicPartyBoard : Control
         recruitToggle.Pressed+=()=>Lower(_recruit.Visible?null:_recruit);
         // The board filters and the Full Moon Rift actions share the lower table area behind a second toggle.
         _filters.Position = new Vector2(18,283); _filters.Size = new Vector2(284,84); _filters.Visible = false; AddChild(_filters);
-        ClassicPartySkin.Caption(_filters, "Filter", new Rect2(0,0,284,18),new Color("ffff80"),11);
-        foreach (var (row, rect) in new[] { (nodes.OfType<HBoxContainer>().Single(n => n.Name == "seek_filters"), new Rect2(0,23,284,20)), (nodes.OfType<HBoxContainer>().Single(n => n.Name == "seek_full_moon"), new Rect2(0,50,284,20)) })
+        _filterCaption = ClassicPartySkin.Caption(_filters, "Filter", new Rect2(0,0,284,18),new Color("ffff80"),11);
+        _filterRow = nodes.OfType<HBoxContainer>().Single(n => n.Name == "seek_filters"); _moonRow = nodes.OfType<HBoxContainer>().Single(n => n.Name == "seek_full_moon");
+        foreach (var (row, rect) in new[] { (_filterRow, new Rect2(0,23,284,20)), (_moonRow, new Rect2(0,50,284,20)) })
         {
             bool shown = row.Visible;
             ClassicVendorSkin.Move(row, _filters, rect); row.Visible = shown; row.AddThemeConstantOverride("separation", 8);
@@ -188,6 +191,12 @@ public partial class ClassicPartyBoard : Control
         bool seeking = _register.HasMeta("seeking") && _register.GetMeta("seeking").AsBool();
         _register.Text = "Register"; _register.Disabled = seeking; _remove.Disabled = !seeking;
         if (_page.HasMeta("page_caption")) _page.Text = _page.GetMeta("page_caption").AsString();
+        // The Full Moon Rift board has no filters: its actions (Enter, Party Board, Auto Entry) take the first row.
+        bool moon = _moonRow.Visible && !_filterRow.Visible;
+        float y = moon ? 23 : 50;
+        if (_moonRow.Position.Y != y) _moonRow.Position = new Vector2(0, y);
+        string caption = moon ? "Full Moon Rift" : "Filter";
+        if (_filterCaption.Text != caption) _filterCaption.Text = caption;
     }
     private void Forward(string text)
     {

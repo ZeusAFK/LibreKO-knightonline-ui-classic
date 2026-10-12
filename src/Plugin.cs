@@ -27,6 +27,7 @@ public sealed class Plugin : IPlugin
         ui.ReplaceHud(HudPart.Chat, () => new NationHud(() => new ChatWindow()));
         ui.ReplaceHud(HudPart.CombatLog, () => new NationHud(() => new LogWindow()));
         ui.ReplaceHud(HudPart.Party, () => new NationHud(() => new ClassicPartyHud(Kit.Game.Party, () => NativeHudChat.World)));
+        ui.ReplaceHud(HudPart.WarBoard, () => new NationHud(() => new ClassicWarBoard(Kit.Game.Party)));
         NativeHud.StyleWhispers(ClassicWhisperSkin.Apply, ClassicWhisperSkin.Line);
         ui.HideHud(HudPart.MiniMap);
         ui.HideHud(HudPart.Launcher);
@@ -93,6 +94,7 @@ public sealed class Plugin : IPlugin
         foreach(var id in ClassicProgressionSkin.WindowIds)ui.ExtendWindow(id,ClassicProgressionSkin.Extend);
         foreach (var id in CharacterDetailsSkin.WindowIds)
             ui.ExtendWindow(id, CharacterDetailsSkin.Extend);
+        foreach (var id in ClassicUserVoteSkin.WindowIds) ui.ExtendWindow(id, ClassicUserVoteSkin.Extend);
         ui.ReplaceDialogs(request=>request.Title=="Magic Anvil"?new ClassicAnvilNotice(request):request.Title=="Merchant"?new ClassicMerchantNotice(request):request.Title is "Item Seal" or "Redistribute stats" or "Redistribute mastery" or "Create a Clan" or "Transformation" or "Akara's Altar" or "Nation Transfer" or "Rebirth" or "Clan Cape" or "Familiar Hatching" or "Familiar Transformation"?new ClassicServiceNotice(request):new MessageBox(request));
         ui.AddHud(() => new NationHud(() => new Taskbar()));
         ui.AddHud(() => new NationHud(() => new ClassicMerchantSigns()));

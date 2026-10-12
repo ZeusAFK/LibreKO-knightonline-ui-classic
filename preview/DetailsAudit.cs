@@ -69,6 +69,8 @@ public partial class Preview
         var host=(LibreKO.Plugins.WindowHost)Create(typeof(LibreKO.Plugins.WindowHost),"character_info","Character",shell,(Action)(()=>{}));
         var character=new CharacterWindow(host) { Position=new Vector2(40,40) };AddChild(character);
         string prefix=nation==1?"karus":"human";
+        // The client attaches its user card bridge to its global game API; the Classic card reads the plugin's.
+        PreviewFixtures.LinkClientFacades(KnightOnlineUiClassic.Plugin.Kit.Game);
         var measurements=new List<object>();
         foreach(string id in CharacterDetailsSkin.WindowIds)
         {
@@ -76,7 +78,7 @@ public partial class Preview
             // The NPC page is the Classic NPC dialogue, the fallback of the bundled 2.x quest windows (myko-npc-audit's).
             UseArt(id!="npc_dialog");
             var model=new World();
-            string caption=id switch { "presets"=>"Presets","titles"=>"Titles","quests"=>"Quests","character_clan_details"=>"Knights Management","clanpoint"=>"Clan Contribution","quest_target"=>"Target","quest_receipt"=>"Reward","npc_dialog"=>"Quest","userinfo"=>"User Information",_=>id };
+            string caption=id switch { "presets"=>"Presets","titles"=>"Titles","quests"=>"Quests","character_clan_details"=>"Knights Management","clanpoint"=>"Clan Contribution","quest_target"=>"Target","quest_receipt"=>"Reward","npc_dialog"=>"Quest","userinfo"=>"Character Info",_=>id };
             var panel=new HudWindow(id,caption,new Vector2(40,40),persistLayout:false);
             var body=panel.Body;
             character.Visible=CharacterPageRouter.Supports(id);
@@ -170,8 +172,9 @@ public partial class Preview
             {
                 DetailCall(model,"UserInfoInit");var built=(HudWindow)DetailField(model,"_userInfoPanel")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
-                foreach(var row in new[]{("Name","Guardian"),("Level","83 (rebirth 5)"),("Class","Protector"),("Clan","canCLAN"),("Clan rank","Accredited Knights"),("Clan leader","Canbo"),("National points","2,025,525,525"),("Monthly NP","120,000")})
-                    DetailCall(model,"AddUserInfoRow",row.Item1,row.Item2,null);
+                // 3277df5: the card comes from the server reply through the client's own handler (rank boards for the row titles).
+                DetailCall(model,"LoadDailyRankBoards");
+                DetailCall(model,"OnUserInformation",UserInfoFixture(nation,true));
             }
             else if(id=="quest_receipt")
             {
@@ -277,6 +280,7 @@ public partial class Preview
                 if(title.HorizontalAlignment!=HorizontalAlignment.Center || Mathf.Abs(centre-floating.Size.X/2)>1) throw new Exception(id+": caption is not centred: "+centre);
                 GD.Print($"DETAIL_FIT_OK {id} height={floating.Size.Y} gap={gap}");
             }
+            if(id=="userinfo") CheckUserInfoCard(body,true);
             var overflow=Descendants(composed).OfType<Control>().Where(c=>c.IsVisibleInTree() && c.GetParent()==composed && (c.Position.X<0 || c.Position.Y<0 || c.Position.X+c.Size.X>composed.Size.X+1 || c.Position.Y+c.Size.Y>composed.Size.Y+1)).Select(c=>c.Name.ToString()).ToArray();
             if(overflow.Length>0) throw new Exception(id+": controls escape the shell: "+string.Join(", ",overflow));
             measurements.Add(new { id,buttons=afterButtons,fixedControls=fixedNodes.Length,fixedMismatch=failures,overflow,composition=composed.GetType().Name,bodyWidth=body.Size.X,viewportWidth=viewport.Size.X,shellWidth=composed.Size.X,shellHeight=composed.Size.Y });
@@ -353,8 +357,32 @@ public partial class Preview
                 GD.Print("NPC_STATUS_INK_OK: available, in progress, ready, completed");
                 await CaptureNpcFixtures(model,(ClassicNpcDialogue)composed,prefix,output,measurements);
             }
+            if(id=="userinfo" && composed is ClassicDetailPanel card)
+            {
+                // A clanless character without rank marks: the card shrinks to the facts and the clan line.
+                DetailCall(model,"OnUserInformation",UserInfoFixture(nation,false));
+                await ToSignal(GetTree().CreateTimer(.5),SceneTreeTimer.SignalName.Timeout);
+                CheckUserInfoCard(body,false);
+                float end=body.GetChildren().OfType<Control>().Where(c=>c.Visible).Max(c=>c.Position.Y+c.Size.Y);
+                float gap=card.Size.Y-(card.ContentScroll.Position.Y+end);
+                if(gap<20 || gap>26) throw new Exception("userinfo clanless: bottom margin below the content is "+gap);
+                await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
+                GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-userinfo-clanless.png"));
+                GD.Print($"DETAIL_FIT_OK userinfo-clanless height={card.Size.Y} gap={gap}");
+                var confirm=Descendants(body).OfType<Button>().Single(b=>b.Text=="Confirm" && b.IsVisibleInTree());
+                confirm.EmitSignal(BaseButton.SignalName.Pressed);
+                if((bool)DetailField(model,"_userInfoShown")!) throw new Exception("userinfo: Confirm did not close the card through the client");
+                GD.Print("USER_INFO_CONFIRM_OK");
+            }
             if(id=="character_clan_details")
             {
+                var memo=Descendants(composed).OfType<Button>().SingleOrDefault(b=>b.Text=="Memo" && b.IsVisibleInTree())??throw new Exception("Knights Management: the clan memo action is not placed");
+                if(memo.GetRect()!=CharacterEmbeddedLayout.Slots["clan_memo"]) throw new Exception("Knights Management: memo bounds "+memo.GetRect());
+                foreach(var slot in new[]{"clan_refresh","clan_memo","clan_save","clan_board","clan_handover","clan_leave"})
+                    if(Descendants(composed).OfType<Button>().FirstOrDefault(b=>b.IsVisibleInTree() && b.GetRect()==CharacterEmbeddedLayout.Slots[slot]) is {} placed
+                        && Plugin.Kit.Bold.GetStringSize(placed.Text,HorizontalAlignment.Left,-1,placed.GetThemeFontSize("font_size")).X>placed.Size.X-4)
+                        throw new Exception("Knights Management: caption does not fit "+placed.Text+" "+placed.Size);
+                GD.Print("CLAN_MEMO_ACTION_OK "+memo.GetRect());
                 var tabField=typeof(World).GetField("_clanTab",BindingFlags.NonPublic|BindingFlags.Instance)!;
                 tabField.SetValue(model,Enum.Parse(tabField.FieldType,"Points"));
                 foreach(var button in Descendants(composed).OfType<Button>().Where(b=>b.ToggleMode)) button.SetPressedNoSignal(button.Text=="Contribution");
@@ -490,6 +518,34 @@ public partial class Preview
     private static QuestRewardSelection<QuestTransfer> QuestRewardChoices(World model) => (QuestRewardSelection<QuestTransfer>)DetailField(model,"_questRewardSelection")!;
     private static void QuestReceived(World model,QuestReceipt receipt) { NativeQuestLog.Record(receipt);DetailCall(model,"OnQuestReceipt",receipt); }
     private static IEnumerable<Node> Ancestry(Node? node) { for(;node!=null;node=node.GetParent()) yield return node; }
+    /// <summary>A user card reply as the server sends it: a clan member with rank marks, or a clanless character.</summary>
+    private static UserInfoReply UserInfoFixture(int nation,bool full) => full
+        ? new UserInfoReply("Guardian",83,nation==1?106:206,2_025_525,120_000,17,3,1,4,"NightWatch","Cassandra",2,5,3,
+            new[]{4,255,37,0,120,0,1},new[]{new RankMark(0,2,1,0),new RankMark(1,3,0,0),new RankMark(2,0,0,1),new RankMark(51,0,0,2)})
+        : new UserInfoReply("Ranger7",45,nation==1?107:207,18_400,900,0,0,0,0,"","",0,0,UserInfoCard.NoParty,new int[UserInfoCard.RankPlaces],Array.Empty<RankMark>());
+
+    /// <summary>The Classic card's lines at their declared bounds, inside the content width, with the client's card values.</summary>
+    private static void CheckUserInfoCard(Control body,bool full)
+    {
+        var card=body.GetChildren().OfType<ClassicUserInfoCard>().Single();
+        if(!card.Visible || body.GetChildren().OfType<Control>().Count(c=>c.Visible)!=2) throw new Exception("userinfo: the card and the Confirm row are the visible content");
+        var info=KnightOnlineUiClassic.Plugin.Kit.Game.UserInfo.Card??throw new Exception("userinfo: the user-card API has no card");
+        foreach(var part in card.GetChildren().OfType<Control>())
+        {
+            var rect=part.GetMeta("user_info_rect").AsRect2();
+            if(part.GetRect()!=rect) throw new Exception("userinfo: actual bounds of "+part.Name+" "+part.GetRect()+" != "+rect);
+            if(part.GetRect().End.X>card.Size.X+.5f || part.GetRect().End.Y>card.Size.Y+.5f) throw new Exception("userinfo: "+part.Name+" leaves the card");
+        }
+        if(card.GetNode<Label>("fact_value_0").Text!=info.Name || card.GetNode<Label>("fact_value_1").Text!=info.Level) throw new Exception("userinfo: the facts are not the client's card");
+        foreach(var label in card.GetChildren().OfType<Label>().Where(l=>l.Text.Length>0))
+            if(label.GetThemeFont("font").GetStringSize(label.Text,HorizontalAlignment.Left,-1,label.GetThemeFontSize("font_size")).X>label.Size.X)
+                throw new Exception("userinfo: "+label.Name+" is clipped: "+label.Text);
+        int ribbons=card.GetChildren().OfType<ClassicRankRibbon>().Count();
+        if(full && (card.GetNode<Label>("clan_value_0").Text!="NightWatch" || ribbons!=info.Summary.Count+info.Rows.Count*3)) throw new Exception("userinfo: clan block or rank marks missing ("+ribbons+")");
+        if(!full && (!card.HasNode("clan_none") || card.HasNode("clan_mark") || ribbons!=info.Rows.Count*3)) throw new Exception("userinfo: a clanless card shows the empty clan line and the client's unranked rows ("+ribbons+")");
+        GD.Print($"USER_INFO_CARD_OK full={full} size={card.Size} ribbons={ribbons}");
+    }
+
     private static IEnumerable<Node> Descendants(Node node) { yield return node;foreach(var child in node.GetChildren()) foreach(var item in Descendants(child)) yield return item; }
     private static void CheckRewardRows(World model,(int Item,int Count)[] expected)
     {

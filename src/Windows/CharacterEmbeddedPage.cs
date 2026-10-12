@@ -170,7 +170,7 @@ public partial class CharacterEmbeddedPage : Control
         _ally=Action("Ally with target","Leave alliance");_leave=actionButtons.Last();
         foreach(var (button,slot,caption) in new[]
         {
-            (Action("Refresh")??actionButtons[0],"clan_refresh",(string?)null),(Action("Save Contribution"),"clan_save","Save NP"),
+            (Action("Refresh")??actionButtons[0],"clan_refresh",(string?)null),(Action("Memo"),"clan_memo",null),(Action("Save Contribution"),"clan_save","Save NP"),
             (Action("Recruitment Board"),"clan_board","Recruit"),(Action("Hand over"),"clan_handover",null),(_ally,"clan_ally",null),(_leave,"clan_leave","Leave"),
         })
         {

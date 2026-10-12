@@ -7,9 +7,10 @@ namespace KnightOnlineUiClassic.Windows;
 
 /// <summary>
 /// The Classic party list in place of the client's party HUD: the original member cells driven by the
-/// plugin party API, left click picks (and targets) a member, right click opens the client's member menu,
-/// and the party actions (invite by name, leave or disband, party board, war board, row meter) call the
-/// client's own handlers.
+/// plugin party API in the client's row order, left click picks (and targets) a member, right click opens the
+/// client's member menu (with User Vote in Juraid), the small arrows move a member up or down, and the party
+/// actions (invite by name, leave or disband, party board, war board, row meter, automatic re-invite, the
+/// commander bar's restore) call the client's own handlers.
 /// </summary>
 public partial class ClassicPartyHud : Control
 {
@@ -17,7 +18,7 @@ public partial class ClassicPartyHud : Control
     private readonly Func<World?> _world = null!;
     private readonly ClassicPartyHudRow[] _rows = new ClassicPartyHudRow[8];
     private readonly Control _actions = new() { Name = "party_actions", MouseFilter = MouseFilterEnum.Ignore };
-    private readonly Button _leave = null!, _meter = null!;
+    private readonly Button _leave = null!, _meter = null!, _rejoin = null!, _commander = null!;
     private readonly Control _grip = null!;
     private bool _queued;
 
@@ -41,9 +42,12 @@ public partial class ClassicPartyHud : Control
         Action("Invite", 0, () => NativeParty.InviteByName(_world())).TooltipText = "Invite a player by name";
         _leave = Action("Leave", 1, () => _party.Leave());
         Action("Seek Party", 2, () => NativeParty.ToggleBoard(_world())).TooltipText = "Party board";
-        Action("War Board", 3, () => NativeParty.ToggleWarBoard(_world())).TooltipText = "Party War Board";
-        _meter = Action("Meter", -1, () => { NativeParty.ToggleMeter(_world()); QueueRefresh(); });
+        Action("War Board", 3, () => _party.ToggleWarBoard()).TooltipText = "Party War Board";
+        _meter = Action("Meter", -1, () => { _party.CycleRowMeter(); QueueRefresh(); });
         _meter.TooltipText = "Party meter under each member: off, damage dealt or healing";
+        _rejoin = Action("Re-invite", -2, () => { _party.ToggleAutoRejoin(); QueueRefresh(); });
+        _commander = Action("Commander bar", -3, () => { _party.ShowCommanderBar(); QueueRefresh(); });
+        _commander.TooltipText = "Show the commander bar again";
     }
 
     private Button Action(string text, int index, Action pressed)
@@ -53,7 +57,13 @@ public partial class ClassicPartyHud : Control
         button.AddThemeFontOverride("font", Plugin.Kit.Bold); button.AddThemeFontSizeOverride("font_size", 10);
         foreach (string state in new[] { "font_color", "font_hover_color", "font_pressed_color" }) button.AddThemeColorOverride(state, Plugin.Kit.Nation == 1 ? Colors.Black : new Color("ffff80"));
         ClassicPartySkin.KarusButtonContrast(button);
-        var rect = index < 0 ? ClassicPartyHudLayout.MeterAction : ClassicPartyHudLayout.Action(index);
+        var rect = index switch
+        {
+            -1 => ClassicPartyHudLayout.MeterAction,
+            -2 => ClassicPartyHudLayout.RejoinAction,
+            -3 => ClassicPartyHudLayout.CommanderAction,
+            _ => ClassicPartyHudLayout.Action(index),
+        };
         _actions.AddChild(button); button.Position = rect.Position; button.Size = rect.Size;
         button.SetMeta("party_expected_rect", rect);
         button.Pressed += pressed;
@@ -89,7 +99,7 @@ public partial class ClassicPartyHud : Control
         for (int i = 0; i < _rows.Length; i++)
         {
             _rows[i].Visible = i < shown;
-            if (i < shown) _rows[i].Bind(members[i]);
+            if (i < shown) _rows[i].Bind(members[i], i, shown);
         }
         _actions.Position = new Vector2(0, ClassicPartyHudLayout.RowsTop + shown * ClassicPartyHudLayout.RowPitch);
         _actions.Size = new Vector2(ClassicPartyHudLayout.Width, ClassicPartyHudLayout.ActionsHeight);
@@ -101,8 +111,12 @@ public partial class ClassicPartyHud : Control
         }
         _leave.Text = _party.IsLeader ? "Disband" : "Leave";
         _leave.TooltipText = _party.IsLeader ? "Disband the party" : "Leave the party";
-        _meter.Text = NativeParty.MeterMode switch { 1 => "Meter: Damage", 2 => "Meter: Healing", _ => "Meter: Off" };
-        CustomMinimumSize = Size = new Vector2(ClassicPartyHudLayout.Width, ClassicPartyHudLayout.Height(shown));
+        _meter.Text = _party.RowMeterMode switch { 1 => "Meter: Damage", 2 => "Meter: Healing", _ => "Meter: Off" };
+        _rejoin.Text = _party.AutoRejoin ? "Re-invite: On" : "Re-invite: Off";
+        _rejoin.TooltipText = _party.AutoRejoinTip;
+        bool commander = _party.CommanderBarHidden;
+        _commander.Visible = commander;
+        CustomMinimumSize = Size = new Vector2(ClassicPartyHudLayout.Width, ClassicPartyHudLayout.Height(shown, commander));
     }
 }
 
@@ -112,6 +126,7 @@ public partial class ClassicPartyHudRow : Control
     private readonly ClassicPartyHud _hud = null!;
     private readonly LayoutNode _layout = null!;
     private readonly Label _name = null!;
+    private readonly Button _up = null!, _down = null!;
     private GamePartyMember _member;
     private bool _bound;
     private float _share;
@@ -124,19 +139,43 @@ public partial class ClassicPartyHudRow : Control
         MouseFilter = MouseFilterEnum.Stop;
         _name = ClassicPartySkin.Caption(this, "", ClassicPartyHudLayout.Name, new Color("8080ff"), 10);
         _name.Name = "party_member_name"; _name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        _up = Arrow("party_move_up", ClassicPartyHudLayout.ArrowUp, ClassicPartyHudLayout.MoveUp, "Move up", LibreKO.Domain.PartyOrder.Up);
+        _down = Arrow("party_move_down", ClassicPartyHudLayout.ArrowDown, ClassicPartyHudLayout.MoveDown, "Move down", LibreKO.Domain.PartyOrder.Down);
         GuiInput += OnInput;
+    }
+
+    private Button Arrow(string name, string art, Rect2 rect, string tip, int step)
+    {
+        var button = new Button { Name = name, TooltipText = tip, FocusMode = FocusModeEnum.None, Position = rect.Position, Size = rect.Size, Visible = false };
+        ClassicChatControls.SkinButton(button, Plugin.Kit.Layout(ClassicPartyHudLayout.ArrowArt).Find(art)!);
+        // The art keeps its proportions at the small size: no nine-patch border.
+        foreach (var state in new[] { "normal", "pressed", "hover", "disabled" })
+            if (button.GetThemeStylebox(state) is StyleBoxTexture box) box.SetTextureMarginAll(0);
+        if (button.GetThemeStylebox("normal") is StyleBoxTexture normal)
+        {
+            var disabled = (StyleBoxTexture)normal.Duplicate(); disabled.ModulateColor = new Color(.45f, .45f, .45f);
+            button.AddThemeStyleboxOverride("disabled", disabled);
+        }
+        button.SetMeta("party_expected_rect", rect);
+        button.Pressed += () => { if (_bound) _hud.Party.MoveRow(_member.Id, step); };
+        AddChild(button);
+        Callable.From(() => { if (IsInstanceValid(button)) { button.Position = rect.Position; button.Size = rect.Size; } }).CallDeferred();
+        return button;
     }
 
     public GamePartyMember Member => _member;
 
-    public void Bind(GamePartyMember member)
+    public void Bind(GamePartyMember member, int index, int count)
     {
         _member = member; _bound = true;
+        // The client offers the arrows while the party has more than one member; the ends cannot move further.
+        _up.Visible = _down.Visible = count > 1;
+        _up.Disabled = index == 0; _down.Disabled = index == count - 1;
         _name.Text = member.Name;
         // Original party colours: the leader in the caption yellow, the commander green, members blue.
         _name.AddThemeColorOverride("font_color", member.Leader ? new Color("ffff80") : NativeParty.IsCommander(member.Id) ? new Color("00ff00") : new Color("8080ff"));
         TooltipText = member.Tooltip;
-        _share = NativeParty.MeterShare(_hud.World, member.Id);
+        _share = LibreKO.Domain.PartyWarBoard.Fill(Math.Max(0, _hud.Party.RowMeterShare(member.Id)));
         QueueRedraw();
     }
 
@@ -153,14 +192,13 @@ public partial class ClassicPartyHudRow : Control
     }
 
     /// <summary>The client's HP look (normal, lasting, drop, slow, undead) on the matching original bar art.</summary>
-    private string HpArt()
+    private string HpArt() => _member.HpLook switch
     {
-        var hp = _member.HpColour;
-        if (hp == Color.Color8(184, 152, 18)) return "progress_hp_0_lasting";
-        if (hp == Color.Color8(161, 81, 107)) return "progress_hp_0_drop";
-        if (hp == Color.Color8(98, 136, 27)) return "progress_hp_0_slow";
-        return "progress_hp_0";
-    }
+        LibreKO.Domain.PartyHpLook.Lasting => "progress_hp_0_lasting",
+        LibreKO.Domain.PartyHpLook.Drop => "progress_hp_0_drop",
+        LibreKO.Domain.PartyHpLook.Slow => "progress_hp_0_slow",
+        _ => "progress_hp_0",
+    };
 
     private void Bar(string id, Rect2 rect, float value, Color? tint = null)
     {
@@ -176,10 +214,10 @@ public partial class ClassicPartyHudRow : Control
     public override void _Draw()
     {
         if (!_bound) return;
-        bool undead = _member.HpColour == Color.Color8(105, 105, 105);
+        bool undead = _member.HpLook == LibreKO.Domain.PartyHpLook.Undead;
         if (_member.MaxHp > 0) Bar(HpArt(), ClassicPartyHudLayout.Hp, Fill(_member.Hp, _member.MaxHp), undead ? new Color(.55f, .55f, .55f) : null);
         if (_member.MaxMp > 0) Bar("progress_mp_0_curse", ClassicPartyHudLayout.Mp, Fill(_member.Mp, _member.MaxMp));
-        byte mode = NativeParty.MeterMode;
+        byte mode = _hud.Party.RowMeterMode;
         if (mode != 0)
         {
             var meter = ClassicPartyHudLayout.Meter;

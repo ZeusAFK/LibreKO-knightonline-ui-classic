@@ -178,6 +178,12 @@ public partial class CharacterWindow
         Bind(view, "btn_management", () => Panel?.Act("clan_management"));
         Bind(view, "btn_contribution", () => Panel?.Act("clan_contribution"));
         Bind(view, "btn_leave", () => Panel?.Act("clan_leave"));
+        // The clan online bonus (3277df5) on the clan name line, shown once the server reports it.
+        var bonus = new Label { Name = "clan_bonus", Position = ClanBonusRect.Position, Size = ClanBonusRect.Size, Visible = false,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, ClipText = true, MouseFilter = MouseFilterEnum.Pass };
+        ClassicDesign.StyleLabel(bonus, true);
+        bonus.AddThemeColorOverride("font_color", ClassicReportDesign.Accent);
+        view.AddChild(bonus);
         _extras[key + ":points"] = (Button)Find(view, "btn_contribution")!;
         _extras[key + ":leave"] = (Button)Find(view, "btn_leave")!;
     }
@@ -197,6 +203,10 @@ public partial class CharacterWindow
         Bind(view, "btn_leave", () => Panel?.Act("union_leave"));
         if (Find(view, "btn_leave") is Button leave) _extras[key + ":leave"] = leave;
     }
+
+    /// <summary>The clan online bonus marks right of the clan name (page coordinates); the name's full line width.</summary>
+    private static readonly Rect2 ClanBonusRect = new(196, 92, 148, 22);
+    private const float ClanNameWidth = 260;
 
     private void ShowUnion()
     {
@@ -329,6 +339,16 @@ public partial class CharacterWindow
             if (_extras.TryGetValue(key + ":points", out var points)) points.Disabled = !clan.InClan;
             if (_extras.TryGetValue(key + ":leave", out var leave)) { leave.Disabled = section == "union" ? !clan.IsChief || clan.AllianceId == 0 : !clan.InClan; if (section == "clan") leave.Text = clan.IsChief ? "Disband" : "Leave"; }
             UpdateGrade(page, clan);
+            if (page.GetNodeOrNull<Label>("clan_bonus") is { } bonus)
+            {
+                string marks = clan.InClan ? panel.Status("clan_bonus") : "";
+                bonus.Visible = marks.Length > 0;
+                bonus.Text = marks.Length > 0 ? "Bonus  " + marks : "";
+                bonus.TooltipText = panel.Status("clan_bonus_tip");
+                // The clan name keeps the rest of its line.
+                foreach (var id in new[] { "Text_clansName", "Text_KnightsName" })
+                    if (Find(page, id) is Control name) name.Size = new Vector2(bonus.Visible ? ClanBonusRect.Position.X - name.Position.X - 4 : ClanNameWidth, name.Size.Y);
+            }
         }
         foreach (var (actionPage, id, action) in _actions)
         {
@@ -424,6 +444,11 @@ public partial class CharacterWindow
             Add("Management", "clan_management");
             var clan = Panel?.Clan ?? default;
             if (clan.IsChief && clan.AllianceId == clan.ClanId) Add("Expel from alliance", "union_remove", id != clan.ClanId.ToString());
+        }
+        else if (id == _game.Character.Name)
+        {
+            // The own row: the clan memo the client shows to the other members (3277df5).
+            Add("User information", "clan_info"); Add("Write memo", "clan_memo");
         }
         else
         {
