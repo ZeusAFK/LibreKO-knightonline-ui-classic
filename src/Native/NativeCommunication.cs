@@ -3,6 +3,7 @@ using LibreKO;
 using LibreKO.Domain;
 using LibreKO.Network;
 using LibreKO.Plugins;
+using KnightOnlineUiClassic.Windows;
 
 namespace KnightOnlineUiClassic.Native;
 
@@ -11,6 +12,7 @@ public static partial class NativeSetup
     static partial void RegisterCommunication(PluginContext context)
     {
         foreach (var id in NativeCommunication.WindowIds) NativeWindows.Prepare(id, NativeCommunication.Prepare);
+        NativeWindows.Prepare(ClassicChatRoomSkin.WindowId, NativeChatRoom.Prepare);
         NativeSocial.Register();
     }
 }

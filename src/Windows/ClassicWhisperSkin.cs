@@ -214,6 +214,21 @@ public static class ClassicWhisperSkin
     {
         var source=Plugin.Kit.Layout("co_whisper_open_us").Find("exit_chat")!;
         string ink=notice ? "ffff00":mine ? "ffffff":"80ffff";
+        // Notices carry web links (3277df5): the client's linkify and its link check open them in the browser.
+        if(notice && LibreKO.Domain.WhisperLinks.Linkify(text).Contains("[url="))
+        {
+            var linked=new RichTextLabel {
+                BbcodeEnabled=true,FitContent=true,ScrollActive=false,Text=$"[color=#{ink}]{LibreKO.Domain.WhisperLinks.Linkify(text)}[/color]",
+                AutowrapMode=TextServer.AutowrapMode.WordSmart,SizeFlagsHorizontal=Control.SizeFlags.ExpandFill,
+                CustomMinimumSize=new Vector2(source.W,0),MouseFilter=Control.MouseFilterEnum.Pass,Name="whisper_notice_link",
+            };
+            linked.AddThemeFontOverride("normal_font",Plugin.Kit.ChatStrong);
+            linked.AddThemeFontSizeOverride("normal_font_size",13);
+            linked.AddThemeColorOverride("font_outline_color",Colors.Black);
+            linked.AddThemeConstantOverride("outline_size",1);
+            linked.MetaClicked+=meta=> {string link=meta.AsString();if(LibreKO.Domain.WhisperLinks.IsWebLink(link)) OS.ShellOpen(link);};
+            return linked;
+        }
         // Item links and emoticons render as in the client's chat; other lines keep the plain Classic label.
         string rendered=NativeWhispers.Render(text,ink);
         if(rendered.Contains("[url") || rendered.Contains("[img"))

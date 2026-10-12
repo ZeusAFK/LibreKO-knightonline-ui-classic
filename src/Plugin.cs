@@ -67,6 +67,7 @@ public sealed class Plugin : IPlugin
         ClassicPremiumChip.Register();
         foreach(var id in ClassicCommunicationSkin.WindowIds)ui.ExtendWindow(id,ClassicCommunicationSkin.Extend);
         ClassicSocialSkin.Register(ui);
+        ClassicChatRoomSkin.Register(ui);
         ClassicCommandListSkin.Register(ui);
         ui.ReplacePlayerMenu(request => new ClassicPlayerMenu(request));
         ui.ReplaceTextInput(request => new ClassicTextPrompt(request));

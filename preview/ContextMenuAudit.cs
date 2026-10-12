@@ -237,7 +237,7 @@ public partial class Preview
             await Shot("clan-menu", clanMenu);
             long clanPressed = -1; clanNative.IdPressed += id => clanPressed = id;
             await Click(Row("Invite to party").GetGlobalRect().GetCenter());
-            var log = Field<System.Collections.IEnumerable>("_combatLogLines").Cast<object>().Select(o => o.ToString()).ToArray();
+            var log = Field<TabbedLog>("_combatLog").Lines(LogTab.All).ToArray();
             Require(clanPressed == 2 && OpenMenu() == null && log.Any(l => l!.Contains("Inviting Guardian")), "clan member menu: Invite to party runs the client's invite");
         }
 

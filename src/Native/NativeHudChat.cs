@@ -212,10 +212,12 @@ public static class NativeHudChat
     public static bool Running => World is not { } world || Native.Get<bool>(world, "_running");
     public static bool Sitting => World is { } world && Native.Get<bool>(world, "_selfSitting");
     public static bool AutoAttacking => World is { } world && Native.Get<bool>(world, "_autoAttack");
-    public static void ToggleRun() => Command("ToggleRunMode");
-    public static void ToggleAttack() => Command("ToggleAutoAttack");
+    // 3277df5 exposes these through IGameCommands (Run(KeyAction) runs the client's own key action handler,
+    // ShowExitMenu opens the game menu); the camera half turn has no key action and stays reflected.
+    public static void ToggleRun() { if (World != null) Plugin.Kit.Game.Commands.Run(KeyAction.ToggleRun); }
+    public static void ToggleAttack() { if (World != null) Plugin.Kit.Game.Commands.Run(KeyAction.AutoAttack); }
     public static void TurnCamera() => Command("StartCameraHalfTurn");
-    public static void OpenGameMenu() { if (World is { } world) Native.Call(world, "ToggleEsc", (bool?)true); }
+    public static void OpenGameMenu() { if (World != null) Plugin.Kit.Game.Commands.ShowExitMenu(); }
 
     private static void Command(string method) { if (World is { } world) Native.Call(world, method); }
 

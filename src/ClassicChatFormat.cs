@@ -10,15 +10,21 @@ public static class ClassicChatFormat
         7 or 8 or 12 => ("GM", "ffe24a"), 13 => ("commander", "c8e66b"),
         14 => ("trade", "d2b48c"), 15 => ("alliance", "6fb7ff"),
         19 => ("zone", "9aa0a6"), 23 => ("officer", "b48cff"), 33 => ("room", "8080ff"),
+        34 => ("noah", "87cefa"),
         _ => ("", "e8e8e8"),
     };
+
+    /// <summary>As <see cref="Channel(byte)"/>; Noah Knights lines keep the client's ink per nation (El Morad pink, Karus sky blue).</summary>
+    public static (string Tag, string Color) Channel(byte type, int nation) =>
+        type == 34 && nation == 2 ? ("noah", "ffb6c1") : Channel(type);
 
     /// <summary>The channel slot a custom colour overrides (General, Shout, Party, Clan, Alliance), or -1.</summary>
     public static int ColourSlot(byte type) => type switch { 1 => 0, 5 => 1, 3 => 2, 6 => 3, 15 => 4, _ => -1 };
 
-    public static string Line(byte type, string name, int nation, bool gm, string text, string? ink = null, string? body = null, bool links = false)
+    /// <param name="place">The zone a chat room line was written from (3277df5), shown as <c>[ Zone ]</c> before the name.</param>
+    public static string Line(byte type, string name, int nation, bool gm, string text, string? ink = null, string? body = null, bool links = false, string place = "")
     {
-        var (tag, color) = Channel(type);
+        var (tag, color) = Channel(type, nation);
         color = ink ?? color;
         body ??= $"[color=#{color}]{Esc(text)}[/color]";
         if (name.Length == 0)
@@ -27,6 +33,7 @@ public static class ClassicChatFormat
         string nameText = $"[color=#{nameColor}]{Esc(name)}[/color]";
         if (links && name.IndexOfAny(new[] { '[', ']' }) < 0) nameText = $"[url=p:{name}]{nameText}[/url]";
         return (tag.Length > 0 ? $"[color=#{color}][lb]{tag}[rb] [/color]" : "")
+            + (place.Length > 0 ? $"[color=#{color}][lb] {Esc(place)} [rb][/color] " : "")
             + nameText + ": " + body;
     }
 

@@ -178,11 +178,11 @@ public partial class Preview
             Add(5,"Merchant","Looking for a party.");
             var read=type.GetMethod("ClassicHistory",BindingFlags.Instance|BindingFlags.NonPublic)!;
             _chatData!.ChatReader=(mask,time,colors)=>(IReadOnlyList<string>)read.Invoke(system,new object[]{mask,time,colors})!;
-            var all=_chatData.ChatReader(1023,false,"");
+            var all=_chatData.ChatReader(ChatWindow.AllCategories,false,"");
             if(all.Count!=3 || !all[0].Contains("[url=i:156211038]") || !all[0].Contains("Raptor(+8)") || all[0].Contains("<LINK>")) throw new Exception("Classic item links do not render native item metadata");
             var party=_chatData.ChatReader(4,true,"");
             if(party.Count!=1 || !party[0].Contains("14:32") || !party[0].Contains("Guardian")) throw new Exception("Classic filters and timestamps failed");
-            if(!_chatData.ChatReader(1023,false,"ff80ff,ff9a3c,5fd95f,46d3c0,6fb7ff")[0].Contains("#ff80ff")) throw new Exception("Classic custom channel ink failed");
+            if(!_chatData.ChatReader(ChatWindow.AllCategories,false,"ff80ff,ff9a3c,5fd95f,46d3c0,6fb7ff")[0].Contains("#ff80ff")) throw new Exception("Classic custom channel ink failed");
             chatLog.Set(all);
             var input=(LineEdit)typeof(ChatWindow).GetField("_input",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(chat)!;
             input.GrabFocus();input.Clear();
@@ -247,7 +247,7 @@ public partial class Preview
             var jump=new Button();type.GetField("_jumpPill",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(system,jump);
             type.GetField("_scroll",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(system,nativeLog);
             bool immediate=false;
-            void Published(string text)=>immediate=((IReadOnlyList<string>)read.Invoke(system,new object[]{1023,false,""})!).Any(l=>l.Contains("Immediate message"));
+            void Published(string text)=>immediate=((IReadOnlyList<string>)read.Invoke(system,new object[]{ChatWindow.AllCategories,false,""})!).Any(l=>l.Contains("Immediate message"));
             LibreKO.Plugins.PluginHost.Game.Chat.LineAdded+=Published;
             var fresh=entryType.GetMethod("Player",BindingFlags.Public|BindingFlags.Static)!.Invoke(null,new object[]{(byte)1,"Canbo",nation,false,"Immediate message"});
             type.GetMethod("AddEntry",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(system,new[]{fresh});

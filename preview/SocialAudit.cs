@@ -111,14 +111,38 @@ public partial class Preview
         {
             var opened = await Open("nation-private"); var (world, window) = opened;
             await Capture(window, "nation-private");
+            // 3277df5: "Open" shows the room of the joined channel or room, beside Leave in the Classic button row.
+            var open = Descendants(window).OfType<Button>().Single(b => b.Name == "nation_private_open");
+            var leave = ButtonOf(window, "Leave");
+            Require(open.IsVisibleInTree() && open.Text == "Open" && open.GetThemeFont("font") == Plugin.Kit.Bold && open.Size.Y >= ClassicSocialLayout.ActionHeight, "nation chat: Open is a Classic action in an own room");
+            Require(open.GetGlobalRect().Position.Y == leave.GetGlobalRect().Position.Y && open.GetGlobalRect().Position.X >= leave.GetGlobalRect().End.X, "nation chat: Open sits beside Leave");
+            DetailCall(world, "ChatRoomInit");
+            open.EmitSignal(BaseButton.SignalName.Pressed); await Frames(2);
+            Require(((HudWindow)DetailField(world, "_roomWindow")!).Visible, "nation chat: Open shows the chat room natively");
+            DetailCall(world, "ChatRoomDispose");
             Require(!ButtonOf(window, "Change options").Disabled && !ButtonOf(window, "Number of admissions").Disabled, "nation chat: owner actions enabled in an own room");
             offline.NationChat.Left(); DetailCall(world, "RefreshNationButtons"); await Frames();
             Require(ButtonOf(window, "Change options").Disabled && ButtonOf(window, "Number of admissions").Disabled, "nation chat: owner actions disabled outside a room");
+            Require(!Descendants(window).OfType<Button>().Single(b => b.Name == "nation_private_open").IsVisibleInTree(), "nation chat: Open hidden outside a room");
             Require(ButtonOf(window, "Change options").GetThemeColor("font_disabled_color") == ClassicSocialStyle.ButtonDisabledInk, "nation chat: disabled caption keeps the Classic disabled ink");
             await Capture(window, "nation-private-left");
             Done(opened);
         }
-        foreach (var view in new[] { "nation-create", "nation-members", "nation-password", "nation-search" })
+        // Members: the room title and the client's summary line sit directly in the body (no header row since 3277df5).
+        {
+            var opened = await Open("nation-members"); var (world, window) = opened;
+            KnightOnlineUiClassic.Native.NativeSocial.Prepare(window, world);
+            var title = Descendants(window).OfType<Label>().Single(l => l.Name == "nation_members_title");
+            var count = Descendants(window).OfType<Label>().Single(l => l.Name == "nation_members_count");
+            var rows = Descendants(window).OfType<VBoxContainer>().Single(l => l.Name == "nation_member_rows");
+            Require(title.GetParent() == window.Body && count.GetParent() == window.Body, "members: title and summary are body lines");
+            Require(count.Text == LibreKO.Domain.NationChatRules.Summary(false, offline.NationChat.RoomPrivate, 4, 30), "members: the summary is the client's text: " + count.Text);
+            await Capture(window, "nation-members");
+            Require(title.GetGlobalRect().End.Y <= count.GetGlobalRect().Position.Y && count.GetGlobalRect().End.Y <= rows.GetGlobalRect().Position.Y, "members: title, summary and list stack without overlap");
+            Require(title.GetThemeFont("font") == Plugin.Kit.Bold && title.GetThemeColor("font_color") == ClassicDarkFrame.Heading, "members: the room title in the Classic heading");
+            Done(opened);
+        }
+        foreach (var view in new[] { "nation-create", "nation-password", "nation-search" })
         {
             var opened = await Open(view);
             await Capture(opened.Window, view);
