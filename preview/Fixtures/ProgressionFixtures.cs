@@ -108,17 +108,34 @@ public static partial class PreviewFixtures
         return DetachWindow(world, "_rankLayer", "_rankPanel");
     }
 
+    /// <summary>The column a skill belongs to, as the client sorts them: enemy skills, HP/MP restoring skills, the rest.</summary>
+    public static GenieCellKind GenieKindOf(SkillData.Skill s) =>
+        s.IsEnemy ? GenieCellKind.Attack
+        : GenieRecovery.RestoresHp(s.IsFriendly, s.Type1, s.DirectType, s.FirstDamage, s.TimeDamage)
+            || GenieRecovery.RestoresMp(s.IsFriendly, s.Type1, s.DirectType, s.FirstDamage) ? GenieCellKind.Recovery
+        : GenieCellKind.Support;
+
     public static HudWindow BuildGenieUiPreview(World world, string view)
     {
         ItemData.EnsureLoaded();
         Call(world, "GenieInit");
         if (view != "empty")
         {
-            var skills = Field<int[]>(world, "_genieSkills");
             SkillData.EnsureLoaded();
-            var known = SkillData.ForClass(KnightOnlineUiClassic.Plugin.Kit.Nation == 1 ? 105 : 205).Where(s => SkillData.Icon(s.Id) != null).Select(s => s.Id).Take(12).ToArray();
-            for (int i = 0; i < known.Length && i < skills.Length; i++) skills[i * 2 % skills.Length] = known[i];
-            Call(world, "RefreshGenieSlots");
+            var setup = Field<GenieSetup>(world, "_genie");
+            // Every other cell of each column takes a class skill with an icon; some support skills also go to the party.
+            var known = SkillData.ForClass(KnightOnlineUiClassic.Plugin.Kit.Nation == 1 ? 105 : 205).Where(s => SkillData.Icon(s.Id) != null).ToList();
+            foreach (var kind in new[] { GenieCellKind.Attack, GenieCellKind.Recovery, GenieCellKind.Support })
+            {
+                var cells = setup.Cells(kind);
+                var ids = known.Where(s => GenieKindOf(s) == kind).Select(s => s.Id).ToList();
+                for (int i = 0; i < ids.Count && i * 2 < cells.Length; i++) cells[i * 2] = ids[i];
+            }
+            for (int i = 0; i < setup.SupportParty.Length; i += 4) setup.SupportParty[i] = setup.Support[i] != 0;
+            setup.Set(GenieMode.Combo, true);
+            setup.Set(GenieMoreMode.PetPotion, true);
+            setup.Set(GenieOther.FeedFamiliar, true);
+            Call(world, "SyncGenieControls");
             foreach (var name in new[] { "Bulture", "Dark Mare", "Ash Knight Warrior With A Very Long Name", "Treant", "Lich", "Bone Dragon" })
                 Field<HashSet<string>>(world, "_genieMonsters").Add(name);
             Call(world, "RefreshGenieMonsters");

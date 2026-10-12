@@ -10,7 +10,12 @@ namespace KnightOnlineUiClassic.Native;
 
 public static partial class NativeSetup
 {
-    static partial void RegisterVendor(PluginContext context) => NativeWindows.Prepare("vendor", NativeVendor.Prepare);
+    static partial void RegisterVendor(PluginContext context)
+    {
+        NativeWindows.Prepare("vendor", NativeVendor.Prepare);
+        // Kaishan's buy-back window belongs to the shop family.
+        NativeWindows.Prepare(NativeRepurchase.WindowId, NativeRepurchase.Prepare);
+    }
 }
 
 /// <summary>

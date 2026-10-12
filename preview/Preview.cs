@@ -78,6 +78,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("command-audit")){await CaptureCommandListAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("command-function-audit")){await CaptureCommandFunctionAudit(nation, info);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("genie-audit")){await CaptureGenieAudit(nation, info);await FinishManagedAudit();return;}
+            if(OS.GetCmdlineUserArgs().Contains("repurchase-audit")){await CaptureRepurchaseAudit(nation, info);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("mail-classic-audit")){await CaptureMailClassicAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("progression-audit")){await CaptureProgressionAudit(nation);await FinishManagedAudit();return;}
             if(OS.GetCmdlineUserArgs().Contains("council-rate-audit")){await CaptureCouncilRateAudit(nation);await FinishManagedAudit();return;}

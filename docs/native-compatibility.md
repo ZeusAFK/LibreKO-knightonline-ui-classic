@@ -239,6 +239,8 @@ listed. Preview-only members are listed at the end.
 | `SellSlot(int,int,int)` *(fix/vendor-exchange-validation)*, otherwise `SellSlot(int,int)` | M | Sell |
 | `ItemSlot.IsTradable` *(fix/anvil-session, fix/vendor-exchange-validation)* | P | Untradable refusal |
 | `BagCompanion.Take`, `BagCompanion.IntoBag` (init) | P | Rerouting the bag companion through the confirmation |
+| `World.ShowItemTooltip(int, ItemSlot, string note = "", bool shopGoods = false)` *(3277df5)* | M | The client's catalogue hover passes `shopGoods: true` itself and shows its "Purchasing Price" line (tariff included, red above the wallet); the Classic catalogue cell only forwards the hover, the plugin's former "Buying Price" line is gone. Sell prices follow `ItemData.SellPrice`, which applies the premium quarter (`ItemData.PremiumSeller`). |
+| `_rbNames`, `_rbPrices`, `_rbTimes` (`Label[10]`), `_rbBuy` (`Button[10]`), `_rbScroll`, `_rbEmpty` *(3277df5)* | F | Buy-back window (`repurchase`, `NativeRepurchase`): names the client's rows, captions and Refresh for `ClassicRepurchaseSkin`; Buy keeps the client's confirmation, expired notice and request. The row states (too dear, expired) and the close come from the facade `IGameRepurchase` (`Rows`, `Close`; its `Buy` is not used because it skips the confirmation). Missing members leave the window on the generic Classic frame. |
 | `Net.GoldChangeEvent` | E | Gold log (handler prepended) |
 | `_exPanel`, `_exMineList`, `_exTheirsList`, `_exBagList`, `_exWaitLayer`, `_exAmountLayer`, `_exAmountSpin`, `_exAmountIcon`, `_exAmountName`, `_exAmountHint`, `_exAmountMax`, `_exAmountSlot`, `_exAmountShown`, `_exAskDialog`, `_exConfirmBtn`, `_exGoldEdit`, `_exStatus`, `_exShown`, `_exRequestPending`, `_exConfirmedByMe`, `_exAddInFlight`, `_exMyOffer`, `_exTheirOffer`, `_exMyGoldOffer`, `_exTheirGoldOffer`, `_exPartnerName`; `ExOfferItem.ItemId/Count/Dura/SourceAbs` | F/P | Exchange names, metas, request layer, final approval, gold prompt |
 | `_exConfirmedByPartner` *(fix/vendor-exchange-validation)* | F | Partner lock |
@@ -364,6 +366,7 @@ above are no longer read.
 | `Net.PetResetEvent` *(fix/familiar-replies)*, `Net.RebirthResetEvent` *(fix/rebirth-requests)* | E | Tell a disconnect from a cape release: close the picker |
 | `RebirthWire.Busy` *(fix/rebirth-requests)* | F | Result reported for a refused local rebirth send (legacy `0` without it) |
 | `Net.SendCapeBuy`, `SendChangeHair`, `SendRebirthStatChange` | M | Called reflectively: they return `void` upstream and `bool` on the fix branches |
+| `_capeNoteLbl` *(3277df5)*; public `Domain.CapeShop` (`VoucherAllowed`, `ConfirmText`, `ContCost`, `Fill`, `Amount`, texts 10313/10319/10321/10322/15713), `Cape.CapeDef.Castle` | F | Cape service on 3277df5: the client's "Now equipped" or description becomes the cape name's tooltip and "Now equipped" the price line of the worn cape; the voucher is offered for castle capes only, with the client's refusal (10322); the Classic confirmation uses the client's purchase wording (10316/10318, Clan CONT and Noah lines; 10321 for the voucher). The client's own `SelectCape` (run on a clan change) no longer overwrites the Classic grade lines: the gate rewrites them every frame. `_capeContLbl` stays in the client's hidden column (the Classic price line carries the CONT cost). `IGameCapeShop` is not used: it has no pages, dye or preview, and its `Buy` shows the client's confirmation instead of the Classic one. |
 | `LookPreview._pivot`, `_model` (set) | F | `LookFraming` |
 | `LookEditor._races`, `_faceLbl`/`_hairLbl` (set), `_colour`, `_raceButtons`; `_locked`, `_faceSteps`/`_hairSteps`, `SetLocked` *(fix/beauty-shop)* | F/M | Editor names, 1-based display, lock |
 
@@ -415,6 +418,8 @@ Overlays the client builds later are prepared through their fields four times a 
 | `_ladderKarus`, `_ladderElMorad`, `_ladderOwnKarus`, `_ladderOwnElMorad`; `LadderRow.Rank`, `Mark`, `Name`, `Clan`, `Points`, `Bonus` | F | PK ladder (`rank`) columns |
 | `_achTitleBanner`, `_achSearch`, `_achStatus`, `_achCategoryBox`, `_achListRow` | F | Achievement title banner, filters and category column |
 | `_genieReturnHome`, `_genieHuntInPlace`, `_genieHideRange`, `_genieCureCurse`, `_genieOther` | F | Genie Others page |
+| `_genieSlots` (`Button[28]`: Attack 0-7, Recovery 8-15, Support 16-27), `_genieModes` (`Dictionary<GenieMode, CheckButton>`), `_genieParty` (`CheckBox[12]`), `_genieRecovery`, `_geniePetPotion`, `_geniePetSelect`, `_geniePetPercent`, `_genieHammerThreshold`, `_genieHammerStatus` *(3277df5)* | F | Genie window (`NativeProgression.PrepareGenie`): the three skill columns (8 + 8 + 12 cells, a party check under each support cell), the mode toggles named by `GenieMode` (`genie_mode_attack`, `_basicattack`, `_combo`, `_recovery`, `_support`, `_leadertarget`, `_hppotion`, `_mppotion`), the recovery percent, the Familiar potion, the 11 "Set Others" rows (`GenieTownReturn.OtherRows`, hammer rows included) and the hammer threshold. The removed `_genieAutoHammer`, `_genieSkills` and the Combo hint are no longer read. |
+| `_genieSub` rows (`HudPart.GenieSub` seam, 3277df5) | F | The Classic quick panel keeps skinning the client's own panel (now on its own layer); the third monster row has no action button and keeps the row height of the others. |
 | `StatBar._frac` | F | Original progress bar mirroring the vanguard countdown |
 
 The event, ranking and war windows of the event-window family (`ClassicEventFamily.WindowIds`) are restyled from their
@@ -549,6 +554,9 @@ None of these is required. Each would replace a reflection or a workaround.
 - A `HudWindow` VIP PIN dialog (`vipwarehouse_pin`).
 - A wildcard `ExtendWindow("whisper_*")`, plus a row builder or row metas.
 - `PluginUi.EscapeCloses(Func<bool>, Action)`.
+- Buy-back close (3277df5): the `repurchase` header X hides the window before its `Closed` handler runs, so
+  `CloseRepurchase` returns early and never sends `RepurchaseReply.Close`. The plugin closes through
+  `IGameRepurchase.Close()`; a core fix is to send the close request in the `Closed` handler regardless of `Visible`.
 - `HudWindow` keep-position and dock-override flags.
 - `HudWindow.AttentionChanged`.
 - A replaceable resize grip with `Resizing`/`ResizeEnded` events, or seam snapping as a `HudLayout` option.

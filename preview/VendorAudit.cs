@@ -234,7 +234,16 @@ public partial class Preview
         Require(quantity.Visible && !InFlight() && initialAmount.Value==63,"Right-clicking a bag stack prefills its entire carried quantity");Escape();await Frames();
         var hover=hit.GetGlobalRect().GetCenter();Input.ParseInputEvent(new InputEventMouseMotion {Position=hover,GlobalPosition=hover});await Frames();
         var tip=(Control)DetailField(world,"_itemTipPanel")!;tip.Position=new Vector2(693,120);await Capture("item-tooltip");
-        Require(tip.Visible && Descendants(tip).OfType<Label>().Any(l=>l.Text.StartsWith("Buying Price")),"Catalogue hover shows the native item tooltip and actual buying price");
+        // The client's shop-goods tooltip line: the purchase price with the zone tariff, red when the wallet is short.
+        string Digits(string text)=>new string(text.Where(char.IsDigit).ToArray());
+        var hoveredDef=ItemData.Get(entry.Id)!;
+        long purchase=ShopTooltipPrice.Purchase(ItemData.BuyPrice(entry.Id),hoveredDef.SaleType,net.CurrentZoneAbility.Tariff,KnightOnlineUiClassic.Native.Native.Get<bool>(world,"LoyaltyShop"));
+        var tipLines=Descendants(tip).Select(n=>n switch { Label l when l.IsVisibleInTree() => l.Text, RichTextLabel r when r.IsVisibleInTree() => r.GetParsedText(), _ => null })
+            .Where(t=>t!=null).SelectMany(t=>t!.Split('\n')).ToList();
+        var priceLines=tipLines.Where(t=>t.Contains("Pric")).ToList();
+        Require(tip.Visible && priceLines.Count==1 && Digits(priceLines[0])==purchase.ToString(),
+            "Catalogue hover shows the client's item tooltip with one price line, the purchase price including the tariff: "+string.Join(" | ",priceLines)+" / "+purchase+" / lines: "+string.Join(" | ",tipLines));
+        Require(!tipLines.Any(t=>t.StartsWith("Buying Price")),"The plugin adds no second buying price line");
         Input.ParseInputEvent(new InputEventMouseMotion {Position=Vector2.Zero,GlobalPosition=Vector2.Zero});await Frames(2);
         var target=shell.BagCells[2];
         var selectedCell=(ItemSlotView)hit.GetParent();
@@ -306,6 +315,18 @@ public partial class Preview
         Require(!quantity.Visible && shell.ModalOpen && !InFlight() && inventory[Inventory.GridStart].Count==73,"Sale quantity opens a final approval before any inventory mutation or packet");
         VerifyApproval(false,entry.Id,10,(long)ItemData.SellPrice(entry.Id)*10);
         Escape();await Frames();Require(!shell.ModalOpen && !InFlight() && inventory[Inventory.GridStart].Count==73,"Cancelling sale approval preserves all items");
+        // With premium (or the clan premium) the NPC pays a quarter of the price instead of a sixth.
+        int plainUnit=ItemData.SellPrice(entry.Id);
+        ItemData.PremiumSeller=true;
+        try
+        {
+            int premiumUnit=ItemData.SellPrice(entry.Id);
+            Require(premiumUnit>plainUnit || hoveredDef.SaleType==ItemData.SaleTypeFull,"Premium raises the NPC sell price ("+plainUnit+" -> "+premiumUnit+")");
+            await RightClick(shell.BagCells[0]);amount.Text="10";amount.EmitSignal(LineEdit.SignalName.TextChanged,amount.Text);ok.EmitSignal(BaseButton.SignalName.Pressed);await Frames();
+            VerifyApproval(false,entry.Id,10,(long)premiumUnit*10);await Capture("premium-sale-approval");
+            Escape();await Frames();Require(!shell.ModalOpen && !InFlight() && inventory[Inventory.GridStart].Count==73,"Cancelling the premium sale approval preserves all items");
+        }
+        finally { ItemData.PremiumSeller=false; }
         await RightClick(shell.BagCells[0]);amount.Text="10";amount.EmitSignal(LineEdit.SignalName.TextChanged,amount.Text);ok.EmitSignal(BaseButton.SignalName.Pressed);await Frames();await Approve();
         int saleCredit=ItemData.SellPrice(entry.Id)*10;ApplyGold(net.Sheet.Gold+saleCredit);
         DetailCall(world,"OnTradeResult",true,1,net.Sheet.Gold,saleCredit);RaiseNew();RefreshBag();

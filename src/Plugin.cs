@@ -88,6 +88,7 @@ public sealed class Plugin : IPlugin
         foreach(var id in ClassicStorageSkin.WindowIds)ui.ExtendWindow(id,ClassicStorageSkin.Extend);
         foreach(var id in ClassicMerchantSkin.WindowIds)ui.ExtendWindow(id,ClassicMerchantSkin.Extend);
         ui.ExtendWindow("vendor", ClassicVendorSkin.Extend);
+        ui.ExtendWindow("repurchase", ClassicRepurchaseSkin.Extend);
         ui.ExtendWindow("exchange", ClassicExchangeSkin.Extend);
         ui.ExtendWindow("anvil", ClassicAnvilSkin.Extend);
         ui.ExtendWindow("anvil_choice", ClassicAnvilChoice.Extend);

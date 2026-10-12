@@ -77,6 +77,7 @@ public partial class Preview
             string file = (nation == 1 ? "karus" : "human") + "-" + state + ".png";
             GetViewport().GetTexture().GetImage().SavePng(output + "/" + file); screens.Add(new { state, file });
         }
+        (int Id, Cape.CapeDef Def)? castleRestore = null;
         try
         {
             await Capture("initial"); Require(Find<Button>("cape_buy").Disabled, "No purchase before a cape or valid dye is chosen");
@@ -90,6 +91,8 @@ public partial class Preview
             int chosen = (int)DetailField(world, "_capeChoice")!;
             Find<Button>("cape_colour_1").EmitSignal(BaseButton.SignalName.Pressed); Require((int)DetailField(world, "_capeChoice")! == chosen, "Confirmation freezes selection callbacks");
             var oldRequest = (DialogRequest)typeof(Notice).GetField("_request", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Confirmation())!;
+            Require(oldRequest.Message == NativeCape.ConfirmText(world, chosen, false) && oldRequest.Message.Contains("CONT") && oldRequest.Title == NativeCape.Title,
+                "The Classic confirmation uses the client's purchase wording with the Clan CONT and Noah lines: " + oldRequest.Message.Replace("\n", " | "));
             await KeyInput(Key.Escape); await Capture("cancelled"); Require(Confirmation() == null && !Busy() && (int)DetailField(world, "_capeChoice")! == chosen, "Modal Escape retains draft without submitting");
             await Click(Find<Button>("cape_buy")); oldRequest.Confirm(); Require(!Busy(), "Stale confirmation callback cannot submit replacement modal");
             await KeyInput(Key.Enter); await Capture("pending"); Require(Busy() && NetBusy() && !Find<HSlider>("cape_dye_R").Editable, "Modal Enter submits once and locks edits");
@@ -111,6 +114,8 @@ public partial class Preview
             await Capture("custom-dye"); Require(Find<Label>("cape_price").Text.Contains("36.000") || Find<Label>("cape_price").Text.Contains("36,000"), "Dye fee shown separately from cape price");
             await Click(Find<Button>("cape_turn_left")); await Capture("rotated"); await Click(Find<Button>("cape_turn_right"));
             var member = net.MyClan; member.Fame = ClanRanks.Trainee; typeof(Net).GetMethod("SeedPreviewClan", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { member }); await Capture("member"); Require(Find<Button>("cape_buy").Disabled, "Only chief can buy");
+            Require(!Find<Label>("cape_requirement").Text.StartsWith("Purchase Grade") && Find<Label>("cape_requirement").GetLineCount() <= 2,
+                "The client's clan refresh (its own SelectCape) does not replace the Classic two-line grade: " + Find<Label>("cape_requirement").Text.Replace("\n", " | "));
             member.Fame = ClanRanks.Chief; member.Flag = ClanTypes.Training; typeof(Net).GetMethod("SeedPreviewClan", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { member }); await Capture("unpromoted"); Require(Find<Button>("cape_buy").Disabled, "Unpromoted clan cannot buy");
             member.Flag = ClanTypes.Promoted; member.Grade = 5; typeof(Net).GetMethod("SeedPreviewClan", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { member }); await Capture("rank-locked"); Require(Find<Button>("cape_buy").Disabled, "Rank requirement prevents purchase while retaining inspection");
             typeof(World).GetField("_selfDead", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(world, true); DetailCall(world, "UpdateCapeGate"); await Capture("dead"); Require(Find<Button>("cape_buy").Disabled, "Dead character cannot buy cape");
@@ -118,9 +123,21 @@ public partial class Preview
             member.InClan = false; typeof(Net).GetMethod("SeedPreviewClan", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { member }); await Capture("no-clan"); Require(Find<Button>("cape_buy").Disabled, "Character without clan cannot buy"); member.InClan = true; member.Grade = 2;
             member.Flag = ClanTypes.Royal1; typeof(Net).GetMethod("SeedPreviewClan", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { member }); DetailCall(world, "SetCapeStatus", "This cape cannot be applied while the character is busy. Finish the current action and try again.", true); await Capture("long-status");
             await Click(Find<Button>("cape_colour_1"));
-            Find<CheckBox>("cape_ticket").ButtonPressed = true; await Capture("ticket"); Require(Find<Button>("cape_buy").Disabled, "Coin cape cannot be bought using ticket opcode"); Find<CheckBox>("cape_ticket").ButtonPressed = false;
-            int ticketId = Cape.Catalogue.First(entry => entry.Key > 0 && entry.Value.Price == 0 && entry.Value.Points > 0 && entry.Value.M == 0).Key;
-            DetailCall(world, "SelectCape", ticketId); Find<CheckBox>("cape_ticket").ButtonPressed = true; await Capture("ticket-eligible"); Require(!Find<Button>("cape_buy").Disabled && Find<Label>("cape_price").Text == "1 castellan ticket", "Ticket-eligible cape retains upstream payment option"); Find<CheckBox>("cape_ticket").ButtonPressed = false;
+            Find<CheckBox>("cape_ticket").ButtonPressed = true; await Capture("ticket"); Require(Find<Button>("cape_buy").Disabled, "Coin cape cannot be bought using ticket opcode");
+            Require(Find<Label>("cape_hint").Text == LibreKO.Domain.ItemData.Text(LibreKO.Domain.CapeShop.VoucherRefusedText, "You cannot purchase this item using exchange voucher"),
+                "The client's voucher refusal (text 10322) explains the disabled purchase: " + Find<Label>("cape_hint").Text);
+            Find<CheckBox>("cape_ticket").ButtonPressed = false;
+            // The client sells only castle capes for the exchange voucher (CapeShop.VoucherAllowed). The extracted cape
+            // table has no castle flag, so the audit marks one cape as a castle cape for this step.
+            var table = (System.Collections.Generic.Dictionary<int, Cape.CapeDef>)typeof(Cape).GetField("_table", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+            int ticketId = Cape.Catalogue.FirstOrDefault(entry => entry.Value.Castle && entry.Value.M == 0).Key;
+            if (ticketId <= 0) { ticketId = Cape.Catalogue.First(entry => entry.Key > 0 && entry.Value.Price == 0 && entry.Value.Points > 0 && entry.Value.M == 0).Key; castleRestore = (ticketId, table[ticketId]); table[ticketId] = table[ticketId] with { Castle = true }; }
+            DetailCall(world, "SelectCape", ticketId); Find<CheckBox>("cape_ticket").ButtonPressed = true; await Capture("ticket-eligible"); Require(!Find<Button>("cape_buy").Disabled && Find<Label>("cape_price").Text == "1 castellan ticket", "A castle cape keeps the voucher payment option");
+            await Click(Find<Button>("cape_buy"));
+            var voucherRequest = (DialogRequest)typeof(Notice).GetField("_request", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Confirmation())!;
+            Require(voucherRequest.Message == LibreKO.Domain.ItemData.Text(LibreKO.Domain.CapeShop.VoucherConfirmText, "Do you wish to purchase with the exchange voucher?"), "The voucher purchase asks with the client's voucher wording (10321)");
+            await KeyInput(Key.Escape); Require(Confirmation() == null && !Busy(), "Cancelling the voucher confirmation sends nothing");
+            Find<CheckBox>("cape_ticket").ButtonPressed = false;
             var before = window.Position; var p = panel.GlobalPosition + new Vector2(60, 7); var delta = new Vector2(-22, -18); var vp = GetViewport();
             vp.PushInput(new InputEventMouseMotion { Position = p, GlobalPosition = p }, true); await Frames(1);
             vp.PushInput(new InputEventMouseButton { Position = p, GlobalPosition = p, ButtonIndex = MouseButton.Left, Pressed = true }, true);
@@ -130,6 +147,9 @@ public partial class Preview
             await Click(Find<Button>("cape_buy")); await KeyInput(Key.Enter); await KeyInput(Key.Escape); Require(!window.Visible && Busy(), "Closing pending purchase retains operation identity");
             DetailCall(world, "ToggleCape"); Require(!window.Visible && Busy(), "Reopen cannot replace outstanding operation"); Reply(-7); Require(!window.Visible && !Busy(), "Late refusal never reopens service");
             DetailCall(world, "ToggleCape"); await Click(Find<Button>("cape_colour_0")); await Click(Find<Button>("cape_buy")); await KeyInput(Key.Enter); Reply(1, success: true); await Capture("applied");
+            bool plain = Find<HSlider>("cape_dye_R").Value == 0 && Find<HSlider>("cape_dye_G").Value == 0 && Find<HSlider>("cape_dye_B").Value == 0;
+            Require(!plain || Find<Label>("cape_price").Text == LibreKO.Domain.ItemData.Text(LibreKO.Domain.CapeShop.NowEquippedText, "Now equipped"),
+                "The worn cape reads the client's \"Now equipped\" instead of a price: " + Find<Label>("cape_price").Text);
             Require(net.LastEnter.CapeId == worn && (int)DetailField(world, "_capeCurrent")! == (int)DetailField(world, "_capeChoice")! && !Busy(),
                 "Success applies the chosen cape and leaves the worn record to the server's clan update");
             var update = new Packet(GameOpcodes.GS_KNIGHTS_PROCESS); update.WriteByte(0x24); update.WriteShort((short)net.MyClan.ClanId);
@@ -141,7 +161,7 @@ public partial class Preview
             await Click(Find<Button>("cape_buy")); await KeyInput(Key.Enter); net.Disconnect(expected: true); Require(!window.Visible && !Busy() && !NetBusy(), "Disconnect closes service and clears pending request");
             DetailCall(world, "ToggleCape"); GetWindow().Size = new Vector2I(1200, 850); await Capture("wide-viewport");
         }
-        finally { DetailCall(world, "CapeDispose"); layer.Free(); worldViewport.Free(); Cape.Enabled = capesEnabled; world.Free(); net.Free(); }
+        finally { if (castleRestore is { } restore) ((System.Collections.Generic.Dictionary<int, Cape.CapeDef>)typeof(Cape).GetField("_table", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!)[restore.Id] = restore.Def; DetailCall(world, "CapeDispose"); layer.Free(); worldViewport.Free(); Cape.Enabled = capesEnabled; world.Free(); net.Free(); }
         System.IO.File.WriteAllText(output + "/" + (nation == 1 ? "karus" : "human") + "-cape.json", JsonSerializer.Serialize(new { nation, checks, screens, liveRequests = false }, new JsonSerializerOptions { WriteIndented = true }));
         GD.Print("Classic cape audit: " + checks.Count + " checks / " + screens.Count + " screens");
     }

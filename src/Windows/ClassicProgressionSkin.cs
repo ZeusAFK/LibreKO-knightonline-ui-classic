@@ -589,7 +589,7 @@ public partial class ClassicProgressionPanel : Control
     private void Genie()
     {
         _genieTabs = Find<TabContainer>("genie_tabs");
-        // Main, Misc and Others (the client's "Set Others" section, which the Misc page cannot hold).
+        // Main, Misc (settings, potions, scrolls, daily reward) and Others (the client's "Set Others" rows and the hammer).
         string others = Find<Label>("genie_others_title")?.Text is { Length: > 0 } title ? title : "Others";
         string[] names = { "main", "misc", "others" }, captions = { "Main", "Misc", others };
         for (int i = 0; i < names.Length; i++)
@@ -607,7 +607,17 @@ public partial class ClassicProgressionPanel : Control
             string name = control.Name;
             switch (control)
             {
-                case CheckButton check: StyleCheck(check); break;
+                case CheckButton check:
+                    StyleCheck(check);
+                    // Long native captions end in an ellipsis inside their row, with the full text as tooltip.
+                    check.ClipText = true; check.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+                    if (string.IsNullOrEmpty(check.TooltipText)) check.TooltipText = check.Text;
+                    break;
+                case CheckBox party when name.StartsWith("genie_party_"):
+                    // The party check under a support cell: the check art alone, no caption.
+                    StyleCheck(party); party.AddThemeFontSizeOverride("font_size", 9);
+                    party.CustomMinimumSize = Vector2.Zero;
+                    break;
                 case SpinBox spin: StyleSpin(spin); break;
                 case LineEdit edit: StyleInput(edit); edit.TooltipText = edit.PlaceholderText; break;
                 case ItemList list: StyleMonsters(list); break;
@@ -621,7 +631,7 @@ public partial class ClassicProgressionPanel : Control
                     break;
                 case Button button:
                     StyleButton(button);
-                    if (name is "genie_hp_item" or "genie_mp_item") { button.Alignment = HorizontalAlignment.Left; }
+                    if (name is "genie_hp_item" or "genie_mp_item" or "genie_pet_item") { button.Alignment = HorizontalAlignment.Left; }
                     break;
                 case HBoxContainer rule when name.StartsWith("genie_other_"):
                     // A return-to-town rule: its check (clipped, with the full text as tooltip) and the potion count.
@@ -637,7 +647,9 @@ public partial class ClassicProgressionPanel : Control
                 case Label label when name.Contains("_title"): Caption(label); break;
                 case Label label when name is "genie_run": Text(label); Font(label, true); label.AddThemeColorOverride("font_color", Gold); break;
                 case Label label when name.EndsWith("_label"): Text(label, 12); break;
-                case Label label: Text(label, 12, name is "genie_tip" ? ClassicReportDesign.Value : ClassicDesign.Muted, name != "genie_hint"); break;
+                case Label label when name.EndsWith("_hint") || name is "genie_scroll_status" or "genie_hammer_status":
+                    Text(label, 11, ClassicDesign.Muted, true); label.AddThemeConstantOverride("line_spacing", 0); break;
+                case Label label: Text(label, 12, name is "genie_tip" ? ClassicReportDesign.Value : ClassicDesign.Muted, true); break;
             }
         }
         for (int i = 0; Window.HasMeta("genie_picker_" + i); i++)
