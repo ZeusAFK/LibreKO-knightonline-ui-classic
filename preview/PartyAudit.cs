@@ -57,8 +57,14 @@ public partial class Preview
             var shown=partyPanel.GetChildren().OfType<ClassicPartyHudRow>().Where(r=>r.Visible).ToArray();
             Check(shown.Length==Net.I.Party.Count && partyPanel.Visible==(Net.I.Party.Count>0),state+": one original member cell per member, hidden without a party");
             for(int i=0;i<shown.Length;i++)
-                Check(shown[i].GetRect()==ClassicPartyHudLayout.Row(i) && shown[i].Member.Name==Net.I.Party[i].Name,state+": member cell bounds "+shown[i].GetRect());
-            if(partyPanel.Visible) Check(partyPanel.Size==new Vector2(131,ClassicPartyHudLayout.Height(shown.Length)),state+": party list size "+partyPanel.Size);
+                Check(shown[i].GetRect()==ClassicPartyHudLayout.Row(i) && shown[i].Member.Name==LibreKO.Plugins.PluginHost.Game.Party.Members[i].Name,state+": member cell bounds "+shown[i].GetRect());
+            if(partyPanel.Visible) Check(partyPanel.Size==new Vector2(131,ClassicPartyHudLayout.Height(shown.Length,LibreKO.Plugins.PluginHost.Game.Party.CommanderBarHidden)),state+": party list size "+partyPanel.Size);
+            foreach(var row in shown)
+            {
+                var up=row.GetNode<Button>("party_move_up");var down=row.GetNode<Button>("party_move_down");
+                Check(up.Visible==(shown.Length>1) && down.Visible==(shown.Length>1),state+": move arrows while the party has more than one member");
+                Check(!up.GetRect().Intersects(ClassicPartyHudLayout.Selection) && new Rect2(Vector2.Zero,row.Size).Encloses(down.GetRect()),state+": move arrows beside the bars inside the cell");
+            }
             using var image=GetViewport().GetTexture().GetImage();image.SavePng(output+"/"+prefix+"-"+state+".png");
             captures.Add(new{state,file=prefix+"-"+state+".png",rosterSize=partyPanel.Size.ToString(),boardSize=boardPanel.Size.ToString()});
         }
@@ -67,6 +73,31 @@ public partial class Preview
         Check(PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_leave").Text=="Disband","leader: Leave reads Disband");
         Call("OnBbsList",0,24,Enumerable.Range(0,10).Select(i=>new PartyBbsEntry(i==9?"LongPlayerName123456":"Player"+(i+1),nation*100+1+i%4,70+i,0,"",21,1,nation)).ToList());
         await Capture("full-party");
+        // 3277df5: the client's own row order (Move up / Move down), automatic re-invite and commander bar restore.
+        var party=LibreKO.Plugins.PluginHost.Game.Party;
+        var firstRow=partyPanel.GetNode<ClassicPartyHudRow>("party_member_0");var lastRow=partyPanel.GetNode<ClassicPartyHudRow>("party_member_7");
+        Check(firstRow.GetNode<Button>("party_move_up").Disabled && !firstRow.GetNode<Button>("party_move_down").Disabled && lastRow.GetNode<Button>("party_move_down").Disabled,"move arrows: the ends cannot move further");
+        firstRow.GetNode<Button>("party_move_down").EmitSignal(BaseButton.SignalName.Pressed);await Settled();
+        Check(party.Members[0].Id==301 && party.Members[1].Id==300 && partyPanel.GetNode<ClassicPartyHudRow>("party_member_1").Member.Id==300,"Move down runs the client's row order");
+        await Capture("moved");
+        partyPanel.GetNode<ClassicPartyHudRow>("party_member_1").GetNode<Button>("party_move_up").EmitSignal(BaseButton.SignalName.Pressed);await Settled();
+        Check(party.Members[0].Id==300,"Move up restores the order");
+        var rejoin=PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_re-invite");
+        Check(rejoin.Text=="Re-invite: On" && party.AutoRejoin && rejoin.TooltipText==party.AutoRejoinTip,"automatic re-invite starts on, with the client's tip");
+        rejoin.EmitSignal(BaseButton.SignalName.Pressed);await Settled();
+        Check(rejoin.Text=="Re-invite: Off" && !party.AutoRejoin,"Re-invite toggles the client's automatic re-invite");
+        rejoin.EmitSignal(BaseButton.SignalName.Pressed);await Settled();
+        Check(party.AutoRejoin,"Re-invite turns it back on");
+        var commander=PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_commander_bar");
+        Check(!commander.Visible,"commander restore hidden while the bar shows");
+        typeof(Net).GetProperty("PartyCommanderId")!.SetValue(net,300);
+        typeof(World).GetField("_commanderUserHidden",BindingFlags.NonPublic|BindingFlags.Instance)!.SetValue(world,true);
+        Call("RefreshPartyUI");await Settled();
+        Check(party.CommanderBarHidden && commander.Visible,"commander: the restore action shows while the commander hid the bar");
+        await Capture("commander-restore");
+        commander.EmitSignal(BaseButton.SignalName.Pressed);await Settled();
+        Check(!party.CommanderBarHidden && !commander.Visible,"commander: the action shows the client's commander bar again");
+        typeof(Net).GetProperty("PartyCommanderId")!.SetValue(net,-1);Call("RefreshPartyUI");await Settled();
         partyPanel.GetNode<ClassicPartyHudRow>("party_member_3").EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
         await Settled();
         Check((int)typeof(World).GetField("_partyPick",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(world)! == 303,"left click picks the member natively without targeting a different entity");
@@ -104,6 +135,23 @@ public partial class Preview
         net.SeedPartyPreview();Call("RefreshPartyUI");Call("OnBbsList",0,0,new List<PartyBbsEntry>());await Capture("empty");
         Check(PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Private").Disabled,"empty: stale private message disabled");
         Check(!PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Invite").Disabled,"empty: Invite stays available for invite by name");
+        // Full Moon Rift board (3277df5 Auto Entry): the client's actions in the filter panel.
+        typeof(World).GetField("_seekBoard",BindingFlags.NonPublic|BindingFlags.Instance)!.SetValue(world,(int)LibreKO.Domain.FullMoon.FullMoonBoard);
+        typeof(World).GetField("_zone",BindingFlags.NonPublic|BindingFlags.Instance)!.SetValue(world,71);
+        net.Sheet.SeedProgress(80,0,100);
+        Call("ApplySeekBoard");
+        Call("OnBbsList",0,1,new List<PartyBbsEntry>{new("MoonLeader",0,80,3,"Full Moon Rift run",71,5,nation)});
+        PartyTree(boardPanel).OfType<Button>().Single(b=>b.Name=="seek_filter_toggle").EmitSignal(BaseButton.SignalName.Pressed);
+        await Capture("full-moon");
+        var moonPanel=PartyTree(boardPanel).OfType<Control>().Single(c=>c.Name=="seek_filter_panel");
+        var auto=PartyTree(moonPanel).OfType<Button>().Single(b=>b.Name=="seek_full_moon_auto");
+        Check(auto.IsVisibleInTree() && auto.Text=="Auto Entry" && moonPanel.GetGlobalRect().Encloses(auto.GetGlobalRect()),"full moon: Auto Entry sits in the board's lower panel "+auto.GetGlobalRect());
+        Check(PartyTree(moonPanel).OfType<Button>().Where(b=>b.IsVisibleInTree()).Select(b=>b.Name.ToString()).SequenceEqual(new[]{"seek_full_moon_enter","seek_full_moon_shout","seek_full_moon_auto"}),"full moon: Enter, Party Board and Auto Entry, named");
+        var moonTitle=Field<Label>("_seekHeading").Text;
+        Check(moonTitle.Length>0 && PartyTree(boardPanel).OfType<Label>().Any(l=>l.IsVisibleInTree() && l.Text==moonTitle),"full moon: the board takes the client's Full Moon title");
+        auto.EmitSignal(BaseButton.SignalName.Pressed);
+        Check((bool)typeof(World).GetField("_fullMoonAutoEntry",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(world)!,"full moon: Auto Entry starts the client's automatic entry for a fitting party");
+        typeof(World).GetField("_fullMoonAutoEntry",BindingFlags.NonPublic|BindingFlags.Instance)!.SetValue(world,false);
         System.IO.File.WriteAllText(output+"/"+prefix+"-verification.json",JsonSerializer.Serialize(new{nation,checks,captures,pluginHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(ProjectSettings.GlobalizePath("res://../bin/KnightOnlineUiClassic.dll"))))},new JsonSerializerOptions{WriteIndented=true}));
         world.Free(); net.Free();
         GD.Print("PARTY_AUDIT_OK "+prefix+" "+checks.Count);

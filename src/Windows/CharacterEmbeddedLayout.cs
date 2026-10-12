@@ -16,8 +16,9 @@ public static class CharacterEmbeddedLayout
         // The clan mark and its registration sit right of the clan card; the four list tabs share the row.
         ["clan_mark"]=new(312,118,36,36),["clan_symbol"]=new(292,182,56,20),
         // Alliance actions belong to the Union list and use the notice editor's row below the frame.
-        ["clan_refresh"]=new(8,504,56,20),["clan_save"]=new(69,504,62,20),["clan_board"]=new(136,504,56,20),
-        ["clan_handover"]=new(197,504,70,20),["clan_ally"]=new(232,452,120,24),["clan_leave"]=new(272,504,80,20)
+        // Memo (3277df5) writes the own clan memo that the members list shows.
+        ["clan_refresh"]=new(8,504,54,20),["clan_memo"]=new(66,504,44,20),["clan_save"]=new(114,504,57,20),["clan_board"]=new(175,504,50,20),
+        ["clan_handover"]=new(229,504,64,20),["clan_ally"]=new(232,452,120,24),["clan_leave"]=new(297,504,55,20)
     };
     public static LayoutNode Page(string caption)
     {

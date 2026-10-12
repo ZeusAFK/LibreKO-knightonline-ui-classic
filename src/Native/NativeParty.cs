@@ -7,9 +7,10 @@ using LibreKO.Network;
 namespace KnightOnlineUiClassic.Native;
 
 /// <summary>
-/// Party HUD and seek-party board support: the native party actions the Classic party HUD offers (invite by
-/// name, row meter, war board, member menu), and on the board the listing data on the native rows plus a
-/// private-message action per listing.
+/// Party HUD and seek-party board support: the native party actions the Classic party HUD offers beyond the
+/// plugin party API (invite by name, party board, member menu), and on the board the listing data on the
+/// native rows plus a private-message action per listing. The row meter, war board, row order, automatic
+/// re-invite, commander bar and user vote go through <see cref="LibreKO.Plugins.IGameParty"/>.
 /// </summary>
 public static class NativeParty
 {
@@ -18,22 +19,8 @@ public static class NativeParty
     /// <summary>The client's invite-by-name prompt (the Classic text prompt when the theme replaces it).</summary>
     public static void InviteByName(World? world) { if (world != null) Native.TryCall(world, "OpenInvitePrompt", out _); }
 
-    /// <summary>Cycles the party rows' meter (off, damage, healing) through the client's own cooldown.</summary>
-    public static void ToggleMeter(World? world) { if (world != null) Native.TryCall(world, "ToggleRowMeter", out _); }
-
-    public static void ToggleWarBoard(World? world) { if (world != null) Native.TryCall(world, "ToggleWarBoard", out _); }
-
+    /// <summary>The party board through the client's toggle, which also loads its list.</summary>
     public static void ToggleBoard(World? world) { if (world != null) Native.TryCall(world, "ToggleSeekParty", out _); }
-
-    /// <summary>The row meter mode: 0 off, 1 damage dealt, 2 healing.</summary>
-    public static byte MeterMode => Net.I?.PartyRowMeterMode ?? 0;
-
-    /// <summary>A member's share of the party meter, 0..1.</summary>
-    public static float MeterShare(World? world, int memberId)
-    {
-        if (world == null || Native.Get<IDictionary<int, int>>(world, "_warBoardRowShares") is not { } shares) return 0;
-        return PartyWarBoard.Fill(shares.TryGetValue(memberId, out int share) ? share : 0);
-    }
 
     public static bool IsCommander(int memberId) => Net.I?.PartyCommanderId == memberId;
 
@@ -48,7 +35,14 @@ public static class NativeParty
         NativeWindows.Name(Native.Get<OptionButton>(world, "_wantedClassOpt"), "seek_wanted_class");
         NativeWindows.Name(Native.Get<LineEdit>(world, "_wantedMsgInput"), "seek_wanted_message");
         NativeWindows.Name(Native.Get<HBoxContainer>(world, "_seekFilters"), "seek_filters");
-        NativeWindows.Name(Native.Get<HBoxContainer>(world, "_fullMoonRow"), "seek_full_moon");
+        if (Native.Get<HBoxContainer>(world, "_fullMoonRow") is { } fullMoon && NativeWindows.Name(fullMoon, "seek_full_moon"))
+        {
+            // Enter, Party Board and (3277df5) Auto Entry, which joins the first fitting Full Moon Rift party.
+            var actions = fullMoon.GetChildren().OfType<Button>().ToArray();
+            string[] names = { "seek_full_moon_enter", "seek_full_moon_shout", "seek_full_moon_auto" };
+            for (int i = 0; i < actions.Length && i < names.Length; i++) actions[i].Name = names[i];
+            if (actions.Length > 2) actions[2].TooltipText = "Join the first open Full Moon Rift party that fits your class and level";
+        }
         NativeWindows.Name(Native.Get<Label>(world, "_seekHeading"), "seek_heading");
         NativeWindows.Name(Native.Get<Label>(world, "_seekStatusLbl"), "seek_status");
         if (Native.Descendants(window.Body).OfType<Button>().FirstOrDefault(b => b.Text == "Invite by name") is { } byName) byName.Name = "seek_invite_name";

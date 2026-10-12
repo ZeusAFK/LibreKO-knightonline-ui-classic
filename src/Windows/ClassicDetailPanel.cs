@@ -30,7 +30,7 @@ public partial class ClassicDetailPanel : Control
     {
         WindowId=id;_body=body;
         bool questShell=id is "npc_dialog" or "quest_receipt";
-        var size=id switch { "userinfo"=>new Vector2(360,440),"quest_target"=>new Vector2(360,500),
+        var size=id switch { "userinfo"=>new Vector2(ClassicUserInfoLayout.WindowWidth,ClassicUserInfoLayout.WindowMaxHeight),"quest_target"=>new Vector2(360,500),
             "quest_receipt"=>new Vector2(363,330),"npc_dialog"=>new Vector2(363,470),_=>new Vector2(360,550) };
         CustomMinimumSize=size;Size=size;_declared=size;_nativeClose=nativeClose;
         if(questShell) Modulate=Colors.Transparent;
@@ -60,6 +60,8 @@ public partial class ClassicDetailPanel : Control
         AddChild(ContentScroll);
         body.Reparent(ContentScroll);body.Visible=true;body.SizeFlagsHorizontal=SizeFlags.ExpandFill;
         body.CustomMinimumSize=new Vector2(1,0);
+        // The character card (3277df5) is drawn from the plugin user-card API above the client's Confirm button.
+        if(id=="userinfo") ClassicUserInfoCard.Compose(body,Plugin.Kit.Game.UserInfo);
         if(id=="presets") ComposePresets(body);
         if(id=="titles")
         {
@@ -87,11 +89,6 @@ public partial class ClassicDetailPanel : Control
         {
             StyleQuestContent(body);
             body.ChildEnteredTree+=child=> { if(child is Control control) StyleQuestContent(control); };
-        }
-        if(id=="userinfo")
-        {
-            foreach(var row in CharacterDetailsSkin.Tree(body).OfType<HBoxContainer>()) StyleInformationRow(row);
-            foreach(var rows in body.GetChildren().OfType<Container>()) rows.ChildEnteredTree+=child=>Callable.From(()=> { if(child is HBoxContainer row && GodotObject.IsInstanceValid(row)) StyleInformationRow(row); }).CallDeferred();
         }
     }
     private LayoutView BuildFrame(Vector2 size,bool questShell)
@@ -142,16 +139,6 @@ public partial class ClassicDetailPanel : Control
             title.AutowrapMode=TextServer.AutowrapMode.Off;title.ClipText=true;
             title.TextOverrunBehavior=TextServer.OverrunBehavior.TrimEllipsis;
         }
-    }
-    private static void StyleInformationRow(HBoxContainer row)
-    {
-        var labels=row.GetChildren().OfType<Label>().ToArray();if(labels.Length!=2) return;
-        row.CustomMinimumSize=new Vector2(1,28);labels[0].CustomMinimumSize=new Vector2(124,28);
-        // Equal text insets from both ends of the row rule.
-        labels[0].AddThemeStyleboxOverride("normal",new StyleBoxEmpty { ContentMarginLeft=8 });
-        labels[0].SizeFlagsHorizontal=SizeFlags.Fill;labels[1].SizeFlagsHorizontal=SizeFlags.ExpandFill;
-        labels[1].HorizontalAlignment=HorizontalAlignment.Right;
-        row.AddChild(new TitleRowRule(row));
     }
     public override void _Ready()
     {

@@ -156,7 +156,16 @@ public sealed class CharacterAuditData : IGameCharacterPanel
     public int QuestKind => 0;
     public IReadOnlyList<Window> Dialogs => Array.Empty<Window>();
     public int StatBonus(int row) => row switch { 1 => 13, 4 => 10, 2 => -8, _ => 0 };
-    public string Status(string section) => section == "friends" ? "3 friends online." : "";
+    /// <summary>The clan online bonus line (user-vote-audit); empty in the character audit, as before the server reports one.</summary>
+    public string ClanBonus { get; set; } = "";
+    public string ClanBonusTip { get; set; } = "";
+    public string Status(string section) => section switch
+    {
+        "friends" => "3 friends online.",
+        "clan_bonus" => ClanBonus,
+        "clan_bonus_tip" => ClanBonusTip,
+        _ => "",
+    };
     public void SelectPage(string page) => SelectedPage = page;
     public void Refresh(string section) { }
     /// <summary>The last action a page or its context menu asked for (context-menu-audit).</summary>
