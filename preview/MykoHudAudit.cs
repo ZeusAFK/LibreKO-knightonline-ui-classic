@@ -197,7 +197,9 @@ public partial class Preview
             Require(box.Visible && stack.OpenKey == ClassicNoticeBars.PremiumKey && stack.Text.Text.StartsWith("No Premium"), tag + ": the premium bar opens 'No Premium' details");
             await Click(p.GetCenter()); await Away();
             Require(!box.Visible, tag + ": pressing the premium bar again closes the box");
-            Premium(1, LibreKO.Domain.PremiumNames.Gold, 52, new PremiumBonus(PremiumBonusKind.Experience, 10), new PremiumBonus(PremiumBonusKind.Drops, 5));
+            // TODO(port-3277): PremiumNames lost its type constants (names now come from the text table); 5 = Gold.
+            const int goldPremium = 5;
+            Premium(1, goldPremium, 52, new PremiumBonus(PremiumBonusKind.Experience, 10), new PremiumBonus(PremiumBonusKind.Drops, 5));
             stack.Sync(); await Frames(3);
             Require(stack.PremiumCaption == "Gold Premium" && ((Label)Descendants(premium).OfType<Label>().Single()).GetThemeColor("font_color") == Colors.White, tag + ": an active premium shows its name in white: " + stack.PremiumCaption);
             await Click(p.GetCenter()); await Away();

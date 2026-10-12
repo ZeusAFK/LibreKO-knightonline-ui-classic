@@ -78,7 +78,7 @@ public static class Native
     {
         var info = Method(TypeOf(owner), method, args);
         if (info == null) { Report(owner, method + "/" + args.Length); return null; }
-        try { return info.Invoke(owner is Type ? null : owner, args); }
+        try { return info.Invoke(owner is Type ? null : owner, Arguments(info, args)); }
         catch (TargetInvocationException e) when (e.InnerException != null)
         {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e.InnerException).Throw();
@@ -90,7 +90,7 @@ public static class Native
     {
         var info = Method(TypeOf(owner), method, args);
         if (info == null) { result = null; return false; }
-        result = info.Invoke(owner is Type ? null : owner, args);
+        result = info.Invoke(owner is Type ? null : owner, Arguments(info, args));
         return true;
     }
 
@@ -204,16 +204,36 @@ public static class Native
         {
             for (var current = key.Item1; current != null; current = current.BaseType)
             {
-                var candidates = current.GetMethods(Members | BindingFlags.DeclaredOnly)
-                    .Where(m => m.Name == key.Item2 && m.GetParameters().Length == key.Item3).ToArray();
+                var named = current.GetMethods(Members | BindingFlags.DeclaredOnly).Where(m => m.Name == key.Item2).ToArray();
+                var candidates = named.Where(m => m.GetParameters().Length == key.Item3).ToArray();
                 if (candidates.Length == 1) return candidates[0];
-                var match = candidates.FirstOrDefault(m => m.GetParameters()
-                    .Zip(args, (p, a) => a == null ? !p.ParameterType.IsValueType || Nullable.GetUnderlyingType(p.ParameterType) != null
-                        : p.ParameterType.IsInstanceOfType(a)).All(ok => ok));
+                var match = candidates.FirstOrDefault(m => Accepts(m, args));
+                if (match != null) return match;
+                // A method that gained trailing optional parameters (3277df5: ShowItemTooltip's shopGoods) still
+                // answers a call with fewer arguments; Arguments fills in the defaults.
+                var optional = named.Where(m => m.GetParameters().Length > key.Item3
+                    && m.GetParameters().Skip(key.Item3).All(p => p.HasDefaultValue)).ToArray();
+                if (optional.Length == 1) return optional[0];
+                match = optional.FirstOrDefault(m => Accepts(m, args));
                 if (match != null) return match;
             }
             return null;
         });
+
+    private static bool Accepts(MethodInfo method, object?[] args) => method.GetParameters()
+        .Zip(args, (p, a) => a == null ? !p.ParameterType.IsValueType || Nullable.GetUnderlyingType(p.ParameterType) != null
+            : p.ParameterType.IsInstanceOfType(a)).All(ok => ok);
+
+    /// <summary>The call arguments, padded with the defaults of the optional parameters the caller left out.</summary>
+    private static object?[] Arguments(MethodInfo method, object?[] args)
+    {
+        var parameters = method.GetParameters();
+        if (parameters.Length == args.Length) return args;
+        var padded = new object?[parameters.Length];
+        Array.Copy(args, padded, args.Length);
+        for (int i = args.Length; i < parameters.Length; i++) padded[i] = parameters[i].DefaultValue;
+        return padded;
+    }
 
     /// <summary>
     /// Reports once when a member exists but no longer has the type the plugin reads it as (for example a

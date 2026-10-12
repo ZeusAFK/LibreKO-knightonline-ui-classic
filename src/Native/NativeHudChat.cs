@@ -243,6 +243,15 @@ public sealed class NativeServiceWindows : IGameWindows
 
     public IGameWindows Inner { get; }
 
+    // The client's top-right icon row (3277df5): forwarded so the host can drop plugin handlers on unload.
+    public Rect2 TopRightRow => Inner.TopRightRow;
+
+    public event Action? TopRightRowMoved
+    {
+        add => Inner.TopRightRowMoved += value;
+        remove => Inner.TopRightRowMoved -= value;
+    }
+
     private static readonly Dictionary<string, (string Shown, string Toggle, string? Close)> Services = new(StringComparer.OrdinalIgnoreCase)
     {
         ["mail"] = ("_mailShown", "ToggleMail", null),

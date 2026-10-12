@@ -21,8 +21,15 @@ public static class NativePremium
     public static Account Current(Net? net)
     {
         if (net == null || net.PremiumAccountStatus == 0 || net.PremiumHours <= 0) return new(false, "No Premium", 0, Array.Empty<PremiumBonus>());
-        string name = net.PremiumAccountStatus == PcRoomStatus ? "PC Room" : PremiumNames.Of(net.PremiumType);
+        string name = net.PremiumAccountStatus == PcRoomStatus ? "PC Room" : PremiumName(net.PremiumType);
         return new(true, name, net.PremiumHours, net.PremiumBonuses);
+    }
+
+    /// <summary>The premium name as the client's chip composes it (3277df5): the type's text and the "Premium" word.</summary>
+    private static string PremiumName(int type)
+    {
+        string premium = ItemData.Text(PremiumNames.PremiumText, PremiumNames.PremiumFallback);
+        return PremiumNames.Name(type) is { } name ? $"{ItemData.Text(name.Text, name.Fallback)} {premium}" : premium;
     }
 
     public static Clan ClanOf(World? world, Net? net) =>

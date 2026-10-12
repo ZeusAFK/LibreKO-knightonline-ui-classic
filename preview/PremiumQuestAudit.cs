@@ -363,7 +363,10 @@ public partial class Preview
             chip.Position = new Vector2(500, 60); chip.Size = Vector2.Zero; chip.ResetSize(); await Frames();
             return chip.GetGlobalRect();
         }
-        var chipRect = await Status(1, PremiumNames.Gold, 52);
+        // TODO(port-3277): PremiumNames lost its type constants (names now come from the text table); 5 = Gold,
+        // 13 = Switching (no longer in the client's name table, so it reads as plain premium).
+        const int goldPremium = 5, switchingPremium = 13;
+        var chipRect = await Status(1, goldPremium, 52);
         Save(chipRect, "premium-native");
         await Status(0, 0, 0); Save(chip.GetGlobalRect(), "premium-none-native");
         NativeQuestHud.Prepare(premiumWorld);
@@ -379,14 +382,14 @@ public partial class Preview
             Require(label.GetGlobalRect().Position.X - rect.Position.X == PremiumSpec.Inset && rect.End.X - label.GetGlobalRect().End.X == PremiumSpec.Inset, state + ": even caption insets");
             Require(!Descendants(plate).OfType<Panel>().Any(p => p.IsVisibleInTree()), state + ": the client's status dot gives way to the ink");
         }
-        foreach (var (status, type, hours, state, active) in new[] { (0, 0, 0, "premium-none", false), (1, PremiumNames.Gold, 52, "premium-gold", true), (2, 0, 5, "premium-pc-room", true), (1, PremiumNames.Switching, 719, "premium-long", true) })
+        foreach (var (status, type, hours, state, active) in new[] { (0, 0, 0, "premium-none", false), (1, goldPremium, 52, "premium-gold", true), (2, 0, 5, "premium-pc-room", true), (1, switchingPremium, 719, "premium-long", true) })
         {
             chipRect = await Status(status, type, hours);
             CheckChip(chip, chipLabel, state, active);
             Save(chipRect, state, new { text = chipLabel.Text });
         }
         // The benefits tooltip, opened by real hovering.
-        await Status(1, PremiumNames.Gold, 52);
+        await Status(1, goldPremium, 52);
         await Move(chip.GetGlobalRect().GetCenter());
         PopupPanel? tip = null;
         for (int i = 0; i < 90 && tip == null; i++)
