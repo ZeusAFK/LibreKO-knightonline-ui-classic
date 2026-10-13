@@ -13,7 +13,6 @@ public static class NativeSocial
     internal static void Register()
     {
         NativeWindows.Prepare("nation_chat", PrepareNationChat);
-        NativeWindows.Prepare("nation_chat_members", PrepareNationMembers);
         NativeWindows.Prepare("commander", PrepareCommander);
         NativeCommandList.Register();
     }
@@ -22,7 +21,6 @@ public static class NativeSocial
     public static void Prepare(HudWindow window, World world)
     {
         if (window.Id == "nation_chat") PrepareNationChat(window, world);
-        else if (window.Id == "nation_chat_members") PrepareNationMembers(window, world);
         else if (window.Id == "commander") PrepareCommander(window, world);
     }
 
@@ -39,19 +37,11 @@ public static class NativeSocial
         NativeWindows.Name(Native.Get<Button>(world, "_ncPrivateTab"), "nation_private_tab");
         NativeWindows.Name(Native.Get<VBoxContainer>(world, "_ncPublicRows"), "nation_public_rows");
         NativeWindows.Name(Native.Get<VBoxContainer>(world, "_ncPrivateRows"), "nation_private_rows");
-        // 3277df5: "Open" shows the chat room of the joined channel or room; it sits in the Classic button row.
+        // 3277df5: "Open" shows the chat room of the joined channel; it sits in the Classic button row.
         NativeWindows.Name(Native.Get<Button>(world, "_ncPubOpen"), "nation_public_open");
-        NativeWindows.Name(Native.Get<Button>(world, "_ncPriOpen"), "nation_private_open");
-    }
-
-    /// <summary>The members window lost its header row in 3277df5: the room title and the summary line sit in the body.</summary>
-    private static void PrepareNationMembers(HudWindow window, World world)
-    {
-        if (window.HasMeta("classic_social_controls")) return;
-        window.SetMeta("classic_social_controls", 1);
-        NativeWindows.Name(Native.Get<Label>(world, "_ncMembersTitle"), "nation_members_title");
-        NativeWindows.Name(Native.Get<Label>(world, "_ncMembersCount"), "nation_members_count");
-        NativeWindows.Name(Native.Get<VBoxContainer>(world, "_ncMemberRows"), "nation_member_rows");
+        // fa3cfc3: the Private tab is a search row (room name, Search, Create room) and a room is entered with a
+        // double-click; the members and search windows are gone (members and owner actions live in the room window).
+        NativeWindows.Name(Native.Get<LineEdit>(world, "_ncSearchEdit"), "nation_search_edit");
     }
 
     private static void PrepareCommander(HudWindow window, World world)

@@ -13,7 +13,7 @@ public static class ClassicSocialLayout
     /// <summary>Windows drawn in the Classic social frame.</summary>
     public static readonly string[] WindowIds =
     {
-        "nation_chat", "nation_chat_create", "nation_chat_password", "nation_chat_search", "nation_chat_members",
+        "nation_chat", "nation_chat_create", "nation_chat_password",
         "commander", "clan_board", "clan_join_list", "clan_message", "clanhandover",
         "wish_board", "wish_message", "wish_requests",
     };

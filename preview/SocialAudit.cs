@@ -21,6 +21,8 @@ public partial class Preview
         var output = OS.GetEnvironment("LIBREKO_AUDIT_OUTPUT_DIR"); System.IO.Directory.CreateDirectory(output);
         GetWindow().ContentScaleMode = Window.ContentScaleModeEnum.Disabled; GetWindow().Size = new Vector2I(1000, 700);
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1000, 700), MouseFilter = MouseFilterEnum.Ignore });
+        // The installed content: item data (whisper item links, text table) and the emoticon sheet.
+        if (!ProjectSettings.LoadResourcePack(ProjectSettings.GlobalizePath("res://../../build/client/source-content/knightonline.pck"), false)) throw new Exception("Missing existing content pack");
         var offline = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, offline);
         ClassicSocialSkin.Register(PluginHost.Ui);
         var checks = new List<string>(); var screens = new List<object>();
@@ -107,46 +109,51 @@ public partial class Preview
             Require(!window.Visible && !(bool)DetailField(world, "_nationChatShown")!, "nation chat: the Classic close button runs the native close");
             Done(opened);
         }
-        // Nation chat: private rooms as the owner, then after leaving (disabled owner actions).
+        // Nation chat, Private tab (fa3cfc3): the room list over a search row (room name, Search, Create room); a
+        // double-click enters a room. The members and search windows are gone: members and the owner's actions
+        // live in the room window.
         {
             var opened = await Open("nation-private"); var (world, window) = opened;
+            var rows = (VBoxContainer)DetailField(world, "_ncPrivateRows")!;
+            var list = (ScrollContainer)rows.GetParent();
+            var search = (LineEdit)DetailField(world, "_ncSearchEdit")!;
+            IEnumerable<PanelContainer> Live() => rows.GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion());
             await Capture(window, "nation-private");
-            // 3277df5: "Open" shows the room of the joined channel or room, beside Leave in the Classic button row.
-            var open = Descendants(window).OfType<Button>().Single(b => b.Name == "nation_private_open");
-            var leave = ButtonOf(window, "Leave");
-            Require(open.IsVisibleInTree() && open.Text == "Open" && open.GetThemeFont("font") == Plugin.Kit.Bold && open.Size.Y >= ClassicSocialLayout.ActionHeight, "nation chat: Open is a Classic action in an own room");
-            Require(open.GetGlobalRect().Position.Y == leave.GetGlobalRect().Position.Y && open.GetGlobalRect().Position.X >= leave.GetGlobalRect().End.X, "nation chat: Open sits beside Leave");
+            var find = ButtonOf(window, "Search"); var create = ButtonOf(window, "Create room");
+            var content = window.GetChildren().OfType<ClassicSocialFrame>().Single().Content.GetGlobalRect();
+            var (field, findBox, createBox) = (search.GetGlobalRect(), find.GetGlobalRect(), create.GetGlobalRect());
+            Require(search.Name == "nation_search_edit" && search.IsVisibleInTree() && search.PlaceholderText == "Room name", "nation chat: the search row starts with the client's room name field");
+            Require(findBox.Position.Y == field.Position.Y && createBox.Position.Y == field.Position.Y && findBox.Size.Y == field.Size.Y && createBox.Size.Y == field.Size.Y,
+                "nation chat: room name, Search and Create room share one row " + field + " " + findBox + " " + createBox);
+            Require(findBox.Position.X >= field.End.X && createBox.Position.X > findBox.End.X && Math.Abs(field.Position.X - content.Position.X) <= 1 && Math.Abs(createBox.End.X - content.End.X) <= 1,
+                "nation chat: the field and Search start the row, Create room ends it at the content edge " + content);
+            Require(list.GetGlobalRect().End.Y <= field.Position.Y, "nation chat: the search row sits under the room list");
+            Require(list.Size.Y % 22 == 0 && Live().All(r => r.Size.Y == 22), "nation chat: the room list shows whole 22 px rows " + list.Size);
+            Require(!Descendants(window).OfType<Button>().Any(b => b.IsVisibleInTree() && b.Text is "Enter" or "Leave" or "Open" or "Change options" or "Number of admissions" or "Cancel"),
+                "nation chat: the Private tab has no Enter, Leave, Open, owner or Cancel button any more");
+            Require(Live().All(r => r.TooltipText == "Double-click to enter" && !Descendants(r).OfType<TextureRect>().Any(t => t.IsVisibleInTree())), "nation chat: rows carry the client's double-click hint and no lock or nation icon");
+            // Search: the client sends the word (an empty field lists every room) and its reply fills the Private tab.
+            search.Text = "Siege"; find.EmitSignal(BaseButton.SignalName.Pressed); await Frames(2);
+            DetailCall(world, "OnNationSearch", new List<NationRoom> { new(offline.NationChat.RoomId, "Siege at nine", true, LibreKO.Domain.Nations.Karus, 4, 30) });
+            await Frames();
+            Require(Live().Count() == 1 && Live().All(r => r.HasMeta(ClassicSocialStyle.Styled)) && search.Text == "Siege", "nation chat: a search reply lists its rooms in Classic rows and keeps the word");
+            await Capture(window, "nation-private-search");
+            // A double-click on the joined room shows its room window natively.
             DetailCall(world, "ChatRoomInit");
-            open.EmitSignal(BaseButton.SignalName.Pressed); await Frames(2);
-            Require(((HudWindow)DetailField(world, "_roomWindow")!).Visible, "nation chat: Open shows the chat room natively");
+            Live().First().EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, DoubleClick = true }); await Frames(2);
+            Require(((HudWindow)DetailField(world, "_roomWindow")!).Visible, "nation chat: a double-click on the joined room shows its room window natively");
             DetailCall(world, "ChatRoomDispose");
-            Require(!ButtonOf(window, "Change options").Disabled && !ButtonOf(window, "Number of admissions").Disabled, "nation chat: owner actions enabled in an own room");
-            offline.NationChat.Left(); DetailCall(world, "RefreshNationButtons"); await Frames();
-            Require(ButtonOf(window, "Change options").Disabled && ButtonOf(window, "Number of admissions").Disabled, "nation chat: owner actions disabled outside a room");
-            Require(!Descendants(window).OfType<Button>().Single(b => b.Name == "nation_private_open").IsVisibleInTree(), "nation chat: Open hidden outside a room");
-            Require(ButtonOf(window, "Change options").GetThemeColor("font_disabled_color") == ClassicSocialStyle.ButtonDisabledInk, "nation chat: disabled caption keeps the Classic disabled ink");
+            // Outside a room the list keeps the plain row inks.
+            offline.NationChat.Left(); DetailCall(world, "OnNationRooms", new List<NationRoom>
+            {
+                new(1001, "Moradon traders", false, LibreKO.Domain.Nations.Karus, 12, 50), new(1004, "Clan recruits", true, LibreKO.Domain.Nations.Karus, 2, 10),
+            });
+            await Frames();
+            Require(Live().Count() == 2 && Live().All(r => r.GetMeta("social_row", false).AsBool()), "nation chat: a refreshed list outside a room keeps the Classic rows");
             await Capture(window, "nation-private-left");
             Done(opened);
         }
-        // Members: the room title and the client's summary line sit directly in the body (no header row since 3277df5).
-        // fa3cfc3 removed the members window (members live in the room window) and the separate search window.
-        bool membersWindow = typeof(World).GetField("_ncMembers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic) != null;
-        if (membersWindow)
-        {
-            var opened = await Open("nation-members"); var (world, window) = opened;
-            KnightOnlineUiClassic.Native.NativeSocial.Prepare(window, world);
-            var title = Descendants(window).OfType<Label>().Single(l => l.Name == "nation_members_title");
-            var count = Descendants(window).OfType<Label>().Single(l => l.Name == "nation_members_count");
-            var rows = Descendants(window).OfType<VBoxContainer>().Single(l => l.Name == "nation_member_rows");
-            Require(title.GetParent() == window.Body && count.GetParent() == window.Body, "members: title and summary are body lines");
-            var summary = typeof(LibreKO.Domain.NationChatRules).GetMethod("Summary")?.Invoke(null, [false, offline.NationChat.RoomPrivate, 4, 30]) as string;
-            Require(count.Text == summary, "members: the summary is the client's text: " + count.Text);
-            await Capture(window, "nation-members");
-            Require(title.GetGlobalRect().End.Y <= count.GetGlobalRect().Position.Y && count.GetGlobalRect().End.Y <= rows.GetGlobalRect().Position.Y, "members: title, summary and list stack without overlap");
-            Require(title.GetThemeFont("font") == Plugin.Kit.Bold && title.GetThemeColor("font_color") == ClassicDarkFrame.Heading, "members: the room title in the Classic heading");
-            Done(opened);
-        }
-        foreach (var view in membersWindow ? new[] { "nation-create", "nation-password", "nation-search" } : new[] { "nation-create", "nation-password" })
+        foreach (var view in new[] { "nation-create", "nation-password" })
         {
             var opened = await Open(view);
             await Capture(opened.Window, view);
