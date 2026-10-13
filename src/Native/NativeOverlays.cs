@@ -172,13 +172,15 @@ public static class NativeOverlays
         var leave = Named(world, "_inZoneLeaveBanner", "event_leave");
         Named(world, "_inZoneLeaveTitleLbl", "leave_title");
         Named(world, "_inZoneLeaveBtn", "leave_action");
-        // The registration and countdown share the client's remaining time and registration state.
+        // The registration and countdown share the client's remaining time and registration state. The state is read
+        // only while one of them is shown, after the client's own frame and just before the skins sync to it.
         if (modal is Control host)
         {
             int urgentSeconds = Native.Get<int>(typeof(World), "BifrostUrgentSecs");
             var watcher = new NativeEventWatcher(() =>
             {
                 if (!GodotObject.IsInstanceValid(world)) return;
+                if (!host.IsVisibleInTree() && !(countdown is CanvasItem plate && GodotObject.IsInstanceValid(plate) && plate.IsVisibleInTree())) return;
                 var (left, registered, elsewhere) = SignUpState(world);
                 bool urgent = left > 0 && left <= urgentSeconds;
                 foreach (var node in new[] { host, countdown })
@@ -188,7 +190,7 @@ public static class NativeOverlays
                     node.SetMeta(Registered, registered);
                     node.SetMeta(RegisteredElsewhere, elsewhere);
                 }
-            }) { Name = "classic_event_state", ProcessPriority = int.MinValue };
+            }) { Name = "classic_event_state", ProcessPriority = int.MaxValue - 2 };
             host.AddChild(watcher);
         }
         Apply(NativeOverlay.Registration, modal);

@@ -740,7 +740,13 @@ public partial class ClassicButtonCaption : Label
         Sync();
     }
 
-    public override void _Process(double delta) => Sync();
+    // Hidden captions skip the per-frame sync; a caption that is shown again syncs at once.
+    public override void _Process(double delta) { if (IsVisibleInTree()) Sync(); }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationVisibilityChanged && IsVisibleInTree()) Sync();
+    }
 
     private void Sync()
     {

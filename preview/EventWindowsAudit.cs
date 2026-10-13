@@ -257,10 +257,15 @@ public partial class Preview
             {
                 IEnumerable<Node> All(Node node) { yield return node; foreach (var child in node.GetChildren(true)) foreach (var item in All(child)) yield return item; }
                 var chip = Descendants(Cards(world)[0]).OfType<HFlowContainer>().First().GetChildren().OfType<PanelContainer>().First();
-                var at = chip.GetGlobalRect().GetCenter();
-                GetViewport().PushInput(new InputEventMouseMotion { Position = at, GlobalPosition = at });
+                // A focus change of another window cancels the client's tooltip timer: hover again, up to three times.
                 PopupPanel? tip = null;
-                for (int i = 0; i < 120 && tip == null; i++) { await Frames(1); tip = All(chip).OfType<PopupPanel>().FirstOrDefault(p => p.Visible); }
+                for (int attempt = 0; attempt < 3 && tip == null; attempt++)
+                {
+                    var at = chip.GetGlobalRect().GetCenter() + new Vector2(attempt, 0);
+                    GetViewport().PushInput(new InputEventMouseMotion { Position = at, GlobalPosition = at });
+                    ulong until = Time.GetTicksMsec() + 1500;
+                    while (tip == null && Time.GetTicksMsec() < until) { await Frames(1); tip = All(chip).OfType<PopupPanel>().FirstOrDefault(p => p.Visible); }
+                }
                 Require(tip != null, "events: the time chip shows its tooltip");
                 await Frames(4);
                 var tipLabel = All(tip!).OfType<Label>().First();
@@ -338,6 +343,19 @@ public partial class Preview
                 "events: the clock shift line in the caption ink: " + shift.Text);
             Schedule(world, window, "clock-shift", false, false, live: 1);
             await Capture(window, "clock-shift");
+            await Close(world, window);
+            // A live lottery draw: its card offers Open (the client's ToggleLottery) on the same service button as Join.
+            (world, window) = await Open("BuildEventsLotteryUiPreview", "lottery");
+            Schedule(world, window, "lottery", false, false, live: 2);
+            var liveActions = Cards(world).SelectMany(c => Descendants(c).OfType<Button>()).ToArray();
+            var lotteryOpen = liveActions.Single(b => b.Text == "Open");
+            var templeJoin = liveActions.Single(b => b.Text == "Join");
+            Require(Connected(lotteryOpen) && lotteryOpen.TooltipText == "Moradon Grand Lottery"
+                && lotteryOpen.GetThemeStylebox("normal") is StyleBoxTexture openArt && templeJoin.GetThemeStylebox("normal") is StyleBoxTexture joinArt
+                && openArt.Texture == joinArt.Texture && openArt.RegionRect == joinArt.RegionRect
+                && lotteryOpen.GetThemeFont("font") == templeJoin.GetThemeFont("font") && lotteryOpen.GetThemeColor("font_color") == templeJoin.GetThemeColor("font_color"),
+                "events: the live lottery's Open is the service button with its native action");
+            await Capture(window, "lottery");
             await Close(world, window);
         }
         // Daily rank and the rank board.

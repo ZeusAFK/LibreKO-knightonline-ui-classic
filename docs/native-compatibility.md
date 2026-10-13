@@ -571,7 +571,7 @@ by the shape the client builds; no member is reflected) and the registration rea
 
 | Member | Kind | Used for |
 | --- | --- | --- |
-| `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft(type, utc)`), `World.BifrostSecondsLeft(utc)` | P/M | `NativeOverlays.SignUpState`: the shown sign-up's seconds (with none open, the plain Bifrost countdown), registered = `Registered == Current != None`, registered elsewhere = another open sign-up. The registration box and the countdown plaque turn urgent (red bar and ink) and registered (Ready ink, Cancel); registered elsewhere shows the client's "You are registered for ..." in the muted ink with Close alone. Clients without `Net.SignUps` keep reading `_bifrostRemaining` and `_isEventRegistered` |
+| `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft(type, utc)`), `World.BifrostSecondsLeft(utc)` | P/M | `NativeOverlays.SignUpState`: the shown sign-up's seconds (with none open, the plain Bifrost countdown), registered = `Registered == Current != None`, registered elsewhere = another open sign-up, read only while the box or the plaque is shown. The registration box and the countdown plaque turn urgent (red bar and ink) and registered (Ready ink, Cancel); registered elsewhere shows the client's "You are registered for ..." in the muted ink with Close alone. Clients without `Net.SignUps` keep reading `_bifrostRemaining` and `_isEventRegistered` |
 | Events window: the filter row (two `ButtonGroup` tabs and the "Only my level" toggle), the 640-pixel `ScrollContainer` list, the cards (`PanelContainer` column: glyph tile, name and level band, description, status with Join or Open, time chips, weekday pills), the shift and empty labels | Shape | Cards on the quest inset (lit while live), glyphs on the nation inventory cell, time chips and weekdays as small insets, tabs on the chat tab art, the check on the chat check socket, Join/Open as the service button. The status ink the client rewrites every second is mapped to the event inks; the list takes its cards' height up to the client's 470 pixels, so loading and empty are a 668x144 box. Every native callback stays (tab and filter `Toggled`, Join to `ShowSignUp(type)`, Open to `ToggleLottery`) |
 | `UiTheme.UnderlineTabButton` underline (`ColorRect` child) | Look | Drawn transparent; the chat tab art shows the chosen page |
 | `_joinModalBtn` font colour (the client recolours Join and Cancel per state) | Look | `ClassicButtonCaption` keeps the native text transparent, so only the art caption draws (fixes a doubled "Cancel"/"Join") |
@@ -579,7 +579,9 @@ by the shape the client builds; no member is reflected) and the registration rea
 
 The whole event family now gives its windows the original tooltip look (co_tooltip_us), and its restyle skips
 tooltip popups. The Chaos skill page keeps the client's dimming (`ChaosSkillIcon.Modulate`, cube skills and the
-Chaos blink); `event-windows-audit` checks it.
+Chaos blink); `event-windows-audit` checks it. The former 516-pixel body width of `events` is gone, so on clients
+before fa3cfc3 the old events window keeps its natural width (`ClassicEventFamilyLayout.BodyWidth` stays as the
+declarative per-window hook).
 
 ### Preview-only members
 
