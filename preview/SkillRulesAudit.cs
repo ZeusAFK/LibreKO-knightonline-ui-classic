@@ -62,7 +62,8 @@ public partial class Preview
     /// <summary>
     /// Every way a skill or item reaches the skill bar, run against the client's own World, skill data and plugin bridge:
     /// the Classic skill window (right-click, mouse drag), drops from other windows, the Chaos dungeon, refused edits,
-    /// passive skills saved on old bars, and the slot states (usable, cooldown, short count, icon-less skill, ready flash).
+    /// passive skills saved on old bars, the slot states (usable, cooldown, short count, icon-less skill, ready flash), and
+    /// the Chaos dungeon's respawn blink and cube skills on the bar and the client's Chaos skill page.
     /// </summary>
     private async Task CaptureSkillRulesAudit(PluginGame game, int nation)
     {
@@ -395,9 +396,209 @@ public partial class Preview
             NativeSkills.ClearRefusedGenieSkills(genie);
             Require(cells.Sets.SequenceEqual(new[] { (GenieCellKind.Attack, 1, 0), (GenieCellKind.Support, 3, 0) }),
                 "Saved passive skills are cleared from the Genie cells; Scream and the potion stay");
+
+            await CheckChaosBlink();
+
+            // 12. The Chaos dungeon's respawn blink. The client refuses every skill while the character blinks after a
+            // respawn there (ChaosBattleLocked in HotbarUsable and SkillsLocked), so the Classic bar dims every slot and a
+            // click casts nothing. After the blink, cube skills stay dimmed until their item is in the bag, on the bar and
+            // on the client's Chaos skill page, which keeps the client's own dimming under the Classic family skin.
+            async Task CheckChaosBlink()
+            {
+                var lockProperty = typeof(World).GetProperty("ChaosBattleLocked", AnyMember);
+                var itemHeld = typeof(World).GetMethod("SkillItemHeld", AnyMember);
+                var dimField = typeof(World).GetNestedType("HotSlotCell", AnyMember)?.GetField("DimColor", AnyMember);
+                Require(lockProperty != null && itemHeld != null && dimField != null,
+                    "The client has the Chaos battle lock, the held-item test and the skill bar's dim colour");
+                var dimColour = (Color)dimField!.GetValue(null)!;
+                bool ClientLocked() => (bool)lockProperty!.GetValue(world)!;
+                bool Held(SkillData.Skill skill) => (bool)itemHeld!.Invoke(world, new object[] { skill })!;
+                void SetAbnormal(int value) => typeof(Net).GetProperty("SelfAbnormal")!.SetValue(net, value);
+                var inventory = (Inventory)typeof(World).GetProperty("Inv", AnyMember)!.GetValue(world)!;
+                void ClearBag() { for (int abs = Inventory.GridStart; abs < inventory.Length; abs++) inventory[abs] = default; }
+                async Task Tick() => await ToSignal(GetTree().CreateTimer(.25), SceneTreeTimer.SignalName.Timeout);
+                var barTint = (Color)typeof(HotSlot).GetField("MissingTint", AnyMember)!.GetValue(null)!;
+                // Mean brightness of each icon as drawn, from its top-left part (the count sits in the bottom-right corner).
+                async Task<float[]> Shades(IEnumerable<Control> icons)
+                {
+                    await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+                    using var image = GetViewport().GetTexture().GetImage();
+                    return icons.Select(icon =>
+                    {
+                        var from = (Vector2I)icon.GetGlobalRect().Position.Round();
+                        float sum = 0;
+                        for (int y = 3; y < 20; y++) for (int x = 3; x < 20; x++) { var c = image.GetPixel(from.X + x, from.Y + y); sum += c.R + c.G + c.B; }
+                        return sum / (17 * 17 * 3);
+                    }).ToArray();
+                }
+                // The drawn icon against the same icon at full colour: the tint the player actually sees.
+                void RequireShade(float shown, float full, float tint, string text) =>
+                    Require(full > .05f && Math.Abs(shown / full - tint) < .03f, text + " (drawn at " + (shown / full).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture) + " of full colour, expected "
+                        + tint.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ")");
+                IEnumerable<Control> BarIcons(int count) => Enumerable.Range(0, count).Select(i => (Control)Slot(i).GetNode<TextureRect>("content/icon"));
+
+                ClearBar();
+                ClearBag();
+                net.SkillCooldowns.Clear();
+                SetZone(ChaosBattle.Zone);
+                var chaosTree = SkillData.All.Where(s => s.Tree == ChaosBattle.SkillTree).OrderBy(s => s.Id).ToList();
+                // Cube skills: the client's own held-item test refuses them while their item is not in the bag.
+                var cubes = chaosTree.Where(s => !Held(s)).ToList();
+                var free = chaosTree.Where(s => Held(s) && NativeUsable(s.Id)).ToList();
+                GD.Print("SKILL_RULES_CHAOS tree=" + string.Join(",", chaosTree.Select(s => s.Id + ":" + s.UseItem + "/" + s.ConsumedItem
+                    + (Held(s) ? "" : ":cube") + (NativeUsable(s.Id) ? ":usable" : ""))));
+                Require(cubes.Count >= 1 && cubes.All(s => ItemData.Get(s.ConsumedItem) != null), "The Chaos tree has cube skills that need an item in the bag (" + cubes.Count + ")");
+                Require(free.Count >= 2, "The Chaos tree has skills the client lets the character use without an item (" + free.Count + ")");
+                var onBar = free.Take(3).Concat(cubes.Take(game.Hotbar.SlotsPerPage - Math.Min(3, free.Count))).ToList();
+                for (int i = 0; i < onBar.Count; i++) bar[i] = onBar[i].Id;
+                int cubeFirst = Math.Min(3, free.Count);
+                Raise();
+                await Tick();
+                Require(!ClientLocked(), "Outside the blink the Chaos dungeon is not locked");
+                for (int i = 0; i < onBar.Count; i++)
+                    Require(Dim(i) == !NativeUsable(bar[i]), "Before the blink, Chaos slot " + i + " (" + bar[i] + ") is dimmed exactly when the client's own test says so");
+                Require(Enumerable.Range(0, cubeFirst).All(i => !Dim(i)), "Before the blink, Chaos skills without an item are shown at full colour");
+
+                // The respawn blink: every slot dimmed, and a click reaches the client, which refuses it with its own notice.
+                SetAbnormal(RespawnBlink.Blinking);
+                await Tick();
+                Require(ClientLocked(), "Zone 85 with the respawn blink is the client's Chaos battle lock");
+                for (int i = 0; i < onBar.Count; i++)
+                    Require(Dim(i) && !NativeUsable(bar[i]), "While blinking, Chaos slot " + i + " (" + bar[i] + ") is dimmed as the client's own test says");
+                var log = (TabbedLog)Field("_combatLog").GetValue(world)!;
+                string castingFailed = (string)typeof(World).GetMethod("SystemText", AnyMember)!
+                    .Invoke(null, new object?[] { (int)Field("TextCastingFailed").GetValue(null)!, "Casting failed", null })!;
+                int Refusals() => log.Lines(LogTab.System).Count(line => line.Contains(castingFailed));
+                int refusalsBefore = Refusals();
+                var pending = (System.Collections.ICollection)Field("_pendingCasts").GetValue(world)!;
+                record.Cast = true;
+                record.Activated.Clear();
+                for (int i = 0; i < onBar.Count; i++) Click(i);
+                Require(record.Activated.SequenceEqual(Enumerable.Range(0, onBar.Count)), "While blinking, each click reaches the client's own skill bar, as a click on the native bar does");
+                Require(Refusals() - refusalsBefore == onBar.Count, "While blinking, the client refuses every clicked slot with its own notice '" + castingFailed + "' ("
+                    + (Refusals() - refusalsBefore) + " of " + onBar.Count + ")");
+                Require(pending.Count == 0 && net.SkillCooldowns.Count == 0 && (int)Field("_continuanceSkill").GetValue(world)! == 0,
+                    "While blinking, no clicked slot starts a cast, a cooldown or a continuance");
+                await Capture("chaos-blink-bar", BarRegion());
+                var barBlink = await Shades(BarIcons(onBar.Count));
+
+                // The client's Chaos skill page under the Classic event family skin.
+                shell.Visible = false;
+                var page = (HudWindow)DetailCall(world, "BuildChaosSkillPageUiPreview")!;
+                AddChild(page);
+                page.Visible = true;
+                Require(ClassicEventFamily.Apply(page.Body) != null, "The Chaos skill page gets the Classic event family frame");
+                await Frames(4);
+                page.Position = new Vector2(16, 30);
+                await Frames(2);
+                var pageTick = typeof(World).GetMethod("ChaosSkillPageTick", AnyMember)!;
+                var flip = typeof(World).GetMethod("FlipChaosSkillPage", AnyMember)!;
+                int pages = (int)typeof(World).GetProperty("ChaosSkillPages", AnyMember)!.GetValue(world)!;
+                List<TextureRect> Icons() => ((System.Collections.IEnumerable)Field("_chaosSkillIcons").GetValue(world)!).Cast<TextureRect>().ToList();
+                SkillData.Skill IconSkill(TextureRect icon) => (SkillData.Skill)icon.GetType().GetProperty("Skill")!.GetValue(icon)!;
+                Rect2I PageRegion() { var box = page.GetGlobalRect(); return new Rect2I((int)box.Position.X - 2, (int)box.Position.Y - 2, (int)box.Size.X + 4, (int)box.Size.Y + 4); }
+                async Task ShowPage(int index)
+                {
+                    flip.Invoke(world, new object[] { -pages });
+                    if (index > 0) flip.Invoke(world, new object[] { index });
+                    pageTick.Invoke(world, null);
+                    await Frames(3);
+                }
+                // Every icon on every page: visible inside the Classic frame and tinted exactly as the client asks.
+                async Task CheckPage(Func<SkillData.Skill, bool> dimmed, string state)
+                {
+                    int seen = 0;
+                    for (int index = 0; index < pages; index++)
+                    {
+                        await ShowPage(index);
+                        foreach (var icon in Icons().Where(GodotObject.IsInstanceValid))
+                        {
+                            var skill = IconSkill(icon);
+                            seen++;
+                            Require(icon.IsVisibleInTree() && page.GetGlobalRect().Encloses(icon.GetGlobalRect()), state + ": the Chaos page shows the icon of " + skill.Id + " inside its frame");
+                            bool plain = icon.SelfModulate == Colors.White;
+                            for (var node = icon.GetParent(); plain && node != page; node = node.GetParent())
+                                plain = node is not CanvasItem item || (item.Modulate == Colors.White && item.SelfModulate == Colors.White);
+                            Require(plain, state + ": nothing between the Chaos page and the icon of " + skill.Id + " changes its tint");
+                            Require(icon.Modulate == (dimmed(skill) ? dimColour : Colors.White),
+                                state + ": the Chaos page tints " + skill.Id + " " + (dimmed(skill) ? "with the skill bar's dim colour" : "at full colour") + " (" + icon.Modulate + ")");
+                        }
+                    }
+                    Require(seen == chaosTree.Count, state + ": the Chaos page lists every Chaos skill (" + seen + " of " + chaosTree.Count + ")");
+                }
+                int cubePage = chaosTree.IndexOf(cubes[0]) / (int)Field("ChaosSkillsPerPage").GetValue(null)!;
+                await CheckPage(_ => true, "While blinking");
+                await ShowPage(0);
+                await Capture("chaos-page-blink", PageRegion());
+                var pageBlink = await Shades(Icons());
+
+                // After the blink: only cube skills without their item stay dimmed, on the bar and on the page.
+                SetAbnormal(RespawnBlink.ChaosNormal);
+                await Tick();
+                Require(!ClientLocked(), "The blink is over: the Chaos dungeon is no longer locked");
+                for (int i = 0; i < onBar.Count; i++)
+                    Require(Dim(i) == !NativeUsable(bar[i]), "After the blink, Chaos slot " + i + " (" + bar[i] + ") is dimmed exactly when the client's own test says so");
+                for (int i = cubeFirst; i < onBar.Count; i++)
+                {
+                    var count = Slot(i).GetNode<Label>("content/count");
+                    Require(Dim(i) && count.Text == "0" && count.GetThemeColor("font_color") != Colors.White,
+                        "After the blink, the cube skill " + bar[i] + " stays dimmed with a red 0 while its item is not in the bag");
+                }
+                Require(Enumerable.Range(0, cubeFirst).All(i => !Dim(i)), "After the blink, Chaos skills without an item are back at full colour");
+                await Capture("chaos-cube-missing-bar", BarRegion());
+                var barMissing = await Shades(BarIcons(onBar.Count));
+                await CheckPage(skill => !Held(skill), "After the blink, cube items missing");
+                await ShowPage(cubePage);
+                await Capture("chaos-page-cube-missing", PageRegion());
+                var cubePageSkills = Icons().Select(IconSkill).ToList();
+                var cubePageDim = cubePageSkills.Select(skill => !Held(skill)).ToList();
+                var pageMissing = await Shades(Icons());
+
+                // The cube items in the bag: their skills are usable again.
+                int at = Inventory.GridStart;
+                foreach (int item in cubes.Select(s => s.ConsumedItem).Distinct())
+                    inventory[at++] = new LibreKO.Domain.ItemSlot { ItemId = item, Count = 1, Durability = 1 };
+                await Tick();
+                for (int i = 0; i < onBar.Count; i++)
+                    Require(Dim(i) == !NativeUsable(bar[i]) && !Dim(i), "With its item in the bag, Chaos slot " + i + " (" + bar[i] + ") is usable and at full colour");
+                for (int i = cubeFirst; i < onBar.Count; i++)
+                {
+                    var count = Slot(i).GetNode<Label>("content/count");
+                    Require(count.Text != "0" && count.GetThemeColor("font_color") == Colors.White, "The cube skill " + bar[i] + " shows its item count in white once the item is in the bag");
+                }
+                await Capture("chaos-cube-held-bar", BarRegion());
+                var barHeld = await Shades(BarIcons(onBar.Count));
+                await CheckPage(_ => false, "Cube items in the bag");
+                await ShowPage(cubePage);
+                await Capture("chaos-page-cube-held", PageRegion());
+                var pageHeld = await Shades(Icons());
+                await ShowPage(0);
+                var pageFull = await Shades(Icons());
+
+                // What the player sees: the drawn icons against the same icons at full colour.
+                for (int i = 0; i < onBar.Count; i++)
+                {
+                    RequireShade(barBlink[i], barHeld[i], barTint.R, "While blinking, Chaos slot " + i + " is drawn with the Classic dim tint");
+                    RequireShade(barMissing[i], barHeld[i], i < cubeFirst ? 1f : barTint.R, "After the blink, Chaos slot " + i + " is drawn " + (i < cubeFirst ? "at full colour" : "dimmed until its cube is in the bag"));
+                }
+                for (int i = 0; i < pageBlink.Length; i++)
+                    RequireShade(pageBlink[i], pageFull[i], dimColour.R, "While blinking, Chaos page icon " + i + " is drawn with the client's dim colour");
+                for (int i = 0; i < pageMissing.Length; i++)
+                    RequireShade(pageMissing[i], pageHeld[i], cubePageDim[i] ? dimColour.R : 1f,
+                        "Chaos page icon of " + cubePageSkills[i].Id + " is drawn " + (cubePageDim[i] ? "dimmed" : "at full colour") + " while the cube items are missing");
+                Require(cubePageDim.Count(d => d) >= 1, "The Chaos page that shows a cube skill dims it in the drawn frame (" + cubePageDim.Count(d => d) + ")");
+
+                page.QueueFree();
+                shell.Visible = true;
+                SetAbnormal(0);
+                ClearBag();
+                SetZone(0);
+                ClearBar();
+            }
         }
         finally
         {
+            typeof(Net).GetProperty("SelfAbnormal")!.SetValue(net, 0);
             SetGenie(false); SetLocked(false);
             string file = ProjectSettings.GlobalizePath(localBar);
             if (System.IO.File.Exists(file)) System.IO.File.Delete(file);

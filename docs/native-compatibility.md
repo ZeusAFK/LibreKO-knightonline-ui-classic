@@ -568,6 +568,25 @@ until then.
 | `_ncPriJoin`, `_ncPriLeave`, `_ncPriOpen`, `_ncPriChange`, `_ncPriPersons`, `_ncSearch`, `_ncMembers*`, `OpenNationSearch`, `NationChatRules.Summary`, window ids `nation_chat_members`, `nation_chat_search` (removed) | F/M | The Private tab is a search row (`_ncSearchEdit`, Search, Create room); members live in the room window |
 | `_bifrostRemaining`, `_isEventRegistered`, `_eventType`, `EndBifrostEvent` (removed): sign-ups are `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft`) | F | The Classic registration and countdown read the urgent and registered state from them |
 
+### Skill bar and the Chaos lock on upstream fa3cfc3
+
+In the Chaos dungeon, fa3cfc3 refuses every skill while the character blinks after a respawn
+(`ChaosBattle.BattleLocked`: zone 85 and `Net.SelfAbnormal == RespawnBlink.Blinking`, read as `ChaosBattleLocked` by
+`HotbarUsable` and `SkillsLocked`). Cube skills stay dimmed until their item is in the bag (`SkillItemHeld`), on the
+skill bar and on the Chaos skill page. The plugin needs no change for this: it reads the same members as before.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `HotbarUsable(SkillData.Skill,double)`, which now includes `ChaosBattleLocked` and `SkillItemHeld` | M | The Classic bar dims from the client's own test (`NativeHudChat.HotbarUsable`). So while the character blinks, every slot is dimmed, and after the blink a cube skill stays dimmed with a red 0 until its item is in the bag. A click still reaches the client's `FireHotSlot`, which refuses it with "Casting failed", as on the native bar. If the member is missing, the bar dims from item counts only. |
+| `chaos_skill` page: `ChaosSkillIcon.SetUsable` sets `Modulate` to `HotSlotCell.DimColor` | — | The Classic event family restyles the frame, the type and the buttons. It leaves the icons and their tint to the client. |
+
+`skill-rules-audit` checks this for both nations, against the client's World, using the members below. These
+members are used by the preview only:
+- `ChaosBattleLocked`, `SkillItemHeld`, `HotSlotCell.DimColor` and `Net.SelfAbnormal`
+- `BuildChaosSkillPageUiPreview`, `ChaosSkillPageTick`, `FlipChaosSkillPage`, `ChaosSkillPages`, `ChaosSkillsPerPage`,
+  `_chaosSkillIcons` and `ChaosSkillIcon.Skill`
+- `_combatLog`, `TextCastingFailed`, `SystemText`, `_pendingCasts` and `_continuanceSkill`
+
 ### Preview-only members
 
 The preview fixtures also reach client internals that the plugin never touches at runtime. Examples are the
