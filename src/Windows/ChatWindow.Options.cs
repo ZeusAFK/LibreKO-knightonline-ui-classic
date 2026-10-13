@@ -6,43 +6,58 @@ namespace KnightOnlineUiClassic.Windows;
 
 public partial class ChatWindow
 {
+    // Chat Settings geometry: two columns of 156 x 24 buttons on a 28 px row pitch. The options block starts one
+    // section gap under the last category row, so the panel follows the client's category list (ff78eef dropped
+    // "Chatroom": ten categories, five rows).
+    private const float SettingsColumn = 163, SettingsRow = 28, SettingsFirstRow = 30, SettingsSectionGap = 12;
+    private static readonly Vector2 SettingsButton = new(156, 24);
+
+    /// <summary>The categories the Chat Settings toggle: the client's list without whispers (they have their own windows).</summary>
+    public static ChatCategory[] SettingsCategories => ChatCategories.Each.Where(c => c != ChatCategory.Whisper).ToArray();
+
+    /// <summary>Top of the options block (Time and Text) under <paramref name="categories"/> toggles.</summary>
+    public static float SettingsOptionsTop(int categories) =>
+        SettingsFirstRow + (categories + 1) / 2 * SettingsRow - (SettingsRow - SettingsButton.Y) + SettingsSectionGap;
+
     public void OpenSettings()
     {
         if(_settingsPanel!=null) {_settingsPanel.Visible=true;_settingsPanel.MoveToFront();return;}
-        _settingsPanel=new ClassicChatPanel("Chat Settings",ClassicChatPanel.Height(418));GetParent().AddChild(_settingsPanel);
+        var categories=SettingsCategories;
+        float options=SettingsOptionsTop(categories.Length);
+        _settingsPanel=new ClassicChatPanel("Chat Settings",ClassicChatPanel.Height(options+212));GetParent().AddChild(_settingsPanel);
         var body=_settingsPanel.Body;
-        var hint=ClassicNpcLayout.Text("Right-click a chat tab to open settings.",12);
-        hint.Position=Vector2.Zero;hint.Size=new Vector2(319,24);body.AddChild(hint);
-        var categories=ChatCategories.Each.Where(c=>c!=ChatCategory.Whisper).ToArray();
+        // Sized once in the tree: outside it a caption measures with the default font, and the control keeps that size.
+        Button Place(Button button,int column,float y) {body.AddChild(button);button.Position=new Vector2(column*SettingsColumn,y);button.Size=SettingsButton;return button;}
+        void Line(Label text,float y) {body.AddChild(text);text.Position=new Vector2(0,y);text.Size=new Vector2(319,24);}
+        Line(ClassicNpcLayout.Text("Right-click a chat tab to open settings.",12),0);
         for(int i=0;i<categories.Length;i++)
         {
-            var category=categories[i];var button=ClassicChatPanel.Button("");
+            var category=categories[i];var button=Place(ClassicChatPanel.Button(""),i%2,SettingsFirstRow+i/2*SettingsRow);
             void Caption()=>button.Text=ChatCategories.Caption(category)+": "+((_filter&(int)category)!=0?"On":"Off");
-            Caption();button.Position=new Vector2(i%2*163,30+i/2*28);button.Size=new Vector2(156,24);body.AddChild(button);
+            Caption();
             button.Pressed+=()=> {_filter^=(int)category;Plugin.Kit.Context.Settings.SetInt("chat.filter",_filter);Caption();Reload();};
         }
-        var timestamps=ClassicChatPanel.Button("Time: "+(_timestamps?"On":"Off"));
-        timestamps.Position=new Vector2(0,206);timestamps.Size=new Vector2(156,24);body.AddChild(timestamps);
+        var timestamps=Place(ClassicChatPanel.Button("Time: "+(_timestamps?"On":"Off")),0,options);
         timestamps.Pressed+=()=> {_timestamps=!_timestamps;timestamps.Text="Time: "+(_timestamps?"On":"Off");Plugin.Kit.Context.Settings.SetBool("chat.timestamps",_timestamps);Reload();};
-        var font=ClassicChatPanel.Button("Text: "+_fontSize);font.Position=new Vector2(163,206);font.Size=new Vector2(156,24);body.AddChild(font);
+        var font=Place(ClassicChatPanel.Button("Text: "+_fontSize),1,options);
         font.Pressed+=()=> {_fontSize=_fontSize==12?13:_fontSize==13?15:12;font.Text="Text: "+_fontSize;_log.SetFontSize(_fontSize);Plugin.Kit.Context.Settings.SetInt("chat.font_size",_fontSize);};
-        var locked=ClassicChatPanel.Button("Position: "+(_layout!.Locked?"Locked":"Free"));locked.Position=new Vector2(0,236);locked.Size=new Vector2(156,24);body.AddChild(locked);
+        var locked=Place(ClassicChatPanel.Button("Position: "+(_layout!.Locked?"Locked":"Free")),0,options+30);
         locked.Pressed+=()=> {_layout.Locked=!_layout.Locked;locked.Text="Position: "+(_layout.Locked?"Locked":"Free");Plugin.Kit.Context.Settings.SetBool("chat.locked",_layout.Locked);};
-        var nearby=ClassicChatPanel.Button("Nearby Players");nearby.Position=new Vector2(163,236);nearby.Size=new Vector2(156,24);body.AddChild(nearby);nearby.Pressed+=OpenNearby;
-        var label=ClassicNpcLayout.Text("Channel colours (click to cycle)",12,true);label.Position=new Vector2(0,272);label.Size=new Vector2(319,24);body.AddChild(label);
+        var nearby=Place(ClassicChatPanel.Button("Nearby Players"),1,options+30);nearby.Pressed+=OpenNearby;
+        Line(ClassicNpcLayout.Text("Channel colours (click to cycle)",12,true),options+66);
         var original=new[]{"e8e8e8","ff9a3c","5fd95f","46d3c0","6fb7ff"};
         var values=_colors.Split(',');if(values.Length!=5 || values.Any(c=>!Color.HtmlIsValid(c))) values=original.ToArray();
         string[] names={"General","Shout","Party","Clan","Alliance"};
         var swatches=new List<Button>();
         for(int i=0;i<5;i++)
         {
-            int slot=i;var swatch=ClassicChatPanel.Button(names[i]);swatch.Position=new Vector2(i%2*163,302+i/2*28);swatch.Size=new Vector2(156,24);body.AddChild(swatch);swatches.Add(swatch);
+            int slot=i;var swatch=Place(ClassicChatPanel.Button(names[i]),i%2,options+96+i/2*SettingsRow);swatches.Add(swatch);
             void Paint()=>swatch.AddThemeColorOverride("font_color",new Color(values[slot]));Paint();
             swatch.Pressed+=()=> {int index=Array.FindIndex(ChatColors.Palette,c=>c.ToHtml(false)==values[slot]);values[slot]=ChatColors.Palette[(index+1)%ChatColors.Palette.Length].ToHtml(false);_colors=string.Join(',',values);Plugin.Kit.Context.Settings.Set("chat.colors",_colors);Paint();Reload();};
         }
-        var reset=ClassicChatPanel.Button("Reset Colours");reset.Position=new Vector2(163,358);reset.Size=new Vector2(156,24);body.AddChild(reset);
+        var reset=Place(ClassicChatPanel.Button("Reset Colours"),1,options+152);
         reset.Pressed+=()=> {_colors="";values=original.ToArray();Plugin.Kit.Context.Settings.Set("chat.colors","");for(int i=0;i<5;i++) swatches[i].AddThemeColorOverride("font_color",new Color(values[i]));Reload();};
-        var help=ClassicNpcLayout.Text("History: Up / Down     Item link: Shift + right-click",11);help.Position=new Vector2(0,394);help.Size=new Vector2(319,24);body.AddChild(help);
+        Line(ClassicNpcLayout.Text("History: Up / Down     Item link: Shift + right-click",11),options+188);
     }
     public void OpenNearby()
     {

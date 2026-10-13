@@ -451,7 +451,7 @@ the room or `VoiceChat`; the plugin subscribes no room or voice event (it reads 
 | `_roomBlink` (`Tween`) | F | The minimized blink becomes the whisper attention blink on the compact bar |
 | Roster row `StyleBoxFlat` (`UiTheme.Row` colours: `RowHover` selected, `7fd98b` speaking) | Look | Classic row state mirrored each frame |
 | `_ncPubOpen`, `_ncPriOpen`, `_ncMembersTitle`, `_ncMembersCount`, `_ncMemberRows` | F | Nation chat Open buttons, members title and summary in the body |
-| `ChatSystem.ChatEntry.Place`; `ChatCategory.NoahKnights/ChatRoom/All`, `ChatType.NoahKnights` (34); `IGameCharacter.NoahKnight` | F/API | Room lines show `[ Zone ]`; the Classic chat masks with `ChatCategory.All` (saved filters migrate with `chat.filter_rev` 2 like the client's `ChatPrefs`); Noah Knights tab (`\|`) only for Noah Knights, who lose Clan and Alliance. `IGameChat.Lines` carries rendered BBCode only, so the Classic chat keeps reading `_store` for its own format |
+| `ChatCategory.NoahKnights/ChatRoom/All`, `ChatType.NoahKnights` (34); `IGameCharacter.NoahKnight` (`ChatSystem.ChatEntry.Place` is no longer read since ff78eef, see below) | F/API | The Classic chat masks with `ChatCategory.All` (saved filters migrate with `chat.filter_rev` 2 like the client's `ChatPrefs`); Noah Knights tab (`\|`) only for Noah Knights, who lose Clan and Alliance. `IGameChat.Lines` carries rendered BBCode only, so the Classic chat keeps reading `_store` for its own format |
 | `IGameCommands.Run(KeyAction.ToggleRun/AutoAttack)`, `ShowExitMenu()` | API | Replace the reflected `ToggleRunMode`, `ToggleAutoAttack`, `ToggleEsc(true)`; `StartCameraHalfTurn` has no key action and stays reflected |
 | `WhisperLinks.Linkify/IsWebLink` | M | Whisper notices with web links open them, as the client does |
 | `EmoticonPicker.InputButton` (the `TextureButton` in `_roomInput`) | F | Named `room_emoticons` and set to the inline emoticon size inside the Classic composer field |
@@ -471,6 +471,22 @@ the member it finds, so older clients keep the previous path.
 | `World+BagCompanion.IntoBag` (`Func<int, int, int?, bool>`: the amount picked with the mouse wheel; before `Func<int, int, bool>`) | P/T | `NativeVendor` reroutes buys through the Classic approval and `NativeAnvil` builds the anvil companion; the delegate shape comes from `Native.MemberType`, the amount is ignored (the approval asks the count, anvil items move whole) |
 | `WithdrawInto`, `VipWithdrawInto`, `ClanWithdrawInto` `(int, int, int? amount)`; `AskWithdraw`, `AskVipWithdraw`, `AskClanWithdraw`, `DepositSlot`, `OfferSlot` gained an optional `int? amount` | M | Storage drops into the bag pass the drag's `DragLayer.AmountKey` amount (null = whole stack); the optional ones bind through `Native.Method`'s default filling |
 | `AttachWeapons(Node3D, int[], HandWearer, int npcType)`, static `WeaponWearer(bool npc, bool statue, int race, int npcId, int size, int modelId)`, static `AttachBuiltInPlugs(Node3D, string)`, `_mobIndex`; `World+Ent.Race`, `Size`; `NoWeaponNpcIds` removed | M/F | NPC portrait: weapons by the model's plug slots and scale, the model's own built-in weapons on a freshly loaded model; the unarmed list is read only where it still exists |
+
+### Chat after room lines left the main chat on upstream ff78eef
+
+Chat room lines stay in the room window: the client no longer subscribes `RoomChatEvent` in `ChatSystem`
+(`OnRoomChat` is gone), and it removed the `\` prefix, `ChatRoomChannel`, `UseRoomChannel`, `NotInChatRoomText`
+and `ChatEntry.Place`. `ChatCategories.Each` no longer lists `ChatCategory.ChatRoom`, although the bit stays in
+`ChatCategory.All` and in the General tab. Chat rooms are open to both nations: the client dropped its
+`NationMismatch` check before joining. The plugin subscribes no room event and reads no new member.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `ChatSystem+ChatEntry.Place` (removed) | F | No longer read. `NativeChat` read it for every new entry, which logged "native member unavailable" once on ff78eef; `ClassicChatFormat.Line` lost its `place` (`[ Zone ]`) argument |
+| `ChatPrefixes` (no `\`) | API | The Classic chat's own prefix list drops `\`, so `\text` on a tab is sent with the tab's prefix instead of bypassing it |
+| `ChatCategories.Each` (no `ChatRoom`), `ChatCategory.All` | API | The Chat Settings list the client's categories (ten, without "Chatroom") and place the options under the last category row (`ChatWindow.SettingsOptionsTop`); the panel is 28 px shorter. The Classic mask stays `ChatCategory.All`, and the `chat.filter_rev` 2 migration keeps adding the chat room bit like the client's `ChatPrefs`; no line of that category reaches the chat any more |
+| `ChatType.ChatRoom` (33) | API | `ClassicChatFormat.Channel` keeps its `room` tag and ink, because the client keeps the type, its category and its colour slot; no chat log line or bubble carries it |
+| `NationRoom.Nation`, `NationRow` nation marks (`assets/ui/nation_chat/karus.png`, `elmorad.png`) | Look | Rooms of either nation are listed and joined through the unchanged Classic nation chat skin; `chat-room-audit` checks a room of the other nation in the list, its password prompt, and its room window opened by the server's reply |
 
 ### Preview-only members
 

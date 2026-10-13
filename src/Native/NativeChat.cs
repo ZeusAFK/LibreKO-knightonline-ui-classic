@@ -18,7 +18,7 @@ public static class NativeChat
     private const int PublishedFallback = 200;
     private const ulong NearbyPollMs = 5000;
 
-    private sealed record Entry(long Seq, int Category, byte Type, string Name, int Nation, bool Gm, string Text, string Bbcode, DateTime Time, string Place)
+    private sealed record Entry(long Seq, int Category, byte Type, string Name, int Nation, bool Gm, string Text, string Bbcode, DateTime Time)
     {
         public string? Rendered;
         public string? RenderedInk;
@@ -86,7 +86,8 @@ public static class NativeChat
     /// <summary>
     /// The chat log in Classic form: entries of the categories in <paramref name="mask"/>, private messages
     /// excluded (they have their own windows), optional timestamps and five custom channel colours
-    /// (General, Shout, Party, Clan, Alliance) as a comma-separated list.
+    /// (General, Shout, Party, Clan, Alliance) as a comma-separated list. Chat room lines stay in the room
+    /// window (ff78eef), so the log carries none.
     /// </summary>
     public static IReadOnlyList<string> ReadHistory(int mask, bool timestamps, string colors)
     {
@@ -125,8 +126,7 @@ public static class NativeChat
         if (_entries.TryGetValue(seq, out var cached)) return cached;
         var entry = new Entry(seq, (int)Native.Get<ChatCategory>(raw, "Category"), Native.Get<byte>(raw, "Type"),
             Native.Get<string>(raw, "Name") ?? "", Native.Get<int>(raw, "Nation"), Native.Get<bool>(raw, "Gm"),
-            Native.Get<string>(raw, "Text") ?? "", Native.Get<string>(raw, "Bbcode") ?? "", Native.Get<DateTime>(raw, "Time"),
-            Native.Get<string>(raw, "Place") ?? "");
+            Native.Get<string>(raw, "Text") ?? "", Native.Get<string>(raw, "Bbcode") ?? "", Native.Get<DateTime>(raw, "Time"));
         _entries[seq] = entry;
         return entry;
     }
@@ -137,7 +137,7 @@ public static class NativeChat
         if (entry.Rendered != null && entry.RenderedInk == hex) return entry.Rendered;
         string body = ChatSystemType is { } type && Native.Call(type, "RenderText", entry.Text, hex) is string text
             ? text : $"[color=#{hex}]{ClassicChatFormat.Esc(entry.Text)}[/color]";
-        entry.Rendered = ClassicChatFormat.Line(entry.Type, entry.Name, entry.Nation, entry.Gm, entry.Text, hex, body, links: true, place: entry.Place);
+        entry.Rendered = ClassicChatFormat.Line(entry.Type, entry.Name, entry.Nation, entry.Gm, entry.Text, hex, body, links: true);
         entry.RenderedInk = hex;
         return entry.Rendered;
     }

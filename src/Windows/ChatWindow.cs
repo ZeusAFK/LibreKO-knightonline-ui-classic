@@ -15,12 +15,16 @@ public partial class ChatWindow : Control
         ("All", ""), ("Private", "@"), ("Shout", "!"), ("Party", "#"),
         ("Clan", "$"), ("Noah", "|"), ("Nation", "%"), ("Alliance", "&"),
     };
-    /// <summary>Every chat category, including the Noah Knights and chat room lines of 3277df5.</summary>
+    /// <summary>
+    /// Every chat category, as the client's <c>ChatCategory.All</c>. It still holds the chat room bit, although room
+    /// lines stay in the room window since ff78eef.
+    /// </summary>
     public const int AllCategories = (int)LibreKO.Domain.ChatCategory.All;
     private const int FilterRevision = 2;
     /// <summary>The Noah Knights tab shows only for Noah Knights, and hides Clan and Alliance for them (the client's rule).</summary>
     public static bool Applies(string prefix, bool noahKnight) => prefix switch { "|" => noahKnight, "$" or "&" => !noahKnight, _ => true };
-    private const string PrefixChars = "@!#$%&~|\\/+";
+    /// <summary>The client's chat prefixes (<c>ChatPrefixes</c>, ff78eef dropped the chat room's <c>\</c>) and commands.</summary>
+    private const string PrefixChars = "@!#$%&~|/+";
     private readonly PluginGame _game = Plugin.Kit.Game;
     private readonly LogText _log;
     private readonly ClassicScrollRail _rail;
@@ -135,7 +139,8 @@ public partial class ChatWindow : Control
 
     /// <summary>
     /// The saved category filter. Filters saved before the Noah Knights and chat room categories existed (masked
-    /// with 1023) gain both where they show General, as the client's own chat preferences do (rev 2).
+    /// with 1023) gain both where they show General, as the client's own chat preferences do (rev 2). No room line
+    /// reaches the chat since ff78eef, so the chat room bit only keeps the filter equal to the client's.
     /// </summary>
     private static int LoadFilter()
     {

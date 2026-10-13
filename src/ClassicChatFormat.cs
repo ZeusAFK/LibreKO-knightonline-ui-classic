@@ -3,6 +3,10 @@ namespace KnightOnlineUiClassic;
 /// <summary>Original channel tags, channel colours and nation name colours of the Classic chat log.</summary>
 public static class ClassicChatFormat
 {
+    /// <summary>
+    /// The tag and ink of a chat type. Chat room lines (33) stay in the room window since ff78eef and no longer
+    /// reach the chat log; their entry remains because the client keeps the type, its category and its colour slot.
+    /// </summary>
     public static (string Tag, string Color) Channel(byte type) => type switch
     {
         2 => ("whisper", "ff7ad9"), 3 => ("party", "5fd95f"),
@@ -21,8 +25,7 @@ public static class ClassicChatFormat
     /// <summary>The channel slot a custom colour overrides (General, Shout, Party, Clan, Alliance), or -1.</summary>
     public static int ColourSlot(byte type) => type switch { 1 => 0, 5 => 1, 3 => 2, 6 => 3, 15 => 4, _ => -1 };
 
-    /// <param name="place">The zone a chat room line was written from (3277df5), shown as <c>[ Zone ]</c> before the name.</param>
-    public static string Line(byte type, string name, int nation, bool gm, string text, string? ink = null, string? body = null, bool links = false, string place = "")
+    public static string Line(byte type, string name, int nation, bool gm, string text, string? ink = null, string? body = null, bool links = false)
     {
         var (tag, color) = Channel(type, nation);
         color = ink ?? color;
@@ -32,9 +35,7 @@ public static class ClassicChatFormat
         string nameColor = gm ? "ffd24a" : nation switch { 1 => "e06666", 2 => "6fa8ff", _ => "dddddd" };
         string nameText = $"[color=#{nameColor}]{Esc(name)}[/color]";
         if (links && name.IndexOfAny(new[] { '[', ']' }) < 0) nameText = $"[url=p:{name}]{nameText}[/url]";
-        return (tag.Length > 0 ? $"[color=#{color}][lb]{tag}[rb] [/color]" : "")
-            + (place.Length > 0 ? $"[color=#{color}][lb] {Esc(place)} [rb][/color] " : "")
-            + nameText + ": " + body;
+        return (tag.Length > 0 ? $"[color=#{color}][lb]{tag}[rb] [/color]" : "") + nameText + ": " + body;
     }
 
     /// <summary>Escapes player text so it cannot open BBCode tags.</summary>
