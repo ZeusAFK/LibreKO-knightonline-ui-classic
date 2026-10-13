@@ -245,7 +245,7 @@ public static class NativeWhispers
         if (window.GetParent() is not CanvasLayer layer || layer.HasMeta("classic_whisper_popups")) return;
         layer.SetMeta("classic_whisper_popups", true);
         foreach (var popup in layer.GetChildren().OfType<PopupPanel>()) style(popup);
-        layer.ChildEnteredTree += node => { if (node is PopupPanel popup) Callable.From(() => { if (GodotObject.IsInstanceValid(popup)) style(popup); }).CallDeferred(); };
+        layer.ChildEnteredTree += node => { if (node is PopupPanel popup) Callable.From(() => { if (Plugin.Active && GodotObject.IsInstanceValid(popup)) style(popup); }).CallDeferred(); };
     }
 
     /// <summary>The conversation that Enter focuses, if any.</summary>

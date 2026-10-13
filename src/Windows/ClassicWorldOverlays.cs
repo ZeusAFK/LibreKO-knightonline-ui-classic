@@ -737,6 +737,9 @@ public partial class ClassicButtonCaption : Label
         TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         ClassicWorldOverlays.Text(this, size, ink, bold, shadow);
+        // The client recolours some buttons per state (the registration's Join and Cancel). Clearing that inside the
+        // client's own theme change keeps the caption the only text in every frame.
+        _button.ThemeChanged += HideNativeText;
         Sync();
     }
 
@@ -752,11 +755,17 @@ public partial class ClassicButtonCaption : Label
     {
         if (_button == null || !GodotObject.IsInstanceValid(_button)) return;
         if (Text != _button.Text) Text = _button.Text;
-        // The client recolours some buttons per state (the registration's Join and Cancel); the caption stays the only text.
-        foreach (var state in States)
-            if (_button.GetThemeColor(state).A > 0) _button.AddThemeColorOverride(state, Colors.Transparent);
+        HideNativeText();
         var ink = _button.Disabled ? _disabled : _ink;
         if (GetThemeColor("font_color") != ink) AddThemeColorOverride("font_color", ink);
+    }
+
+    // The alpha check ends the theme change that each override raises again.
+    private void HideNativeText()
+    {
+        if (!Plugin.Active || !GodotObject.IsInstanceValid(_button)) return;
+        foreach (var state in States)
+            if (_button.GetThemeColor(state).A > 0) _button.AddThemeColorOverride(state, Colors.Transparent);
     }
 }
 

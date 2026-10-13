@@ -151,14 +151,16 @@ list binds the party facade's `MemberBuffs`, `PingMs`, `LevelPercent` and `WarBo
 and `TextWrap`), so a build needs an upstream client from ff78eef on. Install a build made against the client it
 will run on.
 
-**Verified upstream.** The current plugin is verified against upstream `ff78eef` (bare and `classic-integration-ff78`,
-which has no extra branch now that the remaining fixes are merged upstream). The plugin facades it uses instead of
-reflection where they cover the same members: `IGameInventory` (`Move`, `MoveAmount`, tooltips, slots),
-`IGameParty` (rows, pick, member menu, row order, row meter, re-invite, war board mode and cooldown, member buffs,
-ping and level progress, user vote), `IGameUserVote`, `IGameRepurchase`, `IGameUserInfo`, `IGameChat.History`,
-`IGameWindows`, `IGameCommands` and `IGameCharacter`. The ff78eef changes are in the sections "Changed shapes",
-"Stack split and storage amounts", "Party HUD and War Board" and "Chat after room lines left the main chat on
-upstream ff78eef".
+**Verified upstream.** The current plugin is verified against upstream `fa3cfc3` (bare and `classic-integration-fa3c`,
+which has no extra branch). It still builds against `ff78eef`, where the fa3cfc3 paths find their members missing
+and keep the earlier ones (the whisper log, input and "Send", the room's named controls, `_bifrostRemaining` and
+`_isEventRegistered`). The plugin facades it uses instead of reflection where they cover the same members:
+`IGameInventory` (`Move`, `MoveAmount`, tooltips, slots), `IGameParty` (rows, pick, member menu, row order, row
+meter, re-invite, war board mode and cooldown, member buffs, ping and level progress, user vote), `IGameUserVote`,
+`IGameRepurchase`, `IGameUserInfo`, `IGameChat.History`, `IGameWhispers.History`, `IGameWindows`, `IGameCommands`
+and `IGameCharacter`. The ff78eef changes are in the sections "Changed shapes", "Stack split and storage amounts",
+"Party HUD and War Board" and "Chat after room lines left the main chat on upstream ff78eef"; the fa3cfc3 changes
+are in "Changed shapes on upstream fa3cfc3" and the four sections after it.
 
 ## 3. Reflected client members
 
@@ -572,9 +574,9 @@ and `ChatEntry.Place`. `ChatCategories.Each` no longer lists `ChatCategory.ChatR
 ### Changed shapes on upstream fa3cfc3
 
 Upstream fa3cfc3 (events on the USKO timetable, a new events window, chat reactions, whispers on the room thread)
-changed these members. The two compile breaks and the one run-time break below are fixed; the rest belong to the
-areas of the fa3cfc3 port (`research/upstream-fa3c/triage.md`) and degrade, log once and keep the native look
-until then.
+changed these members. The two compile breaks and the one run-time break are fixed in place; the window changes are
+covered by the four sections that follow (events and sign-ups, chat room, whispers and the Private tab, skill bar).
+On a client before fa3cfc3 the new members are missing: each path checks for them and keeps the earlier one.
 
 | Member | Kind | Used for |
 | --- | --- | --- |
@@ -597,7 +599,7 @@ by the shape the client builds; no member is reflected) and the registration rea
 | `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft(type, utc)`), `World.BifrostSecondsLeft(utc)` | P/M | `NativeOverlays.SignUpState`: the shown sign-up's seconds (with none open, the plain Bifrost countdown), registered = `Registered == Current != None`, registered elsewhere = another open sign-up, read only while the box or the plaque is shown. The registration box and the countdown plaque turn urgent (red bar and ink) and registered (Ready ink, Cancel); registered elsewhere shows the client's "You are registered for ..." in the muted ink with Close alone. Clients without `Net.SignUps` keep reading `_bifrostRemaining` and `_isEventRegistered` |
 | Events window: the filter row (two `ButtonGroup` tabs and the "Only my level" toggle), the 640-pixel `ScrollContainer` list, the cards (`PanelContainer` column: glyph tile, name and level band, description, status with Join or Open, time chips, weekday pills), the shift and empty labels | Shape | Cards on the quest inset (lit while live), glyphs on the nation inventory cell, time chips and weekdays as small insets, tabs on the chat tab art, the check on the chat check socket, Join/Open as the service button. The status ink the client rewrites every second is mapped to the event inks; the list takes its cards' height up to the client's 470 pixels, so loading and empty are a 668x144 box. Every native callback stays (tab and filter `Toggled`, Join to `ShowSignUp(type)`, Open to `ToggleLottery`) |
 | `UiTheme.UnderlineTabButton` underline (`ColorRect` child) | Look | Drawn transparent; the chat tab art shows the chosen page |
-| `_joinModalBtn` font colour (the client recolours Join and Cancel per state) | Look | `ClassicButtonCaption` keeps the native text transparent, so only the art caption draws (fixes a doubled "Cancel"/"Join") |
+| `_joinModalBtn` font colour (the client recolours Join and Cancel per state) | Look | `ClassicButtonCaption` keeps the native text transparent, so only the art caption draws (fixes a doubled "Cancel"/"Join"). It clears the client's colour inside the button's own `ThemeChanged` (raised by `AddThemeColorOverride`), so no frame draws the native text |
 | `World.FormatModalTitle` (`ToUpper()` with the system culture) | Look | On a Turkish system "Juraid" becomes "JURAİD"; the Classic registration title keeps the English capitals |
 
 The whole event family now gives its windows the original tooltip look (co_tooltip_us), and its restyle skips
@@ -622,8 +624,8 @@ covers the thread, the composer or the reactions, and the plugin subscribes no r
 | `_roomThread` (`ChatThreadView : ScrollContainer`), its `_log` and `_older` | F | Named `room_log_scroll`, `room_log`, `room_older`: the Classic log field and scroll bar, the post rows dressed as they arrive, the Classic "Load older messages" |
 | `_roomComposer` (`ChatComposer : HBoxContainer`), its `_field`, `Input` (property), `_record`, `_send`, `_strip`, `_clock`, `_level` | F | Named `room_composer_row`, `room_field`, `room_input`, `room_record`, `room_send`, `room_record_strip`, `room_record_clock`, `room_record_level`: Classic field, cells, recording strip and meter. The composer widens its input style for the emoticon button each time it enters the tree; the Classic field keeps its own room |
 | `ChatThreadView` row shape: `MarginContainer` > `HBoxContainer` (alignment = side) > react slot `CenterContainer` > `Button` and stack `VBoxContainer` > bubble `PanelContainer`, pill holder `MarginContainer` > `HBoxContainer` > pill `PanelContainer`; day chips `MarginContainer` > `CenterContainer` > `PanelContainer`; notices `CenterContainer` (a `RichTextLabel` when they carry web links); `NoteRow` play `Button`, `VoiceWaveformView`, `NoteDownloadRing` | Look | `ClassicChatRoomSkin.StylePost`: Classic bubbles and sender colours as before, the react button in the original item cell (`ReactCell`, no longer flat so the cell shows), the reaction pill as a Classic chip (`Pill`; the client swaps its own hover style in on enter and exit, so the Classic one follows), Classic day chips and notices. `ReactCell` and `Pill` are public for the whisper skin |
-| The composer's `EmoticonPicker` (now the composer's own child) | F | Watched like the room layer; dressed synchronously before the client sizes and places it |
-| `World._reactionLayer` with `ReactionBar`, `ReactionDetails` and the reaction `EmoticonPicker` (matched by type name; they exist since fa3cfc3) | F | `ClassicReactionStyle`: opaque Classic menu panel with the client's padding; the bar's picks on the Classic menu hover and the current reaction in the gold selection frame (re-marked on `AboutToPopup` after the client's `ShowAbove`; the client's picks are flat, so its own marks never showed); the card's heading, filter chips (chosen chip in the gold selection frame), gold rule, Classic scroll bar and member rows (initial in the original item cell in the sender colour, Arial Bold name, "Click to remove" in the muted ink, Classic list hover) dressed again on every fill; the pickers' tabs as Classic toggles and the emoji on the Classic hover |
+| The composer's `EmoticonPicker` (now the composer's own child) | F | Watched like the room layer; dressed synchronously before the client sizes and places it. The whisper composer's picker takes the same `ClassicReactionStyle` look |
+| `World._reactionLayer` with `ReactionBar`, `ReactionDetails` and the reaction `EmoticonPicker` (matched by type name; they exist since fa3cfc3) | F | `ClassicReactionStyle`: opaque Classic menu panel with the client's padding; the bar's picks on the Classic menu hover and the current reaction in the gold selection frame (re-marked on `AboutToPopup` after the client's `ShowAbove`; the client's picks are flat, so its own marks never showed); the card's heading, filter chips (chosen chip in the gold selection frame; the count in Arial Bold, a Unicode emoji glyph at the client's 14 px), gold rule, Classic scroll bar and member rows (initial in the original item cell in the sender colour, Arial Bold name, "Click to remove" in the muted ink, Classic list hover) dressed again on every fill; the pickers' tabs as Classic toggles and the emoji on the Classic hover |
 | `_roomConfigKeep`, `_roomPushToTalk`, `_roomPeerMute` (`UiTheme.FlatCheck`, per-control SVG check icons since fa3cfc3) | F/Look | `ClassicChatRoomSkin.StylePopup` puts the original `{nation}_chat_us` check box (`btn_check_normal`) on every popup check; "Keep the room" keeps the client's autowrap inside the card |
 | `_roomVolume`, `_roomPeerVolume` (`VoiceLevels.MaxVolume` 2, "up to 200%") | Look | Classic slider unchanged; the range and the tooltip stay the client's |
 | `_ncPriJoin` (removed; a double-click on a row enters) | F | Preview only: `chat-room-audit` enters rooms of both nations by double-click |
@@ -640,7 +642,7 @@ composer, and the plugin subscribes no thread, composer or voice event (it conne
 | --- | --- | --- |
 | `ChatThreadView` (`ScrollContainer`): `_log`, `_older`, `_rows` (`PostRow.Root` keyed by `RoomPost`); public `Pinned`, `ShowReactButton`, `ScrollToEnd`, `OlderRequested` | F | The thread fills the original log area. Its rows are restyled in place as they enter `_log` (once per batch, at the end of the frame) and are never replaced, because the thread refreshes reactions and voice notes through them. `_rows` maps a row to its post for the line's text, ink and time. "Load older messages" is the Classic action button |
 | Row tree of `BuildPost`, `BuildNote`, `BuildNotice` and `DayChip` | Look | The restyle walks it: the line `HBoxContainer` (end-aligned for own posts) holds the react slot and the stack; the stack holds the bubble (column with the text and time, or the note: play `Button`, `VoiceWaveformView`, clock `Label`) and the pill holder. Result: no bubble or time stamp (the time is the line's tooltip), own lines white on the right, the partner cyan on the left, notices yellow, the react button a title-bar icon in a 14 px cell beside the first line, reactions on a gold-line chip, a voice note as a play cell, waveform and clock on one line, day markers as small chips. A row whose tree changes keeps the client's look |
-| `ChatComposer` (`HBoxContainer`): `Input`, `_field`, `_strip`, `_record`, `_send`, and the `EmoticonPicker` it adds as its own child | F | The field (with the input) sits in the original edit field, and the composer still hides it while a note records. The input's 20 px emoticon button (`EmoticonPicker.InputButton`) becomes a 12 px button on the dark band of the original edit art, level with the send and record cells. The record button sits in a cell that mirrors the send cell, and the recording strip covers the edit band. The original send cell runs `_send` and is off while the composer hides it. The picker gets the Classic menu panel |
+| `ChatComposer` (`HBoxContainer`): `Input`, `_field`, `_strip`, `_record`, `_send`, and the `EmoticonPicker` it adds as its own child | F | The field (with the input) sits in the original edit field, and the composer still hides it while a note records. The input's 20 px emoticon button (`EmoticonPicker.InputButton`) becomes a 12 px button on the dark band of the original edit art, level with the send and record cells. The record button sits in a cell that mirrors the send cell, and the recording strip covers the edit band. The original send cell runs `_send` and is off while the composer hides it; its art has no disabled image, so it takes the Classic cells' disabled tint (0.55). The picker has the room picker's look (`ClassicReactionStyle`) |
 | `World+WhisperChat.Composer` (`Input` is now a property that reads it) | F | Compose target, focus, and the "after sending, leave the input" hook (`_send.Pressed`, `Input.TextSubmitted`). Older clients keep `Input`, `Log` and the "Send" caption |
 | `WhisperChat.HeaderIcons` (hidden while minimized) | Look | The Classic title-bar actions follow it across minimize and restore |
 | `Config.WhisperSize` (`BubbleMax`, the thread's minimum size) | Look | The original frame keeps its log area (pinned every frame) and lines wrap at the log width |

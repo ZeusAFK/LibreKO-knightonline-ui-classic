@@ -19,8 +19,11 @@ public static class ClassicWhisperLayout
     /// </summary>
     public const float EmoticonSize = 12, EmoticonInset = 5, EmoticonRoom = EmoticonSize + EmoticonInset * 2;
 
-    /// <summary>Record (and, while recording, send-the-note) cell: btn_chat's 12 px cell, 3 px inside the right edge.</summary>
+    /// <summary>Record (and, while recording, send-the-note) cell: btn_chat's 12 px cell, flush with the right frame border, mirroring btn_chat on the left.</summary>
     public static readonly Rect2 Record = new(288, 136, 12, 12);
+
+    /// <summary>The Classic cells' disabled tint, for the send cell while a voice note records.</summary>
+    public static readonly Color DisabledTint = new(.55f, .55f, .55f);
     /// <summary>Recording strip (dot, clock, level, cancel) on the edit field's text line: one ChatStrong line, 131..150.</summary>
     public static readonly Rect2 Strip = new(16, 131, 269, 19);
     public const int StripGap = 4;

@@ -124,7 +124,7 @@ public static class ClassicWhisperSkin
         // fa3cfc3: the composer opens its emoticon picker as its own child, outside the whisper layer.
         if(parts!=null)
             parts.Composer.ChildEnteredTree+=node=> {
-                if(node is PopupPanel popup) Callable.From(()=> { if(GodotObject.IsInstanceValid(popup)) Popup(popup); }).CallDeferred();
+                if(node is PopupPanel popup) Callable.From(()=> { if(Plugin.Active && GodotObject.IsInstanceValid(popup)) Popup(popup); }).CallDeferred();
             };
         var attention=new ClassicWhisperAttention(compactBar,compact.Get<Label>("exit_id")!);
         surface.AddChild(attention);
@@ -157,6 +157,7 @@ public static class ClassicWhisperSkin
         var textStyle=edit.Strings.First();
         void StyleInput()
         {
+            if(!Plugin.Active || !GodotObject.IsInstanceValid(input)) return;
             // The client's emoticon button sits inside the right end of the input; the text stops before it.
             foreach(var state in new[]{"normal","focus","read_only"})
                 input.AddThemeStyleboxOverride(state,new StyleBoxEmpty { ContentMarginTop=textStyle.Y-edit.Y,ContentMarginRight=ClassicWhisperLayout.EmoticonRoom });
@@ -188,7 +189,10 @@ public static class ClassicWhisperSkin
         NativeWindows.Sync(window,()=> {
             if(scroll.CustomMinimumSize!=Vector2.Zero) scroll.CustomMinimumSize=Vector2.Zero;
             if(scroll.Size!=logArea.SizeVec) scroll.Size=logArea.SizeVec;
-            classicSend.Disabled=!nativeSend.Visible;
+            // The original send art has no disabled image; while a voice note records the cell takes the Classic
+            // cells' disabled tint.
+            bool off=!nativeSend.Visible;
+            if(classicSend.Disabled!=off) { classicSend.Disabled=off; classicSend.SelfModulate=off ? ClassicWhisperLayout.DisabledTint:Colors.White; }
         });
 
         BindScroll(expanded,open.Find("scroll")!,scroll.GetVScrollBar(),kit.ChatStrong.GetHeight(13));
@@ -294,6 +298,8 @@ public static class ClassicWhisperSkin
     /// <summary>The client's size and transparency popup and its emoticon picker on the Classic menu panel.</summary>
     public static void Popup(PopupPanel popup)
     {
+        // The emoticon picker is the client's shared type (room composer, whisper composer, reactions): one Classic look.
+        if(ClassicReactionStyle.Owns(popup)) { ClassicReactionStyle.Apply(popup); return; }
         if(popup.HasMeta("classic_popup")) return;
         popup.SetMeta("classic_popup",true);
         var panel=ClassicDesign.InputBox(); panel.BgColor=new Color(0,0,0,.94f); panel.SetContentMarginAll(6);
@@ -386,7 +392,7 @@ public static class ClassicWhisperThread
         var pending=new List<Control>();
         void Flush()
         {
-            if(!GodotObject.IsInstanceValid(thread)) { pending.Clear(); return; }
+            if(!Plugin.Active || !GodotObject.IsInstanceValid(thread)) { pending.Clear(); return; }
             var posts=NativeWhispers.Posts(thread);
             foreach(var row in pending)
                 if(GodotObject.IsInstanceValid(row) && !row.IsQueuedForDeletion()) Row(row,posts,width);
@@ -527,8 +533,8 @@ public static class ClassicWhisperThread
             pill.Name="whisper_reactions";
             pill.AddThemeStyleboxOverride("panel",Chip(false));
             // The client swaps the pill's style on hover; the Classic chip follows (connected after the client's).
-            pill.MouseEntered+=()=>pill.AddThemeStyleboxOverride("panel",Chip(true));
-            pill.MouseExited+=()=>pill.AddThemeStyleboxOverride("panel",Chip(false));
+            pill.MouseEntered+=()=> { if(Plugin.Active && GodotObject.IsInstanceValid(pill)) pill.AddThemeStyleboxOverride("panel",Chip(true)); };
+            pill.MouseExited+=()=> { if(Plugin.Active && GodotObject.IsInstanceValid(pill)) pill.AddThemeStyleboxOverride("panel",Chip(false)); };
             foreach(var count in pill.GetChildren().OfType<HBoxContainer>().SelectMany(l=>l.GetChildren().OfType<Label>()))
             {
                 count.Name="whisper_reaction_count";

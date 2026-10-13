@@ -329,6 +329,27 @@ public partial class Preview
             tipLayer.QueueFree();
             Done(opened);
         }
+        // A notice with a web link (the client's RichTextLabel branch): Arial Bold in the notice yellow, sized for the
+        // Classic font inside the log, the link still clickable.
+        {
+            var opened = await Open("text"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
+            const string url = "https://libreko.example/siege";
+            DetailCall(world, "ChatRoomNotice", "Siege plan: " + url);
+            await Frames(6);
+            var linkedNotice = Descendants(frame).OfType<RichTextLabel>().SingleOrDefault(r => r.Name == "room_notice_link");
+            Require(linkedNotice != null && linkedNotice.Text.Contains("[url=" + url + "]"), "notice-link: the notice with a web link is restyled");
+            Require(linkedNotice!.GetThemeFont("normal_font") == Plugin.Kit.Bold && linkedNotice.GetThemeFontSize("normal_font_size") == Spec.NoticeSize, "notice-link: Arial Bold at the notice size");
+            Require(linkedNotice.Text.Contains("[color=#" + ClassicChatRoomSkin.NoticeInk.ToHtml(false) + "]") && !linkedNotice.Text.Contains("[color=#" + UiTheme.TextLo.ToHtml(false) + "]"), "notice-link: the notice yellow replaces the client's muted ink");
+            Require(linkedNotice.GetSignalConnectionList(RichTextLabel.SignalName.MetaClicked).Count > 0, "notice-link: the client's link handler stays connected");
+            var logScroll = Named<ScrollContainer>(frame, "room_log_scroll");
+            logScroll.EnsureControlVisible(linkedNotice); await Frames(4);
+            float textWidth = Plugin.Kit.Bold.GetStringSize(linkedNotice.GetParsedText(), HorizontalAlignment.Left, -1, Spec.NoticeSize).X;
+            var at = linkedNotice.GetGlobalRect();
+            Require(at.Size.X >= textWidth && linkedNotice.GetContentHeight() <= at.Size.Y + 0.5f, "notice-link: the whole notice shows on its line " + at + " text " + textWidth);
+            Require(logScroll.GetGlobalRect().Grow(1).Encloses(at), "notice-link: inside the log " + at + " / " + logScroll.GetGlobalRect());
+            await Capture(window, "notice-link");
+            Done(opened);
+        }
         // Leader in a call: in-call controls, selected and speaking roster rows, enabled leader actions.
         {
             var opened = await Open("voice"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
@@ -490,6 +511,14 @@ public partial class Preview
             var tally = post.Reactions.Tally();
             Require(Chips().Length == tally.Count && Chips().All(c => c.Name.ToString().StartsWith("reaction_chip") && !c.GetMeta("reaction_chosen").AsBool()
                 && c.GetThemeStylebox("panel") is StyleBoxFlat { CornerRadiusTopLeft: 0 } box && box.BorderColor == ClassicDarkFrame.Line), "reactions: a Classic chip per emoji, none chosen (" + tally.Count + ")");
+            foreach (var chip in Chips())
+            {
+                var chipLine = (HBoxContainer)chip.GetChild(0);
+                var count = chipLine.GetChild<Label>(chipLine.GetChildCount() - 1);
+                Require(count.Name == "reaction_chip_count" && count.GetThemeFont("font") == Plugin.Kit.Bold && count.GetThemeFontSize("font_size") == Spec.FontSize, "reactions: chip count in Arial Bold " + count.Text);
+                if (chipLine.GetChild(0) is Label glyph)
+                    Require(glyph.GetThemeFont("font") != Plugin.Kit.Bold && glyph.GetThemeFontSize("font_size") == 14, "reactions: the chip emoji keeps the client's glyph size " + glyph.Text);
+            }
             var add = Named<Button>(card, "reaction_add");
             Require(add.GetThemeStylebox("normal") is StyleBoxFlat { BorderColor: var addLine } && addLine == ClassicDarkFrame.Line && add.Icon != null, "reactions: the add button is a Classic chip");
             void CheckRows(string state, int count)

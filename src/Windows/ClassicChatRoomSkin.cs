@@ -776,10 +776,13 @@ public static class ClassicReactionStyle
         bool chosen = chip.GetThemeStylebox("panel") is StyleBoxFlat native && native.BgColor.A > .1f;
         chip.AddThemeStyleboxOverride("panel", ChipBox(chosen));
         chip.SetMeta("reaction_chosen", chosen);
-        foreach (var number in ClassicSocialStyle.Descendants(chip).OfType<Label>().Where(l => l.GetParent()?.GetParent() == chip))
+        // The count is the line's last label; a Unicode emoji glyph (also a label) keeps the client's chip size and ink.
+        if (chip.GetChildCount() > 0 && chip.GetChild(0) is HBoxContainer line && line.GetChildCount() > 1
+            && line.GetChild(line.GetChildCount() - 1) is Label number)
         {
             ClassicSocialStyle.Font(number, true, Spec.FontSize);
             number.AddThemeColorOverride("font_color", chosen ? ClassicDarkFrame.Heading : ClassicDesign.Text);
+            number.Name = "reaction_chip_count";
         }
         chip.Name = "reaction_chip";
     }

@@ -246,7 +246,7 @@ public partial class Preview
             composer.ChildEnteredTree += node => { if (node is EmoticonPicker added) added.AboutToPopup += () => popped = true; };
             emoticons.EmitSignal(BaseButton.SignalName.Pressed); await Frames(4);
             var picker = Descendants(this).OfType<EmoticonPicker>().Single();
-            Require(popped && picker.GetParent() == composer && picker.HasMeta("classic_popup") && picker.GetThemeStylebox("panel") is StyleBoxFlat, "whisper: the composer's emoticon picker opens on the Classic menu panel");
+            Require(popped && picker.GetParent() == composer && picker.HasMeta("classic_popup") && picker.HasMeta(ClassicReactionStyle.StyledMeta) && picker.GetThemeStylebox("panel") is StyleBoxFlat, "whisper: the composer's emoticon picker opens on the Classic menu panel, in the room picker's look");
             if (!picker.Visible) { picker.Popup(); await Frames(2); }
             await Shot("whisper-emoticons", window);
             picker.Hide();
@@ -263,10 +263,10 @@ public partial class Preview
             Require(strip.IsVisibleInTree() && !input.IsVisibleInTree() && strip.GetRect() == ClassicWhisperLayout.Strip, "whisper: while a note records the strip replaces the input " + strip.GetRect());
             Require(strip.GetChildren().OfType<Control>().Where(c => c.Visible).All(c => new Rect2(Vector2.Zero, strip.Size).Encloses(c.GetRect())) && strip.GetChildren().OfType<Control>().Count(c => c.Visible) == 4,
                 "whisper: the dot, clock, level and cancel fit the strip " + string.Join(",", strip.GetChildren().OfType<Control>().Select(c => c.GetRect().ToString())));
-            Require(classicSend.Disabled && record.IsVisibleInTree(), "whisper: while a note records the record cell stays and the send cell is off");
+            Require(classicSend.Disabled && classicSend.SelfModulate == ClassicWhisperLayout.DisabledTint && record.IsVisibleInTree(), "whisper: while a note records the record cell stays and the send cell is off, in the Classic disabled tint");
             await Shot("whisper-recording", window);
             composer.RefreshRecording(); await Frames(3);
-            Require(!strip.IsVisibleInTree() && input.IsVisibleInTree() && !classicSend.Disabled, "whisper: after recording the input and the send cell return");
+            Require(!strip.IsVisibleInTree() && input.IsVisibleInTree() && !classicSend.Disabled && classicSend.SelfModulate == Colors.White, "whisper: after recording the input and the send cell return");
 
             // Minimize and restore: the client hides its header icons while minimized; restored they are back on the bar.
             window.SetMinimized(true); await Frames(3);

@@ -30,8 +30,17 @@ public partial class Preview
         }
         async Task Hover(Control control)
         {
-            var p = control.GetGlobalRect().GetCenter();
-            GetViewport().PushInput(new InputEventMouseMotion { Position = p, GlobalPosition = p }, true); await Frames(2);
+            // Another window's focus or mouse change can drop the hover: move again, up to three times.
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                var p = control.GetGlobalRect().GetCenter() + new Vector2(attempt, 0);
+                GetViewport().PushInput(new InputEventMouseMotion { Position = p, GlobalPosition = p }, true); await Frames(2);
+                if (control is not BaseButton button || button.Disabled) return;
+                ulong until = Time.GetTicksMsec() + 1500;
+                while (button.GetDrawMode() != BaseButton.DrawMode.Hover && Time.GetTicksMsec() < until) await Frames(1);
+                if (button.GetDrawMode() == BaseButton.DrawMode.Hover) return;
+                if (attempt < 2) GD.Print($"EVENTS_A hover attempt {attempt + 2} on {control.Name}");
+            }
         }
         async Task Click(Control control)
         {
@@ -227,7 +236,7 @@ public partial class Preview
             Require(center.GetNode<TextureRect>("icon").Texture == ItemData.Icon(PreviewFixtures.EventsPreviewItem)
                 && Find<Label>(panel, "roulette_result").Text == $"You won {ItemData.DisplayName(PreviewFixtures.EventsPreviewItem)}!", "Item prize lands with its icon and item name");
             await Capture(window, panel, "roulette", "item-prize");
-            await Hover(panel.CloseButton!); await Capture(window, panel, "roulette", "close-hover");
+            await Hover(panel.CloseButton!); Require(panel.CloseButton!.GetDrawMode() == BaseButton.DrawMode.Hover, "Roulette close receives real hover"); await Capture(window, panel, "roulette", "close-hover");
             await Click(panel.CloseButton!);
             Require(!window.Visible && !(bool)DetailField(world, "_rouletteShown")!, "Close uses the native close handler");
             layer.Free(); world.Free(); await Frames();
@@ -244,7 +253,7 @@ public partial class Preview
             Require(Find<Label>(panel, "tournament_value_0").Text == "2" && Find<Label>(panel, "tournament_value_1").Text == "12" && !register.Disabled && unregister.Disabled,
                 "Round, participants and registration buttons follow the native status");
             await Capture(window, panel, "tournament", "open");
-            await Hover(register); await Capture(window, panel, "tournament", "register-hover");
+            await Hover(register); Require(register.GetDrawMode() == BaseButton.DrawMode.Hover, "Tournament Register receives real hover"); await Capture(window, panel, "tournament", "register-hover");
             await Click(register);
             Require(register.Disabled && unregister.Disabled && NativeEventWindows.Tournament(world).PendingSince != 0, "Register sends the native request and waits for the arena");
             await Capture(window, panel, "tournament", "pending");
