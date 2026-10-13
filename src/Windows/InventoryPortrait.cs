@@ -128,12 +128,13 @@ public partial class InventoryPortrait : SubViewportContainer
             for(int i=0;i<8;i++) yield return mesh.GlobalTransform*mesh.GetAabb().GetEndpoint(i);
             yield break;
         }
+        var poses=KnightOnlineUiClassic.Native.LookFraming.ShownBonePoses(skeleton);
         var transforms=new Transform3D[skin.GetBindCount()];
         for(int bind=0;bind<transforms.Length;bind++)
         {
             var name=skin.GetBindName(bind);
             int bone=name.IsEmpty?skin.GetBindBone(bind):skeleton.FindBone(name);
-            transforms[bind]=bone>=0?skeleton.GlobalTransform*skeleton.GetBoneGlobalPose(bone)*skin.GetBindPose(bind):mesh.GlobalTransform;
+            transforms[bind]=bone>=0&&bone<poses.Length?skeleton.GlobalTransform*poses[bone]*skin.GetBindPose(bind):mesh.GlobalTransform;
         }
         for(int surface=0;surface<mesh.Mesh!.GetSurfaceCount();surface++)
         {

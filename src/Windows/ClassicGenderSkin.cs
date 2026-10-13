@@ -64,7 +64,7 @@ public partial class ClassicGenderPanel : Control
         }
         var editor = Find<LookEditor>("look_editor"); Place(editor, _transfer ? ClassicNationTransferLayout.Editor : _beauty ? ClassicBeautyLayout.Editor : ClassicGenderLayout.Editor);
         editor.AddThemeConstantOverride("separation", 8);
-        // The Beauty Shop editor has no race list.
+        // The Beauty Shop editor shows no race list (since ff78eef it holds a hidden one).
         if (native.OfType<VBoxContainer>().SingleOrDefault(c => c.Name == "look_races") is { } races)
         {
             races.AddThemeConstantOverride("separation", 4);

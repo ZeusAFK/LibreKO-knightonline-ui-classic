@@ -91,7 +91,10 @@ public partial class Preview
                 if (label.AutowrapMode == TextServer.AutowrapMode.Off)
                     Require(label.GetThemeFont("font").GetStringSize(label.Text, HorizontalAlignment.Left, -1, 13).X <= label.Size.X, state + " complete label text " + label.Text);
             }
-            Require(Descendants(editor).OfType<VBoxContainer>().All(v => v.Name != "look_races") && editor.Race == net.LastEnter.Race, state + " beauty cannot change race");
+            // Since ff78eef the client keeps the race list in the Beauty Shop editor, hidden (it no longer leaks it).
+            Require(Descendants(editor).OfType<VBoxContainer>().Where(v => v.Name == "look_races").All(v => !v.IsVisibleInTree())
+                && !Descendants(editor).OfType<Label>().Any(l => l.Name == "look_race_heading" && l.IsVisibleInTree())
+                && editor.Race == net.LastEnter.Race, state + " beauty cannot change race");
             foreach (var part in new[] { "face", "hair" }) foreach (var side in new[] { "previous", "next" })
             {
                 var button = Find<Button>("look_" + part + "_" + side);
