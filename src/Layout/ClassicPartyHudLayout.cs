@@ -27,6 +27,21 @@ public static class ClassicPartyHudLayout
     public static readonly Rect2 Selection = new(6, 0, 112, 38);
     public static readonly Color MeterDamage = Color.Color8(182, 132, 13), MeterHealing = Color.Color8(29, 165, 162);
     /// <summary>
+    /// The member's buffs (ff78eef) on the name line: 14 px skill icons in the client's order, the row ending under
+    /// the bars' right end; the name keeps its width and gives way (ellipsis) only down to two icons.
+    /// </summary>
+    public const float BuffIcon = 14, BuffPitch = 15, BuffTop = 21, BuffEnd = 116, BuffGap = 4;
+    public const int BuffMinShown = 2, BuffMax = 7;
+    /// <summary>How many buff icons fit after a name of this width (at least <see cref="BuffMinShown"/>).</summary>
+    public static int BuffsShown(float nameWidth) =>
+        Math.Clamp((int)((BuffEnd - (Name.Position.X + Math.Min(nameWidth, Name.Size.X) + BuffGap)) / BuffPitch), BuffMinShown, BuffMax);
+    public static float NameWidth(int buffs) => buffs == 0 ? Name.Size.X : Math.Min(Name.Size.X, BuffEnd - BuffGap - buffs * BuffPitch - Name.Position.X);
+    public static Rect2 Buff(int index, int shown) => new(BuffEnd - (shown - index) * BuffPitch + (BuffPitch - BuffIcon), BuffTop, BuffIcon, BuffIcon);
+    /// <summary>The member's connection (ff78eef ping) in the arrow column beside the name line.</summary>
+    public static readonly Rect2 Signal = new(119, 22, 12, 11);
+    /// <summary>Tooltip line length in letters, the client's buff tooltip width.</summary>
+    public const int TipLetters = 44;
+    /// <summary>
     /// Move up and Move down (the client's own row order) at the cell's right edge beside the HP and MP bars,
     /// on the party board's up and down page arrows at a third of their size.
     /// </summary>
