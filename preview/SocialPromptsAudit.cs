@@ -11,8 +11,10 @@ public partial class Preview
     /// <summary>
     /// social-audit, second part: the prompt seams and the whisper window. The Classic player menu (client rows,
     /// row and outside-click close), the Classic text prompt (invite by name: submit, cancel, limits), the
-    /// friend-request consent on the Classic message box, and the Classic private-message frame with the
-    /// client's header actions, item links, emoticons and its emoticon and size popups.
+    /// friend-request consent on the Classic message box, and the Classic private-message frame on the client's
+    /// room thread and composer (fa3cfc3): header actions, the thread's rows in the retail one-line look, voice
+    /// notes, reactions, older history, Send, the record cell and strip, the emoticon and size popups, minimize and
+    /// restore, and an incoming voice note opening a minimized conversation.
     /// </summary>
     private async Task CaptureSocialPrompts(int nation, string output, Action<bool, string> Require, Func<int, Task> Frames, List<object> screens)
     {
@@ -92,30 +94,160 @@ public partial class Preview
             Descendants(box).OfType<BaseButton>().Single(c => c.Name == "btn_ok").EmitSignal(BaseButton.SignalName.Pressed); await Frames(2);
             Require(accepted, "friend request: OK accepts through the client");
         }
-        // Whisper: the client's conversation with header actions, item links and emoticons.
+        // Whisper (fa3cfc3): the conversation runs on the room's thread and composer. The Classic PM frame keeps the
+        // client's header actions; the thread's own rows are restyled in place into the retail one-line look; the
+        // original send cell runs the composer's Send (not "Load older messages"); the record cell, the recording
+        // strip and the composer's emoticon picker sit in the original frame.
         {
             var world = new World();
             var window = (HudWindow)DetailCall(world, "BuildWhisperUiPreview", false)!;
             var layer = (CanvasLayer)DetailField(world, "_whisperLayer")!;
             layer.Reparent(this); layer.AddChild(window); window.Visible = true;
-            KnightOnlineUiClassic.Native.NativeWhispers.Prepare(window, world);
+            var thread = Descendants(window.Body).OfType<ChatThreadView>().Single();
+            var composer = Descendants(window.Body).OfType<ChatComposer>().Single();
+            var input = composer.Input;
+            NativeWhispers.Prepare(window, world);
+            NativeWhispers.Prepare(window, world);
             await Frames(6); window.Position = new Vector2(360, 120); await Frames(3);
+            Require(window.GetChildren().Count(c => c.Name == "classic_whisper") == 1, "whisper: preparing a conversation twice keeps one Classic frame");
             var surface = (Control)window.FindChild("classic_whisper", true, false)!;
+            var expanded = (Control)thread.GetParent();
+            var open = Plugin.Kit.Layout("co_whisper_open_us");
             var actions = Descendants(surface).OfType<Button>().Where(b => b.Name.ToString().StartsWith("whisper_action_")).ToArray();
             Require(actions.Length == 3 && actions.All(a => a.IsVisibleInTree() && new Rect2(0, 0, 304, 24).Encloses(a.GetRect())), "whisper: the client's three header actions sit on the original title bar");
-            var title = Descendants(surface).OfType<Label>().First(l => l.Text == "Tester10" && l.IsVisibleInTree());
+            var title = Descendants(surface).OfType<Label>().First(l => l.Text == "Rikka" && l.IsVisibleInTree());
             Require(title.GetRect().End.X <= actions[0].Position.X, "whisper: the title stops before the header actions");
-            var lines = Descendants(surface).OfType<ScrollContainer>().Single().GetChild(0);
-            Require(lines.GetChildren().All(l => l.HasMeta("classic_whisper_line")) && lines.GetChildCount() == Net.I.WhisperHistory("Tester10").Count, "whisper: the whole history uses the Classic line builder");
-            // Item links and emoticons need the client's item and emoticon tables; the audit pack may lack them.
-            bool linked = Native.Call(Native.ClientType("LibreKO.ChatSystem")!, "RenderText", "x", "ffffff") is string && lines.GetChildren().OfType<Label>().All(l => !l.Text.Contains('\u0001'));
-            Require(linked, "whisper: plain lines carry no raw link tokens");
-            var rendered = KnightOnlineUiClassic.Native.NativeWhispers.Render("look (Smile)", "ffffff");
-            GD.Print("SOCIAL_AUDIT whisper rich lines: " + lines.GetChildren().OfType<RichTextLabel>().Count() + ", emoticon markup available: " + rendered.Contains("[img"));
+
+            // The thread fills the original log area; its rows stay the client's own rows (reactions and voice notes
+            // refresh them), restyled without bubbles or time stamps.
+            var logArea = new Rect2(open.Find("exit_chat")!.Position, open.Find("exit_chat")!.SizeVec);
+            Require(surface.IsAncestorOf(thread) && thread.GetRect() == logArea, "whisper: the client's thread fills the original log area " + thread.GetRect());
+            var log = Native.Get<VBoxContainer>(thread, "_log")!;
+            var timeline = Net.I.DirectTimeline("Rikka");
+            var posts = NativeWhispers.Posts(thread);
+            int self = (int)DetailField(world, "_myId")!;
+            Require(posts.Count == timeline.Posts.Count(p => p.Kind != LibreKO.Domain.RoomPostKind.Notice) && posts.Keys.All(r => r.GetParent() == log),
+                "whisper: every post keeps the thread's own row in its log (" + posts.Count + ")");
+            Require(log.GetChildren().All(r => r.HasMeta(ClassicWhisperThread.RowMeta)), "whisper: every row of the thread is restyled Classic");
+            var threadBox = thread.GetGlobalRect();
+            foreach (var (row, post) in posts)
+            {
+                var rowControl = (Control)row;
+                bool mine = post.SenderId == self;
+                var ink = mine ? ClassicWhisperThread.Mine : ClassicWhisperThread.Partner;
+                Require(rowControl.GetGlobalRect().Position.X >= threadBox.Position.X - .5f && rowControl.GetGlobalRect().End.X <= threadBox.End.X + .5f, "whisper: post " + post.Id + " stays within the log width " + rowControl.GetGlobalRect());
+                Require(Descendants(rowControl).OfType<PanelContainer>().First().GetThemeStylebox("panel") is StyleBoxEmpty, "whisper: post " + post.Id + " has no bubble");
+                Require(!Descendants(rowControl).OfType<Label>().Any(l => l.IsVisibleInTree() && l.Text == post.Time.ToString("HH:mm")), "whisper: post " + post.Id + " shows no time stamp");
+                if (post.Kind == LibreKO.Domain.RoomPostKind.VoiceNote)
+                {
+                    var play = Descendants(rowControl).OfType<Button>().Single(b => b.Name == "whisper_note_play");
+                    var wave = Descendants(rowControl).OfType<VoiceWaveformView>().Single();
+                    var clock = Descendants(rowControl).OfType<Label>().Single(l => l.Name == "whisper_note_clock");
+                    Require(play.HasMeta(ClassicChatRoomSkin.CellMeta) && play.Size == new Vector2(ClassicWhisperLayout.PlayCell, ClassicWhisperLayout.PlayCell) && wave.Played == ink && clock.GetThemeColor("font_color") == ink,
+                        "whisper: voice note " + post.Id + " has a Classic play cell and the line's ink");
+                    var (p, w, c) = (play.GetGlobalRect(), wave.GetGlobalRect(), clock.GetGlobalRect());
+                    Require(p.End.X <= w.Position.X && w.End.X <= c.Position.X && Math.Abs(p.GetCenter().Y - w.GetCenter().Y) <= 1 && Math.Abs(c.GetCenter().Y - w.GetCenter().Y) <= 2,
+                        "whisper: voice note " + post.Id + " plays, shows its waveform and its clock on one line " + p + " " + w + " " + c);
+                    Require(mine ? threadBox.End.X - c.End.X <= ClassicWhisperLayout.ReactCell + 4 : p.Position.X - threadBox.Position.X <= 1, "whisper: voice note " + post.Id + " keeps its side " + p + " " + c);
+                    continue;
+                }
+                var text = Descendants(rowControl).OfType<RichTextLabel>().Single();
+                Require(text.Text.Contains("[color=#" + ink.ToHtml(false) + "]") && text.HorizontalAlignment == (mine ? HorizontalAlignment.Right : HorizontalAlignment.Left) && text.GetThemeFont("normal_font") == Plugin.Kit.ChatStrong,
+                    "whisper: post " + post.Id + (mine ? " is a white line on the right" : " is a cyan line on the left"));
+                Require(text.TooltipText == post.Time.ToString("HH:mm"), "whisper: post " + post.Id + " keeps its time as the line's tooltip");
+                if (post.Reactions.Total == 0 && text.GetLineCount() == 1)
+                    Require(rowControl.Size.Y <= 20, "whisper: a one-line post keeps the retail line pitch " + rowControl.Size);
+                // Item links keep the client's link (its tooltip on click) with the item's grade ink and name.
+                if (LibreKO.Domain.ChatItemLink.Split(post.Text).FirstOrDefault(s => s.ItemId != 0) is { ItemId: > 0 } link)
+                    Require(text.Text.Contains("[url=") && text.GetParsedText().Contains("[" + LibreKO.Domain.ItemData.DisplayName(link.ItemId) + "]") && !text.GetParsedText().Contains('\u0001'),
+                        "whisper: post " + post.Id + " shows its item link by name: " + text.GetParsedText());
+            }
+            var notice = log.GetChildren().OfType<Control>().Single(r => r.GetMeta(ClassicWhisperThread.RowMeta).AsString() == "notice");
+            Require(Descendants(notice).OfType<Label>().Single().GetThemeColor("font_color") == ClassicWhisperThread.Notice && Descendants(notice).OfType<Label>().Single().HorizontalAlignment == HorizontalAlignment.Left,
+                "whisper: the notice is a yellow line");
+            var days = log.GetChildren().OfType<Control>().Where(r => r.GetMeta(ClassicWhisperThread.RowMeta).AsString() == "day").ToArray();
+            Require(days.Length == 2 && days.All(d => Descendants(d).OfType<PanelContainer>().Single().GetThemeStylebox("panel") is StyleBoxFlat dayChip && dayChip.BorderColor == ClassicDarkFrame.Line), "whisper: the day markers are Classic chips");
+            var pills = Descendants(log).OfType<PanelContainer>().Where(p => p.Name == "whisper_reactions" && p.IsVisibleInTree()).ToArray();
+            Require(pills.Length == 3 && pills.All(p => p.GetThemeStylebox("panel") is StyleBoxFlat { CornerRadiusTopLeft: 0 } box && box.BorderColor == ClassicDarkFrame.Line && threadBox.Position.X - .5f <= p.GetGlobalRect().Position.X && p.GetGlobalRect().End.X <= threadBox.End.X + .5f),
+                "whisper: the three reacted posts carry the Classic reaction chip inside the log");
+            var older = Native.Get<Button>(thread, "_older")!;
+            Require(older.Visible && older.Name == "whisper_older" && older.GetThemeFont("font") == Plugin.Kit.Bold && older.Size.Y == ClassicSocialLayout.ActionHeight, "whisper: 'Load older messages' is a Classic action");
+            // The react button of a pinned line stays visible like the client's, on the line, inside the log.
+            var gift = timeline.Find(207)!;
+            var giftRow = (Control)posts.First(e => e.Value == gift).Key;
+            thread.Pinned = gift; thread.ShowReactButton(gift); await Frames(2);
+            thread.EnsureControlVisible(giftRow); await Frames(4);
+            var react = Descendants(giftRow).OfType<Button>().Single(b => b.Name == "whisper_react");
+            Require(react.IsVisibleInTree() && !react.Flat && react.GetThemeStylebox("hover") is StyleBoxFlat && react.Size == new Vector2(ClassicWhisperLayout.ReactCell, ClassicWhisperLayout.ReactCell) && threadBox.Encloses(react.GetGlobalRect()) && react.GetThemeColor("icon_normal_color") == ClassicWhisperThread.ActionInk,
+                "whisper: a line's react button is the Classic title-bar icon inside the log " + react.GetGlobalRect());
+            var giftText = Descendants(giftRow).OfType<RichTextLabel>().Single().GetGlobalRect();
+            Require(Math.Abs(giftText.Position.X - react.GetGlobalRect().End.X) <= ClassicWhisperLayout.LineGap + 1 && Math.Abs(giftText.End.X - threadBox.End.X) <= 1,
+                "whisper: an own line ends at the log's right edge with its react button right beside the text " + giftText);
             await Shot("whisper", window);
-            DetailCall(world, "OpenWhisperEmoticons", "Tester10", window.GlobalPosition + new Vector2(260, 140)); await Frames(4);
-            var picker = Descendants(layer).OfType<EmoticonPicker>().Single();
-            Require(picker.HasMeta("classic_popup") && picker.GetThemeStylebox("panel") is StyleBoxFlat, "whisper: the emoticon picker uses the Classic menu panel");
+            thread.Unpin();
+            // The top of the history: the Classic "Load older messages", a day marker and the partner's voice note.
+            thread.ScrollVertical = 0; await Frames(4);
+            Require(older.IsVisibleInTree() && threadBox.Encloses(older.GetGlobalRect()) && Math.Abs(older.GetGlobalRect().GetCenter().X - threadBox.GetCenter().X) <= 1,
+                "whisper: at the top of the history 'Load older messages' sits centred in the log " + older.GetGlobalRect());
+            await Shot("whisper-history", window);
+            // The voice notes: the partner's (with a reaction) and the own one, each a Classic play line.
+            var partnerNote = (Control)posts.First(e => e.Value.Id == 204).Key;
+            thread.ScrollVertical = (int)(partnerNote.GlobalPosition.Y - ((Control)thread.GetChild(0)).GlobalPosition.Y - ClassicWhisperLayout.LinePitch); await Frames(4);
+            Require(threadBox.Encloses(Descendants(partnerNote).OfType<Button>().Single(b => b.Name == "whisper_note_play").GetGlobalRect()), "whisper: the partner's voice note shows its play cell inside the log");
+            await Shot("whisper-notes", window);
+            thread.ScrollToEnd(); await Frames(2);
+            // A reaction refresh and a new line reuse and restyle the client's rows.
+            var plain = timeline.Find(205)!;
+            var plainRow = (Control)posts.First(e => e.Value == plain).Key;
+            plain.Reactions.Set(PreviewPartner(timeline, self), "Rikka", "\u2764");
+            thread.Refresh(plain); await Frames(2);
+            var plainPill = Descendants(plainRow).OfType<PanelContainer>().Single(p => p.Name == "whisper_reactions");
+            Require(plainRow.GetParent() == log && plainPill.IsVisibleInTree() && plainPill.GetThemeStylebox("panel") is StyleBoxFlat { CornerRadiusTopLeft: 0 }, "whisper: a reaction refresh keeps the row and shows the Classic chip");
+            var chats = (System.Collections.IDictionary)DetailField(world, "_whispers")!;
+            DetailCall(world, "AddWhisperPost", chats["Rikka"], LibreKO.Domain.RoomPost.Line(PreviewPartner(timeline, self), "Rikka", "on my way", DateTime.Now)); await Frames(3);
+            var fresh = (Control)log.GetChildren().Last();
+            Require(fresh.GetMeta(ClassicWhisperThread.RowMeta, "").AsString() == "line" && Descendants(fresh).OfType<RichTextLabel>().Single().Text.Contains("[color=#" + ClassicWhisperThread.Partner.ToHtml(false) + "]"), "whisper: a new line from the partner arrives as a cyan Classic line");
+            // A size or transparency change re-renders the whole thread (Reset and Render) and resizes the window.
+            DetailCall(world, "OnWhisperLookChanged"); await Frames(3);
+            Require(log.GetChildCount() > 0 && log.GetChildren().All(r => r.HasMeta(ClassicWhisperThread.RowMeta)) && thread.GetRect() == logArea && window.Size == open.SizeVec,
+                "whisper: after a look change the re-rendered rows are Classic and the frame keeps its log area " + thread.GetRect() + " " + window.Size);
+
+            // Composer: the field in the original edit field, the record cell beside it, Send through the original cell.
+            var edit = new Rect2(open.Find("edit_chat")!.Position, open.Find("edit_chat")!.SizeVec);
+            var field = (Control)input.GetParent();
+            Require(field.GetParent() == expanded && field.GetRect() == edit && input.GetRect() == new Rect2(Vector2.Zero, edit.Size), "whisper: the composer's field fills the original edit field " + field.GetRect());
+            var record = Descendants(expanded).OfType<Button>().Single(b => b.Name == "whisper_record");
+            var scrollArt = new Rect2(open.Find("scroll")!.Position, open.Find("scroll")!.SizeVec);
+            Require(record.IsVisibleInTree() && record.GetRect() == ClassicWhisperLayout.Record && record.HasMeta(ClassicChatRoomSkin.CellMeta) && !edit.Intersects(record.GetRect()) && !scrollArt.Intersects(record.GetRect()),
+                "whisper: the record button sits in its own Classic cell at the end of the edit band " + record.GetRect());
+            var classicSend = Descendants(surface).OfType<TextureButton>().Single(b => b.Name == "btn_chat");
+            string? sent = null; int olderRequests = 0;
+            composer.Submitted += wire => sent = wire;
+            thread.OlderRequested += () => olderRequests++;
+            input.GrabFocus(); input.Text = "see you at the gate";
+            classicSend.EmitSignal(BaseButton.SignalName.Pressed); await Frames(3);
+            Require(sent == "see you at the gate" && olderRequests == 0, "whisper: the original send cell runs the composer's Send, not 'Load older messages'");
+            Require(input.Text == "" && !input.HasFocus() && NativeWhispers.ComposeTarget(world) == "Rikka", "whisper: after sending, the input is left and the conversation stays addressed");
+            sent = null; input.GrabFocus(); input.Text = "omw";
+            input.EmitSignal(LineEdit.SignalName.TextSubmitted, input.Text); await Frames(3);
+            Require(sent == "omw" && input.Text == "" && !input.HasFocus(), "whisper: Enter sends through the composer and leaves the input");
+            older.EmitSignal(BaseButton.SignalName.Pressed); await Frames(1);
+            Require(olderRequests == 1, "whisper: the Classic 'Load older messages' asks the client for older history");
+
+            // The composer's emoticon picker on the Classic menu panel.
+            var emoticons = input.GetChildren().OfType<TextureButton>().Single();
+            var (inputBox, faceBox) = (input.GetGlobalRect(), emoticons.GetGlobalRect());
+            Require(emoticons.Name == "whisper_emoticons" && faceBox.Size == new Vector2(ClassicWhisperLayout.EmoticonSize, ClassicWhisperLayout.EmoticonSize) && inputBox.Encloses(faceBox)
+                && Math.Abs(inputBox.End.X - ClassicWhisperLayout.EmoticonInset - faceBox.End.X) <= .5f && faceBox.Position.Y == record.GetGlobalRect().Position.Y && faceBox.End.Y == record.GetGlobalRect().End.Y,
+                "whisper: the emoticon button sits inside the right end of the input on the band of the send and record cells " + faceBox);
+            // The client creates the picker on the first press; it counts as opened when it pops up (another audit
+            // process can take the focus and close an embedded popup, so it is shown again in place for the capture).
+            bool popped = false;
+            composer.ChildEnteredTree += node => { if (node is EmoticonPicker added) added.AboutToPopup += () => popped = true; };
+            emoticons.EmitSignal(BaseButton.SignalName.Pressed); await Frames(4);
+            var picker = Descendants(this).OfType<EmoticonPicker>().Single();
+            Require(popped && picker.GetParent() == composer && picker.HasMeta("classic_popup") && picker.GetThemeStylebox("panel") is StyleBoxFlat, "whisper: the composer's emoticon picker opens on the Classic menu panel");
+            if (!picker.Visible) { picker.Popup(); await Frames(2); }
             await Shot("whisper-emoticons", window);
             picker.Hide();
             DetailCall(world, "BuildWhisperOptions"); DetailCall(world, "RefreshWhisperOptions");
@@ -124,7 +256,44 @@ public partial class Preview
             Require(options.HasMeta("classic_popup"), "whisper: the size and transparency popup uses the Classic menu panel");
             await Shot("whisper-options", window);
             options.Hide();
+
+            // Recording a voice note: the strip takes the edit band, the record cell sends the note, Send is off.
+            composer.ShowRecording(7, .55f); await Frames(3);
+            var strip = Descendants(expanded).OfType<HBoxContainer>().Single(b => b.Name == "whisper_record_strip");
+            Require(strip.IsVisibleInTree() && !input.IsVisibleInTree() && strip.GetRect() == ClassicWhisperLayout.Strip, "whisper: while a note records the strip replaces the input " + strip.GetRect());
+            Require(strip.GetChildren().OfType<Control>().Where(c => c.Visible).All(c => new Rect2(Vector2.Zero, strip.Size).Encloses(c.GetRect())) && strip.GetChildren().OfType<Control>().Count(c => c.Visible) == 4,
+                "whisper: the dot, clock, level and cancel fit the strip " + string.Join(",", strip.GetChildren().OfType<Control>().Select(c => c.GetRect().ToString())));
+            Require(classicSend.Disabled && record.IsVisibleInTree(), "whisper: while a note records the record cell stays and the send cell is off");
+            await Shot("whisper-recording", window);
+            composer.RefreshRecording(); await Frames(3);
+            Require(!strip.IsVisibleInTree() && input.IsVisibleInTree() && !classicSend.Disabled, "whisper: after recording the input and the send cell return");
+
+            // Minimize and restore: the client hides its header icons while minimized; restored they are back on the bar.
+            window.SetMinimized(true); await Frames(3);
+            Require(actions.All(a => !a.IsVisibleInTree()) && Descendants(surface).OfType<Label>().Any(l => l.Text == "Rikka" && l.IsVisibleInTree()), "whisper: minimized, only the compact bar shows");
+            await Shot("whisper-minimized", window);
+            window.SetMinimized(false); await Frames(3);
+            Require(actions.All(a => a.Visible && a.IsVisibleInTree() && new Rect2(0, 0, 304, 24).Encloses(a.GetRect())), "whisper: restored, the header actions are back on the title bar");
+
+            // An incoming voice note from a new partner opens a minimized conversation (the client's ShowIncomingWhisper,
+            // which needs the world's viewport) that blinks in the Classic bar.
+            var note = new LibreKO.Domain.RoomPost(301, LibreKO.Domain.RoomPostKind.VoiceNote, 4242, "Valka", DateTime.Now, "", 52, 12000) { Waveform = Enumerable.Range(0, 48).Select(i => (byte)(40 + (i * 37) % 180)).ToArray() };
+            Net.I.DirectTimeline("Valka").Add(note);
+            DetailCall(world, "GetOrCreateWhisper", "Valka", true);
+            DetailCall(world, "OnDirectPosted", "Valka", note);
+            var incoming = Native.Get<HudWindow>(chats["Valka"]!, "Window")!;
+            NativeWhispers.Prepare(incoming, world); await Frames(4);
+            var compact = Descendants(incoming).OfType<Label>().Single(l => l.Text == "Valka" && l.IsVisibleInTree());
+            var nativeBlink = Native.Get<Tween>(chats["Valka"]!, "Blink");
+            Require(incoming.Minimized && incoming.Size == Plugin.Kit.Layout("co_whisper_close_us").SizeVec && (nativeBlink == null || !nativeBlink.IsValid()),
+                "whisper: an incoming voice note opens a minimized Classic conversation without the native fade " + incoming.Size);
+            await Frames(40);
+            Require(compact.GetThemeColor("font_color") == new Color("ffff00") || compact.GetThemeColor("font_color") == new Color("00ffff"), "whisper: the minimized conversation shows the Classic attention");
+            await Shot("whisper-incoming-note", incoming);
             layer.QueueFree(); world.QueueFree();
         }
     }
+
+    /// <summary>The preview partner's character id, read from the seeded timeline.</summary>
+    private static int PreviewPartner(LibreKO.Domain.RoomTimeline timeline, int self) => timeline.Posts.First(p => p.SenderId != 0 && p.SenderId != self).SenderId;
 }

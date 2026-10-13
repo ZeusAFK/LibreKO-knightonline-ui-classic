@@ -199,9 +199,11 @@ public static class NativeChat
 }
 
 /// <summary>
-/// Classic private-message windows: the plugin's whisper skin and line builder, the unread attention
-/// styler instead of the native fade blink, and the retail compose behaviour (Enter focuses the last
-/// addressed conversation, sending leaves the input, a click outside every conversation clears it).
+/// Classic private-message windows: the plugin's whisper skin (with the Classic line builder on clients
+/// that keep a whisper log of their own, and the thread rows restyled in place on clients where whispers
+/// share the room's thread and composer), the unread attention styler instead of the native fade blink,
+/// and the retail compose behaviour (Enter focuses the last addressed conversation, sending leaves the
+/// input, a click outside every conversation clears it).
 /// </summary>
 public static class NativeWhispers
 {
@@ -258,13 +260,62 @@ public static class NativeWhispers
     private static object? Conversation(World world, string name) =>
         Native.Get<System.Collections.IDictionary>(world, "_whispers") is { } chats && chats.Contains(name) ? chats[name] : null;
 
+    /// <summary>
+    /// The conversation's composer on clients where whispers share the room's thread and composer (fa3cfc3);
+    /// null on older clients, whose conversation holds its own log, input and Send button.
+    /// </summary>
+    private static Control? ComposerOf(object chat) => Native.Has(chat, "Composer") ? Native.Get<Control>(chat, "Composer") : null;
+
+    /// <summary>The conversation's input. On fa3cfc3 <c>Input</c> is a property that reads the composer.</summary>
+    private static LineEdit? InputOf(object chat) =>
+        Native.Has(chat, "Composer") ? (ComposerOf(chat) is { } composer ? Native.Get<LineEdit>(composer, "Input") : null)
+        : Native.Get<LineEdit>(chat, "Input");
+
+    /// <summary>
+    /// The native parts of a conversation that runs on the room thread and composer (fa3cfc3), found in the
+    /// window body before the skin moves them: the thread with its log and "Load older messages" button, and the
+    /// composer's field (the input), recording strip, record and send buttons. Null for the older conversation.
+    /// </summary>
+    public static WhisperParts? Parts(HudWindow window)
+    {
+        var thread = window.Body.GetChildren().OfType<ScrollContainer>().FirstOrDefault(n => n.GetType().Name == "ChatThreadView");
+        var composer = window.Body.GetChildren().OfType<Container>().FirstOrDefault(n => n.GetType().Name == "ChatComposer");
+        if (thread == null || composer == null) return null;
+        var log = Native.Get<VBoxContainer>(thread, "_log");
+        var older = Native.Get<Button>(thread, "_older");
+        var input = Native.Get<LineEdit>(composer, "Input");
+        var field = Native.Get<HBoxContainer>(composer, "_field");
+        var strip = Native.Get<HBoxContainer>(composer, "_strip");
+        var record = Native.Get<Button>(composer, "_record");
+        var send = Native.Get<Button>(composer, "_send");
+        if (log == null || older == null || input == null || field == null || strip == null || record == null || send == null) return null;
+        return new WhisperParts(thread, log, older, composer, input, field, strip, record, send);
+    }
+
+    /// <summary>
+    /// The posts behind the thread's rows (the thread keeps them for reaction and voice-note refreshes): row root
+    /// to post. Notices and day markers have no entry.
+    /// </summary>
+    public static Dictionary<Node, LibreKO.Domain.RoomPost> Posts(ScrollContainer thread)
+    {
+        var posts = new Dictionary<Node, LibreKO.Domain.RoomPost>();
+        if (Native.Get<System.Collections.IDictionary>(thread, "_rows") is not { } rows) return posts;
+        foreach (System.Collections.DictionaryEntry entry in rows)
+            if (entry.Key is LibreKO.Domain.RoomPost post && entry.Value != null && Native.Get<Control>(entry.Value, "Root") is { } root)
+                posts[root] = post;
+        return posts;
+    }
+
     public static void Prepare(HudWindow window, World world)
     {
+        if (window.FindChild("classic_whisper", false, false) != null) return;
         string name = window.Id[Prefix.Length..];
         var state = _states.GetOrCreateValue(world);
         var chat = Conversation(world, name);
-        var input = chat != null ? Native.Get<LineEdit>(chat, "Input") : null;
-        var log = chat != null ? Native.Get<VBoxContainer>(chat, "Log") : null;
+        var composer = chat != null ? ComposerOf(chat) : null;
+        var input = chat != null ? InputOf(chat) : null;
+        // The older conversation keeps its own log; on fa3cfc3 the skin restyles the thread's rows in place.
+        var log = chat != null && composer == null ? Native.Get<VBoxContainer>(chat, "Log") : null;
 
         if (NativeHud.WhisperStyler is { } style)
         {
@@ -277,8 +328,10 @@ public static class NativeWhispers
             input.KeepEditingOnTextSubmit = false;
             input.FocusEntered += () => state.ComposeTarget = name;
             input.TextSubmitted += _ => Sent(state, name, input);
-            if (Native.Descendants(window).OfType<Button>().FirstOrDefault(b => b.Text == "Send") is { } send)
-                send.Pressed += () => Sent(state, name, input);
+            // fa3cfc3: Send is the composer's icon button (tooltip "Send"); older clients have a "Send" caption.
+            var send = composer != null ? Native.Get<Button>(composer, "_send")
+                : Native.Descendants(window).OfType<Button>().FirstOrDefault(b => b.Text == "Send");
+            if (send != null) send.Pressed += () => Sent(state, name, input);
         }
         window.MinimizedChanged += minimized =>
         {
@@ -329,8 +382,7 @@ public static class NativeWhispers
             log.RemoveChild(row);
             row.QueueFree();
         }
-        // The facade's history keeps the same (mine, notice, text) shape on clients where the native log
-        // became a room timeline (fa3cfc3: voice notes read as their caption).
+        // The facade's history keeps the same (mine, notice, text) shape on every client.
         var whispers = Plugin.Kit.Game.Whispers;
         foreach (var line in whispers.History(name))
             log.AddChild(Styled(build(name, line.Mine, line.Notice, line.Text)));
@@ -382,7 +434,7 @@ public static class NativeWhispers
         }
         state.ComposeTarget = null;
         foreach (var chat in chats.Values)
-            if (chat != null && Native.Get<LineEdit>(chat, "Input") is { } input && GodotObject.IsInstanceValid(input) && input.HasFocus())
+            if (chat != null && InputOf(chat) is { } input && GodotObject.IsInstanceValid(input) && input.HasFocus())
                 input.ReleaseFocus();
     }
 
@@ -392,11 +444,16 @@ public static class NativeWhispers
         var state = _states.GetOrCreateValue(world);
         if (state.ComposeTarget is not { } name || Conversation(world, name) is not { } chat) return false;
         if (Native.Get<HudWindow>(chat, "Window") is not { } window || !GodotObject.IsInstanceValid(window)
-            || !window.Visible || window.Minimized || Native.Get<LineEdit>(chat, "Input") is not { } input) return false;
+            || !window.Visible || window.Minimized || InputOf(chat) is not { } input || !input.IsVisibleInTree()) return false;
         input.GrabFocus();
         return true;
     }
 }
+
+/// <summary>The native parts of a conversation on the room thread and composer (see <see cref="NativeWhispers.Parts"/>).</summary>
+public sealed record WhisperParts(
+    ScrollContainer Thread, VBoxContainer Log, Button Older, Container Composer, LineEdit Input,
+    HBoxContainer Field, HBoxContainer Strip, Button Record, Button Send);
 
 /// <summary>Runs ahead of the world's own input handling (child nodes receive input first).</summary>
 public partial class NativeWhisperInput : Node

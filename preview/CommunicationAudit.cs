@@ -94,8 +94,8 @@ public partial class Preview
     /// <summary>
     /// The chat-room pass on the nation chat rooms that replaced the old chat-room window: refreshed room
     /// lists replace their rows at once and scroll by whole rows inside the fixed list, the empty reply leaves
-    /// no stale rows, Enter and Leave follow the native membership, a locked room asks for its password in the
-    /// Classic frame, and room lines reach the Classic chat with their own channel tag.
+    /// no stale rows, the Private tab is a search row (fa3cfc3) whose rooms are entered with a double-click, a
+    /// locked room asks for its password in the Classic frame, and room lines keep their own channel tag.
     /// </summary>
     private async Task CaptureNationRooms(int nation, string output, Action<bool, string> Require, Func<int, Task> Frames, List<object> screens)
     {
@@ -119,7 +119,8 @@ public partial class Preview
         await Capture("nation-rooms");
         float height = window.Size.Y, pitch = 22;
         Require(scroll.Size.Y % pitch == 0 && Live(rows).All(r => r.Size.Y == pitch), "Room list shows whole 22 px rows " + scroll.Size + " " + string.Join(",", Live(rows).Select(r => r.Size.Y)));
-        Require(Shown("Leave").Visible && !Descendants(window).OfType<Button>().Any(b => b.Text == "Enter" && b.IsVisibleInTree()), "Own room keeps Leave, hides Enter");
+        bool NoRoomButtons() => !Descendants(window).OfType<Button>().Any(b => b.IsVisibleInTree() && b.Text is "Enter" or "Leave" or "Open");
+        Require(Shown("Search").Visible && Shown("Create room").Visible && NoRoomButtons(), "The Private tab is a search row: Search and Create room, no Enter, Leave or Open");
         var many = new List<LibreKO.Network.NationRoom>();
         for (int i = 0; i < 24; i++) many.Add(new LibreKO.Network.NationRoom(2000 + i, "A long room name for the market " + i, i % 3 == 0, LibreKO.Domain.Nations.Karus, 12, 50));
         DetailCall(world, "OnNationRooms", many); await Frames(6);
@@ -130,14 +131,14 @@ public partial class Preview
         DetailCall(world, "OnNationRooms", new List<LibreKO.Network.NationRoom>()); await Frames(6);
         Require(!Live(rows).Any() && window.Size.Y == height, "Empty room reply leaves no stale rows and keeps the frame");
         Net.I.NationChat.Left(); DetailCall(world, "RefreshNationButtons"); await Frames(2);
-        Require(Shown("Enter").Visible && !Descendants(window).OfType<Button>().Any(b => b.Text == "Leave" && b.IsVisibleInTree()), "Without a room Enter returns");
-        Require(Shown("Change options").Disabled, "Room options disabled without a room");
+        Require(Shown("Search").Visible && NoRoomButtons(), "Without a room the search row stays");
         await Capture("nation-rooms-empty");
         DetailCall(world, "OnNationRooms", new List<LibreKO.Network.NationRoom> { new(3001, "Clan recruits", true, LibreKO.Domain.Nations.Karus, 2, 10) }); await Frames(4);
-        Live(rows).First().EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true }); await Frames(2);
-        Shown("Enter").EmitSignal(BaseButton.SignalName.Pressed); await Frames(4);
         var password = (HudWindow)DetailField(world, "_ncPassword")!;
-        Require(password.Visible && password.GetChildren().OfType<ClassicSocialFrame>().Count() == 1, "A locked room asks for its password in the Classic frame");
+        Live(rows).First().EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true }); await Frames(2);
+        Require(!password.Visible && (int)DetailField(world, "_ncSelectedRoom")! == 3001, "A single click selects the room without entering");
+        Live(rows).First().EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, DoubleClick = true }); await Frames(4);
+        Require(password.Visible && password.GetChildren().OfType<ClassicSocialFrame>().Count() == 1, "A double-click on a locked room asks for its password in the Classic frame");
         Require(((LineEdit)DetailField(world, "_ncPasswordEdit")!).Text == "", "Password prompt opens empty");
         Require(KnightOnlineUiClassic.ClassicChatFormat.Channel(LibreKO.Domain.ChatType.ChatRoom).Tag == "room", "Room lines carry the Classic room channel tag");
         DetailCall(world, "NationChatDispose"); layer.QueueFree(); world.QueueFree(); await Frames(2);

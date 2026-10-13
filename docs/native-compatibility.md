@@ -464,7 +464,7 @@ the room or `VoiceChat`; the plugin subscribes no room or voice event (it reads 
 | `_roomLayer` (popups: `_roomConfig`, `_roomVoiceSettings`, `_roomPeerPopup`, `_roomMemberMenu`, `_roomEmoticons`) | F | Classic menu panel on the popups as the client creates them |
 | `_roomBlink` (`Tween`) | F | The minimized blink becomes the whisper attention blink on the compact bar |
 | Roster row `StyleBoxFlat` (`UiTheme.Row` colours: `RowHover` selected, `7fd98b` speaking) | Look | Classic row state mirrored each frame |
-| `_ncPubOpen`, `_ncPriOpen`, `_ncMembersTitle`, `_ncMembersCount`, `_ncMemberRows` | F | Nation chat Open buttons, members title and summary in the body |
+| `_ncPubOpen`, `_ncPriOpen`, `_ncMembersTitle`, `_ncMembersCount`, `_ncMemberRows` | F | Nation chat Open buttons, members title and summary in the body (fa3cfc3 removed the private Open and the members window; only `_ncPubOpen` is read) |
 | `ChatCategory.NoahKnights/ChatRoom/All`, `ChatType.NoahKnights` (34); `IGameCharacter.NoahKnight` (`ChatSystem.ChatEntry.Place` is no longer read since ff78eef, see below) | F/API | The Classic chat masks with `ChatCategory.All` (saved filters migrate with `chat.filter_rev` 2 like the client's `ChatPrefs`); Noah Knights tab (`\|`) only for Noah Knights, who lose Clan and Alliance. `IGameChat.Lines` carries rendered BBCode only, so the Classic chat keeps reading `_store` for its own format |
 | `IGameCommands.Run(KeyAction.ToggleRun/AutoAttack)`, `ShowExitMenu()` | API | Replace the reflected `ToggleRunMode`, `ToggleAutoAttack`, `ToggleEsc(true)`; `StartCameraHalfTurn` has no key action and stays reflected |
 | `WhisperLinks.Linkify/IsWebLink` | M | Whisper notices with web links open them, as the client does |
@@ -576,8 +576,8 @@ until then.
 | `Net.WhisperLine` (removed), `Net.WhisperHistory(name)` now returns `IReadOnlyList<RoomPost>` | API | The whisper line restyle reads the `IGameWhispers.History` facade, which keeps `GameWhisperLine(Mine, Notice, Text)` on both clients (a voice note reads as "Voice note (m:ss)") |
 | `TempleEventType` moved from `LibreKO.Network` to `LibreKO.Domain` | API | Preview only (`ForgottenTempleAudit`) |
 | `World.DressCape` is an instance method (it hides capes in the Chaos dungeon) | M | The cape shop dresses the character's own body through the world instance, which binds the static and the instance shape |
-| `World+WhisperChat.Log`, `Scroll`, `Input` fields replaced by `Thread` (`ChatThreadView`) and `Composer` (`ChatComposer`) | F | Whisper skin: not restyled on fa3cfc3 yet |
-| `_roomScroll`, `_roomLog`, `_roomOlder`, `_roomComposerRow`, `_roomInput`, `_roomRecord`, `_roomSend`, `_roomRecordStrip`, `_roomRecordClock`, `_roomRecordLevel` replaced by `_roomThread` and `_roomComposer` | F | Chat room skin: rebound to the shared thread and composer (next section) |
+| `World+WhisperChat.Log`, `Scroll`, `Input` fields replaced by `Thread` (`ChatThreadView`) and `Composer` (`ChatComposer`) | F | Whisper skin on the thread and composer (section "Whispers and the Channel list Private tab on upstream fa3cfc3") |
+| `_roomScroll`, `_roomLog`, `_roomOlder`, `_roomComposerRow`, `_roomInput`, `_roomRecord`, `_roomSend`, `_roomRecordStrip`, `_roomRecordClock`, `_roomRecordLevel` replaced by `_roomThread` and `_roomComposer` | F | Chat room skin rebound to the shared thread and composer (section "Chat room on the shared thread and composer, with reactions, on upstream fa3cfc3") |
 | `_ncPriJoin`, `_ncPriLeave`, `_ncPriOpen`, `_ncPriChange`, `_ncPriPersons`, `_ncSearch`, `_ncMembers*`, `OpenNationSearch`, `NationChatRules.Summary`, window ids `nation_chat_members`, `nation_chat_search` (removed) | F/M | The Private tab is a search row (`_ncSearchEdit`, Search, Create room); members live in the room window |
 | `_bifrostRemaining`, `_isEventRegistered`, `_eventType`, `EndBifrostEvent` (removed): sign-ups are `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft`) | F | The Classic registration and countdown read the urgent and registered state from them (section "Events window and temple sign-ups on upstream fa3cfc3") |
 
@@ -622,6 +622,24 @@ covers the thread, the composer or the reactions, and the plugin subscribes no r
 | `_roomConfigKeep`, `_roomPushToTalk`, `_roomPeerMute` (`UiTheme.FlatCheck`, per-control SVG check icons since fa3cfc3) | F/Look | `ClassicChatRoomSkin.StylePopup` puts the original `{nation}_chat_us` check box (`btn_check_normal`) on every popup check; "Keep the room" keeps the client's autowrap inside the card |
 | `_roomVolume`, `_roomPeerVolume` (`VoiceLevels.MaxVolume` 2, "up to 200%") | Look | Classic slider unchanged; the range and the tooltip stay the client's |
 | `_ncPriJoin` (removed; a double-click on a row enters) | F | Preview only: `chat-room-audit` enters rooms of both nations by double-click |
+
+### Whispers and the Channel list Private tab on upstream fa3cfc3
+
+Whispers run on the room's thread view and composer (`ChatThreadView`, `ChatComposer`): voice notes, reactions and
+90-day history. The Classic PM (`ClassicWhisperSkin`, `ClassicWhisperThread`, `ClassicWhisperLayout`, preparer
+`NativeWhispers`) finds both in the window body by type name before it moves anything. On older clients, and for
+the HUD fixtures, the previous scroll, input and "Send" path stays. No plugin facade covers the thread or the
+composer, and the plugin subscribes no thread, composer or voice event (it connects only to the nodes' own signals).
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `ChatThreadView` (`ScrollContainer`): `_log`, `_older`, `_rows` (`PostRow.Root` keyed by `RoomPost`); public `Pinned`, `ShowReactButton`, `ScrollToEnd`, `OlderRequested` | F | The thread fills the original log area. Its rows are restyled in place as they enter `_log` (once per batch, at the end of the frame) and are never replaced, because the thread refreshes reactions and voice notes through them. `_rows` maps a row to its post for the line's text, ink and time. "Load older messages" is the Classic action button |
+| Row tree of `BuildPost`, `BuildNote`, `BuildNotice` and `DayChip` | Look | The restyle walks it: the line `HBoxContainer` (end-aligned for own posts) holds the react slot and the stack; the stack holds the bubble (column with the text and time, or the note: play `Button`, `VoiceWaveformView`, clock `Label`) and the pill holder. Result: no bubble or time stamp (the time is the line's tooltip), own lines white on the right, the partner cyan on the left, notices yellow, the react button a title-bar icon in a 14 px cell beside the first line, reactions on a gold-line chip, a voice note as a play cell, waveform and clock on one line, day markers as small chips. A row whose tree changes keeps the client's look |
+| `ChatComposer` (`HBoxContainer`): `Input`, `_field`, `_strip`, `_record`, `_send`, and the `EmoticonPicker` it adds as its own child | F | The field (with the input) sits in the original edit field, and the composer still hides it while a note records. The input's 20 px emoticon button (`EmoticonPicker.InputButton`) becomes a 12 px button on the dark band of the original edit art, level with the send and record cells. The record button sits in a cell that mirrors the send cell, and the recording strip covers the edit band. The original send cell runs `_send` and is off while the composer hides it. The picker gets the Classic menu panel |
+| `World+WhisperChat.Composer` (`Input` is now a property that reads it) | F | Compose target, focus, and the "after sending, leave the input" hook (`_send.Pressed`, `Input.TextSubmitted`). Older clients keep `Input`, `Log` and the "Send" caption |
+| `WhisperChat.HeaderIcons` (hidden while minimized) | Look | The Classic title-bar actions follow it across minimize and restore |
+| `Config.WhisperSize` (`BubbleMax`, the thread's minimum size) | Look | The original frame keeps its log area (pinned every frame) and lines wrap at the log width |
+| `_ncSearchEdit` (Private tab: room name, Search, Create room), rows with the "Double-click to enter" tooltip | F | Named `nation_search_edit`. The generic social restyle draws the row: the Classic edit field, the action buttons and 22 px rows. `_ncPriOpen` and the members preparer are gone, and `nation_chat_members` and `nation_chat_search` left `ClassicSocialLayout.WindowIds` |
 
 ### Preview-only members
 
