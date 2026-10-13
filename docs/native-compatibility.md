@@ -225,7 +225,7 @@ listed. Preview-only members are listed at the end.
 | `IGameInventory.MoveAmount(int,int,int)` | API | Partial moves (bag, magic bags, the storages' embedded bag) |
 | `_moveInFlight`, `_bagPairing`, `BagPairing<>._openedByCompanion`, `_invDelSlot`, `_invDelItemId`, `RefuseItemInUse(int,int)`, `ConfirmDeleteItem()` | F/M | Embedded bag pairing, identity-checked destroy |
 | `_warehouse`, `_whCells`, `_whStatus`, `_whAmount`, `_whShown`, `_whMoney`, `_whInFlight` | F | Warehouse |
-| `WithdrawSlot(int)`, `DepositSlot(int,int)`, `AskWithdraw(int,int)`, `CanDropOnWarehouse(int,Variant)`, `DropOnWarehouse(int,Variant)` | M | Warehouse transfers |
+| `WithdrawSlot(int)`, `DepositSlot(int,int,int?)`, `AskWithdraw(int,int,int?)`, `CanDropOnWarehouse(int,Variant)`, `DropOnWarehouse(int,Variant)` | M | Warehouse transfers |
 | `_vipWh`, `_vipWhPage`, `_vipWhPageLbl`, `_vipWhStatus`, `_vipWhExpiryLbl`, `_vipWhExpirySec`, `_vipWhShown`, `_vipWhInFlight`, `_vipWhPending`, `_vipWhPinDlg`, `_vipWhPinPrompt`, `_vipWhPinEdit` | F | VIP vault and PIN prompt |
 | `_clanWh`, `_clanWhPage`, `_clanWhPageLbl`, `_clanWhStatus`, `_clanWhShown`, `_clanWhLoaded`, `_clanWhLoading` *(upstream 7ef0f8e, optional)*, `_clanWhMoney`, `_clanWhInFlight`, `_clanWhPending`, `_clanWhGoldInput` | F | Clan warehouse |
 | `RefreshVipWarehouse()`, `RefreshClanWarehouse()`, `VipDepositSlot(int)`, `VipWithdrawSlot(int)`, `ClanWhDepositSlot(int)`, `ClanWhWithdrawSlot(int)`, `ClanWhGoldTransfer(bool)`, `SubmitVipPin()` | M | Vault transfers, coins, PIN |
@@ -280,10 +280,10 @@ sets the vaults' pending state itself; every transfer runs through the client's 
 | Member | Kind | Used for |
 | --- | --- | --- |
 | `_vipWhCells`, `_vipKeyCell`, `_vipWhOpen`, `_vipWhExpiresAt`, `_vipWhPinSet`, `_vipSetPinBtn`, `_vipClearPinBtn`, `_vipWhAmount` | F | VIP vault: Classic 4 x 12 pages over the 48-slot grid, key plaque, lock, PIN actions, amount prompt |
-| `VipTakeFromBag(int)`, `VipBagFit(int)`, `AskVipWithdraw(int,int)`, `VipWithdrawInto(int,int)`, `CanDropOnVipVault(int,Variant)`, `DropOnVipVault(int,Variant)` | M | VIP transfers, key use and in-vault moves |
+| `VipTakeFromBag(int)`, `VipBagFit(int)`, `AskVipWithdraw(int,int,int?)`, `VipWithdrawInto(int,int,int?)`, `CanDropOnVipVault(int,Variant)`, `DropOnVipVault(int,Variant)` | M | VIP transfers, key use and in-vault moves |
 | `_clanWhCells`, `_clanWhDepositBtn`, `_clanWhWithdrawBtn`, `_clanWhAmount`, `TurnClanWhPage(int)` | F/M | Clan bank page, coin buttons with the client's rights, amount and gold prompts |
-| `ClanTakeFromBag(int)`, `ClanBagFit(int)`, `AskClanWithdraw(int,int)`, `ClanWithdrawInto(int,int)`, `CanDropOnClanWh(int,Variant)`, `DropOnClanWh(int,Variant)` | M | Clan bank transfers and in-bank moves (rights from `ClanCanWithdraw`) |
-| `_whDepositBtn`, `_whWithdrawBtn`, `WhTakeFromBag(int)`, `WhBagFit(int)`, `WithdrawInto(int,int)` | F/M | Warehouse coin buttons, deposit and take-out from the embedded bag |
+| `ClanTakeFromBag(int)`, `ClanBagFit(int)`, `AskClanWithdraw(int,int,int?)`, `ClanWithdrawInto(int,int,int?)`, `CanDropOnClanWh(int,Variant)`, `DropOnClanWh(int,Variant)` | M | Clan bank transfers and in-bank moves (rights from `ClanCanWithdraw`) |
+| `_whDepositBtn`, `_whWithdrawBtn`, `WhTakeFromBag(int)`, `WhBagFit(int)`, `WithdrawInto(int,int,int?)` | F/M | Warehouse coin buttons, deposit and take-out from the embedded bag |
 | `StorageTransferBusy` | P | Busy state of every storage |
 | `_invDelQueue` (`DestroyQueue`), `_invDelPanel`, `AskDeleteItem(int)`, `ConfirmDeleteItem()`, `HideDeletePrompt()` | F/M | Bulk destroy through the Classic destroy prompt |
 | `OpenVipVaultFromBag()` | M | VIP Vault shortcut in the inventory drawer |
@@ -326,7 +326,7 @@ Upstream removed the chat-room window, the party window and the trade row lists;
 | `_ncRefresh`, `_ncPublicTab`, `_ncPrivateTab`, `_ncPublicRows`, `_ncPrivateRows` | F | Nation chat names, refresh caption |
 | `ToggleSeekParty()`, `_seekShown`, `OpenInvitePrompt()`, `ToggleRowMeter()`, `ToggleWarBoard()`, `_warBoardRowShares`, `_partyHudMenu`, `Net.PartyRowMeterMode`, `Net.PartyCommanderId` | F/M | Party list actions, row meter, member menu (Classic context menu), taskbar party board |
 | `_wantedClassOpt`, `_wantedMsgInput`, `_seekFilters`, `_fullMoonRow`, `_seekHeading`, `_seekStatusLbl`, `_seekEntries`, `_seekFilter`, `_zone` | F | Party board filter panel, Full Moon Rift actions, row descriptions after the client filter |
-| `_exMyOffer`, `_exTheirOffer` (`ExOfferItem.SourceAbs/ItemId/Count/Dura`), `Inv`, `OfferSlot(int)`, `ShowItemTooltip(int, ItemSlot, string)`, `_bagPairing._openedByCompanion`, `HideMainWindow(string)`, `_exStatus`, `Net.ExchangeOtherAddEvent` | F/M/E | Classic trade grids, offering, docked inventory closed, approval withdrawn on partner change |
+| `_exMyOffer`, `_exTheirOffer` (`ExOfferItem.SourceAbs/ItemId/Count/Dura`), `Inv`, `OfferSlot(int,int?)`, `ShowItemTooltip(int, ItemSlot, string)`, `_bagPairing._openedByCompanion`, `HideMainWindow(string)`, `_exStatus`, `Net.ExchangeOtherAddEvent` | F/M/E | Classic trade grids, offering, docked inventory closed, approval withdrawn on partner change |
 | `ChatSystem.RenderText/PlainText/ItemOf` (static), whisper header buttons, `_whisperLayer` popups | M | Whisper item links and emoticons, header actions, emoticon and size popups |
 | `_cmdGroups`, `_cmdEntries`, `_cmdShown`, `FillCommandEntries(CommandGroup)`, static `CommandUnavailableColour`; `CommandCatalog.Groups`, `CommandEntry.Id` | F/M | Classic command list (`NativeCommandList`): reads the client's rows per group, shows the Classic groups in the client's own list and `_cmdShown`, so the client's `RunListedCommand` runs the activated row. Missing members leave the window on its original art with the client's own two lists. |
 | `_escapeStack`, `HudWindow.DockTo(Func<Vector2>)` (public), `DockHudRects()`, `_genieSub` | F/M | Command list: an Escape entry ahead of the main windows (the client registers none for `_cmdWindow`), and the right-middle default position beside the right-side HUD; a dragged position still wins and a layout reset returns to it |
@@ -483,17 +483,18 @@ drag data carries it under `DragLayer.AmountKey`. On desktop the client then no 
 storages (`AsksStackAmount` is touch only), so a whole stack moved at once. The Classic UI keeps the original
 quantity prompt and adds the wheel:
 
-- **Classic dial** (`Layout/ClassicStackDial`). A Classic bag cell (`ItemSlot.PicksAmount`: the inventory window
-  and the trade's bag) arms the client's `StackDial` on the Classic drag icon (`IconDragPreview`), shows the count
-  in the cell's count type and corner, and publishes the amount like the client's own cells. While a stack is
-  dragged the wheel belongs to the dial (`_Input`, handled before the cells, so the storage pages do not turn).
-  `ItemSlot.OnDropAmount` hands the picked amount to the drop.
+- **Classic dial** (`Layout/ClassicStackDial`). A Classic bag cell (`ItemSlot.PicksAmount`: the inventory window,
+  the trade's bag and the vendor's trading inventory) arms the client's `StackDial` on the Classic drag icon
+  (`IconDragPreview`), shows the count in the cell's count type and corner, and publishes the amount like the
+  client's own cells. While a stack is dragged the wheel belongs to the dial (`_Input`, handled before the cells,
+  so the storage pages do not turn). `ItemSlot.OnDropAmount` hands the picked amount to the drop.
 - **Rule.** A part picked with the wheel moves at once. The whole stack (no wheel turn, or the wheel back at the
   whole stack) keeps the original Classic flow: the storages and the trade ask the count in the client's prompt,
   the magic bags ask in the Classic prompt, and a bag-to-bag move takes the whole stack. Bag-to-bag parts are
   offered, as upstream allows (`ItemMove.SplitsAcross` includes `InventoryToInventory`); the client refuses a split
   it cannot make. A part moved inside a storage is refused by the client ("Only whole stacks move inside the
-  storage.").
+  storage."). A part dropped on the vendor's catalogue still opens the client's sale prompt (the client's sale
+  takes no amount).
 - **Storages** (`NativeStorage`). The stored and embedded-bag cells set `ItemSlotView.PicksAmount`, so the client
   arms its own dial on them; the plugin gives that drag count the Classic count type and corner (one deferred
   restyle of the client's label on the drag icon). The whole-stack prompt opens the client's `_whAmount`,
@@ -519,12 +520,12 @@ list keeps the original cells and shows the new member data through the party fa
 
 | Member | Kind | Used for |
 | --- | --- | --- |
-| `IGameParty.MemberBuffs(id)` (`GamePartyBuff`: `SkillId`, `Icon`, `Tooltip`) | API | Buff icons on each cell's name line, 14 px in the client's order, ending under the bars; the name gives way (ellipsis) down to two icons, further buffs are not shown (the client also shows one line). Each icon has the client's buff tooltip; without art the skill's initial |
+| `IGameParty.MemberBuffs(id)` (`GamePartyBuff`: `SkillId`, `Icon`, `Tooltip`) | API | Buff icons on each cell's name line, 14 px in the client's order, ending under the bars; the name gives way (ellipsis) down to two icons, further buffs are not shown (the client also shows one line). Each icon has the client's buff tooltip; without art the skill's initial on a dark Classic cell (the client draws the bare letter) |
 | `IGameParty.PingMs(id)`; `PartySignal` (`Level`, `Arcs`, `Tooltip`, `Unknown`, `NoSignal`) | API | Connection glyph in the arrow column beside the name line (three arcs in the client's colours, struck through without a signal, the client's "Ping: N ms" tooltip); the member tooltip's last line |
 | `IGameParty.LevelPercent(id)` | API | "Level progress N.N%" in the member tooltip (the own row: the experience percent) |
 | `GamePartyMember.Picked` (= the client's `PartyHighlight`) | API | The green selection frame follows the client's highlight: the picked member, or the party member who is the world target; targeting someone outside the party clears it. The client raises `Changed` when it moves |
 | `IGameParty.WarBoardCooldown` | API | The War Board tab cooldown beside the Classic tabs, refreshed on `Changed` (raised whenever the shown seconds change); replaces the per-frame `_warBoardCool` mirror and the board's World accessor |
-| `IGameParty.RowMeterMode`, `RowMeterShare`, `CycleRowMeter`; `Config.PartyRowMeter` (default now off) | API | Kept: the Classic "Meter" action still cycles Off, Damage, Healing. The client forces the row meter off at World build only while its own party HUD is shown (`KeepRowMeterOff` is skipped when a plugin replaces `HudPart.Party`), so the replacement keeps it |
+| `IGameParty.RowMeterMode`, `RowMeterShare`, `CycleRowMeter`; `Config.PartyRowMeter` (default now off) | API | Kept: the Classic "Meter" action still cycles Off, Damage, Healing. The client forces the row meter off at World build only while its own party HUD is shown (`KeepRowMeterOff` is skipped when a plugin replaces `HudPart.Party`), so the replacement keeps it. A live plugin disable leaves the client's row meter in the chosen mode until the player relogs (upstream has no switch for it any more) |
 | `IGameParty.AutoRejoinTip` (long official texts 44730/44731) | API | Re-invite tooltip wrapped to the client's buff tooltip width (`TextWrap.Wrap`, 44 letters); the party list and the war board use the original tooltip look (co_tooltip_us) |
 
 `MoveRowTo` (drag reordering) is not used: the Classic cells keep the Move up / Move down arrows (`MoveRow`).

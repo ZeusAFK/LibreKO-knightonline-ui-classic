@@ -166,8 +166,14 @@ public partial class ItemSlot : Control
         var data = new Godot.Collections.Dictionary { { DragKeyItem, Current.ItemId }, { DragKeyFrom, Slot } };
         var preview = IconDragPreview.Create(_icon, _grabPoint);
         DragLayer.Show(this, preview);
-        if (PicksAmount) ClassicStackDial.Arm(preview, data, Current, _count);
+        ArmAmount(preview, data);
         return data;
+    }
+
+    /// <summary>Arms the mouse-wheel amount dial on a drag preview of this cell when <see cref="PicksAmount"/> is set.</summary>
+    protected void ArmAmount(Control preview, Godot.Collections.Dictionary data)
+    {
+        if (PicksAmount) ClassicStackDial.Arm(preview, data, Current, _count);
     }
 
     public override bool _CanDropData(Vector2 atPosition, Variant data)

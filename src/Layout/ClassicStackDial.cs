@@ -24,7 +24,6 @@ public partial class ClassicStackDial : Label
     {
         _dial = dial;
         _data = data;
-        Name = "stack_dial";
     }
 
     public int Amount => _dial.Amount;
@@ -42,6 +41,8 @@ public partial class ClassicStackDial : Label
         var dial = new ClassicStackDial(new StackDial(item.Count), data);
         icon.AddChild(dial);
         ItemCountStyle.Apply(dial, icon, count.GetThemeFont("font"));
+        // The count style names its label; the dial keeps its own name.
+        dial.Name = "stack_dial";
         // The preview icon is the cell's inset icon; the cell count sits on the icon's bottom-right corner.
         dial.OffsetRight = count.OffsetRight + ItemCountStyle.Inset;
         dial.OffsetBottom = count.OffsetBottom + ItemCountStyle.Inset;

@@ -307,6 +307,43 @@ public partial class Preview
         ApplyGold(net.Sheet.Gold);
         Require(game.Log.History.Count==1,"Repeated unchanged balances do not duplicate the Info transfer");
         await Capture("purchase-confirmed");
+        // Mouse-wheel amounts (ff78eef): a part picked while dragging a trading-inventory stack moves at once to
+        // another bag cell, as in the inventory window; the whole stack still moves whole.
+        {
+            var keep=inventory[Inventory.GridStart];
+            Require(inventory[Inventory.GridStart+2].IsEmpty,"The split target cell is free");
+            Vector2 start=shell.BagCells[0].GetGlobalRect().GetCenter(),end=shell.BagCells[2].GetGlobalRect().GetCenter();
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=start,GlobalPosition=start});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=true,Position=start,GlobalPosition=start});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=start+new Vector2(18,0),GlobalPosition=start+new Vector2(18,0),Relative=new Vector2(18,0),ButtonMask=MouseButtonMask.Left});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=end,GlobalPosition=end,Relative=end-start,ButtonMask=MouseButtonMask.Left});await Frames(2);
+            Require(GetViewport().GuiIsDragging(),"A trading-inventory stack is held by the pointer");
+            var dial=Descendants(GetTree().Root).OfType<KnightOnlineUiClassic.Layout.ClassicStackDial>().Single();
+            var dialIcon=(Control)dial.GetParent();
+            Require(dial.Name=="stack_dial" && dial.Text==keep.Count.ToString() && dial.GetThemeColor("font_color")==Colors.White && dial.GetGlobalRect().End==dialIcon.GetGlobalRect().End
+                && dial.GetThemeFontSize("font_size")==KnightOnlineUiClassic.Layout.ItemCountStyle.FontSize && dial.GetThemeFont("font")==CountLabel(shell.BagCells[0]).GetThemeFont("font"),
+                "The trading inventory's drag count shows the whole stack in white on the icon's bottom-right corner, in the cell's count type");
+            for(int i=0;i<3;i++)
+            {
+                Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.WheelDown,Pressed=true,Position=end,GlobalPosition=end,ButtonMask=MouseButtonMask.Left});
+                Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.WheelDown,Pressed=false,Position=end,GlobalPosition=end,ButtonMask=MouseButtonMask.Left});
+            }
+            await Frames(2);
+            int part=keep.Count-3;
+            Require(dial.Text==part.ToString() && dial.GetThemeColor("font_color")==KnightOnlineUiClassic.Layout.ClassicStackDial.PartColour && pager.Page==pendingPage,
+                "The wheel picks a part of the trading-inventory stack, shown in gold, without paging the catalogue");
+            await Capture("bag-split-drag",false);
+            Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=false,Position=end,GlobalPosition=end});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=Vector2.Zero,GlobalPosition=Vector2.Zero});await Frames(2);
+            object move=DetailField(world,"_moveCur")!;
+            Require(!GetViewport().GuiIsDragging() && !quantity.Visible && (bool)DetailField(world,"_moveInFlight")! && (ushort)move.GetType().GetField("Amount")!.GetValue(move)! == part,
+                "Dropping the picked part on another trading-inventory cell moves it at once (the client's bag split)");
+            DetailCall(world,"OnItemMoveResult",true);RefreshBag();await Frames();
+            Require(inventory[Inventory.GridStart].Count==3 && inventory[Inventory.GridStart+2].ItemId==entry.Id && inventory[Inventory.GridStart+2].Count==part
+                && CountBadge(shell.BagCells[0])=="3" && CountBadge(shell.BagCells[2])==part.ToString(),"The acknowledged split leaves the rest of the stack in place");
+            await Capture("bag-split-done");
+            inventory[Inventory.GridStart]=keep;inventory[Inventory.GridStart+2]=default;RefreshBag();await Frames();
+        }
         await PointerDrag(shell.BagCells[0],hit);await Capture("sell-quantity");
         Require(quantity.Visible && amount.Value==73 && quantity.GetMeta("trade_action").AsString()=="Sell","Dragging a stack to the catalogue prefills its entire carried quantity");
         amount.Text="10";amount.EmitSignal(LineEdit.SignalName.TextChanged,amount.Text);
@@ -453,8 +490,9 @@ public partial class Preview
         net.Sheet.SeedWealth(1_234_567,50_000);DetailCall(world,"OnVendorGold",1_234_567);
         var weighted=groups.SelectMany(g=>g.Value.Select(e=>(Group:g.Key,Entry:e))).First(e=>ItemData.Get(e.Entry.Id) is {Countable:>0,Weight:>1} && ItemData.BuyPrice(e.Entry.Id)>0);
         OpenShop(weighted.Group);hit=await ShowItem(weighted.Entry.Id);
-        net.Sheet.SetMaxWeight(1);await PointerDrag(hit,target);await Capture("weight-limit");
-        Require(!quantity.Visible && !InFlight() && Status().Contains("heavy"),"Weight limit produces the native refusal without changing inventory");net.Sheet.SetMaxWeight(10_000);
+        net.Sheet.SetMaxWeight(1);RefreshBag();await PointerDrag(hit,target);await Capture("weight-limit");
+        Require(Descendants(shell).OfType<Label>().Any(l=>l.IsVisibleInTree() && l.Text==$"Weight : {Plugin.Kit.Game.Character.Weight/10f:0.0}/{1/10f:0.0}"),"The weight line shows the lowered limit behind the refusal");
+        Require(!quantity.Visible && !InFlight() && Status().Contains("heavy"),"Weight limit produces the native refusal without changing inventory");net.Sheet.SetMaxWeight(10_000);RefreshBag();
         OpenShop(group.Key);hit=await ShowItem(entry.Id);
         await PointerDrag(hit,target);amount.Text="999999";amount.EmitSignal(LineEdit.SignalName.TextChanged,amount.Text);await Capture("quantity-over-limit");
         Require(ok.Disabled,"An amount above the actual trade limit cannot be confirmed");Escape();await Frames();
@@ -527,7 +565,10 @@ public partial class Preview
         Require(Descendants(Approval()).OfType<Label>().Single(l=>l.Name=="trade_item_name").TooltipText==ItemData.DisplayName(longName.Entry.Id),
             "The longest real catalogue name retains its complete tooltip while wrapping within the fixed item band");
         Escape();await Frames();net.Sheet.SetGold(savedGold);net.Sheet.SetMaxWeight(10_000);
+        // The weight line refreshes with the bag; refresh it now so the capture never shows the raised limit.
+        RefreshBag();await Frames();
         OpenShop(249000);await Capture("loyalty-shop");
+        Require(Descendants(shell).OfType<Label>().Any(l=>l.IsVisibleInTree() && l.Text==$"Weight : {Plugin.Kit.Game.Character.Weight/10f:0.0}/{10_000/10f:0.0}"),"The weight line shows the restored limit");
         Require(((Label)DetailField(world,"_vendorEmpty")!).Visible && ((Button)DetailField(world,"_vendorBuy")!).Disabled,"An empty real catalogue has a clear message and disabled purchase");
         Require(!shell.CanSell(new Godot.Collections.Dictionary{{"invFrom",Inventory.GridStart+2}}),"National Points shop rejects item sale drops");
         Require(Descendants(shell).OfType<Label>().Any(l=>l.Text=="NP" && l.IsVisibleInTree()),"NP shop immediately displays the actual wallet currency");

@@ -214,6 +214,24 @@ public partial class Preview
         Check(buffLabel.Text==party.MemberBuffs(303)[0].Tooltip,"buff tooltip: the client's buff tooltip");
         await Capture("buff-tooltip",false);
         await Unhover();
+        // A buff skill without art: its initial on a dark Classic cell (the client draws the bare letter).
+        {
+            var probe=mageRow.GetNode<ClassicPartyBuff>("party_buff_1");
+            var real=party.MemberBuffs(303)[1];
+            probe.Bind(new LibreKO.Plugins.GamePartyBuff(real.SkillId,null,real.Tooltip));
+            for(int i=0;i<3;i++) await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
+            using var image=GetViewport().GetTexture().GetImage();
+            var cell=probe.GetGlobalRect();
+            Check(!probe.HasIcon && probe.Visible && probe.TooltipText==real.Tooltip && AnyPixel(image,cell.Grow(-2),c=>c.R<.06f&&c.G<.06f&&c.B<.06f)
+                && AnyPixel(image,cell.Grow(-3),c=>c.R>.9f&&c.G>.9f&&c.B>.9f),"buff without art: the skill's initial in white on a dark cell, with the client's buff tooltip");
+            var crop=new Rect2I((int)mageRow.GlobalPosition.X-2,(int)mageRow.GlobalPosition.Y-2,(int)mageRow.Size.X+4,(int)mageRow.Size.Y+4);
+            using var region=image.GetRegion(crop);region.Resize(region.GetWidth()*4,region.GetHeight()*4,Image.Interpolation.Nearest);
+            region.SavePng(output+"/"+prefix+"-buff-no-art.png");
+            captures.Add(new{state="buff-no-art",file=prefix+"-buff-no-art.png"});
+            probe.Bind(real);
+            for(int i=0;i<2;i++) await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
+            Check(probe.HasIcon,"buff art restored after the no-art check");
+        }
         var commander=PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_commander_bar");
         Check(!commander.Visible,"commander restore hidden while the bar shows");
         typeof(Net).GetProperty("PartyCommanderId")!.SetValue(net,300);

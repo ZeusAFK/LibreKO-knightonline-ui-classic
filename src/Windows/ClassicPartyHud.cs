@@ -305,7 +305,7 @@ public partial class ClassicPartyBuff : Control
     {
         var bounds = new Rect2(Vector2.Zero, Size);
         if (_icon != null) { DrawTextureRect(_icon, bounds, false); return; }
-        // Without art, the skill's initial on a dark cell, as the client does.
+        // Without art, the skill's initial (the client draws it bare) on a dark Classic cell.
         DrawRect(bounds, new Color(0, 0, 0, .85f));
         DrawRect(bounds, new Color("82735b"), false, 1);
         var font = Plugin.Kit.Bold; const int size = 9;

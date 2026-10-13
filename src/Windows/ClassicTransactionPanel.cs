@@ -114,7 +114,9 @@ public partial class ClassicVendorPanel : Control
             int slot = Plugin.Kit.Game.Inventory.GridStart + i;
             var cell = new ClassicTradeBagSlot(slot, this) { Name = $"trade_bag_{i}", Position = ClassicVendorLayout.BagCell(i).Position, Size = ClassicVendorLayout.BagCell(i).Size,
                 Source = s => Plugin.Kit.Game.Inventory.At(s),
+                PicksAmount = true,
                 OnDrop = (from, to) => { if (!ModalOpen) Plugin.Kit.Game.Inventory.Move(from, to); },
+                OnDropAmount = (from, to, amount) => { if (!ModalOpen) MoveBag(from, to, amount); },
                 CanCompanionDrop = data => !ModalOpen && !TradeBlocked && ValidCatalogueItem(data) && NativeBagCell(slot)?._CanDropData(Vector2.Zero, data) == true,
                 OnCompanionDrop = data => BuyInto(data, slot),
                 OnHover = (s, over) => { if (over) Plugin.Kit.Game.Inventory.ShowTooltip(s); else Plugin.Kit.Game.Inventory.HideTooltip(); } };
@@ -138,6 +140,13 @@ public partial class ClassicVendorPanel : Control
         var grid = _inventory == null ? null : CharacterDetailsSkin.Tree(_inventory.Body).OfType<GridContainer>()
             .FirstOrDefault(g => g.Columns == 7 && g.GetChildCount() >= Plugin.Kit.Game.Inventory.GridCount);
         return grid?.GetChild(slot - Plugin.Kit.Game.Inventory.GridStart) as Control;
+    }
+    /// <summary>A move inside the trading inventory: a part picked with the mouse wheel splits the stack, as in the inventory window.</summary>
+    private static void MoveBag(int from, int to, int? amount)
+    {
+        var inventory = Plugin.Kit.Game.Inventory;
+        if (ClassicStackDial.Part(amount, inventory.At(from).Count) is int part) inventory.MoveAmount(from, to, part);
+        else inventory.Move(from, to);
     }
     public void BindQuantity(QuantityPrompt quantity) => _quantity = quantity;
     public bool CanSell(Variant data) => !ModalOpen && !TradeBlocked && _currency.Text.Length == 0 && ValidBagItem(data) && _nativeWell.CanDrop?.Invoke(data) == true;
@@ -298,7 +307,13 @@ public partial class ClassicTradeBagSlot : BagSlot
         OnHover?.Invoke(Slot, false);
         var data = new Godot.Collections.Dictionary { {"invFrom",Slot},{"id",Current.ItemId} }; int id = Current.ItemId;
         if (mb.ButtonIndex == MouseButton.Right) { _owner.Sell(data); AcceptEvent(); return; }
-        Callable.From(() => { if (IsVisibleInTree() && !_owner.ModalOpen && !_owner.TradeBlocked && Current.ItemId == id) ForceDrag(data, ClassicTradeDrag.Preview(id)); }).CallDeferred(); AcceptEvent();
+        Callable.From(() =>
+        {
+            if (!IsVisibleInTree() || _owner.ModalOpen || _owner.TradeBlocked || Current.ItemId != id) return;
+            var preview = ClassicTradeDrag.Preview(id);
+            ForceDrag(data, preview);
+            ArmAmount(preview, data);
+        }).CallDeferred(); AcceptEvent();
     }
     public override bool _CanDropData(Vector2 position, Variant data) => !_owner.ModalOpen && !_owner.TradeBlocked &&
         (data.VariantType == Variant.Type.Dictionary && data.AsGodotDictionary().ContainsKey("companionFrom") || _owner.ValidBagItem(data)) && base._CanDropData(position, data);

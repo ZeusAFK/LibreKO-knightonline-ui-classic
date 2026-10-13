@@ -194,6 +194,32 @@ public partial class Preview
         var damage = board.GetNode<Button>("war_board_damage"); var healing = board.GetNode<Button>("war_board_healing");
         Require(damage.ButtonPressed == (mode == PartyWarBoard.ModeDamage) && healing.ButtonPressed == (mode == PartyWarBoard.ModeHealing), "war board: the tab of the client's mode is selected");
         await Shot("war-board");
+        // The board's tooltips use the original tooltip look (co_tooltip_us), as the party list's do.
+        {
+            // A member row (the fixture does not seed the own class, so the own row would read "Class 0").
+            var row = rows[1];
+            var over = row.GetGlobalRect().GetCenter();
+            GetViewport().PushInput(new InputEventMouseMotion { Position = over, GlobalPosition = over });
+            PopupPanel? tip = null;
+            for (int i = 0; i < 120 && tip == null; i++)
+            {
+                await Frames(1);
+                tip = PartyEverything(GetTree().Root).OfType<PopupPanel>().FirstOrDefault(p => p.Visible && row.IsAncestorOf(p));
+            }
+            Require(tip != null, "war board: a row tooltip opens on hover");
+            await Frames(4);
+            var tipLabel = PartyEverything(tip!).OfType<Label>().First();
+            var ground = tip!.GetThemeStylebox("panel", "TooltipPanel") as StyleBoxFlat;
+            Require(ground != null && ground.BgColor.IsEqualApprox(new Color(0, 0, 0, 187f / 255f)) && tipLabel.GetThemeFont("font") == Plugin.Kit.Bold
+                && tipLabel.GetThemeColor("font_color") == Colors.White, "war board: the row tooltip uses the original tooltip look (translucent black, white Arial Bold)");
+            Require(tipLabel.Text == row.TooltipText && tipLabel.GetLineCount() == 3 && !tipLabel.Text.Split('\n')[1].StartsWith("Class ") && GetViewportRect().Encloses(new Rect2(tip.Position, tip.Size)),
+                "war board: the row tooltip shows the member, class and share inside the window " + new Rect2(tip.Position, tip.Size));
+            await Shot("war-board-tooltip");
+            var away = new Vector2(4, GetViewportRect().Size.Y - 4);
+            GetViewport().PushInput(new InputEventMouseMotion { Position = away, GlobalPosition = away });
+            await Frames(6);
+            Require(!GodotObject.IsInstanceValid(tip) || !tip.Visible, "war board: the row tooltip closes when the pointer leaves");
+        }
         healing.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames(4);
         Require(PluginHost.Game.Party.WarBoardMode == PartyWarBoard.ModeHealing && healing.ButtonPressed && !damage.ButtonPressed, "war board: Healing switches the client's board mode");
