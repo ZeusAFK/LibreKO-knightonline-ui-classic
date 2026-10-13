@@ -22,13 +22,32 @@ public static class ClassicEventFamilyLayout
     public static readonly (int Left, int Top, int Right) Header = (Margin, TitleTop, Margin);
     public static readonly Vector2 Close = new(24, 24), Minimize = new(19, 12);
 
-    /// <summary>Body width per window, where the client's natural width is too narrow or too wide for its rows.</summary>
+    /// <summary>
+    /// Body width per window, where the client's natural width is too narrow or too wide for its rows. The event
+    /// schedule keeps the client's 640-pixel card list (<see cref="Schedule"/>).
+    /// </summary>
     public static int BodyWidth(string id) => id switch
     {
-        "events" => 516,
         "daily_rank" => 0,
         "rank_board" => 0,
         "nestindun" => 0,
         _ => 0,
     };
+
+    /// <summary>
+    /// The event schedule ("events"): the client's card list in the plain frame. Each card is a quest inset (lit
+    /// while the event is live) with its glyph on the nation inventory cell, the time chips and weekday marks are
+    /// small insets, the Events and Collection Races tabs use the chat tab art (as the party war board), "Only my
+    /// level" the chat check socket, and the list takes the height of its cards up to the client's 470 pixels.
+    /// </summary>
+    public static class Schedule
+    {
+        public const int TabHeight = 20, TabMinWidth = 72, TabPadding = 12, FilterGap = 2, ToggleGap = 6;
+        public const int CardPadding = 8, ChipPadX = 6, ChipPadY = 2, DayPadX = 7, DayPadY = 1;
+        public const int NameFont = FontSize, StatusFont = SmallFont, DetailFont = TinyFont, ChipFont = SmallFont, DayFont = TinyFont;
+        /// <summary>The list never grows past the client's height; the loading and empty texts keep two rows.</summary>
+        public const int MaxListHeight = 470, EmptyHeight = 2 * Row, BarGap = 6;
+        /// <summary>Brightness of the inset art around a live card and the active weekday.</summary>
+        public const float LiveLight = 1.45f;
+    }
 }

@@ -67,8 +67,17 @@ public partial class Preview
         }
         async Task Hover(Control control)
         {
-            Vector2 hit = control.GetGlobalRect().GetCenter();
-            GetViewport().PushInput(new InputEventMouseMotion { Position = hit, GlobalPosition = hit }); await Frames(2);
+            // Another window's focus or mouse change can drop the hover: move again, up to three times.
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                Vector2 hit = control.GetGlobalRect().GetCenter() + new Vector2(attempt, 0);
+                GetViewport().PushInput(new InputEventMouseMotion { Position = hit, GlobalPosition = hit }); await Frames(2);
+                if (control is not BaseButton button || button.Disabled) return;
+                ulong until = Time.GetTicksMsec() + 1500;
+                while (button.GetDrawMode() != BaseButton.DrawMode.Hover && Time.GetTicksMsec() < until) await Frames(1);
+                if (button.GetDrawMode() == BaseButton.DrawMode.Hover) return;
+                if (attempt < 2) GD.Print($"EVENTS_B hover attempt {attempt + 2} on {control.Name}");
+            }
         }
         async Task Leave() { GetViewport().PushInput(new InputEventMouseMotion { Position = Vector2.Zero, GlobalPosition = Vector2.Zero }); await Frames(2); }
         async Task Click(Control control, MouseButton button = MouseButton.Left)

@@ -70,6 +70,7 @@ public partial class Preview
             Require(caption != null && caption.Text == text && button.Text == text && Fits(caption), $"{what}: the native '{text}' on the art caption");
             Require(button.GetThemeStylebox("normal") is StyleBoxTexture && button.GetThemeStylebox("hover") is StyleBoxTexture
                 && button.GetThemeStylebox("pressed") is StyleBoxTexture, $"{what}: original button art in every state");
+            Require(button.GetThemeColor("font_color").A == 0 && button.GetThemeColor("font_hover_color").A == 0, $"{what}: only the art caption draws '{text}'");
         }
         var zone = typeof(World).GetField("_zone", BindingFlags.Instance | BindingFlags.NonPublic)!;
         void SetZone(int value) => zone.SetValue(world, Convert.ChangeType(value, zone.FieldType));
@@ -87,21 +88,45 @@ public partial class Preview
         var bar = (ProgressBar)DetailField(world, "_joinModalBar")!;
         var countdownTimer = (Label)DetailField(world, "_bifrostTimerLbl")!;
         var countdownBar = (ProgressBar)DetailField(world, "_bifrostBar")!;
-        async Task Registration(string state, bool urgent, bool registered)
+        var signUps = net.SignUps;
+        string other = "";
+        // The registration box in one state: the shown sign-up's countdown, its status and the actions it offers.
+        // Registered elsewhere: the character is signed up for another open event, so Join is hidden and Close is alone.
+        async Task Registration(string state, bool urgent, bool registered, bool elsewhere = false, bool count = false)
         {
             await Frames();
             countdown.Position = new Vector2(Mathf.Round((viewport.Size.X - countdown.Size.X) / 2), 24);
             await Frames();
             var panel = join.GetNode<Control>("classic_registration");
-            Require(!join.GetChildren().OfType<CenterContainer>().Single().Visible, $"{state}: the flat native panel is hidden");
-            Require(panel.Size == Spec.Registration.Size && panel.GlobalPosition == ((viewport.Size - panel.Size) / 2).Round(), $"{state}: centred message box {panel.GetGlobalRect()}");
-            foreach (var label in new[] { joinTitle, timerLabel, statusLabel }) { Expected(label, panel, $"{state} '{label.Text}'"); Require(Fits(label), $"{state}: '{label.Text}' fits"); }
-            Expected(bar, panel, state + " bar"); Expected(joinButton, panel, state + " join"); Expected(closeButton, panel, state + " close");
-            Require(joinButton.Size == Spec.Message.Button && closeButton.Size == Spec.Message.Button, $"{state}: 97 x 29 message buttons");
-            Art(joinButton, registered ? "Cancel" : "Join", state + " join"); Art(closeButton, "Close", state + " close");
+            var countLabel = (Label)DetailField(world, "_joinModalCount")!;
+            Require(join.Visible && !join.GetChildren().OfType<CenterContainer>().Single().Visible, $"{state}: the flat native panel is hidden");
+            Require(panel.Size == Spec.Registration.SizeFor(count) && panel.GlobalPosition == ((viewport.Size - panel.Size) / 2).Round(), $"{state}: centred message box {panel.GetGlobalRect()}");
+            Require(countLabel.Visible == count, $"{state}: the sign-up count line {(count ? "shows" : "is hidden")} for this event");
+            foreach (var label in count ? new[] { joinTitle, timerLabel, statusLabel, countLabel } : new[] { joinTitle, timerLabel, statusLabel })
+            { Expected(label, panel, $"{state} '{label.Text}'"); Require(Fits(label), $"{state}: '{label.Text}' fits"); }
+            Expected(bar, panel, state + " bar"); Expected(closeButton, panel, state + " close");
+            Require(closeButton.Size == Spec.Message.Button, $"{state}: 97 x 29 message buttons");
+            Art(closeButton, "Close", state + " close");
+            bool alone = elsewhere || !joinButton.Visible;
+            if (elsewhere)
+                Require(!joinButton.Visible && statusLabel.Text == $"You are registered for {other}.", $"{state}: '{statusLabel.Text}' without Join");
+            if (!alone)
+            {
+                Expected(joinButton, panel, state + " join");
+                Require(joinButton.Size == Spec.Message.Button, $"{state}: 97 x 29 Join");
+                Art(joinButton, registered ? "Cancel" : "Join", state + " join");
+            }
+            else Require(new Rect2(closeButton.GlobalPosition - panel.GlobalPosition, closeButton.Size) == Spec.Message.Single(panel.Size.Y), $"{state}: Close takes the single centred place");
+            if (count) Require(countLabel.GetGlobalRect().End.Y + Spec.Message.ActionGap <= closeButton.GetGlobalRect().Position.Y + .5f, $"{state}: the count line keeps the gap above the buttons");
             Require(timerLabel.GetThemeColor("font_color") == (urgent ? ClassicWorldOverlays.UrgentOnMessage : ClassicWorldOverlays.MessageText), $"{state}: {(urgent ? "urgent" : "calm")} countdown ink");
             Require(((StyleBoxTexture)bar.GetThemeStylebox("fill")).RegionRect.Position.Y == (urgent ? 462 : 389), $"{state}: {(urgent ? "red" : "orange")} original bar fill");
-            Require(statusLabel.GetThemeColor("font_color") == (registered ? ClassicEventPanel.Ready : ClassicDesign.Text), $"{state}: {(registered ? "registered" : "open")} status ink");
+            var statusInk = registered ? ClassicEventPanel.Ready : elsewhere ? ClassicDesign.Muted : ClassicDesign.Text;
+            Require(statusLabel.GetThemeColor("font_color") == statusInk, $"{state}: {(registered ? "registered" : elsewhere ? "registered elsewhere" : "open")} status ink");
+            Plaque(state, urgent);
+            await Capture(state);
+        }
+        void Plaque(string state, bool urgent)
+        {
             Require(countdown.Visible && countdown.Size == Spec.Countdown.Size && viewport.Encloses(countdown.GetGlobalRect()), $"{state}: countdown plaque {countdown.Size}");
             var surface = countdown.GetNode<Control>("classic_countdown");
             foreach (var control in new Control[] { (Label)DetailField(world, "_bifrostTitleLbl")!, countdownTimer, countdownBar })
@@ -109,42 +134,69 @@ public partial class Preview
                 Expected(control, surface, $"{state} countdown {control.Name}");
                 if (control is Label label) Require(Fits(label), $"{state}: countdown '{label.Text}' fits");
             }
-            Require(countdownTimer.GetThemeColor("font_color") == (urgent ? ClassicWorldOverlays.UrgentOnPlaque : ClassicWorldOverlays.PlaqueInk), $"{state}: countdown plaque ink");
-            await Capture(state);
+            Require(countdownTimer.GetThemeColor("font_color") == (urgent ? ClassicWorldOverlays.UrgentOnPlaque : ClassicWorldOverlays.PlaqueInk), $"{state}: {(urgent ? "urgent" : "calm")} countdown plaque ink");
+            Require(((StyleBoxTexture)countdownBar.GetThemeStylebox("fill")).RegionRect.Position.Y == (urgent ? 462 : 389), $"{state}: {(urgent ? "red" : "orange")} plaque bar fill");
         }
         await Registration("ft-registration", false, false);
+        // Join asks the server; the sign-up is registered when the server's reply names the temple's zone.
         joinButton.EmitSignal(BaseButton.SignalName.Pressed);
-        Require((bool)DetailField(world, "_isEventRegistered")! && joinButton.Text == "Cancel", "Join runs the native registration toggle");
-        DetailCall(world, "OnBifrostJoinResult", LibreKO.Domain.TempleJoin.Joined, 55);
-        Require(((Button)DetailField(world, "_joinModalBtn")!).Text == "Cancel", "Joining FT updates registration state");
+        Require(DetailField(world, "_pendingJoin") is TempleEventType.ForgottenTemple && signUps.Registered == TempleEventType.None && joinButton.Text == "Join",
+            "Join sends the native request and waits for the server");
+        DetailCall(world, "OnBifrostJoinResult", TempleJoin.Joined, 55);
+        Require(signUps.Registered == TempleEventType.ForgottenTemple && joinButton.Text == "Cancel", "The server's reply for zone 55 registers Forgotten Temple");
         await Registration("ft-registered", false, true);
         DetailCall(world, "OnBifrostTime", 20, TempleEventType.ForgottenTemple);
         await Registration("ft-registration-urgent", true, true);
+        DetailCall(world, "OnBifrostTime", 600, TempleEventType.ForgottenTemple);
         // The server's sign-up count adds its line under the status; the box grows by that line only.
         DetailCall(world, "OnTempleSignUps", (int)TempleEventType.ForgottenTemple, 14, 9);
-        await Frames(); await Frames();
-        {
-            var panel = join.GetNode<Control>("classic_registration");
-            var count = (Label)DetailField(world, "_joinModalCount")!;
-            Require(count.Visible && count.Text.Length > 0 && Fits(count), "registration: the sign-up count line shows and fits");
-            Require(panel.Size == Spec.Registration.SizeFor(true), $"registration: the box grows by the count line {panel.Size}");
-            Expected(count, panel, "registration count"); Expected(joinButton, panel, "registration join with count"); Expected(closeButton, panel, "registration close with count");
-            Require(count.GetGlobalRect().End.Y + Spec.Message.ActionGap <= joinButton.GetGlobalRect().Position.Y + .5f, "registration: the count line keeps the gap above the buttons");
-            await Capture("ft-registration-count");
-            // Juraid Mountain signs up at an NPC: no Join, Close alone in the centre.
-            Native.Set(world, "_isEventRegistered", false);
-            ((Label)DetailField(world, "_joinModalCount")!).Visible = false;
-            DetailCall(world, "OnBifrostTime", 600, TempleEventType.JuraidMountain); DetailCall(world, "UpdateJoinModalState");
-            await Frames(); await Frames();
-            Require(!joinButton.Visible && closeButton.Visible, "juraid: the client hides Join for the NPC sign-up");
-            Require(new Rect2(closeButton.GlobalPosition - panel.GlobalPosition, closeButton.Size) == Spec.Message.Single(panel.Size.Y), "juraid: Close takes the single centred place");
-            Require(Fits(statusLabel), "juraid: the NPC sign-up hint fits the status band");
-            await Capture("juraid-registration");
-        }
+        await Registration("ft-registration-count", false, true, count: true);
+        Require(((Label)DetailField(world, "_joinModalCount")!).Text == TempleJoin.CountLine(false, 14, 9), "registration: the Forgotten Temple count per nation");
+        // A second sign-up opens while registered for Forgotten Temple: the box stays on Forgotten Temple until the
+        // player picks the other event (the events window's Join), which then reads "registered for" without Join.
+        DetailCall(world, "OnBifrostTime", 600, TempleEventType.Chaos);
+        Require(signUps.Open.Count == 2 && signUps.Current == TempleEventType.ForgottenTemple && joinTitle.Text.Contains("FORGOTTEN TEMPLE"),
+            "two sign-ups: the registration stays on the registered event");
+        DetailCall(world, "ShowSignUp", TempleEventType.Chaos);
+        other = "Forgotten Temple";
+        Require(signUps.Current == TempleEventType.Chaos && joinTitle.Text.Contains("CHAOS DUNGEON"), "two sign-ups: the other event is shown on request");
+        await Registration("registered-elsewhere", false, false, elsewhere: true);
+        // Counts are kept per event: the Chaos sign-up (event id 24) has its own line.
+        DetailCall(world, "OnTempleSignUps", TempleJoin.ChaosSignUpEventId, 11, 7);
+        await Registration("registered-elsewhere-count", false, false, elsewhere: true, count: true);
+        Require(((Label)DetailField(world, "_joinModalCount")!).Text == TempleJoin.CountLine(true, 11, 7), "registration: the Chaos sign-up count (event id 24)");
+        DetailCall(world, "ShowSignUp", TempleEventType.ForgottenTemple);
+        await Frames();
+        Require(joinButton.Visible && joinButton.Text == "Cancel" && ((Label)DetailField(world, "_joinModalCount")!).Text == TempleJoin.CountLine(false, 14, 9),
+            "two sign-ups: back on Forgotten Temple with Cancel and its own count");
+        // Cancelling the registration, then Juraid Mountain, which signs up at an NPC: no Join, Close alone.
+        DetailCall(world, "OnBifrostDisband");
+        Require(signUps.Registered == TempleEventType.None, "the server's disband clears the registration");
+        DetailCall(world, "OnBifrostTime", 600, TempleEventType.JuraidMountain);
+        Require(signUps.Open.Count == 3 && signUps.Current == TempleEventType.JuraidMountain && !joinButton.Visible && closeButton.Visible, "juraid: the client hides Join for the NPC sign-up");
+        await Registration("juraid-registration", false, false);
+        Require(statusLabel.Text.Contains("Reserve Knight Captain") && joinTitle.Text == "#  JURAID MOUNTAIN  #", "juraid: the NPC sign-up hint under the English capitals " + joinTitle.Text);
+        DetailCall(world, "ShowSignUp", TempleEventType.ForgottenTemple);
         closeButton.EmitSignal(BaseButton.SignalName.Pressed);
         Require(!join.Visible && countdown.Visible, "Close runs the native close and keeps the countdown plaque");
+        await Frames();
+        Plaque("ft-countdown", false);
         await Capture("ft-countdown");
-        DetailCall(world, "EndBifrostEvent");
+        // The server ends each sign-up with a zero time; without one the plaque counts the plain Bifrost time.
+        foreach (var type in new[] { TempleEventType.ForgottenTemple, TempleEventType.Chaos, TempleEventType.JuraidMountain })
+            DetailCall(world, "OnBifrostTime", 0, type);
+        await Frames();
+        Require(!signUps.AnyOpen && !countdown.Visible && !join.Visible, "zero times close every sign-up and the plaque");
+        DetailCall(world, "OnBifrostTime", 20, TempleEventType.None);
+        await Frames();
+        Require(((Label)DetailField(world, "_bifrostTitleLbl")!).Text == "Bifrost" && !join.Visible, "the plain Bifrost countdown has no registration");
+        countdown.Position = new Vector2(Mathf.Round((viewport.Size.X - countdown.Size.X) / 2), 24);
+        await Frames();
+        Plaque("bifrost-countdown-urgent", true);
+        await Capture("bifrost-countdown-urgent");
+        DetailCall(world, "OnBifrostTime", 0, TempleEventType.None);
+        await Frames();
+        Require(!countdown.Visible, "a zero Bifrost time hides the plaque");
         SetZone(55);
         DetailCall(world, "RefreshInZoneLeaveUi");
         await Frames();

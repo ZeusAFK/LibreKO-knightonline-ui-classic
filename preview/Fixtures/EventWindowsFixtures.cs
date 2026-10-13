@@ -5,7 +5,8 @@ using LibreKO.Network;
 
 /// <summary>
 /// Event windows and states the client's own preview builders do not cover: the Monster Stone prompt, the event
-/// schedule before its first reply and the siege war panel before the castle is held.
+/// schedule before its first reply, after a clock shift and during a lottery draw, and the siege war panel before the
+/// castle is held.
 /// Each builds the client's own window, feeds it the state a live session shows and detaches it from its layer.
 /// </summary>
 public static partial class PreviewFixtures
@@ -58,6 +59,28 @@ public static partial class PreviewFixtures
         Call(world, "BuildEventsWindow");
         Call(world, "RefreshEventsWindow");
         return Detached(Field<HudWindow>(world, "_eventsPanel"));
+    }
+
+    /// <summary>The client's schedule preview after a game master moved the event clock: the warning line shows.</summary>
+    public static HudWindow BuildEventsShiftUiPreview(World world, string view)
+    {
+        var window = (HudWindow)Call(world, "BuildEventsUiPreview", "")!;
+        var schedule = Field<EventSchedule>(world, "_eventSchedule");
+        SetField(world, "_eventSchedule", new EventSchedule(TimeSpan.FromMinutes(-75), schedule.Now, schedule.Events, schedule.ReceivedUtc));
+        Call(world, "RefreshEventsWindow");
+        return window;
+    }
+
+    /// <summary>The client's schedule preview while the lottery draw is live: its card offers Open.</summary>
+    public static HudWindow BuildEventsLotteryUiPreview(World world, string view)
+    {
+        var window = (HudWindow)Call(world, "BuildEventsUiPreview", "")!;
+        var schedule = Field<EventSchedule>(world, "_eventSchedule");
+        var lottery = schedule.Events.First(e => e.Kind == EventKind.Lottery);
+        var now = schedule.Now.Append(new EventNow(EventKind.Lottery, 0, lottery.Name, EventPhase.Running, 900, lottery.MinLevel, lottery.MaxLevel)).ToList();
+        SetField(world, "_eventSchedule", new EventSchedule(schedule.ClockOffset, now, schedule.Events, schedule.ReceivedUtc));
+        Call(world, "RefreshEventsWindow");
+        return window;
     }
 
     public static HudWindow BuildSiegeWarStateUiPreview(World world, string view)

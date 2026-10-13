@@ -46,11 +46,17 @@ public static class ClassicEventFamily
         }
         int width = Spec.BodyWidth(window.Id);
         if (width > 0) window.Body.CustomMinimumSize = new Vector2(width, window.Body.CustomMinimumSize.Y);
+        // Tooltips of the family's controls take the original tooltip look (co_tooltip_us).
+        window.Body.Theme ??= ClassicPremiumChip.Tooltip();
+        // The event schedule has its own composition; what it does not claim gets the family materials.
+        bool schedule = window.Id == "events" && ClassicEventSchedule.Apply(window);
         Restyle(window.Body);
         if (window.Id == "nestindun") FitDescription(window.Body);
         Native.NativeWindows.OnDescendantAdded(window.Body, node => Callable.From(() =>
         {
-            if (GodotObject.IsInstanceValid(node)) Restyle(node);
+            if (!GodotObject.IsInstanceValid(node)) return;
+            if (schedule) ClassicEventSchedule.Arrived(node);
+            Restyle(node);
         }).CallDeferred());
         window.ResetSize();
         return frame;
@@ -114,10 +120,13 @@ public static class ClassicEventFamily
 
     private static bool Near(Color a, Color b) => Math.Abs(a.R - b.R) < .02f && Math.Abs(a.G - b.G) < .02f && Math.Abs(a.B - b.B) < .02f;
 
+    /// <summary>The bright gold of highlights and chosen states.</summary>
+    public static Color Highlight => new("ffe094");
+
     /// <summary>Classic ink for a client colour: gold captions, bright gold highlights, light text, muted hints, states.</summary>
     public static Color Ink(Color native)
     {
-        if (Near(native, UiTheme.GoldBright) || Near(native, UiTheme.GoldVivid) || Near(native, new Color("ffe08a"))) return new Color("ffe094");
+        if (Near(native, UiTheme.GoldBright) || Near(native, UiTheme.GoldVivid) || Near(native, new Color("ffe08a"))) return Highlight;
         if (Near(native, UiTheme.Gold) || Near(native, UiTheme.Neutral) || Near(native, UiTheme.Warning) || Near(native, UiTheme.Bronze)) return ClassicEventPanel.Caption;
         if (Near(native, UiTheme.TextHi) || Near(native, UiTheme.Self) || Near(native, Colors.White) || Near(native, new Color("f1ead9"))) return ClassicEventPanel.Ink;
         if (Near(native, UiTheme.TextLo) || Near(native, UiTheme.TextDim)) return ClassicEventPanel.Muted;
@@ -134,9 +143,11 @@ public static class ClassicEventFamily
         return ClassicEventPanel.Ink;
     }
 
-    /// <summary>Restyles a node and everything under it once.</summary>
+    /// <summary>Restyles a node and everything under it once; tooltips and other popups keep their own look.</summary>
     public static void Restyle(Node root)
     {
+        for (var up = root; up != null; up = up.GetParent())
+            if (up is Popup) return;
         foreach (var node in Tree(root))
         {
             if (node is not Control control || control.HasMeta(Skinned) || control is HudWindow) continue;
