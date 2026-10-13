@@ -19,7 +19,10 @@ public partial class Preview
     /// history, recording, voice settings, room settings, minimized). The frame, the members column, the log, the
     /// voice row and the composer are checked at their actual rendered bounds against the declared layout; posts
     /// keep their side and sender colour; the native actions (send, members toggle, Escape minimise, blink,
-    /// restore, settings validation, close) run through the Classic controls.
+    /// restore, settings validation, close) run through the Classic controls. Since ff78eef rooms are open to both
+    /// nations and their lines stay in the room window: the room list shows a room of the other nation, the Classic
+    /// Enter joins it, the server's replies open its room window, and the Classic chat settings no longer offer
+    /// "Chatroom".
     /// </summary>
     private async Task CaptureChatRoomAudit(int nation)
     {
@@ -322,34 +325,190 @@ public partial class Preview
             Require(window.Minimized, "minimized: the Classic minimize button minimizes the room");
             Done(opened);
         }
-        // Chat categories (3277df5): chat room and Noah Knights lines reach the Classic chat (the old 1023 mask hid
-        // them); a room line carries its zone; Noah Knights lines keep the ink of the sender's nation.
+        // Chat rooms of both nations (ff78eef dropped the client's nation check): the room list shows a room of the
+        // other nation with its nation mark like any other room, the Classic Enter joins it (a locked one asks for
+        // its password), and the room window opens for it. Its lines stay in the room window and never reach the chat.
+        {
+            ClassicSocialSkin.Register(PluginHost.Ui);
+            int own = nation == 1 ? Nations.Karus : Nations.ElMorad, other = own == Nations.Karus ? Nations.ElMorad : Nations.Karus;
+            void Handle(string handler, Packet packet) => typeof(Net).GetMethod(handler, Flags)!.Invoke(offline, new object[] { packet });
+            string Pending() => (((string, bool, int, int))typeof(Net).GetField("_pendingRoom", Flags)!.GetValue(offline)!).Item1;
+            void Click(Control row) => row.EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
+            string Mark(int of) => "res://assets/ui/nation_chat/" + (of == Nations.Karus ? "karus.png" : "elmorad.png");
+
+            var world = new World();
+            var list = (HudWindow)DetailCall(world, "BuildNationChatUiPreview", "private")!;
+            var me = offline.LastEnter; me.Name = "Tester10"; me.Nation = own;
+            typeof(Net).GetMethod("SeedPreviewEnter", Flags)!.Invoke(offline, new object[] { me });
+            typeof(World).GetField("_myId", Flags)!.SetValue(world, 9006);
+            // The client's fixture rooms plus two rooms of the other nation: an open one and a locked one.
+            var open = new NationRoom(1005, "Border traders", false, other, 3, 20);
+            var locked = new NationRoom(1006, "Ronark Land watch", true, other, 5, 10);
+            var rooms = new List<NationRoom>((List<NationRoom>)DetailField(world, "_ncRooms")!) { open, locked };
+            Require(rooms.Any(r => r.Nation == own) && rooms.Count(r => r.Nation == other) >= 2, "nations: the list holds rooms of both nations");
+            offline.NationChat.Left(); DetailCall(world, "RefreshNationButtons");
+            DetailCall(world, "OnNationRooms", rooms);
+            var listLayer = new CanvasLayer { Name = "nation_rooms" }; AddChild(listLayer); listLayer.AddChild(list); list.Visible = true;
+            NativeSocial.Prepare(list, world);
+            var password = (HudWindow)DetailCall(world, "DetachPreviewControl", (HudWindow)DetailField(world, "_ncPassword")!)!;
+            listLayer.AddChild(password);
+            await Frames(8);
+            var rows = (VBoxContainer)DetailField(world, "_ncPrivateRows")!;
+            PanelContainer Row(NationRoom room) => rows.GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion())
+                .Single(r => Descendants(r).OfType<Label>().Any(l => l.Text == NationChatRules.Row(room.Name, room.Members, room.MaxMembers)));
+            Click(Row(open)); await Frames(6);
+            Require((int)DetailField(world, "_ncSelectedRoom")! == open.Id, "nations: a click selects the other nation's room natively");
+            list.Position = ((GetViewportRect().Size - list.Size) / 2).Round(); await Frames(4);
+            Require(list.GetChildren().OfType<ClassicSocialFrame>().Count() == 1 && GetViewportRect().Encloses(list.GetGlobalRect()), "nations: the room list in the Classic social frame inside the viewport " + list.GetGlobalRect());
+            string listFile = prefix + "-nation-rooms-both.png";
+            var shot = GetViewport().GetTexture().GetImage(); shot.SavePng(output + "/" + listFile);
+            screens.Add(new { state = "nation-rooms-both", file = listFile, bounds = list.GetGlobalRect().ToString() });
+            int Lit(Rect2 rect)
+            {
+                int lit = 0;
+                for (int y = (int)rect.Position.Y; y < (int)rect.End.Y; y++)
+                    for (int x = (int)rect.Position.X; x < (int)rect.End.X; x++)
+                        if (shot.GetPixel(x, y) is var c && Mathf.Max(c.R, Mathf.Max(c.G, c.B)) > 0.3f) lit++;
+                return lit;
+            }
+            var scrollRect = ((Control)rows.GetParent()).GetGlobalRect();
+            var plainInks = new HashSet<Color>();
+            foreach (var room in rooms)
+            {
+                var row = Row(room); var rect = row.GetGlobalRect();
+                var icons = Descendants(row).OfType<TextureRect>().ToArray();
+                var label = Descendants(row).OfType<Label>().Single();
+                string who = room.Name + (room.Nation == own ? " (own nation)" : " (other nation)");
+                Require(row.HasMeta(ClassicSocialStyle.Styled) && row.GetMeta("social_row", false).AsBool() && scrollRect.Grow(1).Encloses(rect), who + ": a Classic list row inside the list " + rect);
+                Require(icons.Length == 2 && icons[1].Texture?.ResourcePath == Mark(room.Nation), who + ": the row carries its nation's mark " + icons.ElementAtOrDefault(1)?.Texture?.ResourcePath);
+                Require(room.Locked == (icons[0].Texture != null), who + ": the lock mark follows the room");
+                foreach (var icon in icons.Where(i => i.Texture != null))
+                {
+                    var at = icon.GetGlobalRect();
+                    Require(rect.Encloses(at) && Mathf.Abs(at.GetCenter().Y - rect.GetCenter().Y) <= 1 && at.End.X <= label.GetGlobalRect().Position.X, who + ": mark inside the row, centred, before the name " + at);
+                    Require(Lit(at) >= 12, who + ": the mark renders (" + Lit(at) + " lit px)");
+                }
+                Require(label.GetThemeFont("font") == Plugin.Kit.Bold, who + ": Arial Bold row text");
+                bool selected = room.Id == open.Id;
+                Require(row.GetMeta("social_selected", false).AsBool() == selected, who + ": selection state " + selected);
+                if (selected)
+                    Require(row.GetThemeStylebox("panel") is StyleBoxFlat { BorderColor: var edge } && edge == ClassicSocialStyle.SelectedEdge && label.GetThemeColor("font_color") == ClassicDarkFrame.Heading, who + ": the selected room carries the gold selection line and heading ink");
+                else plainInks.Add(label.GetThemeColor("font_color"));
+            }
+            Require(plainInks.Count == 1 && plainInks.Single() == ClassicDesign.Text, "nations: rooms of both nations share the Classic row ink (" + string.Join(", ", plainInks) + ")");
+            Texture2D? MarkOf(NationRoom room) => Descendants(Row(room)).OfType<TextureRect>().ElementAt(1).Texture;
+            Require(MarkOf(open) != MarkOf(rooms.First(r => r.Nation == own)), "nations: own and other nation rooms carry different marks");
+
+            // Enter on the other nation's rooms: the client accepts both without a notice; a locked one asks for its password.
+            var join = (Button)DetailField(world, "_ncPriJoin")!;
+            var log = (TabbedLog)DetailField(world, "_combatLog")!;
+            Require(join.IsVisibleInTree() && join.Text == "Enter" && !join.Disabled, "nations: the Classic Enter shows outside a room");
+            Click(Row(locked)); await Frames(4);
+            int notices = log.Lines(LogTab.All).Count;
+            Press(join); await Frames(4);
+            Require(password.Visible && password.GetChildren().OfType<ClassicSocialFrame>().Count() == 1 && Pending() == locked.Name, "nations: a locked room of the other nation asks for its password in the Classic frame");
+            password.Visible = false;
+            Click(Row(open)); await Frames(4);
+            Press(join); await Frames(4);
+            Require(Pending() == open.Name && !password.Visible && log.Lines(LogTab.All).Count == notices, "nations: Enter joins the other nation's room without a notice (" + string.Join(" | ", log.Lines(LogTab.All).Skip(notices)) + ")");
+
+            // The server's enter reply opens the room window; members and a line follow.
+            DetailCall(world, "ChatRoomInit");
+            var entered = new Packet(GameOpcodes.GS_NATION_CHAT);
+            entered.WriteByte(NationChatReplies.NationRooms); entered.WriteByte(NationChatReplies.PrivateEnter); entered.WriteByte(0); entered.WriteUShort((ushort)open.Id);
+            Handle("HandleNationChat", entered); await Frames(4);
+            var roomWindow = (HudWindow)DetailField(world, "_roomWindow")!;
+            Require(offline.NationChat.InPrivate && offline.NationChat.RoomId == open.Id && roomWindow.Visible, "nations: the enter reply opens the other nation's room");
+            DetailCall(world, "DetachPreviewControl", roomWindow);
+            var roomLayer = new CanvasLayer { Name = "room_other_nation" }; AddChild(roomLayer); roomLayer.AddChild(roomWindow);
+            NativeChatRoom.Prepare(roomWindow, world);
+            await Frames(8);
+            var frame = ClassicChatRoomFrame.Of(roomWindow)!;
+            Require(roomWindow.HasMeta(NativeChatRoom.ControlsMeta) && ClassicChatRoomFrame.Of(roomWindow) != null, "nations: the room window is in the Classic frame");
+            var people = new[] { (9101, "Valka"), (9102, "Orrin"), (9103, "Sefa"), (9006, "Tester10") };
+            var roster = new Packet(GameOpcodes.GS_NATION_CHAT);
+            roster.WriteByte(NationChatReplies.NationRooms); roster.WriteByte(NationChatReplies.Members); roster.WriteByte(0);
+            roster.WriteUShort((ushort)open.Id); roster.WriteString(open.Name); roster.WriteInt(9101); roster.WriteUShort((ushort)open.MaxMembers); roster.WriteUShort((ushort)people.Length);
+            foreach (var (id, name) in people) { roster.WriteInt(id); roster.WriteString(name); }
+            Handle("HandleNationChat", roster);
+            int chatLines = 0, roomLines = 0;
+            Action<ChatLine> chatLine = _ => chatLines++; Action<RoomChatLine> roomLine = _ => roomLines++;
+            offline.ChatEvent += chatLine; offline.RoomChatEvent += roomLine;
+            var said = new Packet(GameOpcodes.GS_CHAT);
+            said.WriteByte(ChatType.ChatRoom); said.WriteByte(Net.RoomChatMessage); said.WriteInt(9101); said.WriteString("Valka"); said.WriteString("Welcome to both nations"); said.WriteUShort(21);
+            Handle("HandleChat", said); await Frames(8);
+            offline.ChatEvent -= chatLine; offline.RoomChatEvent -= roomLine;
+            Require(roomLines == 1 && chatLines == 0, "nations: a room line goes to the room window only, never to the chat (room " + roomLines + ", chat " + chatLines + ")");
+            var posts = Named<VBoxContainer>(frame, "room_log").GetChildren().Where(n => !n.IsQueuedForDeletion()).ToArray();
+            Require(posts.Any(p => p.HasMeta(ClassicChatRoomSkin.PostMeta) && Descendants(p).OfType<Label>().Any(l => l.Name == "room_post_name" && l.Text == "Valka"
+                && l.GetThemeColor("font_color") == new Color(RoomNameColours.Of(9101)))), "nations: the line is a Classic post with the sender's colour");
+            var listed = Named<VBoxContainer>(frame, "room_roster_rows").GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion())
+                .SelectMany(r => Descendants(r).OfType<Label>().Select(l => l.Text)).ToArray();
+            Require(people.All(p => listed.Contains(p.Item2)), "nations: the members column lists the room's members: " + string.Join(", ", listed));
+            Require(Named<Label>(frame, "room_title").Text == NationChatRules.Title(open.Name, open.Members + 1, open.MaxMembers), "nations: the room title is the other nation's room: " + Named<Label>(frame, "room_title").Text);
+            listLayer.Visible = false;
+            await Capture(roomWindow, "other-nation-room");
+            DetailCall(world, "ChatRoomDispose"); DetailCall(world, "NationChatDispose");
+            offline.NationChat.Left(); offline.ChatRoomPanelShown = false;
+            listLayer.QueueFree(); roomLayer.QueueFree(); world.QueueFree(); await Frames(2);
+        }
+        // Chat categories: Noah Knights lines reach the Classic chat (the old 1023 mask hid them) and keep the ink of
+        // the sender's nation. Chat room lines stay in the room window since ff78eef, so the client no longer offers
+        // "Chatroom" as a filter and neither do the Classic chat settings.
         {
             var type = typeof(World).Assembly.GetType("LibreKO.ChatSystem")!;
             var system = Activator.CreateInstance(type, BindingFlags.Instance | BindingFlags.NonPublic, null, new object?[] { null }, null)!;
             var entryType = type.GetNestedType("ChatEntry", BindingFlags.NonPublic)!;
             var store = type.GetField("_store", Flags)!.GetValue(system)!;
             long seq = 900000 + nation * 100;
-            void Add(byte channel, string name, int from, string text, string place = "")
+            void Add(byte channel, string name, int from, string text)
             {
                 object entry = entryType.GetMethod("Player", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, new object[] { channel, name, from, false, text })!;
                 entryType.GetProperty("Seq")!.SetValue(entry, ++seq);
-                entryType.GetProperty("Place")!.SetValue(entry, place);
                 store.GetType().GetMethod("AddLast", new[] { entryType })!.Invoke(store, new[] { entry });
             }
             Add(ChatType.General, "Canbo", nation, "general line");
-            Add(ChatType.ChatRoom, "Borin", nation, "room line", "Moradon");
             Add(ChatType.NoahKnights, "Rikka", Nations.ElMorad, "noah line");
             Add(ChatType.NoahKnights, "Kaito", Nations.Karus, "noah karus");
             var all = NativeChat.ReadHistory(system, ChatWindow.AllCategories, false, "")!;
-            Require(ChatWindow.AllCategories == (int)ChatCategory.All && all.Count == 4, "categories: the full mask shows room and Noah Knights lines (" + all.Count + ")");
-            Require(all.Any(l => l.Contains("room line") && l.Contains("[lb]room[rb]") && l.Contains("[lb] Moradon [rb]")), "categories: a room line carries the room tag and its [ Zone ]");
+            Require(ChatWindow.AllCategories == (int)ChatCategory.All && all.Count == 3, "categories: the full mask shows Noah Knights lines (" + all.Count + ")");
             Require(all.Any(l => l.Contains("noah line") && l.Contains("ffb6c1")) && all.Any(l => l.Contains("noah karus") && l.Contains("87cefa")), "categories: Noah Knights lines keep the nation ink");
-            Require(NativeChat.ReadHistory(system, (int)(ChatCategory.ChatRoom | ChatCategory.NoahKnights), false, "")!.Count == 3, "categories: the two new categories filter on their own");
+            Require(NativeChat.ReadHistory(system, (int)ChatCategory.NoahKnights, false, "")!.Count == 2, "categories: the Noah Knights category filters on its own");
             Require(NativeChat.ReadHistory(system, 1023, false, "")!.Count == 1, "categories: the pre-3277 mask (1023) would hide them");
+            Require(!entryType.GetProperties(Flags).Any(p => p.Name == "Place"), "categories: chat entries carry no zone any more (ff78eef), the Classic chat reads none");
+            // The Classic chat sends a line unchanged when it starts with a prefix the client knows; ff78eef dropped '\'.
+            string prefixes = (string)typeof(ChatWindow).GetField("PrefixChars", BindingFlags.NonPublic | BindingFlags.Static)!.GetRawConstantValue()!;
+            const byte Unprefixed = 255;
+            var clientPrefixes = Enumerable.Range(33, 94).Select(c => (char)c).Where(c => ChatPrefixes.ChannelFor(c + "text", Unprefixed) != Unprefixed).ToArray();
+            Require(prefixes.Order().SequenceEqual(clientPrefixes.Order()) && !prefixes.Contains('\\'), "prefixes: the Classic chat knows the client's prefixes, without the chat room's '\\': " + prefixes + " / " + new string(clientPrefixes));
+
+            // The Classic chat settings list the client's categories, without "Chatroom", and close up under them.
+            var chat = new ChatWindow(); AddChild(chat); await Frames(3);
+            chat.OpenSettings(); await Frames(3);
+            var panel = (ClassicChatPanel)typeof(ChatWindow).GetField("_settingsPanel", Flags)!.GetValue(chat)!;
+            panel.Position = new Vector2(Mathf.Round((GetViewportRect().Size.X - panel.Size.X) / 2), 8); await Frames(3);
+            string[] captions = ChatCategories.Each.Where(c => c != ChatCategory.Whisper).Select(ChatCategories.Caption).ToArray();
+            var buttons = panel.Body.GetChildren().OfType<Button>().Where(b => b.Visible).ToArray();
+            var toggles = buttons.Take(captions.Length).ToArray();
+            Require(!ChatCategories.Each.Contains(ChatCategory.ChatRoom) && ChatWindow.SettingsCategories.Length == captions.Length, "settings: the client offers no chat room filter (" + captions.Length + " categories)");
+            Require(toggles.Select(b => b.Text[..b.Text.LastIndexOf(':')]).SequenceEqual(captions) && !buttons.Any(b => b.Text.StartsWith(ChatCategories.Caption(ChatCategory.ChatRoom))),
+                "settings: the Classic options list the client's categories without Chatroom: " + string.Join(", ", toggles.Select(b => b.Text)));
+            var bodyRect = panel.Body.GetGlobalRect();
+            // Rendered bounds: every button keeps the declared 156 x 24 (captioned ones used to keep 31 px and overlap the next row).
+            foreach (var button in buttons)
+                Require(bodyRect.Encloses(button.GetGlobalRect()) && button.Size == new Vector2(156, 24) && buttons.All(o => o == button || !o.GetGlobalRect().Intersects(button.GetGlobalRect())), "settings: " + button.Text + " is 156 x 24 inside the body without overlap " + button.GetGlobalRect());
+            foreach (var text in panel.Body.GetChildren().OfType<Label>())
+                Require(bodyRect.Encloses(text.GetGlobalRect()) && !buttons.Any(b => b.GetGlobalRect().Intersects(text.GetGlobalRect())), "settings: line '" + text.Text + "' inside the body clear of the buttons " + text.GetGlobalRect());
+            float lastRow = toggles.Max(b => b.GetGlobalRect().End.Y);
+            var time = buttons.Single(b => b.Text.StartsWith("Time:"));
+            Require(time.GetGlobalRect().Position.Y - lastRow == 12 && Mathf.IsEqualApprox(time.Position.Y, ChatWindow.SettingsOptionsTop(captions.Length)), "settings: the options follow the last category row with the section gap, no empty row " + time.GetGlobalRect());
+            var help = panel.Body.GetChildren().OfType<Label>().Single(l => l.Text.StartsWith("History:"));
+            Require(Mathf.IsEqualApprox(help.GetGlobalRect().End.Y, bodyRect.End.Y) && GetViewportRect().Encloses(panel.GetGlobalRect()), "settings: the panel ends under the help line, inside the viewport " + panel.GetGlobalRect());
+            string settingsFile = prefix + "-chat-settings.png";
+            GetViewport().GetTexture().GetImage().SavePng(output + "/" + settingsFile); screens.Add(new { state = "chat-settings", file = settingsFile, bounds = panel.GetGlobalRect().ToString() });
+            panel.Visible = false; await Frames(2);
 
             // The Noah Knights tab: shown only for Noah Knights, who lose the Clan and Alliance tabs.
-            var chat = new ChatWindow(); AddChild(chat); await Frames(3);
             chat.Position = new Vector2(20, GetViewportRect().Size.Y - chat.Size.Y - 20);
             var tabs = (List<Panel>)typeof(ChatWindow).GetField("_tabs", Flags)!.GetValue(chat)!;
             string Caption(Panel tab) => Descendants(tab).OfType<Button>().First().Text is { Length: > 0 } text ? text : Descendants(tab).OfType<Label>().First().Text;
