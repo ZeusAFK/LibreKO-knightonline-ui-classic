@@ -199,6 +199,10 @@ listed. Preview-only members are listed at the end.
 | `_mainWindows["Character"]` `_dock`/`DockTo`, `_geniePanel` `Layout._defaultPosition`/`ReapplyDefault()`, `_pluginHud` | F/M | The docked Character window and the Genie window's first spot stay clear of the Classic status bar, letter row and minimap |
 | `_hotkeys`, `_padHotkeys` (entries for `KeyBinds.Get`/`GetPad(KeyAction.Quests)`, re-applied on `KeyBinds.Changed`) | F | The "Quest Journal" key (F10) opens the Quest list like Q; without them it opens Quest Details as before |
 | `_hotSelected`, `_hotbar`, `SelectHotAbs(int)` | F/M | Hotbar selection |
+| `HotbarUsable(SkillData.Skill,double)`, `SelfTransformModel()`, `_hotbar`, `_zone` | M/F | Skill bar dimming (`NativeHudChat.HotbarUsable`): the client's own "usable now" test (MP, stamina, weapon, anger, buff, coins, learned, consumed items, group cooldown), plus the zone-tree and command-form gates it applies when an entry fires. Missing: the bar dims from item counts only. |
+| `_hotLoadedFromServer` | F | Passive skills that old bars still hold are cleared through `IGameHotbar.Drop(abs, 0, -1)` only after the client has applied the saved bar (`NativeHudChat.HotbarLoaded`), outside Chaos and with the Genie idle: on a bar change, on a Genie change, and on the slot-state tick when the bar becomes editable. Missing: nothing is cleared; clicks on them are still refused. |
+| static `VipVaultKeys` | F | A bag double-click leaves VIP vault keys to the client's right-click like other items it does not put on the skill bar (`NativeSkills.BagClickAddsToHotbar`). |
+| Public: `HotbarAssign.CanAdd`/`CanDrag`, `SkillLearn.For`, `IGameHotbar.Ready`, `HotSlotOverlay`, `UpgradeBadge`, `IGameGenie.Cell`/`SetCell`, `IGameCommands.Run(KeyAction.Skills/Presets)` | API | Skill rules of the Classic skill window and skill bar (`NativeSkills`): right-click and drag follow the client's own skill-window rules (the war shouts of both nations stay: the plugin adds the El Morad 230013/230014 that `CanAdd` lacks before upstream's fix), learn states, ready flash, upgrade badges; passive skills are cleared from Genie cells; the taskbar Skill button and the Skill Preset button run the client's keys |
 | `_running`, `_selfSitting`, `_autoAttack`, `ToggleRunMode()`, `ToggleAutoAttack()`, `StartCameraHalfTurn()`, `ToggleEsc(bool?)` | F/M | Commands |
 | `_miniMap` | F | `MiniMapVisible` |
 | `_clanBonusChip`, `_clanBonusMarks` (3277df5) | F | Clan online-bonus chip named `clan_bonus_chip` and skinned as a Classic plaque ("Clan" and the O/X marks); hidden while the 2.x top-right group shows its clan bonus bar (`NativeQuestHud`, `NativePremium.HideClientChips`) |
@@ -434,6 +438,7 @@ Overlays the client builds later are prepared through their fields four times a 
 | `_ladderKarus`, `_ladderElMorad`, `_ladderOwnKarus`, `_ladderOwnElMorad`; `LadderRow.Rank`, `Mark`, `Name`, `Clan`, `Points`, `Bonus` | F | PK ladder (`rank`) columns |
 | `_achTitleBanner`, `_achSearch`, `_achStatus`, `_achCategoryBox`, `_achListRow` | F | Achievement title banner, filters and category column |
 | `_genieReturnHome`, `_genieHuntInPlace`, `_genieHideRange`, `_genieCureCurse`, `_genieOther` | F | Genie Others page |
+| `_genieSkillPicker` (`PopupMenu`, `AboutToPopup`) | F | The client's Genie skill picker drops passive skills before it opens (`NativeSkills.FilterGenieSkillPicker`), as the skill window refuses to drag them. |
 | `_genieSlots` (`Button[28]`: Attack 0-7, Recovery 8-15, Support 16-27), `_genieModes` (`Dictionary<GenieMode, CheckButton>`), `_genieParty` (`CheckBox[12]`), `_genieRecovery`, `_geniePetPotion`, `_geniePetSelect`, `_geniePetPercent`, `_genieHammerThreshold`, `_genieHammerStatus` *(3277df5)* | F | Genie window (`NativeProgression.PrepareGenie`): the three skill columns (8 + 8 + 12 cells, a party check under each support cell), the mode toggles named by `GenieMode` (`genie_mode_attack`, `_basicattack`, `_combo`, `_recovery`, `_support`, `_leadertarget`, `_hppotion`, `_mppotion`), the recovery percent, the Familiar potion, the 11 "Set Others" rows (`GenieTownReturn.OtherRows`, hammer rows included) and the hammer threshold. The removed `_genieAutoHammer`, `_genieSkills` and the Combo hint are no longer read. |
 | `_genieSub` rows (`HudPart.GenieSub` seam, 3277df5) | F | The Classic quick panel keeps skinning the client's own panel (now on its own layer); the third monster row has no action button and keeps the row height of the others. |
 | `StatBar._frac` | F | Original progress bar mirroring the vanguard countdown |
@@ -641,6 +646,25 @@ composer, and the plugin subscribes no thread, composer or voice event (it conne
 | `Config.WhisperSize` (`BubbleMax`, the thread's minimum size) | Look | The original frame keeps its log area (pinned every frame) and lines wrap at the log width |
 | `_ncSearchEdit` (Private tab: room name, Search, Create room), rows with the "Double-click to enter" tooltip | F | Named `nation_search_edit`. The generic social restyle draws the row: the Classic edit field, the action buttons and 22 px rows. `_ncPriOpen` and the members preparer are gone, and `nation_chat_members` and `nation_chat_search` left `ClassicSocialLayout.WindowIds` |
 
+### Skill bar and the Chaos lock on upstream fa3cfc3
+
+In the Chaos dungeon, fa3cfc3 refuses every skill while the character blinks after a respawn
+(`ChaosBattle.BattleLocked`: zone 85 and `Net.SelfAbnormal == RespawnBlink.Blinking`, read as `ChaosBattleLocked` by
+`HotbarUsable` and `SkillsLocked`). Cube skills stay dimmed until their item is in the bag (`SkillItemHeld`), on the
+skill bar and on the Chaos skill page. The plugin needs no change for this: it reads the same members as before.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `HotbarUsable(SkillData.Skill,double)`, which now includes `ChaosBattleLocked` and `SkillItemHeld` | M | The Classic bar dims from the client's own test (`NativeHudChat.HotbarUsable`). So while the character blinks, every slot is dimmed, and after the blink a cube skill stays dimmed with a red 0 until its item is in the bag. A click still reaches the client's `FireHotSlot`, which refuses it with "Casting failed", as on the native bar. If the member is missing, the bar dims from item counts only. |
+| `chaos_skill` page: `ChaosSkillIcon.SetUsable` sets `Modulate` to `HotSlotCell.DimColor` | — | The Classic event family restyles the frame, the type and the buttons. It leaves the icons and their tint to the client. |
+
+`skill-rules-audit` checks this for both nations, against the client's World, using the members below. These
+members are used by the preview only:
+- `ChaosBattleLocked`, `SkillItemHeld`, `HotSlotCell.DimColor` and `Net.SelfAbnormal`
+- `BuildChaosSkillPageUiPreview`, `ChaosSkillPageTick`, `FlipChaosSkillPage`, `ChaosSkillPages`, `ChaosSkillsPerPage`,
+  `_chaosSkillIcons` and `ChaosSkillIcon.Skill`
+- `_combatLog`, `TextCastingFailed`, `SystemText`, `_pendingCasts` and `_continuanceSkill`
+
 ### Preview-only members
 
 The preview fixtures also reach client internals that the plugin never touches at runtime. Examples are the
@@ -821,7 +845,8 @@ None of these is required. Each would replace a reflection or a workaround.
    folder per mode. The modes are the routes in `preview/Preview.cs`:
    - preview variants: `preview`, plus `horizontal`, `hotbar-check`, `detail` and `native-reference` combinations;
    - HUD and chat: `hud-audit`, `chat-colours-audit`;
-   - character: `character-audit` (with `inventory-parent-audit`), `details-audit`, `skill-audit`, `party-audit`;
+   - character: `character-audit` (with `inventory-parent-audit`), `details-audit`, `skill-audit`, `skill-rules-audit`,
+     `party-audit`;
    - NPC: `npc-integration-audit` (with `npc-portrait-regression`), `npc-portrait-audit`, `npc-design-audit`,
      `hunt-icon-options`, `upstream-npc-audit`, `forgotten-temple-audit`;
    - items and storage: `inventory-audit`, `storage-audit`;

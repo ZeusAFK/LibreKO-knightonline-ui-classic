@@ -52,6 +52,8 @@ public interface INativeGame
 
     int SelectedAbs { get; }
     void Select(int abs);
+    bool HotbarLoaded { get; }
+    bool? HotbarUsable(int abs);
 
     bool Running { get; }
     bool Sitting { get; }
@@ -105,6 +107,10 @@ public static class NativeGameExtensions
     {
         public int SelectedAbs => NativeGame.Source.SelectedAbs;
         public void Select(int abs) => NativeGame.Source.Select(abs);
+        /// <summary>Whether the client has applied the character's saved skill bar.</summary>
+        public bool Loaded => NativeGame.Source.HotbarLoaded;
+        /// <summary>The client's "usable now" test for a slot; null when the client cannot tell.</summary>
+        public bool? Usable(int abs) => NativeGame.Source.HotbarUsable(abs);
     }
 
     extension(IGameCommands commands)
@@ -164,6 +170,8 @@ public partial class ClientGame : INativeGame
 
     public virtual int SelectedAbs => NativeHudChat.SelectedAbs;
     public virtual void Select(int abs) => NativeHudChat.Select(abs);
+    public virtual bool HotbarLoaded => NativeHudChat.HotbarLoaded;
+    public virtual bool? HotbarUsable(int abs) => NativeHudChat.HotbarUsable(abs);
 
     public virtual bool Running => NativeHudChat.Running;
     public virtual bool Sitting => NativeHudChat.Sitting;

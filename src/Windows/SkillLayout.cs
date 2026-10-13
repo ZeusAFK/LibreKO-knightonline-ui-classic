@@ -8,6 +8,12 @@ internal static class SkillLayout
 {
     internal const string FontFamily="Arial";
     internal const int BodyFontPoints=9;
+    private const int PagerY=525, PagerHeight=22;
+    // The client's "Skill Preset" entry, in the free right part of the Skill Point row, flush with the "P" column.
+    private const int PresetRight=360, PresetY=79, PresetWidth=92, PresetHeight=18;
+    // An original caption belongs to a Classic row when it starts within this many pixels of it.
+    private const float CaptionSnap=12f;
+    private static readonly string[] DefaultNational={"Leadership","Politics","Language","Siege Weapon"};
     public static LayoutNode Build(LayoutNode source)
     {
         var root = new LayoutNode { Type="base", Id="skill_window", W=365, H=574 };
@@ -16,11 +22,18 @@ internal static class SkillLayout
         int offset=Plugin.Kit.Nation==1 ? 2 : 0;
         Text(root,"text_Skill Point","Skill Point",14,78+offset,88,22,true);
         Text(root,"string_skillpoint","",106,78+offset,44,22,true,true);
-        string[] national={"Leadership","Politics","Language","Siege Weapon"};
+        int presetRight=source.Find("btn_1") is { } plus ? plus.X+plus.W : PresetRight;
+        root.Children.Add(new LayoutNode { Type="classic_button",Id="btn_preset",Text="Skill Preset",Font=FontFamily,Size=BodyFontPoints,Bold=true,
+            X=presetRight-PresetWidth,Y=PresetY+offset,W=PresetWidth,H=PresetHeight });
+        var captions=source.Strings.Where(n=>n.Id.Length==0 && n.Text.Trim().Length>0).ToList();
         for(int row=0;row<4;row++)
         {
             int x=row%2==0?4:184, y=103+offset+row/2*20;
-            Text(root,"national_"+row,national[row],x,y,87,20);
+            // The national rows keep the nation's original captions (Karus "Linguistic", El Morad "Language").
+            var slot=new Vector2(x,y);
+            var original=captions.OrderBy(n=>n.Position.DistanceSquaredTo(slot)).FirstOrDefault();
+            string national=original!=null && original.Position.DistanceTo(slot)<=CaptionSnap ? original.Text.Trim() : DefaultNational[row];
+            Text(root,"national_"+row,national,x,y,87,20);
             Text(root,"string_"+row,"0",row%2==0?93:271,y,59,20,true,true);
             Text(root,"tree_name_"+row,"",x,153+offset+row/2*20,87,20);
             Text(root,"string_"+(row+4),"",row%2==0?93:271,153+offset+row/2*20,59,20,true,true);
@@ -35,7 +48,11 @@ internal static class SkillLayout
         Text(root,"string_info","",25,396,312,42);
         string[] details={"string_skill_mp","string_skill_point","string_skill_item0","string_skill_item1","string_skill_item2"};
         for(int i=0;i<details.Length;i++) Text(root,details[i],"",25,440+i*15,312,15);
-        Text(root,"string_page","",146,525,72,22,true,true);
+        // Original pager: the page number, then the static word "Page" beside it.
+        var number=source.Find("string_page");
+        var word=captions.FirstOrDefault(n=>n.Text.Trim()=="Page");
+        Text(root,"string_page","",number?.X??153,PagerY,number?.W??21,PagerHeight,true,true);
+        Text(root,"text_page",word?.Text.Trim()??"Page",word?.X??174,PagerY,word?.W??44,PagerHeight);
         var title=source.Find("img_public")!;
         var fallback=Text(root,"class_fallback","",title.X,title.Y,title.W,title.H,false,true);
         fallback.Size=13;
