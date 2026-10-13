@@ -71,8 +71,15 @@ public static class NativeTrade
         return result;
     }
 
-    /// <summary>Offers a bag slot through the client (quantity prompt, refusals and pending state stay native).</summary>
-    public static void Offer(World world, int abs) => Native.Call(world, "OfferSlot", abs);
+    /// <summary>
+    /// Offers a bag slot through the client (quantity prompt, refusals and pending state stay native). A part of the
+    /// stack picked with the mouse wheel is offered without the prompt (ff78eef: <c>OfferSlot(int, int? amount)</c>).
+    /// </summary>
+    public static void Offer(World world, int abs, int? part = null)
+    {
+        if (part is int amount && Native.TryCall(world, "OfferSlot", out _, abs, (int?)amount)) return;
+        Native.Call(world, "OfferSlot", abs);
+    }
 
     public static void Tooltip(World world, TradeItem item, bool bag) =>
         Native.Call(world, "ShowItemTooltip", bag ? item.Slot : -1, new ItemSlot { ItemId = item.ItemId, Count = (short)item.Count, Durability = item.Durability }, "");

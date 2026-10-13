@@ -146,9 +146,96 @@ public partial class Preview
         Require(qty.Visible && Descendants(qty).OfType<MoneyEdit>().Single().Value == 65, "Right-click withdrawal starts with the complete stored count");
         Descendants(qty).OfType<Button>().Single(c => c.Name == "classic_trade_cancel").EmitSignal(Button.SignalName.Pressed);
         Require(!qty.Visible && !(bool)DetailField(world, "_whInFlight")! && warehouse[1].Count == 65, "Cancel closes quantity without moving the stored item");
-        DetailCall(world, "DepositSlot", Inventory.GridStart, -1); var changed = inventory[Inventory.GridStart]; changed.Count = 74; inventory[Inventory.GridStart] = changed; qty.Confirm();
+        RightClick(normalBag[Inventory.GridStart]); var changed = inventory[Inventory.GridStart]; changed.Count = 74; inventory[Inventory.GridStart] = changed; qty.Confirm();
         Require(!(bool)DetailField(world, "_whInFlight")!, "Changing the source stack while a prompt is open invalidates its confirmation");
         DetailCall(world, "AskGoldTransfer", true); Require(qty.Visible, "Clicking the coin opens a gold quantity prompt"); await Capture(0, "warehouse-coins"); qty.Close();
+        DetailCall(world, "RefreshWarehouse"); await Frames(2);
+        // Mouse-wheel amounts (ff78eef): a part picked on the drag moves at once; the whole stack keeps the count prompt.
+        int PendingCount(string field) { var pending = DetailField(world, field)!; return (int)pending.GetType().GetField("Count")!.GetValue(pending)!; }
+        Variant Picked(ItemSlotView cell, int amount) { var data = cell.DragOut!(cell); data.AsGodotDictionary()[DragLayer.AmountKey] = amount; return data; }
+        var whStatus = (StatusLabel)DetailField(world, "_whStatus")!;
+        normalCells[1]._DropData(Vector2.Zero, Picked(normalBag[Inventory.GridStart], 30));
+        Require(!qty.Visible && (bool)DetailField(world, "_whInFlight")! && PendingCount("_whPending") == 30, "A part picked with the mouse wheel is stored at once, without the prompt");
+        DetailCall(world, "OnWarehouseResult", (byte)2, (byte)0); whStatus.ResetStatus();
+        Require(inventory[Inventory.GridStart].Count == 74 && warehouse[1].Count == 65, "A refused part deposit keeps both stacks");
+        normalCells[1]._DropData(Vector2.Zero, Picked(normalBag[Inventory.GridStart], 74));
+        Require(qty.Visible && Descendants(qty).OfType<MoneyEdit>().Single().Value == 74 && !(bool)DetailField(world, "_whInFlight")!,
+            "A drag that keeps the whole stack on the wheel still asks the count");
+        qty.Close();
+        normalBag[Inventory.GridStart + 3]._DropData(Vector2.Zero, Picked(normalCells[1], 5));
+        Require(!qty.Visible && (bool)DetailField(world, "_whInFlight")! && PendingCount("_whPending") == 5, "A part picked on a stored stack is taken out at once into the chosen bag cell");
+        DetailCall(world, "OnWarehouseResult", (byte)3, (byte)0); whStatus.ResetStatus();
+        Require(normalCells[5]._CanDropData(Vector2.Zero, Picked(normalCells[1], 5)), "A stored stack may be dragged to an empty stored cell");
+        normalCells[5]._DropData(Vector2.Zero, Picked(normalCells[1], 5));
+        Require(!(bool)DetailField(world, "_whInFlight")! && whStatus.Text == "Only whole stacks move inside the storage." && warehouse[5].IsEmpty,
+            "A part of a stack does not move inside the storage (the client's whole-stack rule and text)");
+        await Capture(0, "warehouse-whole-stacks-only"); whStatus.ResetStatus();
+        normalBag[Inventory.GridStart + 3]._DropData(Vector2.Zero, Picked(normalBag[Inventory.GridStart], 4));
+        Require((bool)DetailField(world, "_moveInFlight")!, "A part picked in the embedded bag starts an inventory move");
+        DetailCall(world, "OnItemMoveResult", true);
+        Require(inventory[Inventory.GridStart].Count == 70 && inventory[Inventory.GridStart + 3].ItemId == potion && inventory[Inventory.GridStart + 3].Count == 4,
+            "A part picked in the embedded bag splits the stack, as the client's bag does");
+        inventory[Inventory.GridStart + 3] = default; changed.Count = 74; inventory[Inventory.GridStart] = changed; DetailCall(world, "RefreshWarehouse"); await Frames(2);
+        {
+            // The real gesture: the client's dial on a dragged stored-bag stack, the wheel over a stored cell.
+            var source = normalBag[Inventory.GridStart]; var target = normalCells[3];
+            Vector2 from = source.GetGlobalRect().GetCenter(), to = target.GetGlobalRect().GetCenter();
+            void Wheel(MouseButton button, Vector2 at, bool dragging = false)
+            {
+                var mask = dragging ? MouseButtonMask.Left : 0;
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = button, Pressed = true, Position = at, GlobalPosition = at, ButtonMask = mask });
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = button, Pressed = false, Position = at, GlobalPosition = at, ButtonMask = mask });
+            }
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = to, GlobalPosition = to }); await Frames(2);
+            Wheel(MouseButton.WheelDown, to); await Frames(2);
+            Require(storages[0].Page == 1, "Outside a drag the wheel over the stored cells still turns the page");
+            Wheel(MouseButton.WheelUp, to); await Frames(2);
+            Require(storages[0].Page == 0, "The wheel turns back to the first page");
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = from, GlobalPosition = from }); await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = from, GlobalPosition = from }); await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = from + new Vector2(18, 0), GlobalPosition = from + new Vector2(18, 0), Relative = new Vector2(18, 0), ButtonMask = MouseButtonMask.Left }); await Frames(2);
+            Require(GetViewport().GuiIsDragging(), "A carried stack is dragged with the pointer");
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = to, GlobalPosition = to, Relative = to - from, ButtonMask = MouseButtonMask.Left }); await Frames(2);
+            for (int i = 0; i < 3; i++) Wheel(MouseButton.WheelDown, to, dragging: true);
+            await Frames(2);
+            // The client's count label sits on the drag icon (a GM build also labels the item id beside it).
+            var dragCount = Descendants(GetTree().Root.GetNode("DragLayer")).OfType<Label>().Single(l => l.IsVisibleInTree() && l.GetParent() is TextureRect);
+            Require(storages[0].Page == 0 && dragCount.Text == "71" && dragCount.GetThemeColor("font_color") == UiTheme.GoldBright,
+                "While a stack is dragged the wheel picks the amount on the client's dial (gold for a part) and does not turn the page");
+            // The item art is drawn as a centred square in the client's drag icon (wider in a GM build, which labels the item id).
+            var dragIcon = (Control)dragCount.GetParent();
+            float side = Math.Min(dragIcon.Size.X, dragIcon.Size.Y);
+            var drawn = new Rect2(dragIcon.GetGlobalRect().Position + (dragIcon.Size - new Vector2(side, side)) / 2, new Vector2(side, side));
+            Require(dragCount.GetThemeFontSize("font_size") == KnightOnlineUiClassic.Layout.ItemCountStyle.FontSize && dragCount.GetThemeConstant("outline_size") == 3
+                && dragCount.GetGlobalRect().End == drawn.End - new Vector2(2, 2) && side == source.Size.Y,
+                "The client's drag count takes the cell's Classic count type and corner");
+            await Capture(0, "warehouse-wheel-drag");
+            Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = to, GlobalPosition = to }); await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = Vector2.Zero, GlobalPosition = Vector2.Zero }); await Frames(2);
+            Require(!GetViewport().GuiIsDragging() && !qty.Visible && (bool)DetailField(world, "_whInFlight")! && PendingCount("_whPending") == 71,
+                "Dropping the dragged part stores the picked amount without the prompt");
+            DetailCall(world, "OnWarehouseResult", (byte)2, (byte)0); whStatus.ResetStatus();
+        }
+        {
+            // The storage's bag companion (a right-click or a drop in the Classic bag window) takes the same route.
+            var companionType = typeof(World).GetNestedType("BagCompanion", BindingFlags.NonPublic)!;
+            var fitType = typeof(World).GetNestedType("BagFit", BindingFlags.NonPublic)!;
+            Delegate Bind(Type type, string method) => Delegate.CreateDelegate(type, world, typeof(World).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!);
+            var companion = Activator.CreateInstance(companionType, Bind(typeof(Func<int, bool>), "WhTakeFromBag"), Bind(typeof(Func<,>).MakeGenericType(typeof(int), fitType), "WhBagFit"),
+                (Func<int, string>)(_ => ""), Bind(typeof(Action), "CloseWarehouse"), Bind(typeof(Func<int, int, int?, bool>), "WithdrawInto"))!;
+            Set("_whCompanion", companion); await Frames(2);
+            var take = (Func<int, bool>)companionType.GetProperty("Take")!.GetValue(companion)!;
+            var intoBag = (Func<int, int, int?, bool>)companionType.GetProperty("IntoBag")!.GetValue(companion)!;
+            Require(take(Inventory.GridStart) && qty.Visible && Descendants(qty).OfType<MoneyEdit>().Single().Value == 74 && !(bool)DetailField(world, "_whInFlight")!,
+                "A right-click in the bag window while the storage is open asks the count through the storage's bag companion");
+            qty.Close();
+            Require(intoBag(1, Inventory.GridStart + 3, null) && qty.Visible && Descendants(qty).OfType<MoneyEdit>().Single().Value == 65,
+                "A stored stack dropped on the bag window asks the count through the bag companion");
+            qty.Close();
+            Require(intoBag(1, Inventory.GridStart + 3, 7) && !qty.Visible && (bool)DetailField(world, "_whInFlight")! && PendingCount("_whPending") == 7,
+                "A part picked for the bag window is taken out at once");
+            DetailCall(world, "OnWarehouseResult", (byte)3, (byte)0); whStatus.ResetStatus();
+        }
         var vip = (NativeSlot[])DetailField(world, "_vipWh")!; vip[0] = warehouse[0]; vip[1] = warehouse[1]; vip[47] = warehouse[2];
         uint now = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         Set("_whShown", false); Set("_vipWhShown", true); Set("_vipWhOpen", true); Set("_vipWhExpiresAt", now + 172800u); DetailCall(world, "RefreshVipWarehouse");
@@ -188,6 +275,20 @@ public partial class Preview
         Require(setPin.Text == "Set PIN" && clearPin.Visible && clearPin.Disabled, "Without a PIN the vault offers Set PIN and keeps Clear PIN visible but disabled");
         Set("_vipWhPinSet", true); DetailCall(world, "RefreshVipWarehouse"); await Capture(1, "vip-pin-set");
         Require(setPin.Text == "Change PIN" && clearPin.Visible && !clearPin.Disabled, "With a PIN the vault offers Change PIN and Clear PIN");
+        {
+            var vipBag = Descendants(panels[1]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_bag_")).ToDictionary(c => c.Index);
+            var vipStatusLabel = (StatusLabel)DetailField(world, "_vipWhStatus")!;
+            vipBag[Inventory.GridStart + 3]._DropData(Vector2.Zero, Picked(vipCells[1], 5));
+            Require(!vipAmount.Visible && (bool)DetailField(world, "_vipWhInFlight")! && PendingCount("_vipWhPending") == 5, "VIP: a part picked with the mouse wheel is taken out at once");
+            DetailCall(world, "OnVipWarehouseResult", Net.VipWhOutputSub, Net.VipFail); vipStatusLabel.ResetStatus();
+            vipCells[1]._DropData(Vector2.Zero, Picked(vipBag[Inventory.GridStart], 64));
+            Require(vipAmount.Visible && Descendants(vipAmount).OfType<MoneyEdit>().Single().Value == 64 && !(bool)DetailField(world, "_vipWhInFlight")!, "VIP: a whole stack dragged in asks the count");
+            vipAmount.Close();
+            vipCells[6]._DropData(Vector2.Zero, Picked(vipCells[1], 5));
+            Require(!(bool)DetailField(world, "_vipWhInFlight")! && vipStatusLabel.Text == "Only whole stacks move inside the storage." && vip[6].IsEmpty,
+                "VIP: a part of a stack does not move inside the vault");
+            await Capture(1, "vip-whole-stacks-only"); vipStatusLabel.ResetStatus();
+        }
         var clan = (NativeSlot[])DetailField(world, "_clanWh")!; clan[0] = warehouse[0]; clan[1] = warehouse[1]; clan[191] = warehouse[2];
         Set("_vipWhShown", false); Set("_clanWhShown", true); Set("_clanWhMoney", 9_000_000);
         typeof(Net).GetProperty("MyClan")!.SetValue(net, new MyClanInfo { InClan = true, Fame = ClanRanks.Trainee });
@@ -213,6 +314,17 @@ public partial class Preview
         Require(inventory[Inventory.GridStart].Count == 69 && clan[1].Count == 60, "Clan partial withdrawal merges into the carried stack");
         Require(!clanStatus.Text.StartsWith("Only the chief"), "A valid clan transfer replaces an obsolete permission warning");
         var clanCells = Descendants(panels[2]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_cell_")).ToDictionary(c => c.Index);
+        {
+            var clanBag = Descendants(panels[2]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_bag_")).ToDictionary(c => c.Index);
+            clanCells[1]._DropData(Vector2.Zero, Picked(clanBag[Inventory.GridStart], 3));
+            Require(!clanAmount.Visible && (bool)DetailField(world, "_clanWhInFlight")! && PendingCount("_clanWhPending") == 3, "Clan bank: a part picked with the mouse wheel is stored at once");
+            DetailCall(world, "OnClanWhResult", Net.ClanWhInputSub, Net.ClanWhFailed);
+            clanBag[Inventory.GridStart + 3]._DropData(Vector2.Zero, Picked(clanCells[1], 60));
+            Require(clanAmount.Visible && Descendants(clanAmount).OfType<MoneyEdit>().Single().Value == 60 && !(bool)DetailField(world, "_clanWhInFlight")!, "Clan bank: a whole stack dragged out asks the count");
+            clanAmount.Close();
+            Require(inventory[Inventory.GridStart].Count == 69 && clan[1].Count == 60, "Clan bank: refused and cancelled transfers keep both stacks");
+            ((StatusLabel)clanStatus).ResetStatus();
+        }
         Variant clanDrag = clanCells[0].DragOut!(clanCells[0]);
         Require(clanCells[5]._CanDropData(Vector2.Zero, clanDrag), "Clan officers may rearrange the clan bank");
         clanCells[5]._DropData(Vector2.Zero, clanDrag); DetailCall(world, "OnClanWhResult", Net.ClanWhMoveSub, Net.ClanWhSucceeded);

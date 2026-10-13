@@ -16,7 +16,7 @@ public class PreviewNative : DispatchProxy
         ["get_Running"] = typeof(IGameCommands), ["get_Sitting"] = typeof(IGameCommands), ["get_AutoAttacking"] = typeof(IGameCommands),
         ["ToggleRun"] = typeof(IGameCommands), ["ToggleAttack"] = typeof(IGameCommands), ["TurnCamera"] = typeof(IGameCommands), ["OpenGameMenu"] = typeof(IGameCommands),
         ["get_MiniMapVisible"] = typeof(IGameMap),
-        ["MoveAmount"] = typeof(IGameInventory), ["TransferToInventorySlot"] = typeof(IGameInventory), ["ConfirmDrop"] = typeof(IGameInventory),
+        ["TransferToInventorySlot"] = typeof(IGameInventory), ["ConfirmDrop"] = typeof(IGameInventory),
     };
 
     private Dictionary<Type, PreviewData> _sources = new();

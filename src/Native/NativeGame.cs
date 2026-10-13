@@ -63,7 +63,6 @@ public interface INativeGame
 
     bool MiniMapVisible { get; }
 
-    void MoveAmount(int from, int to, int count);
     int TransferToInventorySlot(int from);
     void ConfirmDrop(int slot, int itemId);
 }
@@ -124,9 +123,9 @@ public static class NativeGameExtensions
         public bool MiniMapVisible => NativeGame.Source.MiniMapVisible;
     }
 
+    // IGameInventory.MoveAmount (client facade since #151) moves part of a stack; no extension shadows it.
     extension(IGameInventory inventory)
     {
-        public void MoveAmount(int from, int to, int count) => NativeGame.Source.MoveAmount(from, to, count);
         public int TransferToInventorySlot(int from) => NativeGame.Source.TransferToInventorySlot(from);
         public void ConfirmDrop(int slot, int itemId) => NativeGame.Source.ConfirmDrop(slot, itemId);
     }
@@ -175,8 +174,6 @@ public partial class ClientGame : INativeGame
     public virtual void OpenGameMenu() => NativeHudChat.OpenGameMenu();
 
     public virtual bool MiniMapVisible => NativeHudChat.MiniMapVisible;
-
-    public virtual void MoveAmount(int from, int to, int count) => NativeInventory.MoveAmount(from, to, count);
 
     public virtual int TransferToInventorySlot(int from) => NativeInventory.TransferToInventorySlot(from);
 

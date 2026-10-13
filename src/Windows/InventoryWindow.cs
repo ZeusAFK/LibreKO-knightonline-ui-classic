@@ -110,7 +110,8 @@ public partial class InventoryWindow : Control
             Size = area.Size,
             Source = s => _game.Inventory.At(s),
             CanDrag = () => !RepairMode,
-            OnDrop = (from, to) => { CancelCarry(); RequestMove(from, to); },
+            PicksAmount = true,
+            OnDropAmount = (from, to, amount) => { CancelCarry(); RequestMove(from, to, amount); },
             CanCompanionDrop = data => CompanionCell(slot)?._CanDropData(Vector2.Zero, data) == true,
             OnCompanionDrop = data => { CancelCarry(); CompanionCell(slot)?._DropData(Vector2.Zero, data); },
             OnClick = SlotClicked,
@@ -158,11 +159,14 @@ public partial class InventoryWindow : Control
         if (from != slot) RequestMove(from, slot);
     }
 
-    private void RequestMove(int from,int to)
+    private void RequestMove(int from,int to,int? amount=null)
     {
         if (RepairMode) return;
         var item=_game.Inventory.At(from);
         if(item.IsEmpty || from==to) return;
+        // A part picked with the mouse wheel moves at once, bag to bag as well (the client splits the stack and
+        // refuses a split it cannot make); the whole stack keeps the count prompt of the magic bags.
+        if(ClassicStackDial.Part(amount,item.Count) is int part) { _game.Inventory.MoveAmount(from,to,part); return; }
         if((from>=InventoryConstants.MagicBagStart || to>=InventoryConstants.MagicBagStart)
             && LibreKO.Domain.ItemData.Get(item.ItemId)?.Countable>0)
         {
@@ -375,7 +379,7 @@ public partial class InventoryWindow : Control
             cell.EmptyHint=equipped?"":"Equip a magic bag to use these slots.";
             _bySlot[slot]=cell;
             cell.Source = _ => _game.Inventory.At(slot);
-            cell.OnDrop = (from, _) => { CancelCarry(); RequestMove(from, slot); };
+            cell.OnDropAmount = (from, _, amount) => { CancelCarry(); RequestMove(from, slot, amount); };
             cell.OnClick = _ => SlotClicked(slot);
             cell.OnActivate = _ => SlotActivated(slot);
             cell.OnDoubleClick = _ => { CancelCarry(); SlotActivated(slot); };

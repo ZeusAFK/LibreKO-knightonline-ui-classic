@@ -279,6 +279,39 @@ public partial class Preview
         DetailCall(world,"AbortExchange",true);Require(inventory[Inventory.GridStart].Count==100,"Cancel restores both stack submissions to their original slot");Require(net.Sheet.Gold==1_234_567,"Cancel restores offered coins");
 
         DetailCall(world,"OpenExchange");await Capture("cancel-restored");
+        // Mouse-wheel amount (ff78eef): a part picked while dragging a stack is offered at once; the whole stack asks the count.
+        {
+            var source=shell.GetNode<ClassicExchangeCell>("exchange_bag_0");var target=shell.GetNode<Control>("trade_my_offer").GetChildren().OfType<ClassicExchangeCell>().First();
+            Vector2 start=source.GetGlobalRect().GetCenter(),end=target.GetGlobalRect().GetCenter();
+            void Wheel(MouseButton button) {
+                Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=button,Pressed=true,Position=end,GlobalPosition=end,ButtonMask=MouseButtonMask.Left});
+                Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=button,Pressed=false,Position=end,GlobalPosition=end,ButtonMask=MouseButtonMask.Left});
+            }
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=start,GlobalPosition=start});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=true,Position=start,GlobalPosition=start});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=start+new Vector2(18,0),GlobalPosition=start+new Vector2(18,0),Relative=new Vector2(18,0),ButtonMask=MouseButtonMask.Left});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=end,GlobalPosition=end,Relative=end-start,ButtonMask=MouseButtonMask.Left});await Frames(2);
+            var dial=Descendants(GetTree().Root.GetNode("DragLayer")).OfType<KnightOnlineUiClassic.Layout.ClassicStackDial>().Single();
+            var icon=(Control)dial.GetParent();
+            Require(GetViewport().GuiIsDragging() && dial.Text=="100" && dial.GetThemeColor("font_color")==Colors.White,"A dragged stack shows its whole count in white on the drag icon");
+            Require(dial.GetThemeFontSize("font_size")==KnightOnlineUiClassic.Layout.ItemCountStyle.FontSize && dial.GetThemeConstant("outline_size")==3
+                && dial.GetGlobalRect().End==icon.GetGlobalRect().End && icon.GetGlobalRect().Size==source.GetGlobalRect().Grow(-2).Size,
+                "The drag count uses the cell's count type on the icon's bottom-right corner "+dial.GetGlobalRect()+" "+icon.GetGlobalRect());
+            for(int i=0;i<3;i++) Wheel(MouseButton.WheelDown);
+            await Frames(2);
+            Require(dial.Text=="97" && dial.Amount==97 && dial.GetThemeColor("font_color")==KnightOnlineUiClassic.Layout.ClassicStackDial.PartColour,"The wheel picks a part of the stack, shown in gold");
+            await Capture("drag-amount");
+            Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=false,Position=end,GlobalPosition=end});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=Vector2.Zero,GlobalPosition=Vector2.Zero});await Frames();
+            var pending=DetailField(world,"_exPending")!;
+            Require(!(bool)DetailField(world,"_exAmountShown")! && (bool)DetailField(world,"_exAddInFlight")! && (int)pending.GetType().GetField("Count")!.GetValue(pending)! ==97,
+                "A part picked with the wheel is offered at once, without the quantity prompt");
+            DetailCall(world,"OnExchangeAddResult",true);await Frames();
+            Require(inventory[Inventory.GridStart].Count==3 && shell.GetNode<ClassicExchangeCell>("exchange_bag_0").Item?.Count==3,"The acknowledged part leaves the rest of the stack in the bag");
+            await Capture("drag-amount-offered");
+            DetailCall(world,"AbortExchange",true);Require(inventory[Inventory.GridStart].Count==100,"Cancel restores the offered part");
+            DetailCall(world,"OpenExchange");await Frames();
+        }
 
         DetailCall(world,"OfferSlotAmount",Inventory.GridStart,10);DetailCall(world,"OnExchangeAddResult",false);Require(inventory[Inventory.GridStart].Count==100,"Rejected server add preserves inventory");await Capture("rejected-add");
 
