@@ -5,48 +5,66 @@ using KnightOnlineUiClassic.Windows;
 namespace KnightOnlineUiClassic.Native;
 
 /// <summary>
-/// Prepares the client's chat room window (3277df5) for the Classic skin: names the native controls the skin and
-/// the audits look for, dresses the room's popups (room settings, voice settings, a member's volume, the emoticon
-/// picker, the member menu) as the client creates them, and turns the client's minimized blink (a modulate tween
-/// on the window) into the Classic attention styler, as the whisper windows do.
+/// Prepares the client's chat room window for the Classic skin: names the native controls the skin and the audits
+/// look for, dresses the room's popups (room settings, voice settings, a member's volume, the emoticon pickers, the
+/// member menu) as the client creates them, and turns the client's minimized blink (a modulate tween on the window)
+/// into the Classic attention styler, as the whisper windows do. Since fa3cfc3 the log and the composer are the
+/// client's shared thread and composer controls (also used by the whispers); the reaction popups live on the
+/// World's own layer and are dressed by <see cref="NativeChatReactions"/>.
 /// </summary>
 public static class NativeChatRoom
 {
     public const string ControlsMeta = "classic_chat_room_controls";
     private const string PopupsMeta = "classic_chat_room_popups";
 
+    /// <summary>The room's World members: the thread, the composer, the voice row and the members column.</summary>
     private static readonly (string Field, string Name)[] Named =
     {
-        ("_roomScroll", "room_log_scroll"), ("_roomLog", "room_log"), ("_roomOlder", "room_older"),
-        ("_roomComposerRow", "room_composer_row"), ("_roomInput", "room_input"), ("_roomRecord", "room_record"),
-        ("_roomSend", "room_send"), ("_roomRecordStrip", "room_record_strip"), ("_roomRecordClock", "room_record_clock"),
-        ("_roomRecordLevel", "room_record_level"), ("_roomVoiceRow", "room_voice_row"), ("_roomMembersToggle", "room_members_toggle"),
+        ("_roomThread", "room_log_scroll"), ("_roomComposer", "room_composer_row"),
+        ("_roomVoiceRow", "room_voice_row"), ("_roomMembersToggle", "room_members_toggle"),
         ("_roomConfigButton", "room_config"), ("_roomJoin", "room_join"), ("_roomDeafen", "room_deafen"), ("_roomVolume", "room_volume"),
         ("_roomMic", "room_mic"), ("_roomVoiceGear", "room_voice_gear"), ("_roomVoiceLeave", "room_voice_leave"),
         ("_roomMembersColumn", "room_members_column"), ("_roomRosterRows", "room_roster_rows"), ("_roomRosterEmpty", "room_roster_empty"),
         ("_roomLeaderBox", "room_leader_box"), ("_roomLeaderHandOver", "room_leader_handover"), ("_roomLeaderKick", "room_leader_kick"),
     };
 
+    /// <summary>The thread's post column and its "Load older messages" button.</summary>
+    private static readonly (string Field, string Name)[] ThreadNamed = { ("_log", "room_log"), ("_older", "room_older") };
+
+    /// <summary>The composer's field, input, voice-note and send buttons, and the recording strip.</summary>
+    private static readonly (string Field, string Name)[] ComposerNamed =
+    {
+        ("_field", "room_field"), ("Input", "room_input"), ("_record", "room_record"), ("_send", "room_send"),
+        ("_strip", "room_record_strip"), ("_clock", "room_record_clock"), ("_level", "room_record_level"),
+    };
+
     public static void Prepare(HudWindow window, World world)
     {
+        NativeChatReactions.Attach(world);
         if (window.HasMeta(ControlsMeta)) return;
-        var controls = Named.Select(n => (Control: Native.Get<Control>(world, n.Field), n.Name)).ToArray();
+        var controls = Named.Select(n => (Control: Native.Get<Control>(world, n.Field), n.Name)).ToList();
+        if (controls.Any(c => c.Control == null)) return;
+        Control thread = controls[0].Control!, composer = controls[1].Control!;
+        controls.AddRange(ThreadNamed.Select(n => (Native.Get<Control>(thread, n.Field), n.Name)));
+        controls.AddRange(ComposerNamed.Select(n => (Native.Get<Control>(composer, n.Field), n.Name)));
         if (controls.Any(c => c.Control == null)) return;
         // The row of the members column and the log, voice and composer stack: the client's own flow, placed by the skin.
-        if (Native.Get<ScrollContainer>(world, "_roomScroll")!.GetParent()?.GetParent() is not HBoxContainer main) return;
+        if (thread.GetParent()?.GetParent() is not HBoxContainer main) return;
         foreach (var (control, name) in controls) control!.Name = name;
         main.Name = "room_main";
         NativeWindows.Name(Native.Get<Button>(world, "_roomChannelsButton"), "room_channels");
         if (Native.Get<CanvasLayer>(world, "_roomLayer") is { } layer) StylePopups(layer);
         StylePopups(window);
+        // The composer keeps its emoticon picker as its own child.
+        StylePopups(composer);
         Attention(window, world);
         window.SetMeta(ControlsMeta, 1);
         ClassicChatRoomFrame.Of(window)?.Bind(window);
     }
 
     /// <summary>
-    /// Dresses the popups the client parks on the room layer (or, in a preview, inside the window) as they are
-    /// created: the Classic menu panel for the panels, the Classic drop-down look for the member menu.
+    /// Dresses the popups the client parks on the room layer, the composer or (in a preview) inside the window as
+    /// they are created: the Classic menu panel for the panels, the Classic drop-down look for the member menu.
     /// </summary>
     private static void StylePopups(Node holder)
     {
@@ -55,13 +73,18 @@ public static class NativeChatRoom
         foreach (var popup in holder.GetChildren().OfType<Popup>()) Style(popup);
         holder.ChildEnteredTree += node =>
         {
-            if (node is Popup popup) Callable.From(() => { if (Plugin.Active && GodotObject.IsInstanceValid(popup)) Style(popup); }).CallDeferred();
+            if (node is not Popup popup) return;
+            // The emoticon and reaction popups arrive complete and are shown right away: they are dressed before
+            // the client sizes and places them. The room's own panels get their content after they are added.
+            if (ClassicReactionStyle.Owns(popup)) { if (Plugin.Active) Style(popup); }
+            else Callable.From(() => { if (Plugin.Active && GodotObject.IsInstanceValid(popup)) Style(popup); }).CallDeferred();
         };
     }
 
     private static void Style(Popup popup)
     {
         if (popup is PopupMenu menu) ClassicSocialStyle.Menu(menu);
+        else if (ClassicReactionStyle.Owns(popup)) ClassicReactionStyle.Apply((PopupPanel)popup);
         else if (popup is PopupPanel panel) ClassicChatRoomSkin.StylePopup(panel);
     }
 

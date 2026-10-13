@@ -20,9 +20,13 @@ public partial class Preview
     /// voice row and the composer are checked at their actual rendered bounds against the declared layout; posts
     /// keep their side and sender colour; the native actions (send, members toggle, Escape minimise, blink,
     /// restore, settings validation, close) run through the Classic controls. Since ff78eef rooms are open to both
-    /// nations and their lines stay in the room window: the room list shows a room of the other nation, the Classic
-    /// Enter joins it, the server's replies open its room window, and the Classic chat settings no longer offer
-    /// "Chatroom".
+    /// nations and their lines stay in the room window: the room list shows a room of the other nation, a double-click
+    /// enters it (fa3cfc3), the server's replies open its room window, and the Classic chat settings no longer offer
+    /// "Chatroom". Since fa3cfc3 the log and the composer are the client's shared thread and composer: posts carry a
+    /// react button and a reaction pill, and the reaction popups (quick bar, details card, emoticon picker) live on
+    /// the World's reaction layer, shared with the whispers; they are checked on the Classic menu panel at their
+    /// rendered bounds, with their native actions (filter, add, more). The room settings gained "Keep the room", and
+    /// the voice volumes reach 200%.
     /// </summary>
     private async Task CaptureChatRoomAudit(int nation)
     {
@@ -93,18 +97,18 @@ public partial class Preview
             var area = content.GetGlobalRect();
             Require(Inside(frame.GetGlobalRect().Grow(-ClassicFrame.PlainEdge), area), state + ": content inside the frame line");
             var scrolls = Descendants(content).OfType<ScrollContainer>().ToArray();
-            foreach (var control in Descendants(content).OfType<Control>().Where(c => c.IsVisibleInTree() && !scrolls.Any(s => s != c && s.IsAncestorOf(c))))
+            foreach (var control in Descendants(content).OfType<Control>().Where(c => c.IsVisibleInTree() && !scrolls.Any(s => s != c && s.IsAncestorOf(c)) && !Popped(c, content)))
             {
                 var rect = control.GetGlobalRect();
                 if (rect.Size.X > 0 && rect.Size.Y > 0) Require(Inside(area, rect), state + ": " + control.GetType().Name + " " + control.Name + " inside the content " + rect);
             }
-            foreach (var button in Descendants(frame).OfType<Button>().Where(b => b.IsVisibleInTree() && b.Text.Length > 0 && b is not CheckBox and not CheckButton))
+            foreach (var button in Descendants(frame).OfType<Button>().Where(b => b.IsVisibleInTree() && b.Text.Length > 0 && b is not CheckBox and not CheckButton && !Popped(b, frame)))
             {
                 var font = button.GetThemeFont("font"); int size = button.GetThemeFontSize("font_size");
                 Require(font == Plugin.Kit.Bold && button.Size.Y >= ClassicSocialLayout.ActionHeight, state + ": Classic action " + button.Text + " " + button.Size);
                 Require(font.GetStringSize(button.Text, HorizontalAlignment.Left, -1, size).X <= button.Size.X - 2, state + ": caption fits " + button.Text);
             }
-            foreach (var cell in Descendants(frame).OfType<Button>().Where(b => b.IsVisibleInTree() && b.HasMeta(ClassicChatRoomSkin.CellMeta) && !scrolls.Any(s => s.IsAncestorOf(b))))
+            foreach (var cell in Descendants(frame).OfType<Button>().Where(b => b.IsVisibleInTree() && b.HasMeta(ClassicChatRoomSkin.CellMeta) && !scrolls.Any(s => s.IsAncestorOf(b)) && !Popped(b, frame)))
                 Require(cell.Size == new Vector2(Spec.Cell, Spec.Cell) && cell.GetThemeStylebox("normal") is StyleBoxTexture, state + ": icon action in the Classic cell " + cell.Name + " " + cell.Size);
             var input = Named<LineEdit>(content, "room_input");
             if (input.IsVisibleInTree()) Require(input.Size.Y == Spec.RowHeight && input.GetThemeStylebox("normal") is StyleBoxFlat { BorderColor: var line } && line == ClassicDarkFrame.Line, state + ": Classic composer field");
@@ -127,6 +131,28 @@ public partial class Preview
             }
             foreach (var chip in Descendants(content).OfType<PanelContainer>().Where(p => p.HasMeta("room_chip") && p.IsVisibleInTree()))
                 Require(Mathf.Abs(chip.GetGlobalRect().GetCenter().X - log.GetCenter().X) <= 8, state + ": " + chip.GetMeta("room_chip") + " marker centred " + chip.GetGlobalRect());
+            // Reaction pills: Classic chips on the post's lower edge, inside the log's width.
+            foreach (var pill in Descendants(content).OfType<PanelContainer>().Where(p => p.HasMeta(ClassicChatRoomSkin.PillMeta) && p.IsVisibleInTree()))
+            {
+                var stack = pill.GetParent().GetParent().GetParent<VBoxContainer>();
+                var field = stack.GetChildren().OfType<PanelContainer>().First().GetGlobalRect();
+                var at = pill.GetGlobalRect();
+                Require(pill.GetThemeStylebox("panel") is StyleBoxFlat { CornerRadiusTopLeft: 0, BorderWidthTop: 1 } box
+                    && (box.BorderColor == ClassicDarkFrame.Line || box.BorderColor == ClassicSocialStyle.SelectedEdge), state + ": reaction pill as a Classic chip");
+                Require(Mathf.Abs(at.Position.Y - (field.End.Y - 4)) <= 0.5f && Mathf.Abs(at.Position.X - (stack.GetGlobalRect().Position.X + 8)) <= 0.5f
+                    && at.Position.X >= log.Position.X && at.End.X <= log.End.X, state + ": the pill sits on its post's lower edge " + at + " / " + field);
+                Require(Descendants(pill).OfType<Label>().Where(l => l.Name == "room_pill_count").All(l => l.GetThemeFont("font") == Plugin.Kit.Bold), state + ": pill count in Arial Bold");
+            }
+            // A react button shows on hover and while its bar is open: the item cell beside the post's field.
+            foreach (var react in Descendants(content).OfType<Button>().Where(b => b.Name == "room_react" && b.IsVisibleInTree()))
+            {
+                var line = react.GetParent().GetParent<HBoxContainer>();
+                var field = line.GetChildren().OfType<VBoxContainer>().First().GetGlobalRect();
+                bool mine = line.Alignment == BoxContainer.AlignmentMode.End;
+                var at = react.GetGlobalRect();
+                Require(react.HasMeta(ClassicChatRoomSkin.CellMeta) && !react.Flat && react.GetThemeStylebox("normal") is StyleBoxTexture && react.Size == new Vector2(Spec.Cell, Spec.Cell), state + ": react button in the Classic cell " + react.Size);
+                Require(mine ? at.End.X <= field.Position.X : at.Position.X >= field.End.X, state + ": react button beside the post " + at + " / " + field);
+            }
             screens.Add(new { state, file, bounds = window.GetGlobalRect().ToString() });
         }
 
@@ -137,6 +163,12 @@ public partial class Preview
             var layer = new CanvasLayer { Name = "room_" + page };
             AddChild(layer); layer.AddChild(window); window.Visible = true;
             NativeChatRoom.Prepare(window, world);
+            // The reaction pages build the World's reaction layer; in game it is the World's child in the scene. It
+            // enters the tree after the preparer watches it, so its popups are dressed as they enter, like in game.
+            if (DetailField(world, "_reactionLayer") is CanvasLayer reactions && IsInstanceValid(reactions))
+            {
+                reactions.GetParent()?.RemoveChild(reactions); reactions.Name = "reactions_" + page; AddChild(reactions);
+            }
             await Frames(8);
             Require(window.HasMeta(NativeChatRoom.ControlsMeta) && ClassicChatRoomFrame.Of(window) != null, page + ": the room is prepared and in the Classic frame");
             return (world, window);
@@ -144,8 +176,53 @@ public partial class Preview
         void Done((World World, HudWindow Window) opened)
         {
             DetailCall(opened.World, "ChatRoomDispose");
+            if (DetailField(opened.World, "_reactionLayer") is CanvasLayer reactions && IsInstanceValid(reactions) && reactions.GetParent() == this) reactions.QueueFree();
             opened.Window.GetParent().QueueFree(); opened.World.QueueFree();
         }
+        // Two audit processes run at once: an embedded popup can close when the other window takes the focus. The
+        // opening is checked right after the action; the popup is shown again in place before its bounds are read.
+        async Task Reshow(Window popup) { if (!popup.Visible) { popup.Popup(); await Frames(3); } }
+        static bool Popped(Node node, Node until)
+        {
+            for (var parent = node.GetParent(); parent != null && parent != until; parent = parent.GetParent())
+                if (parent is Window) return true;
+            return false;
+        }
+        static Rect2 In(Control frame, Control control) => new(control.GetGlobalRect().Position - frame.GetGlobalRect().Position, control.GetGlobalRect().Size);
+        void Hover(Control control, bool inside) => control.EmitSignal(inside ? Control.SignalName.MouseEntered : Control.SignalName.MouseExited);
+        void LeftClick(Control control, bool twice = false) =>
+            control.EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, DoubleClick = twice });
+        async Task Wait(double seconds) { await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout); await Frames(4); }
+        // A popup's controls inside the popup, its panel inside the viewport.
+        void InsidePopup(Window popup, string what)
+        {
+            Require(GetViewportRect().Encloses(new Rect2(popup.Position, popup.Size)), what + ": inside the viewport " + new Rect2(popup.Position, popup.Size));
+            var bounds = new Rect2(Vector2.Zero, popup.Size);
+            foreach (var control in Descendants(popup).OfType<Control>().Where(c => c.IsVisibleInTree() && c.Size.X > 0 && c.Size.Y > 0))
+                Require(Inside(bounds, control.GetGlobalRect()), what + ": " + control.GetType().Name + " " + control.Name + " inside the popup " + control.GetGlobalRect());
+        }
+        // fa3cfc3: the client's checks carry their own icons; the room's popups show the original chat check box.
+        var checkArt = Plugin.Kit.Layout("{nation}_chat_us").Find("btn_check_normal")!;
+        Rect2 CheckRegion(int tag) => ((AtlasTexture)ClassicChatControls.Atlas(checkArt.Images.First(i => i.Tag == tag))!).Region;
+        void ClassicChecks(Window popup, string what)
+        {
+            var checks = Descendants(popup).OfType<Button>().Where(b => b is CheckBox or CheckButton && b.IsVisibleInTree()).ToArray();
+            Require(checks.Length > 0, what + ": the popup shows its checks");
+            var bounds = new Rect2(Vector2.Zero, popup.Size);
+            foreach (var check in checks)
+            {
+                Require(check.HasMeta(ClassicChatRoomSkin.CheckMeta) && check.GetThemeIcon("checked") is AtlasTexture on && on.Region == CheckRegion(1)
+                    && check.GetThemeIcon("unchecked") is AtlasTexture off && off.Region == CheckRegion(0)
+                    && check.GetThemeIcon("checked_disabled") is AtlasTexture && check.GetThemeIcon("unchecked_disabled") is AtlasTexture, what + ": '" + check.Text + "' on the original chat check box");
+                Require(check.GetThemeFont("font") == Plugin.Kit.Bold && check.GetThemeColor("font_color") == ClassicDesign.Text, what + ": '" + check.Text + "' in Arial Bold, Classic ink");
+                var rect = check.GetGlobalRect(); var min = check.GetCombinedMinimumSize();
+                Require(Inside(bounds, rect) && rect.Size.X >= min.X && rect.Size.Y >= min.Y, what + ": '" + check.Text + "' fits the card " + rect + " min " + min + " card " + popup.Size);
+                Require(check.GetThemeIcon("checked").GetHeight() <= rect.Size.Y, what + ": the check box fits the row");
+            }
+        }
+        void ClassicMenuPanel(Window popup, string what) =>
+            Require(popup.HasMeta(ClassicReactionStyle.StyledMeta) && popup.GetThemeStylebox("panel") is StyleBoxFlat { CornerRadiusTopLeft: 0, BorderWidthTop: 1 } panel
+                && panel.BorderColor == ClassicDarkFrame.Line && panel.BgColor.A > .9f && panel.BgColor.R < .05f, what + ": on the Classic menu panel");
         void Press(BaseButton button) => button.EmitSignal(BaseButton.SignalName.Pressed);
 
         // Public channel: no voice, no members column; the two header actions sit on the title row.
@@ -172,6 +249,22 @@ public partial class Preview
             var input = Named<LineEdit>(frame, "room_input");
             input.Text = "on my way"; Press(Named<Button>(frame, "room_send")); await Frames(2);
             Require(input.Text == "", "text: Send runs the client's send (the composer clears)");
+            // The composer's emoticon picker (the composer's own child since fa3cfc3): the Classic menu panel, above
+            // the field, a pick goes into the input.
+            window.Position = new Vector2(40, 40); await Frames(2);
+            var face = Named<TextureButton>(frame, "room_emoticons");
+            Press(face);
+            var faces = Descendants(Named<Control>(frame, "room_composer_row")).OfType<EmoticonPicker>().Single();
+            Require(faces.Visible, "emoticons: the face button opens the composer's picker");
+            await Frames(6); await Reshow(faces);
+            ClassicMenuPanel(faces, "emoticons");
+            InsidePopup(faces, "emoticons");
+            Require(faces.Position.Y + faces.Size.Y <= face.GetGlobalRect().Position.Y + 1, "emoticons: the picker opens above the field " + new Rect2(faces.Position, faces.Size));
+            await Capture(window, "emoticons");
+            var first = Descendants(faces).OfType<BaseButton>().First(b => b.IsVisibleInTree() && !b.HasMeta(ClassicReactionStyle.TabMeta));
+            Press(first); await Frames(4);
+            Require(!faces.Visible && input.Text.Length > 0, "emoticons: a pick goes into the composer: " + input.Text);
+            input.Text = "";
             Press(Named<Button>(frame, "room_members_toggle")); await Frames(6);
             Require(!Named<Control>(frame, "room_members_column").IsVisibleInTree() && frame.Size == Spec.Size(false, true), "text: the members toggle hides the column and the frame narrows " + frame.Size);
             await Capture(window, "text-members-hidden");
@@ -281,7 +374,15 @@ public partial class Preview
         // Recording a voice note.
         {
             var opened = await Open("recording"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
-            Require(Named<Control>(frame, "room_record_strip").IsVisibleInTree() && !Named<Control>(frame, "room_input").IsVisibleInTree(), "recording: the record strip replaces the composer");
+            // fa3cfc3: the preview shows the recording from a timer, through the composer's own ShowRecording.
+            await Wait(0.5);
+            Require(Named<Control>(frame, "room_record_strip").IsVisibleInTree() && !Named<Control>(frame, "room_input").IsVisibleInTree()
+                && !Named<Control>(frame, "room_send").IsVisibleInTree(), "recording: the record strip replaces the composer field and Send");
+            var row = Spec.Composer(Named<Control>(frame, "room_members_column").IsVisibleInTree(), Named<Control>(frame, "room_voice_row").IsVisibleInTree());
+            var strip = In(frame, Named<Control>(frame, "room_record_strip")); var record = In(frame, Named<Control>(frame, "room_record"));
+            Require(strip == new Rect2(row.Position, new Vector2(row.Size.X - Spec.Cell - 6, row.Size.Y)) && record == new Rect2(row.End.X - Spec.Cell, row.Position.Y, Spec.Cell, Spec.Cell),
+                "recording: the strip fills the composer row up to the voice-note cell " + strip + " / " + record + " / " + row);
+            Require(Named<Label>(frame, "room_record_clock").Text.StartsWith("0:07") && Named<Label>(frame, "room_record_clock").GetThemeFont("font") == Plugin.Kit.Bold, "recording: the clock in Arial Bold: " + Named<Label>(frame, "room_record_clock").Text);
             Require(Named<ProgressBar>(frame, "room_record_level").GetThemeStylebox("background") is StyleBoxFlat { BorderColor: var edge } && edge == ClassicDarkFrame.Line, "recording: the level meter on the Classic track");
             await Capture(window, "recording");
             Done(opened);
@@ -303,6 +404,12 @@ public partial class Preview
             foreach (var label in Descendants(popup).OfType<Label>().Where(l => l.Visible && l.Text.Length > 0))
                 Require(label.GetThemeFont("font") == Plugin.Kit.Bold || label.GetThemeFont("font") == Plugin.Kit.Regular, page + ": Arial label " + label.Text);
             foreach (var slider in Descendants(popup).OfType<HSlider>()) Require(slider.GetThemeStylebox("slider") is StyleBoxFlat, page + ": Classic slider");
+            ClassicChecks(popup, page);
+            if (page == "config")
+            {
+                var keep = (CheckBox)typeof(World).GetField("_roomConfigKeep", Flags)!.GetValue(world)!;
+                Require(keep.Text == "Keep the room when everyone leaves" && keep.ButtonPressed == offline.NationChat.Kept && keep.ButtonPressed, "config: 'Keep the room' shows the room's kept state");
+            }
             await Capture(window, page);
             if (page == "config")
             {
@@ -315,6 +422,204 @@ public partial class Preview
             popup.Hide();
             Done(opened);
         }
+        // A member's volume (the roster menu's "Volume"): the client's popup, filled as the client fills it, reaches
+        // 200% (fa3cfc3) on the Classic slider; "Mute for me" on the original chat check box. The voice row's volume
+        // reaches 200% as well.
+        {
+            var opened = await Open("voice"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
+            var volume = Named<HSlider>(frame, "room_volume");
+            Require(Mathf.IsEqualApprox((float)volume.MaxValue, VoiceLevels.MaxVolume) && volume.TooltipText.Contains("200%") && volume.GetThemeStylebox("slider") is StyleBoxFlat,
+                "peer: the room's voice volume reaches " + volume.MaxValue * 100 + "% on the Classic slider");
+            window.Position = new Vector2(40, 40); await Frames(2);
+            DetailCall(world, "BuildChatRoomPeerPopup");
+            var peer = (PopupPanel)DetailField(world, "_roomPeerPopup")!;
+            peer.GetParent()?.RemoveChild(peer); window.AddChild(peer);
+            const int rikka = 9001;
+            var name = (Label)DetailField(world, "_roomPeerName")!;
+            name.Text = "Rikka"; name.AddThemeColorOverride("font_color", new Color(RoomNameColours.Of(rikka)));
+            var peerVolume = (HSlider)DetailField(world, "_roomPeerVolume")!; peerVolume.SetValueNoSignal(1.5);
+            ((CheckBox)DetailField(world, "_roomPeerMute")!).SetPressedNoSignal(true);
+            await Frames(4);
+            peer.Popup(); peer.Position = new Vector2I((int)window.GetGlobalRect().End.X + 12, 160); await Frames(6); await Reshow(peer);
+            Require(peer.Visible && peer.HasMeta("classic_popup") && peer.GetThemeStylebox("panel") is StyleBoxFlat { BorderColor: var line } && line == ClassicDarkFrame.Line, "peer: the member's volume on the Classic menu panel");
+            Require(Mathf.IsEqualApprox((float)peerVolume.MaxValue, VoiceLevels.MaxVolume) && peerVolume.GetThemeStylebox("slider") is StyleBoxFlat, "peer: the member's volume reaches " + peerVolume.MaxValue * 100 + "% on the Classic slider");
+            Require(name.GetThemeColor("font_color") == new Color(RoomNameColours.Of(rikka)) && name.GetThemeFont("font") == Plugin.Kit.Bold, "peer: the member's name keeps the sender colour, Arial Bold");
+            InsidePopup(peer, "peer");
+            ClassicChecks(peer, "peer");
+            await Capture(window, "peer");
+            peer.Hide();
+            Done(opened);
+        }
+        // Reactions (fa3cfc3): the details card of a post's pill, its emoji filter and its add button, on the Classic
+        // menu panel. The client's preview moves the card into the window after 0.3 s; it is opened again at the pill
+        // once the room sits at its capture position, so the client places it as in game.
+        {
+            var opened = await Open("reactions"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
+            await Wait(0.5);
+            var thread = (ChatThreadView)DetailField(world, "_roomThread")!;
+            var card = (PopupPanel)DetailField(world, "_reactionDetails")!;
+            var bar = (PopupPanel)DetailField(world, "_reactionBar")!;
+            var picker = (PopupPanel)DetailField(world, "_reactionPicker")!;
+            var layer = (CanvasLayer)DetailField(world, "_reactionLayer")!;
+            Require(picker.GetParent() == layer && picker.HasMeta(ClassicReactionStyle.StyledMeta) && bar.HasMeta(ClassicReactionStyle.StyledMeta),
+                "reactions: the popups on the World's reaction layer are dressed as they enter it");
+            Require(card.GetParent() == window && card.HasMeta(ClassicReactionStyle.StyledMeta), "reactions: the details card (moved into the window by the preview) stays Classic");
+            var post = offline.RoomTimeline.Find(103)!;
+            thread.StickBottom = false; thread.ScrollVertical = 0; await Frames(4);
+            window.Position = new Vector2(40, 40); await Frames(4);
+            var pill = (PanelContainer)typeof(ChatThreadView).GetMethod("PillOf", Flags)!.Invoke(thread, new object[] { post })!;
+            Require(pill.HasMeta(ClassicChatRoomSkin.PillMeta) && pill.IsVisibleInTree(), "reactions: the reacted post shows its Classic pill");
+            Require(Descendants(pill).OfType<Label>().Single(l => l.Name == "room_pill_count").Text == "3", "reactions: the pill counts the post's reactions");
+            Hover(pill, true); await Frames(2);
+            Require(pill.GetThemeStylebox("panel") is StyleBoxFlat { BorderColor: var lit } && lit == ClassicSocialStyle.SelectedEdge, "reactions: a hovered pill takes the Classic selection gold (after the client's own hover)");
+            Hover(pill, false); await Frames(2);
+            Require(pill.GetThemeStylebox("panel") is StyleBoxFlat { BorderColor: var rest } && rest == ClassicDarkFrame.Line, "reactions: the pill returns to the gold line");
+            card.Hide(); await Frames(2);
+            DetailCall(world, "OpenReactionDetails", thread, post, pill);
+            Require(card.Visible, "reactions: a click on the pill opens the client's details card");
+            await Frames(6); await Reshow(card);
+            ClassicMenuPanel(card, "reactions");
+            InsidePopup(card, "reactions");
+            var pillAt = pill.GetGlobalRect();
+            Require(card.Position.Y + card.Size.Y <= pillAt.Position.Y || card.Position.Y >= pillAt.End.Y, "reactions: the card opens clear of the pill " + new Rect2(card.Position, card.Size) + " / " + pillAt);
+            var title = Named<Label>(card, "reaction_title");
+            Require(title.Text == ReactionRules.Title(post.Reactions.Total) && title.GetThemeFont("font") == Plugin.Kit.Bold && title.GetThemeColor("font_color") == ClassicDarkFrame.Heading, "reactions: the count heading in Arial Bold gold: " + title.Text);
+            Require(Named<ColorRect>(card, "reaction_rule").Color == ClassicSocialStyle.Rule, "reactions: the gold rule under the chips");
+            PanelContainer[] Chips() => Named<HBoxContainer>(card, "reaction_chips").GetChildren().OfType<PanelContainer>().Where(c => !c.IsQueuedForDeletion()).ToArray();
+            PanelContainer[] Rows() => Named<VBoxContainer>(card, "reaction_list").GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion()).ToArray();
+            var tally = post.Reactions.Tally();
+            Require(Chips().Length == tally.Count && Chips().All(c => c.Name.ToString().StartsWith("reaction_chip") && !c.GetMeta("reaction_chosen").AsBool()
+                && c.GetThemeStylebox("panel") is StyleBoxFlat { CornerRadiusTopLeft: 0 } box && box.BorderColor == ClassicDarkFrame.Line), "reactions: a Classic chip per emoji, none chosen (" + tally.Count + ")");
+            var add = Named<Button>(card, "reaction_add");
+            Require(add.GetThemeStylebox("normal") is StyleBoxFlat { BorderColor: var addLine } && addLine == ClassicDarkFrame.Line && add.Icon != null, "reactions: the add button is a Classic chip");
+            void CheckRows(string state, int count)
+            {
+                var rows = Rows();
+                Require(rows.Length == count, state + ": the list shows " + count + " members (" + rows.Length + ")");
+                foreach (var row in rows)
+                {
+                    bool mine = row.GetMeta("reaction_row").AsString() == "mine";
+                    var avatar = Descendants(row).OfType<PanelContainer>().Single(p => p.Name == "reaction_avatar");
+                    var letter = avatar.GetChildren().OfType<Label>().Single();
+                    var named = Descendants(row).OfType<Label>().Single(l => l.Name == "reaction_name");
+                    int id = mine ? 9006 : senders[named.Text];
+                    Require(row.GetThemeStylebox("panel") is StyleBoxFlat { BorderWidthBottom: 1 } rule && rule.BorderColor == ClassicSocialStyle.RowRule, state + ": " + named.Text + " on a Classic list row");
+                    Require(avatar.GetThemeStylebox("panel") is StyleBoxTexture && letter.GetThemeColor("font_color") == new Color(RoomNameColours.Of(id)) && letter.GetThemeFont("font") == Plugin.Kit.Bold,
+                        state + ": " + named.Text + "'s initial in the item cell, in the sender colour");
+                    Require(named.GetThemeFont("font") == Plugin.Kit.Bold && named.Text == (mine ? "You" : named.Text), state + ": the name in Arial Bold");
+                    var hint = Descendants(row).OfType<Label>().SingleOrDefault(l => l.Name == "reaction_hint");
+                    Require(mine == (hint != null) && (hint == null || hint.Text == "Click to remove" && hint.GetThemeColor("font_color") == ClassicDesign.Muted), state + ": 'Click to remove' only on the own row");
+                    var at = row.GetGlobalRect();
+                    foreach (var part in Descendants(row).OfType<Control>().Where(c => c.IsVisibleInTree() && c.Size.X > 0))
+                        Require(at.Grow(0.5f).Encloses(part.GetGlobalRect()), state + ": " + part.Name + " inside " + named.Text + "'s row");
+                }
+                Require(!rows.Skip(1).Any(r => r.GetMeta("reaction_row").AsString() == "mine"), state + ": the own reaction is listed first");
+            }
+            CheckRows("reactions", post.Reactions.Total);
+            var own = Rows().First(r => r.GetMeta("reaction_row").AsString() == "mine");
+            Hover(own, true); await Frames(2);
+            Require(own.GetThemeStylebox("panel") is StyleBoxFlat { BgColor: var hovered } && hovered == ClassicDarkFrame.SelectedRow, "reactions: the own row takes the Classic list hover");
+            Hover(own, false); await Frames(2);
+            await Capture(window, "reactions");
+            // The heart chip filters the list (the client rebuilds chips and rows): the chosen chip in the gold selection frame.
+            var heart = Chips().First(c => Descendants(c).OfType<Label>().Any(l => l.Text == "2"));
+            LeftClick(heart); await Frames(6); await Reshow(card);
+            var chosen = Chips().Where(c => c.GetMeta("reaction_chosen").AsBool()).ToArray();
+            Require(chosen.Length == 1 && chosen[0].GetThemeStylebox("panel") is StyleBoxFlat { BorderColor: var edge } && edge == ClassicSocialStyle.SelectedEdge
+                && Descendants(chosen[0]).OfType<Label>().Single(l => l.Text.Length > 0 && char.IsDigit(l.Text[0])).GetThemeColor("font_color") == ClassicDarkFrame.Heading, "reactions: the chosen emoji chip in the gold selection frame");
+            CheckRows("reactions-filter", 2);
+            InsidePopup(card, "reactions-filter");
+            await Capture(window, "reactions-filter");
+            // Add: the client closes the card and opens the quick bar at the pill, the own reaction marked.
+            Press(Named<Button>(card, "reaction_add"));
+            Require(!card.Visible && bar.Visible, "reactions: Add opens the client's quick bar");
+            await Frames(6); await Reshow(bar);
+            ClassicMenuPanel(bar, "reactions-add");
+            InsidePopup(bar, "reactions-add");
+            var current = Descendants(bar).OfType<Button>().Where(b => b.HasMeta(ClassicReactionStyle.PickMeta) && b.GetMeta("reaction_current", false).AsBool()).ToArray();
+            Require(current.Length == 1 && current[0].Text == post.Reactions.Of(9006) && current[0].GetThemeStylebox("normal") is StyleBoxFlat { BorderColor: var mark } && mark == ClassicSocialStyle.SelectedEdge,
+                "reactions: the quick bar marks the own reaction " + post.Reactions.Of(9006) + " in the gold selection frame");
+            await Capture(window, "reactions-add");
+            bar.Hide();
+            Done(opened);
+        }
+        // React: the quick bar over a post's react button (the client pins the button while the bar is open); "More"
+        // opens the reaction emoticon picker, which stays on the World's reaction layer.
+        {
+            var opened = await Open("react"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
+            await Wait(0.5);
+            var thread = (ChatThreadView)DetailField(world, "_roomThread")!;
+            var bar = (PopupPanel)DetailField(world, "_reactionBar")!;
+            var picker = (PopupPanel)DetailField(world, "_reactionPicker")!;
+            var post = offline.RoomTimeline.Find(106)!;
+            Require(bar.GetParent() == window && bar.HasMeta(ClassicReactionStyle.StyledMeta), "react: the quick bar stays Classic in the window");
+            window.Position = new Vector2(40, 40); bar.Hide(); await Frames(4);
+            var react = (Button)typeof(ChatThreadView).GetMethod("ReactButtonOf", Flags)!.Invoke(thread, new object[] { post })!;
+            thread.Pinned = post; thread.ShowReactButton(post);
+            thread.EnsureControlVisible(react); await Frames(4);
+            Require(react.IsVisibleInTree() && react.Name == "room_react", "react: the pinned post shows its react button");
+            DetailCall(world, "OpenReactionBar", thread, post, react);
+            Require(bar.Visible, "react: the react button opens the client's quick bar");
+            await Frames(6); await Reshow(bar);
+            ClassicMenuPanel(bar, "react");
+            InsidePopup(bar, "react");
+            var picks = Descendants(bar).OfType<Button>().Where(b => b.HasMeta(ClassicReactionStyle.PickMeta)).ToArray();
+            var more = Named<Button>(bar, "reaction_more");
+            Require(picks.Select(b => b.Text).SequenceEqual(ReactionRules.QuickPicks) && picks.All(b => !b.Flat && !b.GetMeta("reaction_current", false).AsBool() && b.GetThemeStylebox("normal") is StyleBoxEmpty
+                && b.GetThemeStylebox("hover") is StyleBoxFlat { BgColor: var hover } && hover == ClassicDarkFrame.SelectedRow), "react: the six quick picks on the Classic menu hover, none marked");
+            Require(more.Text == "+" && more.GetThemeFont("font") == Plugin.Kit.Bold && more.GetThemeColor("font_color") == ClassicDesign.Muted, "react: 'More' in Arial Bold");
+            var at = react.GetGlobalRect();
+            Require(Mathf.Abs(bar.Position.Y + bar.Size.Y + 6 - at.Position.Y) <= 1 && Mathf.Abs(bar.Position.X + bar.Size.X / 2f - at.GetCenter().X) <= 1, "react: the bar opens centred above the react button " + new Rect2(bar.Position, bar.Size) + " / " + at);
+            await Capture(window, "react");
+            Press(more);
+            Require(!bar.Visible && picker.Visible, "react: 'More' opens the client's emoticon picker");
+            await Frames(6); await Reshow(picker);
+            ClassicMenuPanel(picker, "react-more");
+            InsidePopup(picker, "react-more");
+            var tabs = Descendants(picker).OfType<Button>().Where(b => b.HasMeta(ClassicReactionStyle.TabMeta)).ToArray();
+            Require(tabs.Length == 2 && tabs.All(t => t.GetThemeFont("font") == Plugin.Kit.Bold) && tabs.Count(t => t.ButtonPressed && t.GetThemeStylebox("pressed") is StyleBoxFlat { BorderColor: var tab } && tab == ClassicSocialStyle.SelectedEdge) == 1,
+                "react-more: Emoticons and Emoji as Classic tabs, the shown one in the gold selection frame");
+            var emoji = Descendants(picker).OfType<Button>().Where(b => !b.HasMeta(ClassicReactionStyle.TabMeta) && b.IsVisibleInTree()).ToArray();
+            var faces = Descendants(picker).OfType<TextureButton>().Where(b => b.IsVisibleInTree()).ToArray();
+            Require(emoji.Length + faces.Length > 0 && emoji.All(b => !b.Flat && b.GetThemeStylebox("normal") is StyleBoxEmpty && b.GetThemeStylebox("hover") is StyleBoxFlat { BgColor: var lit } && lit == ClassicDarkFrame.SelectedRow),
+                "react-more: the emoji on the Classic menu hover (" + emoji.Length + " emoji, " + faces.Length + " emoticons)");
+            await Capture(window, "react-more");
+            // The other tab, then a pick: the picker closes and the client sends the reaction.
+            var other = tabs.Single(t => !t.ButtonPressed); Press(other); other.ButtonPressed = true; await Frames(4); await Reshow(picker);
+            InsidePopup(picker, "react-more-tab");
+            await Capture(window, "react-more-tab");
+            picker.Hide(); thread.Unpin();
+            Done(opened);
+        }
+        // Whispers share the reaction popups: a whisper thread's pill opens the same Classic card.
+        {
+            var world = new World();
+            var whisper = (HudWindow)DetailCall(world, "BuildWhisperUiPreview", false)!;
+            var whisperLayer = new CanvasLayer { Name = "whisper_reactions" }; AddChild(whisperLayer); whisperLayer.AddChild(whisper); whisper.Visible = true;
+            NativeChatReactions.Attach(world);
+            var layer = (CanvasLayer)DetailField(world, "_reactionLayer")!;
+            layer.GetParent()?.RemoveChild(layer); AddChild(layer);
+            whisper.Position = new Vector2(40, 40); await Frames(8);
+            var chats = (System.Collections.IDictionary)DetailField(world, "_whispers")!;
+            var chat = chats["Rikka"]!;
+            var thread = (ChatThreadView)chat.GetType().GetField("Thread")!.GetValue(chat)!;
+            var post = offline.DirectTimeline("Rikka").Find(207)!;
+            thread.StickBottom = false; await Frames(2);
+            var pill = (PanelContainer)typeof(ChatThreadView).GetMethod("PillOf", Flags)!.Invoke(thread, new object[] { post })!;
+            thread.EnsureControlVisible(pill); await Frames(4);
+            DetailCall(world, "OpenReactionDetails", thread, post, pill);
+            var card = (PopupPanel)DetailField(world, "_reactionDetails")!;
+            Require(card.Visible && card.GetParent() == layer, "whisper: a whisper pill opens the shared details card on the reaction layer");
+            await Frames(6); await Reshow(card);
+            ClassicMenuPanel(card, "whisper");
+            InsidePopup(card, "whisper");
+            Require(Named<VBoxContainer>(card, "reaction_list").GetChildren().OfType<PanelContainer>().All(r => r.HasMeta(ClassicReactionStyle.StyledMeta)), "whisper: the members who reacted on Classic rows");
+            string file = prefix + "-whisper-reactions.png";
+            GetViewport().GetTexture().GetImage().SavePng(output + "/" + file); screens.Add(new { state = "whisper-reactions", file, bounds = new Rect2(card.Position, card.Size).ToString() });
+            card.Hide();
+            DetailCall(world, "WhisperDispose");
+            layer.QueueFree(); whisperLayer.QueueFree(); world.QueueFree(); await Frames(2);
+        }
         // Minimized from the start (the client's preview state), then restored.
         {
             var opened = await Open("minimized"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
@@ -326,15 +631,14 @@ public partial class Preview
             Done(opened);
         }
         // Chat rooms of both nations (ff78eef dropped the client's nation check): the room list shows a room of the
-        // other nation with its nation mark like any other room, the Classic Enter joins it (a locked one asks for
-        // its password), and the room window opens for it. Its lines stay in the room window and never reach the chat.
+        // other nation like any other room (fa3cfc3 dropped the lock and nation marks), a double-click enters it (a
+        // locked one asks for its password), and the room window opens for it. Its lines stay in the room window and
+        // never reach the chat.
         {
             ClassicSocialSkin.Register(PluginHost.Ui);
             int own = nation == 1 ? Nations.Karus : Nations.ElMorad, other = own == Nations.Karus ? Nations.ElMorad : Nations.Karus;
             void Handle(string handler, Packet packet) => typeof(Net).GetMethod(handler, Flags)!.Invoke(offline, new object[] { packet });
             string Pending() => (((string, bool, int, int))typeof(Net).GetField("_pendingRoom", Flags)!.GetValue(offline)!).Item1;
-            void Click(Control row) => row.EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
-            string Mark(int of) => "res://assets/ui/nation_chat/" + (of == Nations.Karus ? "karus.png" : "elmorad.png");
 
             var world = new World();
             var list = (HudWindow)DetailCall(world, "BuildNationChatUiPreview", "private")!;
@@ -356,39 +660,23 @@ public partial class Preview
             var rows = (VBoxContainer)DetailField(world, "_ncPrivateRows")!;
             PanelContainer Row(NationRoom room) => rows.GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion())
                 .Single(r => Descendants(r).OfType<Label>().Any(l => l.Text == NationChatRules.Row(room.Name, room.Members, room.MaxMembers)));
-            Click(Row(open)); await Frames(6);
+            LeftClick(Row(open)); await Frames(6);
             Require((int)DetailField(world, "_ncSelectedRoom")! == open.Id, "nations: a click selects the other nation's room natively");
             list.Position = ((GetViewportRect().Size - list.Size) / 2).Round(); await Frames(4);
             Require(list.GetChildren().OfType<ClassicSocialFrame>().Count() == 1 && GetViewportRect().Encloses(list.GetGlobalRect()), "nations: the room list in the Classic social frame inside the viewport " + list.GetGlobalRect());
             string listFile = prefix + "-nation-rooms-both.png";
-            var shot = GetViewport().GetTexture().GetImage(); shot.SavePng(output + "/" + listFile);
+            GetViewport().GetTexture().GetImage().SavePng(output + "/" + listFile);
             screens.Add(new { state = "nation-rooms-both", file = listFile, bounds = list.GetGlobalRect().ToString() });
-            int Lit(Rect2 rect)
-            {
-                int lit = 0;
-                for (int y = (int)rect.Position.Y; y < (int)rect.End.Y; y++)
-                    for (int x = (int)rect.Position.X; x < (int)rect.End.X; x++)
-                        if (shot.GetPixel(x, y) is var c && Mathf.Max(c.R, Mathf.Max(c.G, c.B)) > 0.3f) lit++;
-                return lit;
-            }
             var scrollRect = ((Control)rows.GetParent()).GetGlobalRect();
             var plainInks = new HashSet<Color>();
             foreach (var room in rooms)
             {
                 var row = Row(room); var rect = row.GetGlobalRect();
-                var icons = Descendants(row).OfType<TextureRect>().ToArray();
                 var label = Descendants(row).OfType<Label>().Single();
                 string who = room.Name + (room.Nation == own ? " (own nation)" : " (other nation)");
                 Require(row.HasMeta(ClassicSocialStyle.Styled) && row.GetMeta("social_row", false).AsBool() && scrollRect.Grow(1).Encloses(rect), who + ": a Classic list row inside the list " + rect);
-                Require(icons.Length == 2 && icons[1].Texture?.ResourcePath == Mark(room.Nation), who + ": the row carries its nation's mark " + icons.ElementAtOrDefault(1)?.Texture?.ResourcePath);
-                Require(room.Locked == (icons[0].Texture != null), who + ": the lock mark follows the room");
-                foreach (var icon in icons.Where(i => i.Texture != null))
-                {
-                    var at = icon.GetGlobalRect();
-                    Require(rect.Encloses(at) && Mathf.Abs(at.GetCenter().Y - rect.GetCenter().Y) <= 1 && at.End.X <= label.GetGlobalRect().Position.X, who + ": mark inside the row, centred, before the name " + at);
-                    Require(Lit(at) >= 12, who + ": the mark renders (" + Lit(at) + " lit px)");
-                }
-                Require(label.GetThemeFont("font") == Plugin.Kit.Bold, who + ": Arial Bold row text");
+                Require(row.TooltipText == "Double-click to enter", who + ": the row says how to enter it");
+                Require(label.GetThemeFont("font") == Plugin.Kit.Bold && rect.Encloses(label.GetGlobalRect()), who + ": Arial Bold row text inside the row");
                 bool selected = room.Id == open.Id;
                 Require(row.GetMeta("social_selected", false).AsBool() == selected, who + ": selection state " + selected);
                 if (selected)
@@ -396,21 +684,16 @@ public partial class Preview
                 else plainInks.Add(label.GetThemeColor("font_color"));
             }
             Require(plainInks.Count == 1 && plainInks.Single() == ClassicDesign.Text, "nations: rooms of both nations share the Classic row ink (" + string.Join(", ", plainInks) + ")");
-            Texture2D? MarkOf(NationRoom room) => Descendants(Row(room)).OfType<TextureRect>().ElementAt(1).Texture;
-            Require(MarkOf(open) != MarkOf(rooms.First(r => r.Nation == own)), "nations: own and other nation rooms carry different marks");
 
-            // Enter on the other nation's rooms: the client accepts both without a notice; a locked one asks for its password.
-            var join = (Button)DetailField(world, "_ncPriJoin")!;
+            // A double-click enters (fa3cfc3 removed Enter): the client accepts rooms of both nations without a notice;
+            // a locked one asks for its password.
             var log = (TabbedLog)DetailField(world, "_combatLog")!;
-            Require(join.IsVisibleInTree() && join.Text == "Enter" && !join.Disabled, "nations: the Classic Enter shows outside a room");
-            Click(Row(locked)); await Frames(4);
             int notices = log.Lines(LogTab.All).Count;
-            Press(join); await Frames(4);
-            Require(password.Visible && password.GetChildren().OfType<ClassicSocialFrame>().Count() == 1 && Pending() == locked.Name, "nations: a locked room of the other nation asks for its password in the Classic frame");
+            LeftClick(Row(locked), twice: true); await Frames(4);
+            Require(password.Visible && password.GetChildren().OfType<ClassicSocialFrame>().Count() == 1 && Pending() == locked.Name, "nations: a double-click on a locked room of the other nation asks for its password in the Classic frame");
             password.Visible = false;
-            Click(Row(open)); await Frames(4);
-            Press(join); await Frames(4);
-            Require(Pending() == open.Name && !password.Visible && log.Lines(LogTab.All).Count == notices, "nations: Enter joins the other nation's room without a notice (" + string.Join(" | ", log.Lines(LogTab.All).Skip(notices)) + ")");
+            LeftClick(Row(open), twice: true); await Frames(4);
+            Require(Pending() == open.Name && !password.Visible && log.Lines(LogTab.All).Count == notices, "nations: a double-click joins the other nation's room without a notice (" + string.Join(" | ", log.Lines(LogTab.All).Skip(notices)) + ")");
 
             // The server's enter reply opens the room window; members and a line follow.
             DetailCall(world, "ChatRoomInit");
