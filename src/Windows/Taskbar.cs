@@ -23,11 +23,13 @@ public partial class Taskbar : Control
         TextureFilter=TextureFilterEnum.Nearest;
         AddChild(_view);
         _view.Hide("btn_disband");
-        foreach(var (id,window) in new[]{("btn_inventory","inventory"),("btn_character","character_info"),("btn_skill","skills"),("btn_map","zonemap"),("btn_invite","seek_party")})
+        foreach(var (id,window) in new[]{("btn_inventory","inventory"),("btn_character","character_info"),("btn_map","zonemap"),("btn_invite","seek_party")})
         {
             string target=window;
             _view.OnPressed(id,()=>_game.Windows.Toggle(target));
         }
+        // The client's skill key: the Chaos skill page in the Chaos dungeon, the skill window everywhere else.
+        _view.OnPressed("btn_skill",()=>_game.Commands.Run(KeyAction.Skills));
         _view.OnPressed("btn_option",()=>SettingsPanel.Open(GetTree().Root));
         _view.OnPressed("btn_control",_game.Commands.TradeWithTarget);
         _view.OnPressed("btn_exit",_game.Commands.OpenGameMenu);

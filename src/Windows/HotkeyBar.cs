@@ -1,7 +1,9 @@
 using Godot;
 using LibreKO;
+using LibreKO.Domain;
 using LibreKO.Plugins;
 using KnightOnlineUiClassic.Layout;
+using KnightOnlineUiClassic.Native;
 namespace KnightOnlineUiClassic.Windows;
 
 public partial class HotkeyBar : Control
@@ -10,6 +12,8 @@ public partial class HotkeyBar : Control
     private const string ExtraSetting="hotbar.extras";
     private const string TransparencySetting="hotbar.transparency_step";
     private const int MaxBars=8;
+    // Counts and the client's "usable now" test are refreshed at the client's own skill-bar rate.
+    private const double SlotStateSeconds=0.1;
     private sealed class Strip
     {
         public Control View=null!;
@@ -29,6 +33,8 @@ public partial class HotkeyBar : Control
     private float _mainTop;
     private int _transparencyStep;
     private HotbarButton _lockButton=null!;
+    private double _slotState;
+    private bool _purging;
 
     public HotkeyBar()
     {
@@ -116,9 +122,9 @@ public partial class HotkeyBar : Control
         for(int i=0;i<geometry.Count;i++) {
             var cell=new HotSlot(i) {
                 Name=$"slot_{i}",Position=geometry.Slot(i),Size=new Vector2(32,32),AbsOf=s=>pageOf()*geometry.Count+s,
-                Source=a=>_game.Hotbar.Slot(a),OnActivate=a=>_game.Hotbar.ActivateAbs(a),
+                Source=a=>_game.Hotbar.Slot(a),OnActivate=Activate,Usable=a=>_game.Hotbar.Usable(a),
                 OnSelect=a=>_game.Hotbar.Select(a),IsSelected=a=>_game.Hotbar.SelectedAbs==a,
-                IsLocked=()=>_game.Hotbar.Locked,
+                IsLocked=()=>_game.Hotbar.Locked,IsHeld=()=>_game.Genie.Running,Takes=Takes,
                 OnDrop=(a,id,from)=>_game.Hotbar.Drop(a,id,from),OnClear=a=>_game.Hotbar.Clear(a),
                 OnHover=(a,on)=> { if(on) _game.Hotbar.ShowTooltip(a); else _game.Hotbar.HideTooltip(); }
             };
@@ -214,14 +220,53 @@ public partial class HotkeyBar : Control
     public override void _Ready()
     {
         _game.Hotbar.Changed+=Refresh;
+        _game.Hotbar.Ready+=FlashReady;
+        _game.Genie.Changed+=ClearRefusedGenieSkills;
+        // The bar opens on the page the client chose (page 1 after login, the Chaos page in the Chaos dungeon).
         HudLayout.Attach(this,LayoutId,_grip,DefaultPosition,backgroundOpacityChanged:ClickOrnament);
-        if(_game.Hotbar.Pages>1) _game.Hotbar.SetPage(1);
-        ClampPosition(); Refresh();
+        ClampPosition(); Refresh(); ClearRefusedGenieSkills();
     }
-    public override void _ExitTree() { _game.Hotbar.Changed-=Refresh; }
-    public override void _Process(double delta) { foreach(var strip in _strips) foreach(var slot in strip.Slots) slot.TickCooldown(); }
+    public override void _ExitTree() { _game.Hotbar.Changed-=Refresh; _game.Hotbar.Ready-=FlashReady; _game.Genie.Changed-=ClearRefusedGenieSkills; }
+    /// <summary>The Genie's skill cells are castable shortcuts too: passive skills are cleared from them as from the bar.</summary>
+    private void ClearRefusedGenieSkills() => NativeSkills.ClearRefusedGenieSkills(_game.Genie);
+    public override void _Process(double delta)
+    {
+        bool state=(_slotState+=delta)>=SlotStateSeconds;
+        if(state) _slotState=0;
+        foreach(var strip in _strips) foreach(var slot in strip.Slots) slot.Tick(state);
+    }
+    /// <summary>The client's skill-ready flash on every shown slot that holds a skill whose recast just ended.</summary>
+    private void FlashReady(IReadOnlyList<int> skillIds)
+    {
+        foreach(var strip in _strips) foreach(var slot in strip.Slots) if(skillIds.Contains(slot.ShownId)) slot.Flash();
+    }
+    /// <summary>The skill bar's own rules for anything dragged onto it from another window.</summary>
+    private bool Takes(int id) => SkillData.IsSkill(id)
+        ? NativeSkills.CanDragToHotbar(id) && NativeSkills.ZoneAllows(id,_game.Map.Zone)
+        : NativeSkills.HotbarTakesItem(id);
+    private void Activate(int abs)
+    {
+        // A passive skill left on the bar from before the placement rule is never cast.
+        if(NativeSkills.HotbarKeeps(_game.Hotbar.Slot(abs).Id)) _game.Hotbar.ActivateAbs(abs);
+    }
+    /// <summary>
+    /// Clears passive skills that bars saved before the placement rule still hold; the client would cast them from the
+    /// number keys. The client's own drop clears and saves even on a locked bar. Nothing is cleared before the saved bar
+    /// arrives, in the Chaos dungeon (its own temporary bar) or while the Genie holds the bar.
+    /// </summary>
+    private void PurgeRefusedSkills()
+    {
+        if(_purging || !_game.Hotbar.Loaded || _game.Genie.Running || _game.Map.Zone==ChaosBattle.Zone) return;
+        _purging=true;
+        try {
+            int total=_game.Hotbar.Pages*_game.Hotbar.SlotsPerPage;
+            for(int abs=0;abs<total;abs++)
+                if(_game.Hotbar.Slot(abs) is { IsSkill:true } slot && !NativeSkills.HotbarKeeps(slot.Id)) _game.Hotbar.Drop(abs,0,-1);
+        } finally { _purging=false; }
+    }
     private void Refresh()
     {
+        PurgeRefusedSkills();
         bool locked=_game.Hotbar.Locked;
         _lockButton.Glyph=locked ? 3:4;
         _lockButton.SetPressedNoSignal(locked);
@@ -244,13 +289,20 @@ public partial class HotSlot : Control
     private const int CountFontSize = 11;
     private const int CountInset = 2;
     private const int CountOutline = 3;
+    private const string DragKeyShop = "shopFrom";
+    private const string DragKeyVendor = "companionFrom";
+    private const int NameFontSize = 9;
     private static readonly Color CooldownShade = new(0f, 0f, 0f, 0.62f);
     private static readonly Color MissingTint = new(0.45f, 0.45f, 0.45f, 1f);
+    private static readonly Color ShortCount = new(1f, 0.42f, 0.36f);
 
     public int SlotInPage { get; }
     public Func<int, int> AbsOf { get; set; } = s => s;
     public Func<int, HotSlotInfo> Source { get; set; } = abs => HotSlotInfo.Empty(abs);
     public Action<int>? OnActivate { get; set; }
+    public Func<int, bool?> Usable { get; set; } = abs => null;
+    public Func<bool> IsHeld { get; set; } = () => false;
+    public Func<int, bool> Takes { get; set; } = id => true;
     public Action<int>? OnSelect { get; set; }
     public Func<int,bool> IsSelected { get; set; } = abs => false;
     public Func<bool> IsLocked { get; set; } = () => false;
@@ -263,12 +315,17 @@ public partial class HotSlot : Control
     private readonly Label _count;
     private readonly Control _content;
     private readonly Panel _selection;
+    private readonly Label _name;
+    private readonly HotSlotOverlay _overlay;
+    private readonly UpgradeBadge _badge;
     private HotSlotInfo _current;
-    private bool _pressed,_dragging,_selected;
+    private bool _pressed,_dragging,_selected,_cooling,_dim,_short;
     private int _dragAbs,_dragId;
     private Vector2 _grabPoint;
 
     private int Abs => AbsOf(SlotInPage);
+    /// <summary>The skill or item this slot shows.</summary>
+    public int ShownId => _current.IsEmpty ? 0 : _current.Id;
 
     public HotSlot(int slotInPage)
     {
@@ -287,6 +344,24 @@ public partial class HotSlot : Control
         };
         _icon.SetAnchorsPreset(LayoutPreset.FullRect);
         _content.AddChild(_icon);
+        // The client captions a skill that has no shipped icon with its name.
+        _name = new Label
+        {
+            Name = "name",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            ClipText = true,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        _name.SetAnchorsPreset(LayoutPreset.FullRect);
+        _name.AddThemeFontOverride("font", HotbarVisuals.Font);
+        _name.AddThemeFontSizeOverride("font_size", NameFontSize);
+        _name.AddThemeColorOverride("font_color", HotbarVisuals.Ink);
+        _name.AddThemeColorOverride("font_outline_color", Colors.Black);
+        _name.AddThemeConstantOverride("outline_size", 2);
+        _name.AddThemeConstantOverride("line_spacing", -2);
+        _content.AddChild(_name);
         _shade = new ColorRect { Name = "cooldown", Color = CooldownShade, MouseFilter = MouseFilterEnum.Ignore, Visible = false };
         _shade.SetAnchorsPreset(LayoutPreset.FullRect);
         _content.AddChild(_shade);
@@ -306,6 +381,14 @@ public partial class HotSlot : Control
         _count.AddThemeColorOverride("font_outline_color", Colors.Black);
         _count.AddThemeConstantOverride("outline_size", CountOutline);
         _content.AddChild(_count);
+        _badge = UpgradeBadge.Attach(_content);
+        _badge.Name = "upgrade";
+        // The client's skill-ready flash; its cooldown sweep stays off (the Classic bar fills from the bottom).
+        _overlay = new HotSlotOverlay { Name = "ready" };
+        _content.AddChild(_overlay);
+        // Stable names keep the slot's parts addressable when the bar is rebuilt (rotation, added bars).
+        var parts = _overlay.GetChildren();
+        for (int i = 0; i < parts.Count; i++) parts[i].Name = "ready_" + i;
         _selection = new Panel { Name="selection",MouseFilter=MouseFilterEnum.Ignore,Visible=false };
         _selection.SetAnchorsPreset(LayoutPreset.FullRect);
         var selectionStyle = new StyleBoxFlat { BgColor=Colors.Transparent,BorderColor=new Color(0.55f,1f,0.45f) };
@@ -328,40 +411,64 @@ public partial class HotSlot : Control
         bool selected = !_current.IsEmpty && IsSelected(Abs);
         if (_selected != selected) { _selected = selected; _selection.Visible = selected; }
         _icon.Texture = _current.IsEmpty ? null : _current.Icon;
-        _icon.Modulate = _current.Enough ? Colors.White : MissingTint;
-        _count.Text = _current.Count >= 0 ? _current.Count.ToString() : "";
-        TooltipText = _current.Tooltip.Length > 0 ? _current.Tooltip : _current.Name;
-        TickCooldown();
+        _name.Text = !_current.IsEmpty && _current.Icon == null ? _current.Name : "";
+        if (_current.IsEmpty || _current.IsSkill) _badge.Clear(); else _badge.Set(_current.Id);
+        // Items show the client's item card on hover; skills carry the client's skill tooltip.
+        TooltipText = !_current.IsSkill ? "" : _current.Tooltip.Length > 0 ? _current.Tooltip : _current.Name;
+        _cooling = !_current.IsEmpty;
+        ShowState(_current);
+        Tick(false);
     }
 
-    public void TickCooldown()
+    /// <summary>Follows the slot's live state: the cooldown every frame while it runs, counts and usability when asked.</summary>
+    public void Tick(bool state)
     {
+        // The client reports every content change (Changed), so an empty slot has nothing to follow.
         if (_current.IsEmpty) { _shade.Visible = false; return; }
+        if (!state && !_cooling) return;
         var live = Source(Abs);
         if (live.Id != _current.Id) { Refresh(); return; }
-        if (live.Count != _current.Count || live.Enough != _current.Enough)
-        {
-            _current = live;
-            _icon.Modulate = live.Enough ? Colors.White : MissingTint;
-            _count.Text = live.Count >= 0 ? live.Count.ToString() : "";
-        }
+        if (state) { _current = live; ShowState(live); }
         float frac = live.Cooldown;
-        _shade.Visible = frac > 0.001f;
-        if (_shade.Visible)
+        _cooling = frac > 0.001f;
+        _shade.Visible = _cooling;
+        if (_cooling)
         {
             _shade.AnchorTop = 1f - Mathf.Clamp(frac, 0f, 1f);
             _shade.OffsetTop = 0f;
         }
+        // The client dims an entry that cannot be used now, but not while its cooldown runs.
+        ApplyDim(!_cooling && _dim);
+    }
+
+    private void ShowState(HotSlotInfo live)
+    {
+        string count = live.Count >= 0 ? live.Count.ToString() : "";
+        if (_count.Text != count) _count.Text = count;
+        // Theme overrides re-lay the label, so the colour changes only when the shortage does.
+        if (_short != !live.Enough) { _short = !live.Enough; _count.AddThemeColorOverride("font_color", _short ? ShortCount : Colors.White); }
+        _dim = !live.IsEmpty && !(Usable(Abs) ?? live.Enough);
+        ApplyDim(!_cooling && _dim);
+    }
+
+    private void ApplyDim(bool dim)
+    {
+        var tint = dim ? MissingTint : Colors.White;
+        if (_icon.Modulate != tint) _icon.Modulate = _name.Modulate = tint;
+    }
+
+    /// <summary>Plays the client's skill-ready flash.</summary>
+    public void Flash()
+    {
+        if (!_current.IsEmpty) _overlay.Flash();
     }
 
     public override void _GuiInput(InputEvent ev)
     {
         if (ev is not InputEventMouseButton mb) return;
+        // As in the client, a right-click only selects; a right double-click in the world casts the selection.
         if (mb.ButtonIndex == MouseButton.Right) {
-            if (mb.Pressed) {
-                if (mb.DoubleClick && IsSelected(Abs)) OnActivate?.Invoke(Abs);
-                else OnSelect?.Invoke(Abs);
-            }
+            if (mb.Pressed) OnSelect?.Invoke(Abs);
             AcceptEvent();
             return;
         }
@@ -386,7 +493,7 @@ public partial class HotSlot : Control
 
     public override Variant _GetDragData(Vector2 atPosition)
     {
-        if (_current.IsEmpty || IsLocked()) return default;
+        if (_current.IsEmpty || IsLocked() || IsHeld()) return default;
         _pressed = false;
         _dragging = true;
         _dragAbs = Abs;
@@ -399,7 +506,10 @@ public partial class HotSlot : Control
     {
         if(OnDrop==null || data.VariantType!=Variant.Type.Dictionary) return false;
         var d=data.AsGodotDictionary();
-        return d.ContainsKey(DragKeyItem) && (!d.ContainsKey(DragKeyBar) || !IsLocked());
+        if(!d.ContainsKey(DragKeyItem)) return false;
+        if(d.ContainsKey(DragKeyBar)) return !IsLocked();
+        // Goods in an NPC shop or another player's stall are not the player's; everything else follows the bar's rules.
+        return !d.ContainsKey(DragKeyShop) && !d.ContainsKey(DragKeyVendor) && Takes(d[DragKeyItem].AsInt32());
     }
 
     public override void _DropData(Vector2 atPosition, Variant data)

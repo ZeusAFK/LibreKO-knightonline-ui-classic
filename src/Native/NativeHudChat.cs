@@ -209,6 +209,35 @@ public static class NativeHudChat
         if (World is { } world) Native.Call(world, "SelectHotAbs", abs);
     }
 
+    /// <summary>Whether the client has applied the character's saved skill bar from the server.</summary>
+    public static bool HotbarLoaded => World is { } world && Native.Get<bool>(world, "_hotLoadedFromServer");
+
+    /// <summary>
+    /// The client's own "usable now" test for a skill-bar entry (MP, stamina, weapon, anger, buff, coins, learned,
+    /// consumed items, group cooldown), plus the zone and transformation gates it applies when the entry fires.
+    /// Null when the client cannot tell, so the caller keeps its own fallback.
+    /// </summary>
+    public static bool? HotbarUsable(int abs)
+    {
+        if (World is not { } world || Native.Get<int[]>(world, "_hotbar") is not { } slots || abs < 0 || abs >= slots.Length) return null;
+        int id = slots[abs];
+        if (id == 0) return true;
+        int zone = Native.Get<int>(world, "_zone");
+        var skill = SkillData.Get(id);
+        if (skill == null && ItemData.Get(id) is { } item)
+        {
+            if (!ChaosBattle.ItemUsable(zone, item.Kind)) return false;
+            if (item.Effect1 != 0) skill = SkillData.Get(item.Effect1);
+        }
+        if (skill == null) return true;
+        if (SkillData.IsSkill(id))
+        {
+            if (!ZoneSkillTrees.Allowed(zone, skill.Tree, skill.Id)) return false;
+            if (Native.Call(world, "SelfTransformModel") is int form && !SkillData.IsGranted(skill.Tree, form)) return false;
+        }
+        return Native.Call(world, "HotbarUsable", skill, Time.GetTicksMsec() / 1000.0) is bool usable ? usable : null;
+    }
+
     public static bool Running => World is not { } world || Native.Get<bool>(world, "_running");
     public static bool Sitting => World is { } world && Native.Get<bool>(world, "_selfSitting");
     public static bool AutoAttacking => World is { } world && Native.Get<bool>(world, "_autoAttack");
