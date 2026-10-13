@@ -237,9 +237,11 @@ public partial class Preview
         // The client's Skill Preset entry sits in the free part of the Skill Point row and runs the client's Presets key.
         var presetButton=view.Get<Button>("btn_preset")!;
         var presetRect=new Rect2(presetButton.GlobalPosition-actual.GlobalPosition,presetButton.Size);
+        var plusColumn=view.Get<Control>("btn_1")!;
         Require(presetButton.Size==new Vector2(92,18) && new Rect2(Vector2.Zero,actual.Size).Encloses(presetRect)
+            && Mathf.IsEqualApprox(presetRect.End.X,plusColumn.GlobalPosition.X-actual.GlobalPosition.X+plusColumn.Size.X)
             && !presetRect.Intersects(new Rect2(Label("string_skillpoint").GlobalPosition-actual.GlobalPosition,Label("string_skillpoint").Size)),
-            "Skill Preset keeps its declared rectangle inside the window, clear of the point count");
+            "Skill Preset keeps its declared rectangle inside the window, flush with the P column and clear of the point count");
         Require(presetButton.GetThemeFont("font").GetStringSize(presetButton.Text,HorizontalAlignment.Left,-1,presetButton.GetThemeFontSize("font_size")).X<=presetButton.Size.X-4,
             "Skill Preset caption fits its button");
         bool presets=false;

@@ -9,8 +9,8 @@ internal static class SkillLayout
     internal const string FontFamily="Arial";
     internal const int BodyFontPoints=9;
     private const int PagerY=525, PagerHeight=22;
-    // The client's "Skill Preset" entry, in the free right part of the Skill Point row.
-    private const int PresetX=262, PresetY=79, PresetWidth=92, PresetHeight=18;
+    // The client's "Skill Preset" entry, in the free right part of the Skill Point row, flush with the "P" column.
+    private const int PresetRight=360, PresetY=79, PresetWidth=92, PresetHeight=18;
     // An original caption belongs to a Classic row when it starts within this many pixels of it.
     private const float CaptionSnap=12f;
     private static readonly string[] DefaultNational={"Leadership","Politics","Language","Siege Weapon"};
@@ -22,8 +22,9 @@ internal static class SkillLayout
         int offset=Plugin.Kit.Nation==1 ? 2 : 0;
         Text(root,"text_Skill Point","Skill Point",14,78+offset,88,22,true);
         Text(root,"string_skillpoint","",106,78+offset,44,22,true,true);
+        int presetRight=source.Find("btn_1") is { } plus ? plus.X+plus.W : PresetRight;
         root.Children.Add(new LayoutNode { Type="classic_button",Id="btn_preset",Text="Skill Preset",Font=FontFamily,Size=BodyFontPoints,Bold=true,
-            X=PresetX,Y=PresetY+offset,W=PresetWidth,H=PresetHeight });
+            X=presetRight-PresetWidth,Y=PresetY+offset,W=PresetWidth,H=PresetHeight });
         var captions=source.Strings.Where(n=>n.Id.Length==0 && n.Text.Trim().Length>0).ToList();
         for(int row=0;row<4;row++)
         {
