@@ -1,6 +1,7 @@
 using System.Reflection;
 using Godot;
 using LibreKO;
+using LibreKO.Network;
 using LibreKO.Plugins;
 
 /// <summary>
@@ -25,6 +26,32 @@ public static partial class PreviewFixtures
         var raiseVote = typeof(PluginGame).GetMethod("RaiseUserVote", flags)!;
         host.UserInfo.Changed += () => raiseInfo.Invoke(game, null);
         host.UserVote.Changed += () => raiseVote.Invoke(game, null);
+    }
+
+    /// <summary>
+    /// Member pings, level progress and buffs (ff78eef), seeded like upstream's party HUD preview
+    /// (<c>World.BuildPartyHudUiPreview</c>): buffs are timed buff skills with art, one per buff type and icon, from the
+    /// installed skill table, which the installed content pack carries (the audit pack has no skills).
+    /// </summary>
+    public static IReadOnlyList<int> SeedPartyMembers(Net net, params (int Id, int PingMs, int LevelPermille, int FirstBuff, int Buffs)[] members)
+    {
+        if (!ProjectSettings.LoadResourcePack(ProjectSettings.GlobalizePath("res://../../build/client/source-content/knightonline.pck"), false))
+            throw new Exception("Missing installed content pack (skills)");
+        LibreKO.Domain.SkillData.EnsureLoaded();
+        // One skill per buff type and per icon, so the cells show different buffs.
+        var buffs = new List<int>();
+        var seen = new HashSet<string>();
+        foreach (var skill in LibreKO.Domain.SkillData.All.Where(s => s.Duration > 0 && s.Type1 == LibreKO.Domain.MagicType.Buff)
+            .OrderBy(s => s.Id).GroupBy(s => s.BuffType).Select(g => g.First()))
+        {
+            if (LibreKO.Domain.SkillData.Icon(skill.Id)?.GetImage() is not { } art) continue;
+            if (!seen.Add(Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(art.GetData())))) continue;
+            buffs.Add(skill.Id);
+            if (buffs.Count == 10) break;
+        }
+        foreach (var m in members)
+            net.SeedPartyMemberPreview(m.Id, m.PingMs, m.LevelPermille, buffs.Skip(m.FirstBuff).Take(m.Buffs).ToArray());
+        return buffs;
     }
 
     /// <summary>Moves a world canvas layer into the preview scene so the windows the client adds to it render.</summary>

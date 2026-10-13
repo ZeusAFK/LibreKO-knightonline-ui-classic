@@ -340,7 +340,7 @@ above are no longer read.
 | --- | --- | --- |
 | `IGameParty.RowMeterMode`, `RowMeterShare`, `CycleRowMeter`, `ToggleWarBoard`, `MoveRow`, `AutoRejoin`, `AutoRejoinTip`, `ToggleAutoRejoin`, `CommanderBarHidden`, `ShowCommanderBar`; `GamePartyMember.HpLook` | API | Classic party list: row meter, War Board action, Move up / Move down arrows in the client's row order, automatic re-invite, commander bar restore, HP look art |
 | `HudPart.WarBoard`; `IGameParty.WarBoardOpen`, `WarBoardMode`, `WarBoardAlpha`, `WarBoardRows`, `SetWarBoardMode`, `SetWarBoardAlpha` | API | Classic Party War Board (`ClassicWarBoard`); the client keeps the requests, their cooldown and the ranking |
-| `_warBoardCool` (`Label`) | F | The client's 5 s tab cooldown (not in the API): its seconds show right of the Classic tabs while the client holds a changed tab; missing, the board shows no digits |
+| `_warBoardCool` (`Label`) | F | 3277df5 only: the client's 5 s tab cooldown, mirrored every frame. No longer read since ff78eef, which exposes `IGameParty.WarBoardCooldown` (see below) |
 | `IGameParty.UserVoteHere`, `UserVote(id)`; `IGameUserVote` (`Title`, `SelectPrompt`, `Reasons`, `CostLine`, `AskQuestion`, `AskReason`, `AskSeconds`, `AskSecondsLeft`, `NoticeTitle`, `NoticeLines`, `Send`, `CancelSelect`, `Answer`, `CloseNotice`); `UserVote` constants | API | Classic `user_vote`, `user_vote_ask`, `user_vote_notice` on the message box (`ClassicUserVoteSkin`); the client's member menu offers User Vote in Juraid and answers Draw when the countdown ends |
 | `IGameUserVote` proxy `Source` (one or more facade proxies) → bridge `_w`; `_userVoteAskShown` (`UserVoteAsk.Reason`) | F | Only when the client's text table lacks the reason texts (43790-43793, it returns "Reason n" or an empty reason line): the reasons and a received vote's listed reason show English captions (`NativeUserVote`); the client's text is used whenever present |
 | `IGameUserInfo.Card` (`GameUserCard`, `GameRankRibbon`, `GameUserRankRow`), `Changed`; `UserInfoCard.PodiumPlaces`; resource `res://assets/ui/daily_rank/medal_{n}.png` | API | Classic character card (`ClassicUserInfoCard`); the client's card body stays hidden in the window, its Confirm button below the Classic card |
@@ -471,6 +471,24 @@ the member it finds, so older clients keep the previous path.
 | `World+BagCompanion.IntoBag` (`Func<int, int, int?, bool>`: the amount picked with the mouse wheel; before `Func<int, int, bool>`) | P/T | `NativeVendor` reroutes buys through the Classic approval and `NativeAnvil` builds the anvil companion; the delegate shape comes from `Native.MemberType`, the amount is ignored (the approval asks the count, anvil items move whole) |
 | `WithdrawInto`, `VipWithdrawInto`, `ClanWithdrawInto` `(int, int, int? amount)`; `AskWithdraw`, `AskVipWithdraw`, `AskClanWithdraw`, `DepositSlot`, `OfferSlot` gained an optional `int? amount` | M | Storage drops into the bag pass the drag's `DragLayer.AmountKey` amount (null = whole stack); the optional ones bind through `Native.Method`'s default filling |
 | `AttachWeapons(Node3D, int[], HandWearer, int npcType)`, static `WeaponWearer(bool npc, bool statue, int race, int npcId, int size, int modelId)`, static `AttachBuiltInPlugs(Node3D, string)`, `_mobIndex`; `World+Ent.Race`, `Size`; `NoWeaponNpcIds` removed | M/F | NPC portrait: weapons by the model's plug slots and scale, the model's own built-in weapons on a freshly loaded model; the unarmed list is read only where it still exists |
+
+### Party HUD and War Board on upstream ff78eef
+
+Upstream rewrote its party HUD (class diamond with a level gauge, ping signal, buff row, drag reordering, a settings
+popup) and removed its row meter switch ("the damage/healing switch lives on the war board only"). The Classic party
+list keeps the original cells and shows the new member data through the party facade; nothing new is reflected.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `IGameParty.MemberBuffs(id)` (`GamePartyBuff`: `SkillId`, `Icon`, `Tooltip`) | API | Buff icons on each cell's name line, 14 px in the client's order, ending under the bars; the name gives way (ellipsis) down to two icons, further buffs are not shown (the client also shows one line). Each icon has the client's buff tooltip; without art the skill's initial |
+| `IGameParty.PingMs(id)`; `PartySignal` (`Level`, `Arcs`, `Tooltip`, `Unknown`, `NoSignal`) | API | Connection glyph in the arrow column beside the name line (three arcs in the client's colours, struck through without a signal, the client's "Ping: N ms" tooltip); the member tooltip's last line |
+| `IGameParty.LevelPercent(id)` | API | "Level progress N.N%" in the member tooltip (the own row: the experience percent) |
+| `GamePartyMember.Picked` (= the client's `PartyHighlight`) | API | The green selection frame follows the client's highlight: the picked member, or the party member who is the world target; targeting someone outside the party clears it. The client raises `Changed` when it moves |
+| `IGameParty.WarBoardCooldown` | API | The War Board tab cooldown beside the Classic tabs, refreshed on `Changed` (raised whenever the shown seconds change); replaces the per-frame `_warBoardCool` mirror and the board's World accessor |
+| `IGameParty.RowMeterMode`, `RowMeterShare`, `CycleRowMeter`; `Config.PartyRowMeter` (default now off) | API | Kept: the Classic "Meter" action still cycles Off, Damage, Healing. The client forces the row meter off at World build only while its own party HUD is shown (`KeepRowMeterOff` is skipped when a plugin replaces `HudPart.Party`), so the replacement keeps it |
+| `IGameParty.AutoRejoinTip` (long official texts 44730/44731) | API | Re-invite tooltip wrapped to the client's buff tooltip width (`TextWrap.Wrap`, 44 letters); the party list and the war board use the original tooltip look (co_tooltip_us) |
+
+`MoveRowTo` (drag reordering) is not used: the Classic cells keep the Move up / Move down arrows (`MoveRow`).
 
 ### Preview-only members
 

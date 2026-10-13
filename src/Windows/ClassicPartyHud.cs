@@ -10,7 +10,10 @@ namespace KnightOnlineUiClassic.Windows;
 /// plugin party API in the client's row order, left click picks (and targets) a member, right click opens the
 /// client's member menu (with User Vote in Juraid), the small arrows move a member up or down, and the party
 /// actions (invite by name, leave or disband, party board, war board, row meter, automatic re-invite, the
-/// commander bar's restore) call the client's own handlers.
+/// commander bar's restore) call the client's own handlers. Since ff78eef each cell also shows the member's
+/// buffs and connection, and its tooltip the level progress and ping; the selection follows the client's
+/// highlight (the picked member, or the party member who is the world target). Tooltips use the original
+/// tooltip look (co_tooltip_us), long ones wrapped as the client wraps its buff tooltips.
 /// </summary>
 public partial class ClassicPartyHud : Control
 {
@@ -28,6 +31,7 @@ public partial class ClassicPartyHud : Control
     {
         _party = party; _world = world;
         Name = "classic_party_hud"; MouseFilter = MouseFilterEnum.Ignore; TextureFilter = TextureFilterEnum.Nearest;
+        Theme = ClassicPremiumChip.Tooltip();
         var heading = Plugin.Kit.Layout(ClassicPartyHudLayout.Art).Strings.First();
         ClassicPartySkin.Caption(this, "Party", new Rect2(heading.Position, heading.SizeVec), heading.Color, heading.Size).Name = "party_caption";
         _grip = new Control { Name = "party_drag", Position = ClassicPartyHudLayout.Drag.Position, Size = ClassicPartyHudLayout.Drag.Size, MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.Move };
@@ -113,20 +117,28 @@ public partial class ClassicPartyHud : Control
         _leave.TooltipText = _party.IsLeader ? "Disband the party" : "Leave the party";
         _meter.Text = _party.RowMeterMode switch { 1 => "Meter: Damage", 2 => "Meter: Healing", _ => "Meter: Off" };
         _rejoin.Text = _party.AutoRejoin ? "Re-invite: On" : "Re-invite: Off";
-        _rejoin.TooltipText = _party.AutoRejoinTip;
+        _rejoin.TooltipText = WrapTip(_party.AutoRejoinTip);
         bool commander = _party.CommanderBarHidden;
         _commander.Visible = commander;
         CustomMinimumSize = Size = new Vector2(ClassicPartyHudLayout.Width, ClassicPartyHudLayout.Height(shown, commander));
     }
+
+    /// <summary>Long tips (the official re-invite text) in lines of the client's buff tooltip width.</summary>
+    public static string WrapTip(string text) => LibreKO.Domain.TextWrap.Wrap(text, ClassicPartyHudLayout.TipLetters);
 }
 
-/// <summary>One original party member cell: HP bar with the status look, MP bar, name, meter and selection.</summary>
+/// <summary>
+/// One original party member cell: HP bar with the status look, MP bar, name, meter and selection; the member's
+/// buffs on the name line and the connection glyph beside it.
+/// </summary>
 public partial class ClassicPartyHudRow : Control
 {
     private readonly ClassicPartyHud _hud = null!;
     private readonly LayoutNode _layout = null!;
     private readonly Label _name = null!;
     private readonly Button _up = null!, _down = null!;
+    private readonly ClassicPartyBuff[] _buffs = new ClassicPartyBuff[ClassicPartyHudLayout.BuffMax];
+    private readonly ClassicPartySignal _signal = null!;
     private GamePartyMember _member;
     private bool _bound;
     private float _share;
@@ -137,8 +149,21 @@ public partial class ClassicPartyHudRow : Control
     {
         _hud = hud; _layout = Plugin.Kit.Layout(ClassicPartyHudLayout.Art);
         MouseFilter = MouseFilterEnum.Stop;
-        _name = ClassicPartySkin.Caption(this, "", ClassicPartyHudLayout.Name, new Color("8080ff"), 10);
-        _name.Name = "party_member_name"; _name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        // The name gives way to the buff icons, so its width is set on every bind (no deferred reset).
+        var name = ClassicPartyHudLayout.Name;
+        _name = new Label { Name = "party_member_name", Position = name.Position, Size = name.Size, ClipText = true, ClipContents = true, VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis };
+        _name.AddThemeFontOverride("font", Plugin.Kit.ChatStrong);
+        _name.AddThemeFontSizeOverride("font_size", 10);
+        _name.AddThemeColorOverride("font_color", new Color("8080ff"));
+        AddChild(_name);
+        for (int i = 0; i < _buffs.Length; i++)
+        {
+            _buffs[i] = new ClassicPartyBuff { Name = "party_buff_" + i, Visible = false };
+            AddChild(_buffs[i]);
+        }
+        _signal = new ClassicPartySignal { Name = "party_signal", Position = ClassicPartyHudLayout.Signal.Position, Size = ClassicPartyHudLayout.Signal.Size };
+        AddChild(_signal);
         _up = Arrow("party_move_up", ClassicPartyHudLayout.ArrowUp, ClassicPartyHudLayout.MoveUp, "Move up", LibreKO.Domain.PartyOrder.Up);
         _down = Arrow("party_move_down", ClassicPartyHudLayout.ArrowDown, ClassicPartyHudLayout.MoveDown, "Move down", LibreKO.Domain.PartyOrder.Down);
         GuiInput += OnInput;
@@ -164,6 +189,7 @@ public partial class ClassicPartyHudRow : Control
     }
 
     public GamePartyMember Member => _member;
+    public int BuffsShown => _buffs.Count(b => b.Visible);
 
     public void Bind(GamePartyMember member, int index, int count)
     {
@@ -174,9 +200,36 @@ public partial class ClassicPartyHudRow : Control
         _name.Text = member.Name;
         // Original party colours: the leader in the caption yellow, the commander green, members blue.
         _name.AddThemeColorOverride("font_color", member.Leader ? new Color("ffff80") : NativeParty.IsCommander(member.Id) ? new Color("00ff00") : new Color("8080ff"));
-        TooltipText = member.Tooltip;
+        int ping = _hud.Party.PingMs(member.Id);
+        TooltipText = Tip(member.Tooltip, _hud.Party.LevelPercent(member.Id), ping);
+        _signal.Ms = ping;
+        BindBuffs(_hud.Party.MemberBuffs(member.Id));
         _share = LibreKO.Domain.PartyWarBoard.Fill(Math.Max(0, _hud.Party.RowMeterShare(member.Id)));
         QueueRedraw();
+    }
+
+    /// <summary>The client's member tooltip, then the level progress and the client's ping text.</summary>
+    public static string Tip(string client, double levelPercent, int ping) =>
+        client + "\nLevel progress " + levelPercent.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%\n" + LibreKO.Domain.PartySignal.Tooltip(ping);
+
+    /// <summary>
+    /// The buffs right of the name, ending under the bars: as many as fit after the name, at least two (the
+    /// name then ends in an ellipsis); like the client's one line, the rest is not shown.
+    /// </summary>
+    private void BindBuffs(IReadOnlyList<GamePartyBuff> buffs)
+    {
+        var name = ClassicPartyHudLayout.Name;
+        float natural = _name.GetThemeFont("font").GetStringSize(_member.Name, HorizontalAlignment.Left, -1, _name.GetThemeFontSize("font_size")).X;
+        int shown = Math.Min(buffs.Count, ClassicPartyHudLayout.BuffsShown(natural));
+        _name.Position = name.Position; _name.Size = new Vector2(ClassicPartyHudLayout.NameWidth(shown), name.Size.Y);
+        for (int i = 0; i < _buffs.Length; i++)
+        {
+            _buffs[i].Visible = i < shown;
+            if (i >= shown) continue;
+            var rect = ClassicPartyHudLayout.Buff(i, shown);
+            _buffs[i].Position = rect.Position; _buffs[i].Size = rect.Size;
+            _buffs[i].Bind(buffs[i]);
+        }
     }
 
     private void OnInput(InputEvent ev)
@@ -228,4 +281,93 @@ public partial class ClassicPartyHudRow : Control
     }
 
     private static float Fill(int value, int max) => max <= 0 ? 0 : Mathf.Clamp(value / (float)max, 0, 1);
+}
+
+/// <summary>One member buff on the name line: the client's skill icon (or its initial) with the client's buff tooltip.</summary>
+public partial class ClassicPartyBuff : Control
+{
+    private Texture2D? _icon;
+    private string _initial = "";
+
+    public ClassicPartyBuff() { MouseFilter = MouseFilterEnum.Pass; TextureFilter = TextureFilterEnum.Linear; }
+
+    public int SkillId { get; private set; }
+    public bool HasIcon => _icon != null;
+
+    public void Bind(GamePartyBuff buff)
+    {
+        SkillId = buff.SkillId; _icon = buff.Icon; TooltipText = buff.Tooltip;
+        _initial = buff.Tooltip.Length > 0 ? buff.Tooltip[..1] : "?";
+        QueueRedraw();
+    }
+
+    public override void _Draw()
+    {
+        var bounds = new Rect2(Vector2.Zero, Size);
+        if (_icon != null) { DrawTextureRect(_icon, bounds, false); return; }
+        // Without art, the skill's initial on a dark cell, as the client does.
+        DrawRect(bounds, new Color(0, 0, 0, .85f));
+        DrawRect(bounds, new Color("82735b"), false, 1);
+        var font = Plugin.Kit.Bold; const int size = 9;
+        float width = font.GetStringSize(_initial, HorizontalAlignment.Left, -1, size).X;
+        DrawString(font, new Vector2((Size.X - width) / 2, (Size.Y - font.GetHeight(size)) / 2 + font.GetAscent(size)), _initial, HorizontalAlignment.Left, -1, size, Colors.White);
+    }
+}
+
+/// <summary>
+/// The member's connection as the client measures it (ff78eef): three arcs lit by the ping level in the client's
+/// colours, struck through without a signal, with the client's "Ping: N ms" tooltip.
+/// </summary>
+public partial class ClassicPartySignal : Control
+{
+    private static readonly Dictionary<LibreKO.Domain.PartySignalLevel, Color> Tints = new()
+    {
+        [LibreKO.Domain.PartySignalLevel.Strong] = new Color("4cd964"),
+        [LibreKO.Domain.PartySignalLevel.Good] = new Color("f2cf3a"),
+        [LibreKO.Domain.PartySignalLevel.Weak] = new Color("e8483c"),
+        [LibreKO.Domain.PartySignalLevel.Poor] = new Color("e8483c"),
+        [LibreKO.Domain.PartySignalLevel.Lost] = new Color(.56f, .56f, .56f),
+        [LibreKO.Domain.PartySignalLevel.Unknown] = new Color(.56f, .56f, .56f),
+    };
+    private static readonly Color Unlit = new(1, 1, 1, .16f), Shadow = new(0, 0, 0, .45f);
+    private int _ms = LibreKO.Domain.PartySignal.Unknown;
+
+    public ClassicPartySignal() { MouseFilter = MouseFilterEnum.Pass; TooltipText = LibreKO.Domain.PartySignal.Tooltip(_ms); }
+
+    public int Ms
+    {
+        get => _ms;
+        set
+        {
+            if (_ms == value) return;
+            _ms = value;
+            TooltipText = LibreKO.Domain.PartySignal.Tooltip(value);
+            QueueRedraw();
+        }
+    }
+
+    public LibreKO.Domain.PartySignalLevel Level => LibreKO.Domain.PartySignal.Level(_ms);
+    public static Color Tint(LibreKO.Domain.PartySignalLevel level) => Tints[level];
+
+    public override void _Draw()
+    {
+        var level = Level;
+        int lit = LibreKO.Domain.PartySignal.Arcs(level);
+        bool lost = level == LibreKO.Domain.PartySignalLevel.Lost;
+        var tint = Tints[level];
+        const float dot = 1.5f, from = -Mathf.Pi * .75f, to = -Mathf.Pi * .25f;
+        var centre = new Vector2(Size.X / 2, Size.Y - dot - 1);
+        float step = (centre.Y - .5f) / 3;
+        for (int arc = 1; arc <= 3; arc++)
+        {
+            bool on = arc <= lit || lost;
+            if (on) DrawArc(centre, step * arc, from, to, 10, Shadow, 2.8f, true);
+            DrawArc(centre, step * arc, from, to, 10, on ? tint : Unlit, 1.5f, true);
+        }
+        DrawCircle(centre, dot + .7f, Shadow);
+        DrawCircle(centre, dot, tint);
+        if (!lost) return;
+        DrawLine(new Vector2(1, 1), Size - Vector2.One, Shadow, 2.8f, true);
+        DrawLine(new Vector2(1, 1), Size - Vector2.One, tint, 1.4f, true);
+    }
 }

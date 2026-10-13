@@ -27,7 +27,7 @@ public sealed class Plugin : IPlugin
         ui.ReplaceHud(HudPart.Chat, () => new NationHud(() => new ChatWindow()));
         ui.ReplaceHud(HudPart.CombatLog, () => new NationHud(() => new LogWindow()));
         ui.ReplaceHud(HudPart.Party, () => new NationHud(() => new ClassicPartyHud(Kit.Game.Party, () => NativeHudChat.World)));
-        ui.ReplaceHud(HudPart.WarBoard, () => new NationHud(() => new ClassicWarBoard(Kit.Game.Party, () => NativeHudChat.World)));
+        ui.ReplaceHud(HudPart.WarBoard, () => new NationHud(() => new ClassicWarBoard(Kit.Game.Party)));
         NativeHud.StyleWhispers(ClassicWhisperSkin.Apply, ClassicWhisperSkin.Line);
         ui.HideHud(HudPart.MiniMap);
         ui.HideHud(HudPart.Launcher);

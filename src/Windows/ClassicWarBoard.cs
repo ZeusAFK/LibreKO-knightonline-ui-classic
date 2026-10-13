@@ -11,8 +11,9 @@ namespace KnightOnlineUiClassic.Windows;
 /// The Classic Party War Board in place of the client's board (<see cref="HudPart.WarBoard"/>), driven by the
 /// plugin party API: the plain Classic frame, the Damage and Healing tabs, the background transparency the client
 /// saves, and one row per ranked member with the client's class colour behind the share. The client keeps the
-/// requests, their cooldown and the ranking; the board shows only while the client has it open. The facade has no
-/// tab cooldown, so its seconds are mirrored from the client's own cooldown label beside the tabs.
+/// requests, their cooldown and the ranking; the board shows only while the client has it open. The client's tab
+/// cooldown (<see cref="IGameParty.WarBoardCooldown"/>, raised through <see cref="IGameParty.Changed"/> whenever its
+/// seconds change) shows beside the tabs. Tooltips use the original tooltip look (co_tooltip_us).
 /// </summary>
 public partial class ClassicWarBoard : Control
 {
@@ -23,15 +24,15 @@ public partial class ClassicWarBoard : Control
     private readonly Button _damage = null!, _healing = null!;
     private readonly ClassicWarBoardRow[] _rows = new ClassicWarBoardRow[PartyWarBoard.MaxRows];
     private readonly Label _empty = null!, _cooldown = null!;
-    private readonly Func<World?>? _world;
     private bool _queued, _syncing;
 
     public ClassicWarBoard() { }
 
-    public ClassicWarBoard(IGameParty party, Func<World?>? world = null)
+    public ClassicWarBoard(IGameParty party)
     {
-        _party = party; _world = world;
+        _party = party;
         Name = "classic_war_board"; MouseFilter = MouseFilterEnum.Stop; TextureFilter = TextureFilterEnum.Nearest; Visible = false;
+        Theme = ClassicPremiumChip.Tooltip();
         _frame = new ClassicFrame { Name = "war_board_frame", BackgroundColor = Colors.Black };
         AddChild(_frame);
         _grip = new Control { Name = "war_board_drag", MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.Move };
@@ -118,16 +119,6 @@ public partial class ClassicWarBoard : Control
 
     public override void _ExitTree() => _party.Changed -= QueueRefresh;
 
-    public override void _Process(double delta)
-    {
-        if (!Visible) return;
-        // The client counts the tab cooldown down on its own (replaced) board; show its seconds beside the tabs.
-        var cool = _world?.Invoke() is { } world && GodotObject.IsInstanceValid(world) ? KnightOnlineUiClassic.Native.Native.Get<Label>(world, "_warBoardCool") : null;
-        bool shown = cool is { Visible: true } && cool.Text.Length > 0;
-        if (_cooldown.Visible != shown) _cooldown.Visible = shown;
-        if (shown && _cooldown.Text != cool!.Text) _cooldown.Text = cool.Text;
-    }
-
     private void QueueRefresh()
     {
         if (_queued) return;
@@ -154,6 +145,10 @@ public partial class ClassicWarBoard : Control
             if (i < shown) _rows[i].Bind(rows[i]);
         }
         _empty.Visible = shown == 0;
+        // The client counts the tab cooldown down while it holds a changed tab and notifies every new second.
+        int cool = _party.WarBoardCooldown;
+        _cooldown.Visible = cool > 0;
+        _cooldown.Text = cool > 0 ? cool.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
         var size = new Vector2(Spec.Width, Spec.Height(shown));
         if (Size != size) { CustomMinimumSize = size; Size = size; }
         Layout();
