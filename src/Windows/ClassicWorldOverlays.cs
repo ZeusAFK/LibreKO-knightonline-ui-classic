@@ -210,7 +210,12 @@ public static class ClassicWorldOverlays
             bool urgent = host.GetMeta(NativeOverlays.Urgent, false).AsBool();
             Ink(timer, urgent ? UrgentOnMessage : MessageText);
             SyncBar(bar, urgent);
-            Ink(status, host.GetMeta(NativeOverlays.Registered, false).AsBool() ? ClassicEventPanel.Ready : ClassicDesign.Text);
+            // The client upper-cases the event name with the system culture, which turns i into a dotted capital on a
+            // Turkish system; the title keeps the English capitals.
+            if (title.Text.Contains('\u0130')) title.Text = title.Text.Replace('\u0130', 'I');
+            // Registered here: the ready ink; registered for another open sign-up (Join hidden): the muted hint.
+            Ink(status, host.GetMeta(NativeOverlays.Registered, false).AsBool() ? ClassicEventPanel.Ready
+                : host.GetMeta(NativeOverlays.RegisteredElsewhere, false).AsBool() ? ClassicDesign.Muted : ClassicDesign.Text);
         });
     }
 
@@ -718,6 +723,7 @@ public partial class ClassicMessagePanel : Control
 /// <summary>Shows a native button's own text on the original art with the art's caption ink.</summary>
 public partial class ClassicButtonCaption : Label
 {
+    private static readonly StringName[] States = { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color", "font_disabled_color" };
     private readonly Button _button;
     private readonly Color _ink, _disabled;
 
@@ -740,6 +746,9 @@ public partial class ClassicButtonCaption : Label
     {
         if (_button == null || !GodotObject.IsInstanceValid(_button)) return;
         if (Text != _button.Text) Text = _button.Text;
+        // The client recolours some buttons per state (the registration's Join and Cancel); the caption stays the only text.
+        foreach (var state in States)
+            if (_button.GetThemeColor(state).A > 0) _button.AddThemeColorOverride(state, Colors.Transparent);
         var ink = _button.Disabled ? _disabled : _ink;
         if (GetThemeColor("font_color") != ink) AddThemeColorOverride("font_color", ink);
     }

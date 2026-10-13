@@ -1,5 +1,6 @@
 using Godot;
 using LibreKO;
+using LibreKO.Network;
 using LibreKO.Plugins;
 
 namespace KnightOnlineUiClassic.Native;
@@ -50,11 +51,14 @@ public enum NativeOverlay
 /// <summary>
 /// Prepares the client's world overlays for the Classic skins once the world is attached. The
 /// preparer names the native controls a skin looks for and mirrors native state into metas
-/// (<see cref="Urgent"/>, <see cref="Registered"/>); every native control, callback and timer stays.
+/// (<see cref="Urgent"/>, <see cref="Registered"/>, <see cref="RegisteredElsewhere"/>); every native control,
+/// callback and timer stays.
 /// </summary>
 public static class NativeOverlays
 {
     public const string Urgent = "overlay_urgent", Registered = "overlay_registered";
+    /// <summary>Meta on the registration: the character is registered for another open sign-up than the shown one.</summary>
+    public const string RegisteredElsewhere = "overlay_registered_elsewhere";
     /// <summary>Meta on the order message: the area banner it must stay below while both are shown.</summary>
     public const string StackBelow = "overlay_stack_below";
     private const string Prepared = "classic_overlays";
@@ -171,16 +175,18 @@ public static class NativeOverlays
         // The registration and countdown share the client's remaining time and registration state.
         if (modal is Control host)
         {
+            int urgentSeconds = Native.Get<int>(typeof(World), "BifrostUrgentSecs");
             var watcher = new NativeEventWatcher(() =>
             {
                 if (!GodotObject.IsInstanceValid(world)) return;
-                bool urgent = Native.Get<int>(world, "_bifrostRemaining") is var left && left > 0 && left <= Native.Get<int>(typeof(World), "BifrostUrgentSecs");
-                bool registered = Native.Get<bool>(world, "_isEventRegistered");
+                var (left, registered, elsewhere) = SignUpState(world);
+                bool urgent = left > 0 && left <= urgentSeconds;
                 foreach (var node in new[] { host, countdown })
                 {
                     if (node == null || !GodotObject.IsInstanceValid(node)) continue;
                     node.SetMeta(Urgent, urgent);
                     node.SetMeta(Registered, registered);
+                    node.SetMeta(RegisteredElsewhere, elsewhere);
                 }
             }) { Name = "classic_event_state", ProcessPriority = int.MinValue };
             host.AddChild(watcher);
@@ -188,6 +194,26 @@ public static class NativeOverlays
         Apply(NativeOverlay.Registration, modal);
         Apply(NativeOverlay.Countdown, countdown);
         Apply(NativeOverlay.Leave, leave);
+    }
+
+    /// <summary>
+    /// The shown sign-up's remaining seconds and whether the character is registered for it or for another open
+    /// sign-up. Upstream fa3cfc3 keeps the sign-ups per event on <c>Net.SignUps</c> (<c>TempleSignUpBoard</c>): the
+    /// registration shows <c>Current</c> with <c>SecondsLeft(Current, utc)</c>, and with no sign-up open the plaque
+    /// counts the plain Bifrost time (<c>BifrostSecondsLeft</c>). Older clients keep one sign-up on the World
+    /// (<c>_bifrostRemaining</c>, <c>_isEventRegistered</c>).
+    /// </summary>
+    internal static (int Seconds, bool Registered, bool Elsewhere) SignUpState(World world)
+    {
+        if (Net.I is not { } net || !Native.Has(net, "SignUps"))
+            return (Native.Get<int>(world, "_bifrostRemaining"), Native.Get<bool>(world, "_isEventRegistered"), false);
+        if (Native.Get<object>(net, "SignUps") is not { } board) return (0, false, false);
+        var current = Native.Get<object>(board, "Current");
+        int shown = current == null ? 0 : Convert.ToInt32(current);
+        int mine = Native.Get<object>(board, "Registered") is { } registered ? Convert.ToInt32(registered) : 0;
+        var utc = DateTime.UtcNow;
+        object? seconds = shown != 0 ? Native.Call(board, "SecondsLeft", current, utc) : Native.Call(world, "BifrostSecondsLeft", utc);
+        return (seconds is int left ? left : 0, shown != 0 && mine == shown, mine != 0 && mine != shown);
     }
 
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Node, World> _lootWorlds = new();

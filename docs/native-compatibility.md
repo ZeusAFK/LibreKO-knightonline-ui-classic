@@ -395,7 +395,7 @@ control, callback, timer and position rule. All members exist on bare upstream.
 
 | Member | Kind | Used for |
 | --- | --- | --- |
-| `_joinModal`, `_joinModalTitle`, `_joinModalTimer`, `_joinModalBar`, `_joinModalStatus`, `_joinModalCount`, `_joinModalBtn`, `_joinModalCloseBtn`, `_bifrostBanner`, `_bifrostTitleLbl`, `_bifrostTimerLbl`, `_bifrostBar`, `_bifrostRemaining`, `_isEventRegistered`, const `BifrostUrgentSecs` | F | Temple event registration message box and countdown plaque |
+| `_joinModal`, `_joinModalTitle`, `_joinModalTimer`, `_joinModalBar`, `_joinModalStatus`, `_joinModalCount`, `_joinModalBtn`, `_joinModalCloseBtn`, `_bifrostBanner`, `_bifrostTitleLbl`, `_bifrostTimerLbl`, `_bifrostBar`, const `BifrostUrgentSecs`; `_bifrostRemaining`, `_isEventRegistered` (clients before fa3cfc3, see the fa3cfc3 section) | F | Temple event registration message box and countdown plaque |
 | `_inZoneLeaveBanner`, `_inZoneLeaveTitleLbl`, `_inZoneLeaveBtn` | F | In-zone leave plaque |
 | `_deathPanel`, `_inviteAskDialog`, `_challengeAskDialog`, `_townRecallDialog` | F | Death notice and confirmation prompts on the message box art |
 | `_upgradeNoticeLabel`, `_shoutLabel`, `_battleeventBanner`, `_battleeventResult`, `_clanBattlePanel`, `_lootPrompt` | F | Outlined broadcast lines |
@@ -561,7 +561,25 @@ until then.
 | `World+WhisperChat.Log`, `Scroll`, `Input` fields replaced by `Thread` (`ChatThreadView`) and `Composer` (`ChatComposer`) | F | Whisper skin: not restyled on fa3cfc3 yet |
 | `_roomScroll`, `_roomLog`, `_roomOlder`, `_roomComposerRow`, `_roomInput`, `_roomRecord`, `_roomSend`, `_roomRecordStrip`, `_roomRecordClock`, `_roomRecordLevel` replaced by `_roomThread` and `_roomComposer` | F | Chat room skin: `NativeChatRoom.Prepare` stops when a member is missing, so the room keeps the client's look inside the Classic frame |
 | `_ncPriJoin`, `_ncPriLeave`, `_ncPriOpen`, `_ncPriChange`, `_ncPriPersons`, `_ncSearch`, `_ncMembers*`, `OpenNationSearch`, `NationChatRules.Summary`, window ids `nation_chat_members`, `nation_chat_search` (removed) | F/M | The Private tab is a search row (`_ncSearchEdit`, Search, Create room); members live in the room window |
-| `_bifrostRemaining`, `_isEventRegistered`, `_eventType`, `EndBifrostEvent` (removed): sign-ups are `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft`) | F | The Classic registration and countdown read the urgent and registered state from them |
+| `_bifrostRemaining`, `_isEventRegistered`, `_eventType`, `EndBifrostEvent` (removed): sign-ups are `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft`) | F | The Classic registration and countdown read the urgent and registered state from them (section "Events window and temple sign-ups on upstream fa3cfc3") |
+
+### Events window and temple sign-ups on upstream fa3cfc3
+
+Upstream rewrote the events window (`events`) as a card list and keeps temple sign-ups per event, so two can be
+open at once. The Classic event family composes the new window from its own controls (`ClassicEventSchedule`, found
+by the shape the client builds; no member is reflected) and the registration reads the new sign-up board.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft(type, utc)`), `World.BifrostSecondsLeft(utc)` | P/M | `NativeOverlays.SignUpState`: the shown sign-up's seconds (with none open, the plain Bifrost countdown), registered = `Registered == Current != None`, registered elsewhere = another open sign-up. The registration box and the countdown plaque turn urgent (red bar and ink) and registered (Ready ink, Cancel); registered elsewhere shows the client's "You are registered for ..." in the muted ink with Close alone. Clients without `Net.SignUps` keep reading `_bifrostRemaining` and `_isEventRegistered` |
+| Events window: the filter row (two `ButtonGroup` tabs and the "Only my level" toggle), the 640-pixel `ScrollContainer` list, the cards (`PanelContainer` column: glyph tile, name and level band, description, status with Join or Open, time chips, weekday pills), the shift and empty labels | Shape | Cards on the quest inset (lit while live), glyphs on the nation inventory cell, time chips and weekdays as small insets, tabs on the chat tab art, the check on the chat check socket, Join/Open as the service button. The status ink the client rewrites every second is mapped to the event inks; the list takes its cards' height up to the client's 470 pixels, so loading and empty are a 668x144 box. Every native callback stays (tab and filter `Toggled`, Join to `ShowSignUp(type)`, Open to `ToggleLottery`) |
+| `UiTheme.UnderlineTabButton` underline (`ColorRect` child) | Look | Drawn transparent; the chat tab art shows the chosen page |
+| `_joinModalBtn` font colour (the client recolours Join and Cancel per state) | Look | `ClassicButtonCaption` keeps the native text transparent, so only the art caption draws (fixes a doubled "Cancel"/"Join") |
+| `World.FormatModalTitle` (`ToUpper()` with the system culture) | Look | On a Turkish system "Juraid" becomes "JURAİD"; the Classic registration title keeps the English capitals |
+
+The whole event family now gives its windows the original tooltip look (co_tooltip_us), and its restyle skips
+tooltip popups. The Chaos skill page keeps the client's dimming (`ChaosSkillIcon.Modulate`, cube skills and the
+Chaos blink); `event-windows-audit` checks it.
 
 ### Preview-only members
 
