@@ -47,8 +47,10 @@ public static class NativeNpc
         if (ReferenceEquals(state.Actor, npc) && state.Portrait != null && state.Portrait.Name == name && state.Portrait.Level == level
             && state.Model == modelId && state.Type == npcType && state.NpcId == npcId && state.Gear.SequenceEqual(current)) return state.Portrait;
         int[] gear = (int[])current.Clone();
-        var unarmed = Native.Get<HashSet<int>>(typeof(World), "NoWeaponNpcIds");
+        // ff78eef dropped the unarmed id list: the model's plug slots decide (see AttachWeapons below).
+        var unarmed = Native.Has(typeof(World), "NoWeaponNpcIds") ? Native.Get<HashSet<int>>(typeof(World), "NoWeaponNpcIds") : null;
         if (npcType == NpcTypes.FixedPose || unarmed?.Contains(npcId) == true) Array.Clear(gear);
+        int race = Native.Get<int>(npc, "Race"), size = Native.Get<int>(npc, "Size");
         string appearance = $"{modelId}:" + string.Join(',', gear);
         state.Actor = npc; state.Model = modelId; state.Type = npcType; state.NpcId = npcId; state.Gear = (int[])current.Clone();
         var weakWorld = new WeakReference<World>(world);
@@ -60,6 +62,9 @@ public static class NativeNpc
             {
                 model = scene.Instantiate<Node3D>();
                 Native.Call(typeof(World), "ForceDoubleSidedOnce", model, scene.ResourcePath);
+                // ff78eef: an NPC shows the weapons its own model carries (built-in plugs), as in the world.
+                if (Native.Get<IDictionary>(w, "_mobIndex") is { } mobs && mobs.Contains(modelId) && mobs[modelId] is string stem)
+                    Native.TryCall(typeof(World), "AttachBuiltInPlugs", out _, model, stem);
             }
             else
             {
@@ -71,7 +76,14 @@ public static class NativeNpc
                 if (model == null) return null;
                 model.Transform = Transform3D.Identity;
             }
-            if (gear.Any(id => id > 0)) Native.Call(w, "AttachWeapons", model, gear, npcType, npcId);
+            if (gear.Any(id => id > 0))
+            {
+                // ff78eef: AttachWeapons(body, gear, HandWearer, npcType); the wearer carries the NPC's plug slots and scale.
+                if (Native.TryCall(typeof(World), "WeaponWearer", out var wearer, true, false, race, npcId, size, modelId) && wearer != null)
+                    Native.Call(w, "AttachWeapons", model, gear, wearer, npcType);
+                else
+                    Native.Call(w, "AttachWeapons", model, gear, npcType, npcId);
+            }
             return model;
         });
         return state.Portrait;

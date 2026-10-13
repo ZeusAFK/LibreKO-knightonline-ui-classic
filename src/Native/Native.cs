@@ -64,6 +64,17 @@ public static class Native
         return false;
     }
 
+    /// <summary>The declared type of a field or property, for callers that adapt to a changed delegate shape.</summary>
+    public static Type? MemberType(object owner, string member)
+    {
+        switch (Find(TypeOf(owner), member))
+        {
+            case FieldInfo field: return field.FieldType;
+            case PropertyInfo property: return property.PropertyType;
+            default: Report(owner, member); return null;
+        }
+    }
+
     public static bool Set(object owner, string member, object? value)
     {
         switch (Find(TypeOf(owner), member))

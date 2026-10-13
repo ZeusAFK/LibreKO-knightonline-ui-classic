@@ -285,10 +285,20 @@ public sealed class NativeStorage
         {
             var d = data.AsGodotDictionary();
             if (BagMove(c.Index, data)) Native.Call(_world, "MoveBetween", d["invFrom"].AsInt32(), c.Index);
-            else if (TakesFromStorage(data))
-                Native.Call(_world, Field("WithdrawInto", "VipWithdrawInto", "ClanWithdrawInto"), d["companionFrom"].AsInt32(), c.Index);
+            else if (TakesFromStorage(data)) WithdrawInto(d["companionFrom"].AsInt32(), c.Index, d);
         };
         return cell;
+    }
+
+    /// <summary>
+    /// ff78eef: the withdraw-into-bag methods also take the amount picked with the mouse wheel (null moves the
+    /// whole stack); older clients take only the two cells.
+    /// </summary>
+    private void WithdrawInto(int from, int to, Godot.Collections.Dictionary data)
+    {
+        string method = Field("WithdrawInto", "VipWithdrawInto", "ClanWithdrawInto");
+        int? amount = data.TryGetValue(DragLayer.AmountKey, out var picked) ? picked.AsInt32() : null;
+        if (!Native.TryCall(_world, method, out _, from, to, amount)) Native.Call(_world, method, from, to);
     }
 
     private bool BagMove(int target, Variant data)

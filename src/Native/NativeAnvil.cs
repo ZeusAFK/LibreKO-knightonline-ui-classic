@@ -477,7 +477,10 @@ public sealed class NativeAnvil
         Func<int, bool> take = Take;
         Func<int, string> note = _ => "";
         Action close = () => Native.Call(_world, "CloseUpgrade");
-        Func<int, int, bool> intoBag = IntoBag;
+        // ff78eef: IntoBag also receives the amount picked with the mouse wheel; anvil items move whole.
+        object intoBag = Native.MemberType(companionType, "IntoBag") == typeof(Func<int, int, int?, bool>)
+            ? new Func<int, int, int?, bool>((socket, abs, _) => IntoBag(socket, abs))
+            : new Func<int, int, bool>(IntoBag);
         Native.Set(_world, "_anvilCompanion", Activator.CreateInstance(companionType, take, fit, note, close, intoBag));
     }
 

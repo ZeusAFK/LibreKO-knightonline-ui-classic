@@ -122,13 +122,16 @@ public static class NativeVendor
             AskSell(world, abs);
             return true;
         }));
-        Native.Set(companion, "IntoBag", new Func<int, int, bool>((cell, abs) =>
+        Func<int, int, bool> buy = (cell, abs) =>
         {
             var ids = Native.Get<int[]>(world, "_vendorCellIds");
             if (ids == null || cell < 0 || cell >= ids.Length || ids[cell] == 0) return false;
             AskBuy(world, ids[cell], abs);
             return true;
-        }));
+        };
+        // ff78eef: IntoBag also receives the amount picked with the mouse wheel; the buy approval asks for the count.
+        Native.Set(companion, "IntoBag", Native.MemberType(companion, "IntoBag") == typeof(Func<int, int, int?, bool>)
+            ? new Func<int, int, int?, bool>((cell, abs, _) => buy(cell, abs)) : buy);
     }
 
     private static Variant DragOut(World world, ItemSlotView cell, Func<ItemSlotView, Variant>? native)

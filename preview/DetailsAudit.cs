@@ -16,9 +16,15 @@ public partial class Preview
         var fixture=typeof(PreviewFixtures).GetMethods(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static)
             .SingleOrDefault(m=>m.Name==name && m.GetParameters().Length==fixtureArgs.Length && m.GetParameters().Select((p,i)=>fixtureArgs[i]==null || p.ParameterType.IsInstanceOfType(fixtureArgs[i])).All(valid=>valid));
         if(fixture!=null) return fixture.Invoke(null,fixtureArgs);
-        var method=typeof(World).GetMethods(BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static)
-            .Single(m=>m.Name==name && m.GetParameters().Length==args.Length && m.GetParameters().Select((p,i)=>args[i]==null || p.ParameterType.IsInstanceOfType(args[i])).All(valid=>valid));
-        return method.Invoke(method.IsStatic?null:world,args);
+        bool Fits(MethodInfo m,bool exact)=>m.Name==name && (exact?m.GetParameters().Length==args.Length
+            : m.GetParameters().Length>args.Length && m.GetParameters().Skip(args.Length).All(p=>p.HasDefaultValue))
+            && m.GetParameters().Take(args.Length).Select((p,i)=>args[i]==null || p.ParameterType.IsInstanceOfType(args[i])).All(valid=>valid);
+        var methods=typeof(World).GetMethods(BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static);
+        // A method that gained trailing optional parameters (ff78eef: OfferSlot's amount) still answers the old call.
+        var method=methods.SingleOrDefault(m=>Fits(m,true)) ?? methods.Single(m=>Fits(m,false));
+        var full=method.GetParameters().Length==args.Length?args
+            :args.Concat(method.GetParameters().Skip(args.Length).Select(p=>p.DefaultValue)).ToArray();
+        return method.Invoke(method.IsStatic?null:world,full);
     }
     private async Task CaptureDetails(int nation)
     {
