@@ -329,12 +329,15 @@ public static class NativeWhispers
             log.RemoveChild(row);
             row.QueueFree();
         }
-        foreach (var line in Net.I?.WhisperHistory(name) ?? Array.Empty<Net.WhisperLine>())
+        // The facade's history keeps the same (mine, notice, text) shape on clients where the native log
+        // became a room timeline (fa3cfc3: voice notes read as their caption).
+        var whispers = Plugin.Kit.Game.Whispers;
+        foreach (var line in whispers.History(name))
             log.AddChild(Styled(build(name, line.Mine, line.Notice, line.Text)));
         NativeWindows.OnDescendantAdded(log, node =>
         {
-            if (node.GetParent() != log || node.HasMeta(StyledLine) || Net.I is not { } net) return;
-            var history = net.WhisperHistory(name);
+            if (node.GetParent() != log || node.HasMeta(StyledLine)) return;
+            var history = whispers.History(name);
             if (history.Count == 0) return;
             var line = history[^1];
             Callable.From(() =>

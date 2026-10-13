@@ -1,5 +1,6 @@
 using Godot;
 using LibreKO;
+using LibreKO.Domain;
 using LibreKO.Network;
 using LibreKO.Plugins;
 using System.Reflection;

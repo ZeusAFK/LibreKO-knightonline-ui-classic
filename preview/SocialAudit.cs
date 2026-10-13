@@ -129,6 +129,9 @@ public partial class Preview
             Done(opened);
         }
         // Members: the room title and the client's summary line sit directly in the body (no header row since 3277df5).
+        // fa3cfc3 removed the members window (members live in the room window) and the separate search window.
+        bool membersWindow = typeof(World).GetField("_ncMembers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic) != null;
+        if (membersWindow)
         {
             var opened = await Open("nation-members"); var (world, window) = opened;
             KnightOnlineUiClassic.Native.NativeSocial.Prepare(window, world);
@@ -136,13 +139,14 @@ public partial class Preview
             var count = Descendants(window).OfType<Label>().Single(l => l.Name == "nation_members_count");
             var rows = Descendants(window).OfType<VBoxContainer>().Single(l => l.Name == "nation_member_rows");
             Require(title.GetParent() == window.Body && count.GetParent() == window.Body, "members: title and summary are body lines");
-            Require(count.Text == LibreKO.Domain.NationChatRules.Summary(false, offline.NationChat.RoomPrivate, 4, 30), "members: the summary is the client's text: " + count.Text);
+            var summary = typeof(LibreKO.Domain.NationChatRules).GetMethod("Summary")?.Invoke(null, [false, offline.NationChat.RoomPrivate, 4, 30]) as string;
+            Require(count.Text == summary, "members: the summary is the client's text: " + count.Text);
             await Capture(window, "nation-members");
             Require(title.GetGlobalRect().End.Y <= count.GetGlobalRect().Position.Y && count.GetGlobalRect().End.Y <= rows.GetGlobalRect().Position.Y, "members: title, summary and list stack without overlap");
             Require(title.GetThemeFont("font") == Plugin.Kit.Bold && title.GetThemeColor("font_color") == ClassicDarkFrame.Heading, "members: the room title in the Classic heading");
             Done(opened);
         }
-        foreach (var view in new[] { "nation-create", "nation-password", "nation-search" })
+        foreach (var view in membersWindow ? new[] { "nation-create", "nation-password", "nation-search" } : new[] { "nation-create", "nation-password" })
         {
             var opened = await Open(view);
             await Capture(opened.Window, view);
