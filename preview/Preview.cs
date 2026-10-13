@@ -111,6 +111,7 @@ public partial class Preview : Control
             if(OS.GetCmdlineUserArgs().Contains("party-audit")) { await CapturePartyAudit(nation);GetTree().Quit();return; }
             if(OS.GetCmdlineUserArgs().Contains("inventory-audit")) { await CaptureInventoryAudit(game,nation);GetTree().Quit();return; }
             if(OS.GetCmdlineUserArgs().Contains("skill-audit")) { await CaptureSkillAudit(game,nation);GetTree().Quit();return; }
+            if(OS.GetCmdlineUserArgs().Contains("skill-rules-audit")) { await CaptureSkillRulesAudit(game,nation);await FinishManagedAudit();return; }
             if(OS.GetCmdlineUserArgs().Contains("vendor-audit")) { await CaptureVendorAudit(game,nation);GetTree().Quit();return; }
             if(OS.GetCmdlineUserArgs().Contains("npc-integration-audit")) { await CaptureNpcIntegration(nation);await FinishManagedAudit();return; }
             if(OS.GetCmdlineUserArgs().Contains("hunt-icon-options")) { await CaptureHuntIconOptions(nation);GetTree().Quit();return; }
@@ -173,31 +174,37 @@ public partial class Preview : Control
         Transform2D InGroup(Control control)=>hotbar.GetGlobalTransform().AffineInverse()*control.GetGlobalTransform();
         bool Near(Vector2 a,Vector2 b)=>(a-b).Length()<0.01f;
         bool SameTransform(Transform2D a,Transform2D b)=>Near(a.Origin,b.Origin) && Near(a.X,b.X) && Near(a.Y,b.Y);
-        Control? ContentOf(Control control)=>control.Name=="content" ? control
-            : control.GetParent() is Control parent && parent.Name=="content" ? parent:null;
+        // A slot's upright content layer, including nested parts such as the ready-flash overlay.
+        Control? ContentOf(Control control)
+        {
+            for(Node? node=control;node is Control part && node!=Canvas();node=node.GetParent())
+                if(part.Name=="content") return part;
+            return null;
+        }
         void Press(string bar,string button) { Bar(bar).GetNode<BaseButton>(button).EmitSignal(BaseButton.SignalName.Pressed); }
         void Raise()=>typeof(PluginGame).GetMethod("RaiseHotbar",BindingFlags.NonPublic|BindingFlags.Instance)!.Invoke(game,null);
         string Page(string id)=>Bar(id).GetNode<Label>("page_label").Text;
-        Require(Page("main_bar")=="2","Main bar must start on real F2");
+        // The client opens the bar on page 1 (F1); the Classic bar keeps the page the client chose.
+        Require(Page("main_bar")=="1","Main bar must start on the client's page F1");
         var initialPage=Bar("main_bar").GetNode<Label>("page_label");
         Require(new Rect2(Vector2.Zero,Bar("main_bar").Size).Encloses(new Rect2(initialPage.Position,initialPage.Size)),
             "The initial single bar's page number must fit its footer");
         Press("main_bar","add_bar"); Press("main_bar","add_bar");
-        Require(Page("extra_bar_0")=="3" && Page("extra_bar_1")=="4","New bars must select consecutive pages");
+        Require(Page("extra_bar_0")=="2" && Page("extra_bar_1")=="3","New bars must select consecutive pages");
         Press("extra_bar_0","btn_down");
-        Require(Page("extra_bar_0")=="4" && Page("main_bar")=="2","Extra page arrows must not change main page");
-        game.Hotbar.SetPage(0);Raise();
-        Require(Page("main_bar")=="1" && Page("extra_bar_0")=="4","F keys must leave extra pages pinned");
+        Require(Page("extra_bar_0")=="3" && Page("main_bar")=="1","Extra page arrows must not change main page");
+        game.Hotbar.SetPage(4);Raise();
+        Require(Page("main_bar")=="5" && Page("extra_bar_0")=="3","F keys must leave extra pages pinned");
         var slot=Bar("extra_bar_0").GetNode<HotSlot>("slot_0");
         // Slots activate on a completed click (press + release) so a press can still start a drag.
         slot._GuiInput(new InputEventMouseButton { Pressed=true,ButtonIndex=MouseButton.Left });
         Require(data.LastActivate==-1,"A slot must not activate on press alone");
         slot._GuiInput(new InputEventMouseButton { Pressed=false,ButtonIndex=MouseButton.Left });
-        Require(data.LastActivate==30,"Extra F4 slot must activate absolute slot 30");
+        Require(data.LastActivate==20,"Extra F3 slot must activate absolute slot 20");
         slot._DropData(Vector2.Zero,new Godot.Collections.Dictionary { {"id",123},{"barAbs",15} });
-        Require(data.LastDrop==(30,123,15),"Cross-bar drag must keep source and target absolute slots");
+        Require(data.LastDrop==(20,123,15),"Cross-bar drag must keep source and target absolute slots");
         Press("extra_bar_0","remove_bar");
-        Require(Page("extra_bar_0")=="4" && !Canvas().HasNode("extra_bar_1"),"Removing a middle bar must preserve the next bar's page");
+        Require(Page("extra_bar_0")=="3" && !Canvas().HasNode("extra_bar_1"),"Removing a middle bar must preserve the next bar's page");
         Require(data.ClearCount==0,"Closing a bar must never clear stored skills");
         game.Hotbar.SetPage(1);Raise();
         for(int i=0;i<12;i++) {

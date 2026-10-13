@@ -116,13 +116,21 @@ public partial class InventoryWindow : Control
             OnCompanionDrop = data => { CancelCarry(); CompanionCell(slot)?._DropData(Vector2.Zero, data); },
             OnClick = SlotClicked,
             OnActivate = SlotActivated,
-            OnDoubleClick = s => { CancelCarry(); if (!RepairMode) _game.Inventory.Use(s); },
+            OnDoubleClick = s => { CancelCarry(); if (!RepairMode && !SkillBarConsumable(s)) _game.Inventory.Use(s); },
             OnHover = HoverSlot,
         };
         area.GetParent().AddChild(cell);
         _bySlot[slot] = cell;
         return cell;
     }
+
+    /// <summary>
+    /// A bag consumable the client's right-click puts on the skill bar. The client's desktop bag ignores a double-click,
+    /// so a Classic double-click leaves these alone instead of adding another skill-bar copy each time.
+    /// </summary>
+    private bool SkillBarConsumable(int slot) =>
+        slot >= _game.Inventory.GridStart && slot < _game.Inventory.GridStart + _game.Inventory.GridCount
+        && Native.NativeSkills.BagClickAddsToHotbar(_game.Inventory.At(slot).ItemId);
 
     private Control? CompanionCell(int slot)
     {

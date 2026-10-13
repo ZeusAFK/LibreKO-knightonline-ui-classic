@@ -27,6 +27,9 @@ public static class NativeProgression
 
     public static void Prepare(HudWindow window, World world)
     {
+        // The Genie skill picker offers only skills the skill window lets go (no passive skills).
+        if (window.Id == "genie" && Native.Get<PopupMenu>(world, "_genieSkillPicker") is { } skillPicker)
+            NativeSkills.FilterGenieSkillPicker(skillPicker, world);
         if (window.HasMeta(Gate)) return;
         bool ready = window.Id switch
         {
