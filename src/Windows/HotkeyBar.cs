@@ -35,6 +35,7 @@ public partial class HotkeyBar : Control
     private HotbarButton _lockButton=null!;
     private double _slotState;
     private bool _purging;
+    private bool _purgeOpen;
 
     public HotkeyBar()
     {
@@ -221,18 +222,26 @@ public partial class HotkeyBar : Control
     {
         _game.Hotbar.Changed+=Refresh;
         _game.Hotbar.Ready+=FlashReady;
-        _game.Genie.Changed+=ClearRefusedGenieSkills;
+        _game.Genie.Changed+=OnGenieChanged;
         // The bar opens on the page the client chose (page 1 after login, the Chaos page in the Chaos dungeon).
         HudLayout.Attach(this,LayoutId,_grip,DefaultPosition,backgroundOpacityChanged:ClickOrnament);
         ClampPosition(); Refresh(); ClearRefusedGenieSkills();
     }
-    public override void _ExitTree() { _game.Hotbar.Changed-=Refresh; _game.Hotbar.Ready-=FlashReady; _game.Genie.Changed-=ClearRefusedGenieSkills; }
+    public override void _ExitTree() { _game.Hotbar.Changed-=Refresh; _game.Hotbar.Ready-=FlashReady; _game.Genie.Changed-=OnGenieChanged; }
     /// <summary>The Genie's skill cells are castable shortcuts too: passive skills are cleared from them as from the bar.</summary>
     private void ClearRefusedGenieSkills() => NativeSkills.ClearRefusedGenieSkills(_game.Genie);
+    /// <summary>A stopped Genie hands the bar back: what was held while it ran is cleared now, not at the next bar change.</summary>
+    private void OnGenieChanged() { ClearRefusedGenieSkills(); PurgeRefusedSkills(); }
     public override void _Process(double delta)
     {
         bool state=(_slotState+=delta)>=SlotStateSeconds;
-        if(state) _slotState=0;
+        if(state) {
+            _slotState=0;
+            // The saved bar can arrive, the Genie stop or the Chaos dungeon end without a bar change reaching the plugin.
+            bool open=PurgeAllowed;
+            if(open && !_purgeOpen) PurgeRefusedSkills();
+            _purgeOpen=open;
+        }
         foreach(var strip in _strips) foreach(var slot in strip.Slots) slot.Tick(state);
     }
     /// <summary>The client's skill-ready flash on every shown slot that holds a skill whose recast just ended.</summary>
@@ -249,6 +258,8 @@ public partial class HotkeyBar : Control
         // A passive skill left on the bar from before the placement rule is never cast.
         if(NativeSkills.HotbarKeeps(_game.Hotbar.Slot(abs).Id)) _game.Hotbar.ActivateAbs(abs);
     }
+    /// <summary>Whether the bar is the player's saved bar and free to edit: loaded, outside Chaos, the Genie idle.</summary>
+    private bool PurgeAllowed => _game.Hotbar.Loaded && !_game.Genie.Running && _game.Map.Zone!=ChaosBattle.Zone;
     /// <summary>
     /// Clears passive skills that bars saved before the placement rule still hold; the client would cast them from the
     /// number keys. The client's own drop clears and saves even on a locked bar. Nothing is cleared before the saved bar
@@ -256,7 +267,7 @@ public partial class HotkeyBar : Control
     /// </summary>
     private void PurgeRefusedSkills()
     {
-        if(_purging || !_game.Hotbar.Loaded || _game.Genie.Running || _game.Map.Zone==ChaosBattle.Zone) return;
+        if(_purging || !PurgeAllowed) return;
         _purging=true;
         try {
             int total=_game.Hotbar.Pages*_game.Hotbar.SlotsPerPage;

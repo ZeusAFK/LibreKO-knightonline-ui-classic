@@ -16,10 +16,16 @@ public class RecordingHotbar : DispatchProxy
     public object Inner = null!;
     public readonly List<int> Activated = new();
     public readonly List<(int Abs, int Id, int From)> Drops = new();
+    /// <summary>When false, a fired slot is only recorded: the offline World has no audio or effects to cast with.</summary>
+    public bool Cast = true;
 
     protected override object? Invoke(MethodInfo? method, object?[]? args)
     {
-        if (method!.Name == "ActivateAbs") Activated.Add((int)args![0]!);
+        if (method!.Name == "ActivateAbs")
+        {
+            Activated.Add((int)args![0]!);
+            if (!Cast) return null;
+        }
         if (method.Name == "Drop") Drops.Add(((int)args![0]!, (int)args[1]!, (int)args[2]!));
         return method.Invoke(Inner, args);
     }
@@ -51,6 +57,7 @@ public class StubGenie : DispatchProxy
 public partial class Preview
 {
     private const BindingFlags AnyMember = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+    private const int ElmoradShouting = 230013, ElmoradAssault = 230014;
 
     /// <summary>
     /// Every way a skill or item reaches the skill bar, run against the client's own World, skill data and plugin bridge:
@@ -104,6 +111,7 @@ public partial class Preview
         void SetLoaded(bool loaded) => Field("_hotLoadedFromServer").SetValue(world, loaded);
         void SetGenie(bool running) => typeof(Net).GetProperty("GenieRunning")!.SetValue(net, running);
         void SetLocked(bool locked) => typeof(Config).GetProperty("HotbarLocked", AnyMember)!.SetValue(null, locked);
+        void RaiseGenie() => typeof(PluginGame).GetMethod("RaiseGenie", AnyMember)!.Invoke(game, null);
         void ClearBar() { Array.Clear(bar); Raise(); }
 
         var shell = new Control(); AddChild(shell);
@@ -259,22 +267,52 @@ public partial class Preview
             ClearBar();
 
             // 8. A passive saved on an old bar: never cast, and cleared once the saved bar is applied.
+            void Click(int index)
+            {
+                Slot(index)._GuiInput(new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
+                Slot(index)._GuiInput(new InputEventMouseButton { Pressed = false, ButtonIndex = MouseButton.Left });
+            }
             SetLoaded(false);
             bar[7] = awakeningId; Raise();
             Require(bar[7] == awakeningId, "Nothing is cleared before the client applies the saved bar");
-            var saved = Slot(7);
-            saved._GuiInput(new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
-            saved._GuiInput(new InputEventMouseButton { Pressed = false, ButtonIndex = MouseButton.Left });
+            Click(7);
             Require(!record.Activated.Contains(7), "Clicking a saved passive does not cast it");
             SetGenie(true); SetLoaded(true); Raise();
+            await ToSignal(GetTree().CreateTimer(.25), SceneTreeTimer.SignalName.Timeout);
             Require(bar[7] == awakeningId, "Nothing is cleared while the Genie holds the bar");
-            SetGenie(false); Raise();
-            Require(bar[7] == 0 && record.Drops.Contains((7, 0, -1)), "A saved passive is cleared through the client's own drop");
+            // The Genie stopping reaches the plugin only as a Genie change; the bar itself does not change.
+            SetGenie(false); RaiseGenie();
+            Require(bar[7] == 0 && record.Drops.Contains((7, 0, -1)), "When the Genie stops, a saved passive is cleared through the client's own drop at once");
+            // The saved bar arriving while no bar change reaches the plugin: the slot state tick clears it.
+            SetLoaded(false);
+            bar[6] = awakeningId; Raise();
+            await ToSignal(GetTree().CreateTimer(.25), SceneTreeTimer.SignalName.Timeout);
+            Require(bar[6] == awakeningId, "A saved passive waits while the saved bar has not arrived");
+            SetLoaded(true);
+            await ToSignal(GetTree().CreateTimer(.25), SceneTreeTimer.SignalName.Timeout);
+            Require(bar[6] == 0 && record.Drops.Contains((6, 0, -1)), "Once the saved bar has arrived, a saved passive is cleared without waiting for a bar change");
             bar[8] = screamId; Raise();
-            saved = Slot(8);
-            saved._GuiInput(new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
-            saved._GuiInput(new InputEventMouseButton { Pressed = false, ButtonIndex = MouseButton.Left });
+            Click(8);
             Require(record.Activated.Contains(8), "Clicking an active skill fires it");
+            ClearBar();
+
+            // 8b. The war shouts of both nations are passive but belong on the bar: saved ones stay and fire on click.
+            int[] shouts = { HotbarAssign.Shouting, HotbarAssign.Assault, ElmoradShouting, ElmoradAssault };
+            Require(shouts.All(id => SkillData.Get(id) is { Type1: MagicType.None }), "The four war shouts are passive skills in the client's data");
+            for (int i = 0; i < shouts.Length; i++) bar[1 + i] = shouts[i];
+            int dropsBefore = record.Drops.Count;
+            Raise();
+            await ToSignal(GetTree().CreateTimer(.25), SceneTreeTimer.SignalName.Timeout);
+            Require(Enumerable.Range(0, shouts.Length).All(i => bar[1 + i] == shouts[i]) && record.Drops.Count == dropsBefore,
+                "Saved war shouts of both nations stay on the bar (Karus 130013/130014, El Morad 230013/230014)");
+            record.Cast = false;
+            for (int i = 0; i < shouts.Length; i++)
+            {
+                Click(1 + i);
+                Require(record.Activated.Contains(1 + i), "Clicking the saved war shout " + shouts[i] + " fires it");
+            }
+            record.Cast = true;
+            Require(shouts.All(NativeSkills.CanAddToHotbar), "The right-click rule takes the war shouts of both nations");
             ClearBar();
 
             // 9. Slot states: usable, MP short, cooldown, short count, icon-less skill, selection, ready flash.

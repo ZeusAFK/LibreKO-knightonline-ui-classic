@@ -17,10 +17,20 @@ public static class NativeSkills
         TextRequiredLevel = 4324, TextRequiredPoints = 4325, TextBasicItem = 4327, TextNoBasicItem = 4328, TextRequiredItem = 4329,
         TextNoRequiredItem = 4330;
     private const string RequiredItemPrefix = "Required Item : ";
+    // The El Morad twins of the client's HotbarAssign.Shouting/Assault (130013/130014). Older cores exempt only the
+    // Karus pair; the original skill bar takes both nations' war shouts.
+    private const int ElmoradShouting = 230013, ElmoradAssault = 230014;
 
-    /// <summary>Right-click rule of the client's skill window: passive skills stay off the skill bar.</summary>
+    /// <summary>
+    /// Right-click rule of the client's skill window: passive skills stay off the skill bar, except the war shouts of
+    /// both nations.
+    /// </summary>
     public static bool CanAddToHotbar(int skillId) =>
-        SkillData.Get(skillId) is { } skill && HotbarAssign.CanAdd(skill.Id, skill.Type1);
+        SkillData.Get(skillId) is { } skill && (HotbarAssign.CanAdd(skill.Id, skill.Type1) || IsWarShout(skill.Id));
+
+    /// <summary>The war shouts that go on the skill bar although they are passive: the client's Karus pair and its El Morad twins.</summary>
+    public static bool IsWarShout(int skillId) =>
+        skillId is HotbarAssign.Shouting or HotbarAssign.Assault or ElmoradShouting or ElmoradAssault;
 
     /// <summary>Drag rule of the client's skill window, for the skill bar and the Genie skill slots.</summary>
     public static bool CanDragToHotbar(int skillId) =>
@@ -28,10 +38,11 @@ public static class NativeSkills
 
     /// <summary>
     /// Whether a skill-bar entry is one the client's skill window could have placed. Entries the bar holds from
-    /// before that rule (passive skills) fail; items and unknown ids are left to the client.
+    /// before that rule (passive skills) fail; the war shouts of both nations stay, and items and unknown ids are left
+    /// to the client.
     /// </summary>
     public static bool HotbarKeeps(int id) =>
-        SkillData.Get(id) is not { } skill || HotbarAssign.CanAdd(skill.Id, skill.Type1) || HotbarAssign.CanDrag(skill.Type1, skill.Type2);
+        SkillData.Get(id) is not { } skill || CanAddToHotbar(skill.Id) || HotbarAssign.CanDrag(skill.Type1, skill.Type2);
 
     /// <summary>The client's zone rule for the skill bar: in the Chaos dungeon it takes only the Chaos skill tree.</summary>
     public static bool ZoneAllows(int skillId, int zone) =>
