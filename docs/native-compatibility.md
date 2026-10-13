@@ -146,8 +146,19 @@ The nation-transfer behaviour on bare upstream follows from the code paths above
 **Build-time binding.** `InventoryWindow` and `NativeStorage` call `IGameInventory.MoveAmount(...)`, the client's
 facade from `feat/magic-bag-amount` (upstream since 9d0e0bb). The plugin's extension of the same name and its
 reflected `MoveBetween(int,int,int)` were removed on ff78eef, where the facade shadowed them. The stack split also
-binds `ItemSlotView.PicksAmount`, `StackDial` and `DragLayer.ChosenAmount` at build time, so a build needs an
-upstream client from ff78eef on. Install a build made against the client it will run on.
+binds `ItemSlotView.PicksAmount`, `StackDial` and `DragLayer.ChosenAmount` at build time, and the Classic party
+list binds the party facade's `MemberBuffs`, `PingMs`, `LevelPercent` and `WarBoardCooldown` (with `PartySignal`
+and `TextWrap`), so a build needs an upstream client from ff78eef on. Install a build made against the client it
+will run on.
+
+**Verified upstream.** The current plugin is verified against upstream `ff78eef` (bare and `classic-integration-ff78`,
+which has no extra branch now that the remaining fixes are merged upstream). The plugin facades it uses instead of
+reflection where they cover the same members: `IGameInventory` (`Move`, `MoveAmount`, tooltips, slots),
+`IGameParty` (rows, pick, member menu, row order, row meter, re-invite, war board mode and cooldown, member buffs,
+ping and level progress, user vote), `IGameUserVote`, `IGameRepurchase`, `IGameUserInfo`, `IGameChat.History`,
+`IGameWindows`, `IGameCommands` and `IGameCharacter`. The ff78eef changes are in the sections "Changed shapes",
+"Stack split and storage amounts", "Party HUD and War Board" and "Chat after room lines left the main chat on
+upstream ff78eef".
 
 ## 3. Reflected client members
 
@@ -474,6 +485,13 @@ the member it finds, so older clients keep the previous path.
 | `World+BagCompanion.IntoBag` (`Func<int, int, int?, bool>`: the amount picked with the mouse wheel; before `Func<int, int, bool>`) | P/T | `NativeVendor` reroutes buys through the Classic approval and `NativeAnvil` builds the anvil companion; the delegate shape comes from `Native.MemberType`, the amount is ignored (the approval asks the count, anvil items move whole) |
 | `WithdrawInto`, `VipWithdrawInto`, `ClanWithdrawInto` `(int, int, int? amount)`; `AskWithdraw`, `AskVipWithdraw`, `AskClanWithdraw`, `DepositSlot`, `OfferSlot` gained an optional `int? amount` | M | Storage drops into the bag pass the drag's `DragLayer.AmountKey` amount (null = whole stack); the optional ones bind through `Native.Method`'s default filling |
 | `AttachWeapons(Node3D, int[], HandWearer, int npcType)`, static `WeaponWearer(bool npc, bool statue, int race, int npcId, int size, int modelId)`, static `AttachBuiltInPlugs(Node3D, string)`, `_mobIndex`; `World+Ent.Race`, `Size`; `NoWeaponNpcIds` removed | M/F | NPC portrait: weapons by the model's plug slots and scale, the model's own built-in weapons on a freshly loaded model; the unarmed list is read only where it still exists |
+| `LookEditor._races` (now always in the editor, hidden without a race choice: the hair shop container leak fix) | F | Still named `look_races`; the Beauty Shop editor has it, invisible, so the Classic skin and `beauty-audit` treat a hidden list as no race choice |
+
+Character previews: on ff78eef the skeleton's cached global bone pose of a `CharacterPreview` model can stay at the
+bind pose while the animated idle pose is shown. Framed on that cache, the gender change, Beauty Shop, nation
+transfer and cape service previews fitted the outstretched bind-pose arms and showed the character a sixth
+smaller. `LookFraming` and `InventoryPortrait` now compose the bone poses from the animated local poses
+(`LookFraming.ShownBonePoses`), which restores the approved framing.
 
 ### Stack split and storage amounts on upstream ff78eef
 
@@ -649,7 +667,8 @@ None of these is required. Each would replace a reflection or a workaround.
 - `PluginUi.EscapeCloses(Func<bool>, Action)`.
 - Buy-back close (3277df5): the `repurchase` header X hides the window before its `Closed` handler runs, so
   `CloseRepurchase` returns early and never sends `RepurchaseReply.Close`. The plugin closes through
-  `IGameRepurchase.Close()`; a core fix is to send the close request in the `Closed` handler regardless of `Visible`.
+  `IGameRepurchase.Close()`. Fixed upstream in 26e13b5 (#163, on ff78eef: the close follows the buy-back session);
+  the plugin's facade close is equivalent there and stays for 3277df5 clients.
 - `HudWindow` keep-position and dock-override flags.
 - `HudWindow.AttentionChanged`.
 - A replaceable resize grip with `Resizing`/`ResizeEnded` events, or seam snapping as a `HudLayout` option.
@@ -673,7 +692,8 @@ None of these is required. Each would replace a reflection or a workaround.
 - `MoneyEdit.GroupDigits`.
 - A `quantityOnly` flag on the amount prompt.
 - `MoveBetween` refusing while a vendor reply is pending.
-- Server: partial in-bag splits, if returning one material to a chosen cell is wanted.
+- Server: partial in-bag splits. Upstream since 115b830 (ff78eef): the item move carries an amount and
+  `ItemMove.SplitsAcross` includes bag-to-bag moves; the Classic bag cells offer them through the wheel dial.
 
 **Chat, HUD, notices**
 
@@ -708,8 +728,8 @@ None of these is required. Each would replace a reflection or a workaround.
 1. **Build the plugin twice.** Build once against a bare upstream client and once against `classic-integration`
    (upstream plus the remaining fix branches, rebased):
    `dotnet build KnightOnlineUiClassic.csproj -c Release -p:LibreKOClientDir=<folder with LibreKO.dll>`.
-   Both builds must have 0 errors. The only known warning is CS8604 in `ClassicVendorSkin`. A failure here means a
-   public API type changed.
+   Both builds must have 0 errors. The known warnings are CS0108 in `ClassicEventsSkin` and `ClassicWorldOverlays`
+   and CS8604 in `ClassicVendorSkin`. A failure here means a public API type changed.
 2. **Check reflected names statically.** Extract every string literal passed to `Native.*` under `src/Native`.
    Check each identifier against the new client's `Client/src`. Compare method arity too, because overloads change
    between upstream and the fix branches (`MoveBetween`, `SellSlot`, `SendNationTransfer`). Every name in section 3

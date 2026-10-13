@@ -182,6 +182,28 @@ public static class LookFraming
         framing.Camera.Transform = new Transform3D(Basis.LookingAt(new Vector3(0, framing.AimHeight, 0) - eye, Vector3.Up), eye);
     }
 
+    /// <summary>
+    /// Skeleton-space bone poses composed from the animated local poses. On ff78eef clients the skeleton's cached
+    /// global pose of a character preview can stay at the rest (bind) pose while the animated pose is shown, which
+    /// framed the outstretched bind-pose arms and shrank the character.
+    /// </summary>
+    public static Transform3D[] ShownBonePoses(Skeleton3D skeleton)
+    {
+        var poses = new Transform3D[skeleton.GetBoneCount()];
+        var done = new bool[poses.Length];
+        Transform3D Pose(int bone)
+        {
+            if (done[bone]) return poses[bone];
+            done[bone] = true;
+            var local = new Transform3D(new Basis(skeleton.GetBonePoseRotation(bone)) * Basis.FromScale(skeleton.GetBonePoseScale(bone)),
+                skeleton.GetBonePosePosition(bone));
+            int parent = skeleton.GetBoneParent(bone);
+            return poses[bone] = parent >= 0 && parent < poses.Length ? Pose(parent) * local : local;
+        }
+        for (int bone = 0; bone < poses.Length; bone++) Pose(bone);
+        return poses;
+    }
+
     /// <summary>World-space vertices of the displayed skin; bind-pose boxes overstate a posed character.</summary>
     public static IEnumerable<Vector3> PosedPoints(MeshInstance3D mesh)
     {
@@ -192,12 +214,13 @@ public static class LookFraming
             for (int i = 0; i < 8; i++) yield return mesh.GlobalTransform * mesh.GetAabb().GetEndpoint(i);
             yield break;
         }
+        var poses = ShownBonePoses(skeleton);
         var transforms = new Transform3D[skin.GetBindCount()];
         for (int bind = 0; bind < transforms.Length; bind++)
         {
             var name = skin.GetBindName(bind);
             int bone = name.IsEmpty ? skin.GetBindBone(bind) : skeleton.FindBone(name);
-            transforms[bind] = bone >= 0 ? skeleton.GlobalTransform * skeleton.GetBoneGlobalPose(bone) * skin.GetBindPose(bind) : mesh.GlobalTransform;
+            transforms[bind] = bone >= 0 && bone < poses.Length ? skeleton.GlobalTransform * poses[bone] * skin.GetBindPose(bind) : mesh.GlobalTransform;
         }
         for (int surface = 0; surface < mesh.Mesh!.GetSurfaceCount(); surface++)
         {
