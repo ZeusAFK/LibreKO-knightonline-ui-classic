@@ -461,6 +461,17 @@ the room or `VoiceChat`; the plugin subscribes no room or voice event (it reads 
 emoticons in room posts need the installed content (`items.json`, `assets/ui/emoticons/sheet.png`), which
 `chat-room-audit` mounts from `build/client/source-content/knightonline.pck`.
 
+### Changed shapes on upstream ff78eef
+
+The plugin compiles unchanged on ff78eef; these reflected members changed shape at run time. Each call adapts to
+the member it finds, so older clients keep the previous path.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `World+BagCompanion.IntoBag` (`Func<int, int, int?, bool>`: the amount picked with the mouse wheel; before `Func<int, int, bool>`) | P/T | `NativeVendor` reroutes buys through the Classic approval and `NativeAnvil` builds the anvil companion; the delegate shape comes from `Native.MemberType`, the amount is ignored (the approval asks the count, anvil items move whole) |
+| `WithdrawInto`, `VipWithdrawInto`, `ClanWithdrawInto` `(int, int, int? amount)`; `AskWithdraw`, `AskVipWithdraw`, `AskClanWithdraw`, `DepositSlot`, `OfferSlot` gained an optional `int? amount` | M | Storage drops into the bag pass the drag's `DragLayer.AmountKey` amount (null = whole stack); the optional ones bind through `Native.Method`'s default filling |
+| `AttachWeapons(Node3D, int[], HandWearer, int npcType)`, static `WeaponWearer(bool npc, bool statue, int race, int npcId, int size, int modelId)`, static `AttachBuiltInPlugs(Node3D, string)`, `_mobIndex`; `World+Ent.Race`, `Size`; `NoWeaponNpcIds` removed | M/F | NPC portrait: weapons by the model's plug slots and scale, the model's own built-in weapons on a freshly loaded model; the unarmed list is read only where it still exists |
+
 ### Preview-only members
 
 The preview fixtures also reach client internals that the plugin never touches at runtime. Examples are the
