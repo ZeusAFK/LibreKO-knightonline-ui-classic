@@ -33,6 +33,23 @@ public static class ClassicChatRoomLayout
     public const float EmoticonSize = 16, EmoticonInset = 5, EmoticonRoom = EmoticonSize + EmoticonInset * 2;
     /// <summary>The original whisper minimize button (co_whisper_open_us btn_hide).</summary>
     public static readonly Vector2 MinimizeSize = new(19, 15);
+    /// <summary>Gap between the original chat check box and its caption in the room's popups.</summary>
+    public const int CheckGap = 6;
+
+    // Reactions (fa3cfc3). The client sizes and places the react button, the pill and the popups; the Classic
+    // materials keep that geometry, so the popups still open right above (or below) their post.
+    /// <summary>The smiley in the post's react cell (the cell itself is the 24 px <see cref="Cell"/>).</summary>
+    public const int ReactIcon = 14;
+    /// <summary>The pill's padding: the client's, with the 1 px Classic line in place of its 2 px edge.</summary>
+    public const float PillPadLeft = 5, PillPadRight = 6, PillPadY = 1;
+    public const int PillCountSize = 11;
+    /// <summary>The quick bar's padding around its 34 px picks.</summary>
+    public const float ReactionBarPadding = 4;
+    /// <summary>The details card's padding, and its filter chips' padding.</summary>
+    public const float ReactionCardPadX = 10, ReactionCardTop = 8, ReactionCardBottom = 6;
+    public const float ReactionChipPadX = 9, ReactionChipPadY = 3;
+    /// <summary>The emoticon pickers' padding.</summary>
+    public const float PickerPadding = 6;
 
     public static float Width(bool members) => Inset + (members ? ColumnWidth + ColumnGap : 0) + LogWidth + Inset;
     public static float Height(bool voice) => ContentTop + ContentHeight(voice) + Inset;

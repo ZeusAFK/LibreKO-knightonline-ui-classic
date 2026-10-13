@@ -13,12 +13,14 @@ namespace KnightOnlineUiClassic.Windows;
 /// plain Classic frame through the client's frame seam and dresses it with the whisper and messenger pieces:
 /// black fields with the gold line, Classic list rows, the Messenger action buttons, item cells for the icon
 /// actions, Arial on the Classic inks, the original whisper minimize button and, minimized, the compact whisper
-/// bar with its attention blink.
+/// bar with its attention blink. Since fa3cfc3 the log and the composer are the client's shared thread and composer
+/// controls; their rows are restyled in place, and the reaction popups follow <see cref="ClassicReactionStyle"/>.
 /// </summary>
 public static class ClassicChatRoomSkin
 {
     public const string WindowId = "chat_room";
-    public const string PostMeta = "classic_room_post", RosterMeta = "classic_room_row", CellMeta = "classic_room_cell";
+    public const string PostMeta = "classic_room_post", RosterMeta = "classic_room_row", CellMeta = "classic_room_cell", CheckMeta = "classic_room_check",
+        PillMeta = "classic_room_pill";
 
     public static Color TheirBubble => new("141310");
     public static Color MineBubble => ClassicDarkFrame.SelectedRow;
@@ -29,23 +31,46 @@ public static class ClassicChatRoomSkin
 
     public static void Register(PluginUi ui) => ui.FrameWindow(WindowId, frame => new ClassicChatRoomFrame(frame));
 
-    /// <summary>The room's popups (room settings, voice settings, a member's volume) on the Classic menu panel.</summary>
+    /// <summary>
+    /// The room's popups (room settings, voice settings, a member's volume) on the Classic menu panel; their checks
+    /// (Push to talk, Keep the room, Mute for me) carry the original chat check box instead of the client's own.
+    /// </summary>
     public static void StylePopup(PopupPanel popup)
     {
-        if (popup is EmoticonPicker) { ClassicWhisperSkin.Popup(popup); return; }
+        if (ClassicReactionStyle.Owns(popup)) { ClassicReactionStyle.Apply(popup); return; }
         if (popup.HasMeta("classic_popup")) return;
         popup.SetMeta("classic_popup", true);
-        var panel = ClassicDarkFrame.InputBox();
-        panel.BgColor = new Color(0, 0, 0, .96f);
-        panel.ContentMarginLeft = panel.ContentMarginRight = 10;
-        panel.ContentMarginTop = panel.ContentMarginBottom = 8;
-        popup.AddThemeStyleboxOverride("panel", panel);
+        popup.AddThemeStyleboxOverride("panel", MenuPanel(10, 8, 10, 8));
         foreach (var node in ClassicSocialStyle.Descendants(popup))
         {
             if (node is HSlider slider) Slider(slider);
             else if (node is ProgressBar meter) Meter(meter);
         }
         ClassicSocialStyle.Apply(popup);
+        foreach (var check in ClassicSocialStyle.Descendants(popup).OfType<Button>().Where(b => b is CheckBox or CheckButton)) Check(check);
+    }
+
+    /// <summary>The Classic menu panel: the black field with the gold line, at the given content margins.</summary>
+    public static StyleBoxFlat MenuPanel(float left, float top, float right, float bottom)
+    {
+        var panel = ClassicDarkFrame.InputBox();
+        panel.BgColor = new Color(0, 0, 0, .96f);
+        panel.ContentMarginLeft = left; panel.ContentMarginTop = top;
+        panel.ContentMarginRight = right; panel.ContentMarginBottom = bottom;
+        return panel;
+    }
+
+    /// <summary>
+    /// A popup check on the original chat check box of the nation (the client's own check icons are per-control
+    /// overrides since fa3cfc3, so they are replaced here); the caption keeps the Classic ink and may wrap.
+    /// </summary>
+    public static void Check(Button check)
+    {
+        var art = Plugin.Kit.Layout("{nation}_chat_us").Find("btn_check_normal")!;
+        foreach (string state in new[] { "unchecked", "checked", "unchecked_disabled", "checked_disabled" })
+            check.AddThemeIconOverride(state, ClassicChatControls.Atlas(art.Images.First(i => i.Tag == (state.StartsWith("unchecked") ? 0 : 1))));
+        check.AddThemeConstantOverride("h_separation", Spec.CheckGap);
+        check.SetMeta(CheckMeta, true);
     }
 
     /// <summary>An icon action in the original item cell; the client keeps its icon and the icon's state tint.</summary>
@@ -107,65 +132,162 @@ public static class ClassicChatRoomSkin
     }
 
     /// <summary>
-    /// One timeline entry: a post keeps its side (own lines right) and its sender colour on a flat Classic field;
-    /// day markers and notices stay centred, notices in the Classic notice yellow.
+    /// One timeline row of the client's thread, restyled in place (the thread keeps its rows to refresh reactions and
+    /// voice notes): a post keeps its side (own lines right) and its sender colour on a flat Classic field, its react
+    /// button sits in the original item cell and its reaction pill is a Classic chip under the field; day markers and
+    /// notices stay centred, notices in the Classic notice yellow.
     /// </summary>
     public static void StylePost(Node post)
     {
         if (post.HasMeta(PostMeta)) return;
         post.SetMeta(PostMeta, true);
-        foreach (var panel in ClassicSocialStyle.Descendants(post).OfType<PanelContainer>().ToArray())
+        if (post is CenterContainer notice) { StyleNotice(notice); return; }
+        if (post is not MarginContainer spaced || spaced.GetChildCount() == 0) return;
+        if (spaced.GetChild(0) is CenterContainer day) { StyleDay(day); return; }
+        if (spaced.GetChild(0) is not HBoxContainer line) return;
+        bool mine = line.Alignment == BoxContainer.AlignmentMode.End;
+        foreach (var child in line.GetChildren())
         {
-            if (panel.GetChildCount() > 0 && panel.GetChild(0) is Label chip)
+            if (child is CenterContainer slot) { foreach (var react in slot.GetChildren().OfType<Button>()) ReactCell(react); continue; }
+            if (child is not VBoxContainer stack) continue;
+            foreach (var part in stack.GetChildren())
             {
-                bool notice = post is CenterContainer;
-                var box = new StyleBoxFlat { BgColor = notice ? Colors.Transparent : new Color(0, 0, 0, .7f), BorderColor = ClassicDarkFrame.Line };
-                if (!notice) box.SetBorderWidthAll(1);
-                box.ContentMarginLeft = box.ContentMarginRight = 8;
-                box.ContentMarginTop = box.ContentMarginBottom = 2;
-                panel.AddThemeStyleboxOverride("panel", box);
-                panel.SetMeta("room_chip", notice ? "notice" : "day");
-                ClassicSocialStyle.Font(chip, true, notice ? Spec.NoticeSize : Spec.SmallSize);
-                chip.AddThemeColorOverride("font_color", notice ? NoticeInk : ClassicDesign.Muted);
+                if (part is PanelContainer bubble) StyleBubble(bubble, mine);
+                else if (part is MarginContainer holder)
+                    foreach (var pill in ClassicSocialStyle.Descendants(holder).OfType<PanelContainer>()) Pill(pill);
+            }
+        }
+    }
+
+    private static void StyleBubble(PanelContainer panel, bool mine)
+    {
+        var bubble = new StyleBoxFlat { BgColor = mine ? MineBubble : TheirBubble, BorderColor = mine ? MineEdge : TheirEdge };
+        bubble.SetBorderWidthAll(1);
+        bubble.ContentMarginLeft = bubble.ContentMarginRight = 8;
+        bubble.ContentMarginTop = 4;
+        bubble.ContentMarginBottom = 3;
+        panel.AddThemeStyleboxOverride("panel", bubble);
+        panel.SetMeta("room_bubble", mine ? "mine" : "theirs");
+        foreach (var label in ClassicSocialStyle.Descendants(panel).OfType<Label>())
+        {
+            // The sender's name is the clickable label (player menu); it keeps the client's colour per sender.
+            if (label.MouseFilter == Control.MouseFilterEnum.Stop)
+            {
+                ClassicSocialStyle.Font(label, true, Spec.FontSize);
+                label.Name = "room_post_name";
                 continue;
             }
-            if (panel.GetParent() is not HBoxContainer row) continue;
-            bool mine = row.Alignment == BoxContainer.AlignmentMode.End;
-            var bubble = new StyleBoxFlat { BgColor = mine ? MineBubble : TheirBubble, BorderColor = mine ? MineEdge : TheirEdge };
-            bubble.SetBorderWidthAll(1);
-            bubble.ContentMarginLeft = bubble.ContentMarginRight = 8;
-            bubble.ContentMarginTop = 4;
-            bubble.ContentMarginBottom = 3;
-            panel.AddThemeStyleboxOverride("panel", bubble);
-            panel.SetMeta("room_bubble", mine ? "mine" : "theirs");
-            foreach (var label in ClassicSocialStyle.Descendants(panel).OfType<Label>())
+            ClassicSocialStyle.Font(label, false, Spec.SmallSize);
+            label.AddThemeColorOverride("font_color", ClassicDesign.Muted);
+        }
+        foreach (var text in ClassicSocialStyle.Descendants(panel).OfType<RichTextLabel>())
+        {
+            text.AddThemeFontOverride("normal_font", Plugin.Kit.ChatStrong);
+            text.AddThemeFontSizeOverride("normal_font_size", Spec.LineSize);
+            text.Name = "room_post_text";
+        }
+        foreach (var wave in ClassicSocialStyle.Descendants(panel).OfType<VoiceWaveformView>())
+        {
+            wave.Played = mine ? ClassicDarkFrame.Value : ClassicDarkFrame.Heading;
+            wave.Rest = new Color(ClassicDesign.Muted, .45f);
+            wave.Dot = ClassicDarkFrame.Heading;
+            wave.Name = "room_post_wave";
+            wave.QueueRedraw();
+        }
+        foreach (var play in ClassicSocialStyle.Descendants(panel).OfType<Button>()) Cell(play);
+    }
+
+    private static void StyleDay(CenterContainer row)
+    {
+        foreach (var chip in row.GetChildren().OfType<PanelContainer>())
+        {
+            var box = new StyleBoxFlat { BgColor = new Color(0, 0, 0, .7f), BorderColor = ClassicDarkFrame.Line };
+            box.SetBorderWidthAll(1);
+            box.ContentMarginLeft = box.ContentMarginRight = 8;
+            box.ContentMarginTop = box.ContentMarginBottom = 2;
+            chip.AddThemeStyleboxOverride("panel", box);
+            chip.SetMeta("room_chip", "day");
+            foreach (var label in chip.GetChildren().OfType<Label>())
             {
-                // The sender's name is the clickable label (player menu); it keeps the client's colour per sender.
-                if (label.MouseFilter == Control.MouseFilterEnum.Stop)
-                {
-                    ClassicSocialStyle.Font(label, true, Spec.FontSize);
-                    label.Name = "room_post_name";
-                    continue;
-                }
-                ClassicSocialStyle.Font(label, false, Spec.SmallSize);
+                ClassicSocialStyle.Font(label, true, Spec.SmallSize);
                 label.AddThemeColorOverride("font_color", ClassicDesign.Muted);
             }
-            foreach (var text in ClassicSocialStyle.Descendants(panel).OfType<RichTextLabel>())
-            {
-                text.AddThemeFontOverride("normal_font", Plugin.Kit.ChatStrong);
-                text.AddThemeFontSizeOverride("normal_font_size", Spec.LineSize);
-                text.Name = "room_post_text";
-            }
-            foreach (var wave in ClassicSocialStyle.Descendants(panel).OfType<VoiceWaveformView>())
-            {
-                wave.Played = mine ? ClassicDarkFrame.Value : ClassicDarkFrame.Heading;
-                wave.Rest = new Color(ClassicDesign.Muted, .45f);
-                wave.Dot = ClassicDarkFrame.Heading;
-                wave.Name = "room_post_wave";
-                wave.QueueRedraw();
-            }
-            foreach (var play in ClassicSocialStyle.Descendants(panel).OfType<Button>()) Cell(play);
         }
+    }
+
+    /// <summary>A notice: borderless, centred, the Classic notice yellow; a notice with web links keeps them clickable.</summary>
+    private static void StyleNotice(CenterContainer row)
+    {
+        foreach (var chip in ClassicSocialStyle.Descendants(row).OfType<PanelContainer>())
+        {
+            var box = new StyleBoxFlat { BgColor = Colors.Transparent };
+            box.ContentMarginLeft = box.ContentMarginRight = 8;
+            box.ContentMarginTop = box.ContentMarginBottom = 2;
+            chip.AddThemeStyleboxOverride("panel", box);
+            chip.SetMeta("room_chip", "notice");
+            foreach (var label in chip.GetChildren().OfType<Label>())
+            {
+                ClassicSocialStyle.Font(label, true, Spec.NoticeSize);
+                label.AddThemeColorOverride("font_color", NoticeInk);
+            }
+            foreach (var linked in chip.GetChildren().OfType<RichTextLabel>())
+            {
+                linked.AddThemeFontOverride("normal_font", Plugin.Kit.Bold);
+                linked.AddThemeFontSizeOverride("normal_font_size", Spec.NoticeSize);
+                linked.Text = linked.Text.Replace("[color=#" + UiTheme.TextLo.ToHtml(false) + "]", "[color=#" + NoticeInk.ToHtml(false) + "]");
+                // An unwrapped notice is sized for the client's font: it takes the width of the Classic one.
+                if (linked.AutowrapMode == TextServer.AutowrapMode.Off)
+                    linked.CustomMinimumSize = new Vector2(Mathf.Ceil(Plugin.Kit.Bold.GetStringSize(linked.GetParsedText(), HorizontalAlignment.Left, -1, Spec.NoticeSize).X) + 2, 0);
+                linked.Name = "room_notice_link";
+            }
+        }
+    }
+
+    /// <summary>The post's react button (shown on hover and while its reaction bar is open) in the original item cell.</summary>
+    public static void ReactCell(Button react)
+    {
+        Cell(react);
+        // The client's react button is flat (no box at all); the Classic one draws its cell.
+        react.Flat = false;
+        react.AddThemeColorOverride("icon_normal_color", ClassicDarkFrame.Heading);
+        react.AddThemeColorOverride("icon_hover_color", Colors.White);
+        react.AddThemeColorOverride("icon_pressed_color", Colors.White);
+        react.AddThemeConstantOverride("icon_max_width", Spec.ReactIcon);
+        react.Name = "room_react";
+    }
+
+    /// <summary>
+    /// The reaction pill under a post as a Classic chip: the black field with the gold line, the brighter selection
+    /// gold while hovered (the client swaps its own hover style in on enter and exit, so the Classic one follows).
+    /// </summary>
+    public static void Pill(PanelContainer pill)
+    {
+        if (pill.HasMeta(PillMeta)) return;
+        pill.SetMeta(PillMeta, true);
+        pill.AddThemeStyleboxOverride("panel", PillBox(false));
+        pill.MouseEntered += () => { if (Plugin.Active && GodotObject.IsInstanceValid(pill)) pill.AddThemeStyleboxOverride("panel", PillBox(true)); };
+        pill.MouseExited += () => { if (Plugin.Active && GodotObject.IsInstanceValid(pill)) pill.AddThemeStyleboxOverride("panel", PillBox(false)); };
+        // The count sits beside the glyph row; the glyphs keep the emoticon and emoji art.
+        foreach (var count in ClassicSocialStyle.Descendants(pill).OfType<Label>().Where(l => l.GetParent()?.GetParent() == pill))
+        {
+            ClassicSocialStyle.Font(count, true, Spec.PillCountSize);
+            count.AddThemeColorOverride("font_color", ClassicDesign.Muted);
+            count.Name = "room_pill_count";
+        }
+        pill.Name = "room_pill";
+    }
+
+    public static StyleBoxFlat PillBox(bool hover)
+    {
+        var box = new StyleBoxFlat
+        {
+            BgColor = hover ? new Color("26251f") : new Color(0, 0, 0, .88f),
+            BorderColor = hover ? ClassicSocialStyle.SelectedEdge : ClassicDarkFrame.Line,
+        };
+        box.SetBorderWidthAll(1);
+        box.ContentMarginLeft = Spec.PillPadLeft; box.ContentMarginRight = Spec.PillPadRight;
+        box.ContentMarginTop = box.ContentMarginBottom = Spec.PillPadY;
+        return box;
     }
 }
 
@@ -441,8 +563,14 @@ public partial class ClassicChatRoomFrame : Container
         {
             input.SetMeta("classic_room_input", true);
             ClassicSocialStyle.Input(input);
-            foreach (var state in new[] { "normal", "focus", "read_only" })
-                if (input.GetThemeStylebox(state) is StyleBoxFlat box) box.ContentMarginRight = Spec.EmoticonRoom;
+            void Roomy()
+            {
+                foreach (var state in new[] { "normal", "focus", "read_only" })
+                    if (input.GetThemeStylebox(state) is StyleBoxFlat box) box.ContentMarginRight = Spec.EmoticonRoom;
+            }
+            Roomy();
+            // The composer widens its field for the emoticon button each time it enters the tree; the Classic field keeps its room.
+            input.TreeEntered += () => { if (Plugin.Active && IsInstanceValid(input)) Roomy(); };
             // The client's 20 px emoticon button nearly fills the Classic field; it takes the inline emoticon size.
             foreach (var face in input.GetChildren().OfType<TextureButton>())
             {
@@ -522,5 +650,245 @@ public partial class ClassicChatRoomFrame : Container
             panel.SetMeta("room_selected", selected);
             panel.SetMeta("room_speaking", speaking);
         }
+    }
+}
+
+/// <summary>
+/// The reaction popups the client shares between the chat room and the whispers (fa3cfc3), dressed in place on the
+/// Classic menu panel: the quick bar (six picks and "more"), the details card (count, a chip per emoji that filters
+/// the list, the members who reacted with their sender colour, "Click to remove" on the own row) and the emoticon
+/// pickers. The client keeps building, sizing, positioning and wiring them; its geometry stays, so its placement
+/// above the post is unchanged. The bar re-marks its current pick and the card rebuilds its chips and rows on every
+/// fill, so those are dressed again as the client sets them.
+/// </summary>
+public static class ClassicReactionStyle
+{
+    public const string StyledMeta = "classic_reaction_popup", PickMeta = "reaction_pick", TabMeta = "picker_tab";
+    private const string ClassicBox = "classic_reaction_box";
+
+    /// <summary>The popups this style dresses. The reaction types exist since fa3cfc3; they are matched by name.</summary>
+    public static bool Owns(Window popup) => popup is EmoticonPicker || popup.GetType().Name is "ReactionBar" or "ReactionDetails";
+
+    public static void Apply(PopupPanel popup)
+    {
+        if (popup.HasMeta(StyledMeta)) return;
+        popup.SetMeta(StyledMeta, true);
+        switch (popup.GetType().Name)
+        {
+            case "ReactionBar": Bar(popup); break;
+            case "ReactionDetails": Details(popup); break;
+            default: Picker(popup); break;
+        }
+    }
+
+    /// <summary>The quick bar: the picks on the menu panel, the Classic menu hover, the current reaction in the gold selection frame.</summary>
+    private static void Bar(PopupPanel bar)
+    {
+        float edge = Spec.ReactionBarPadding;
+        bar.AddThemeStyleboxOverride("panel", Panel(edge, edge, edge, edge));
+        foreach (var pick in ClassicSocialStyle.Descendants(bar).OfType<Button>())
+        {
+            // The client's picks are flat, so neither its hover nor its mark of the current reaction ever shows;
+            // the Classic picks draw both.
+            pick.Flat = false;
+            foreach (var state in new[] { "hover", "pressed", "hover_pressed" }) pick.AddThemeStyleboxOverride(state, Hover());
+            pick.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+            // "More" is the plus sign with its tooltip; the picks keep the emoji at the client's size.
+            if (pick.TooltipText.Length > 0)
+            {
+                pick.AddThemeFontOverride("font", Plugin.Kit.Bold);
+                pick.AddThemeColorOverride("font_color", ClassicDesign.Muted);
+                foreach (var state in new[] { "font_hover_color", "font_pressed_color", "font_hover_pressed_color" }) pick.AddThemeColorOverride(state, ClassicDarkFrame.Heading);
+                pick.Name = "reaction_more";
+            }
+            else { pick.Name = "reaction_pick"; pick.SetMeta(PickMeta, true); }
+        }
+        MarkCurrent(bar);
+        bar.AboutToPopup += () => { if (Plugin.Active && GodotObject.IsInstanceValid(bar)) MarkCurrent(bar); };
+    }
+
+    /// <summary>The client marks the post's current reaction in each pick's normal style before it shows the bar.</summary>
+    private static void MarkCurrent(PopupPanel bar)
+    {
+        foreach (var pick in ClassicSocialStyle.Descendants(bar).OfType<Button>().Where(b => b.HasMeta(PickMeta)))
+        {
+            var normal = pick.GetThemeStylebox("normal");
+            if (normal != null && normal.HasMeta(ClassicBox)) continue;
+            bool current = normal is StyleBoxFlat;
+            pick.AddThemeStyleboxOverride("normal", current ? Chosen() : Classic(new StyleBoxEmpty()));
+            pick.SetMeta("reaction_current", current);
+        }
+    }
+
+    /// <summary>The details card: heading, the filter chips, the gold rule, the Classic list and its rows.</summary>
+    private static void Details(PopupPanel card)
+    {
+        card.AddThemeStyleboxOverride("panel", Panel(Spec.ReactionCardPadX, Spec.ReactionCardTop, Spec.ReactionCardPadX, Spec.ReactionCardBottom));
+        if (card.GetChildCount() == 0 || card.GetChild(0) is not VBoxContainer column) return;
+        foreach (var part in column.GetChildren())
+        {
+            switch (part)
+            {
+                case Label title:
+                    ClassicSocialStyle.Font(title, true, Spec.HeadingSize);
+                    title.AddThemeColorOverride("font_color", ClassicDarkFrame.Heading);
+                    title.Name = "reaction_title";
+                    break;
+                case HBoxContainer chips:
+                    chips.Name = "reaction_chips";
+                    foreach (var chip in chips.GetChildren()) Chip(chip);
+                    chips.ChildEnteredTree += node => { if (Plugin.Active) Chip(node); };
+                    break;
+                case ColorRect rule:
+                    rule.Color = ClassicSocialStyle.Rule;
+                    rule.Name = "reaction_rule";
+                    break;
+                case ScrollContainer scroll:
+                    ClassicSocialStyle.Scroll(scroll);
+                    scroll.Name = "reaction_scroll";
+                    if (scroll.GetChildCount() > 0 && scroll.GetChild(0) is VBoxContainer list)
+                    {
+                        list.Name = "reaction_list";
+                        foreach (var row in list.GetChildren()) Row(row);
+                        list.ChildEnteredTree += node => { if (Plugin.Active) Row(node); };
+                    }
+                    break;
+            }
+        }
+    }
+
+    /// <summary>A filter chip: the gold line on black, the chosen one in the gold selection frame; the add button alike.</summary>
+    private static void Chip(Node node)
+    {
+        if (node is not Control control || control.HasMeta(StyledMeta)) return;
+        control.SetMeta(StyledMeta, true);
+        if (node is Button add)
+        {
+            add.AddThemeStyleboxOverride("normal", ChipBox(false));
+            foreach (var state in new[] { "hover", "pressed", "hover_pressed" }) add.AddThemeStyleboxOverride(state, ChipBox(true));
+            add.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+            add.AddThemeColorOverride("icon_normal_color", ClassicDesign.Muted);
+            foreach (var state in new[] { "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color" }) add.AddThemeColorOverride(state, ClassicDarkFrame.Heading);
+            add.Name = "reaction_add";
+            return;
+        }
+        if (node is not PanelContainer chip) return;
+        bool chosen = chip.GetThemeStylebox("panel") is StyleBoxFlat native && native.BgColor.A > .1f;
+        chip.AddThemeStyleboxOverride("panel", ChipBox(chosen));
+        chip.SetMeta("reaction_chosen", chosen);
+        foreach (var number in ClassicSocialStyle.Descendants(chip).OfType<Label>().Where(l => l.GetParent()?.GetParent() == chip))
+        {
+            ClassicSocialStyle.Font(number, true, Spec.FontSize);
+            number.AddThemeColorOverride("font_color", chosen ? ClassicDarkFrame.Heading : ClassicDesign.Text);
+        }
+        chip.Name = "reaction_chip";
+    }
+
+    /// <summary>
+    /// A member row: the Messenger row rule, the member's initial in the original item cell in the sender colour,
+    /// the name in Arial Bold; the own row takes the Classic list hover and says "Click to remove" in the muted ink.
+    /// </summary>
+    private static void Row(Node node)
+    {
+        if (node is not PanelContainer row || row.HasMeta(StyledMeta)) return;
+        row.SetMeta(StyledMeta, true);
+        bool mine = row.MouseFilter == Control.MouseFilterEnum.Stop;
+        row.AddThemeStyleboxOverride("panel", RowBox(false));
+        row.SetMeta("reaction_row", mine ? "mine" : "other");
+        if (mine)
+        {
+            row.MouseEntered += () => { if (Plugin.Active && GodotObject.IsInstanceValid(row)) row.AddThemeStyleboxOverride("panel", RowBox(true)); };
+            row.MouseExited += () => { if (Plugin.Active && GodotObject.IsInstanceValid(row)) row.AddThemeStyleboxOverride("panel", RowBox(false)); };
+        }
+        if (row.GetChildCount() == 0 || row.GetChild(0) is not HBoxContainer line) return;
+        foreach (var part in line.GetChildren())
+        {
+            if (part is PanelContainer avatar)
+            {
+                var cell = ClassicSkin.PanelStyle();
+                cell.SetContentMarginAll(0);
+                avatar.AddThemeStyleboxOverride("panel", cell);
+                avatar.Name = "reaction_avatar";
+                foreach (var letter in avatar.GetChildren().OfType<Label>())
+                {
+                    var ink = letter.GetThemeColor("font_color");
+                    ClassicSocialStyle.Font(letter, true, Spec.HeadingSize);
+                    letter.AddThemeColorOverride("font_color", ink);
+                    letter.AddThemeColorOverride("font_outline_color", Colors.Black);
+                    letter.AddThemeConstantOverride("outline_size", 2);
+                }
+            }
+            else if (part is VBoxContainer names)
+            {
+                var labels = names.GetChildren().OfType<Label>().ToArray();
+                for (int i = 0; i < labels.Length; i++)
+                {
+                    ClassicSocialStyle.Font(labels[i], i == 0, i == 0 ? Spec.HeadingSize : Spec.SmallSize);
+                    labels[i].AddThemeColorOverride("font_color", i == 0 ? ClassicDesign.Text : ClassicDesign.Muted);
+                    labels[i].Name = i == 0 ? "reaction_name" : "reaction_hint";
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// An emoticon picker (the composer's and the reaction "more" one): the menu panel, the Classic tabs, the
+    /// emoji on the Classic menu hover; the emoticons keep their art.
+    /// </summary>
+    private static void Picker(PopupPanel picker)
+    {
+        picker.SetMeta("classic_popup", true);
+        float edge = Spec.PickerPadding;
+        picker.AddThemeStyleboxOverride("panel", Panel(edge, edge, edge, edge));
+        foreach (var button in ClassicSocialStyle.Descendants(picker).OfType<Button>())
+        {
+            if (button.ToggleMode) { ClassicSocialStyle.Button(button); button.SetMeta(TabMeta, true); continue; }
+            button.Flat = false;
+            button.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
+            foreach (var state in new[] { "hover", "pressed", "hover_pressed" }) button.AddThemeStyleboxOverride(state, Hover());
+            button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        }
+    }
+
+    /// <summary>The Classic menu panel, opaque: these popups open over the posts.</summary>
+    private static StyleBoxFlat Panel(float left, float top, float right, float bottom)
+    {
+        var panel = ClassicChatRoomSkin.MenuPanel(left, top, right, bottom);
+        panel.BgColor = Colors.Black;
+        return panel;
+    }
+
+    private static T Classic<T>(T box) where T : StyleBox { box.SetMeta(ClassicBox, true); return box; }
+
+    /// <summary>The Classic menu hover (the drop-down's selected row).</summary>
+    private static StyleBoxFlat Hover() => Classic(new StyleBoxFlat { BgColor = ClassicDarkFrame.SelectedRow });
+
+    /// <summary>The gold selection frame of the Classic lists.</summary>
+    private static StyleBoxFlat Chosen()
+    {
+        var box = Classic(new StyleBoxFlat { BgColor = new Color("26251f"), BorderColor = ClassicSocialStyle.SelectedEdge });
+        box.SetBorderWidthAll(1);
+        return box;
+    }
+
+    private static StyleBoxFlat ChipBox(bool chosen)
+    {
+        var box = Classic(new StyleBoxFlat
+        {
+            BgColor = chosen ? new Color("26251f") : new Color(0, 0, 0, .7f),
+            BorderColor = chosen ? ClassicSocialStyle.SelectedEdge : ClassicDarkFrame.Line,
+        });
+        box.SetBorderWidthAll(1);
+        box.ContentMarginLeft = box.ContentMarginRight = Spec.ReactionChipPadX;
+        box.ContentMarginTop = box.ContentMarginBottom = Spec.ReactionChipPadY;
+        return box;
+    }
+
+    private static StyleBoxFlat RowBox(bool hover)
+    {
+        var box = ClassicSocialStyle.RowBox(false);
+        if (hover) box.BgColor = ClassicDarkFrame.SelectedRow;
+        box.ContentMarginTop = box.ContentMarginBottom = 0;
+        return Classic(box);
     }
 }

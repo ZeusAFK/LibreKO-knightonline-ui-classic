@@ -577,7 +577,7 @@ until then.
 | `TempleEventType` moved from `LibreKO.Network` to `LibreKO.Domain` | API | Preview only (`ForgottenTempleAudit`) |
 | `World.DressCape` is an instance method (it hides capes in the Chaos dungeon) | M | The cape shop dresses the character's own body through the world instance, which binds the static and the instance shape |
 | `World+WhisperChat.Log`, `Scroll`, `Input` fields replaced by `Thread` (`ChatThreadView`) and `Composer` (`ChatComposer`) | F | Whisper skin: not restyled on fa3cfc3 yet |
-| `_roomScroll`, `_roomLog`, `_roomOlder`, `_roomComposerRow`, `_roomInput`, `_roomRecord`, `_roomSend`, `_roomRecordStrip`, `_roomRecordClock`, `_roomRecordLevel` replaced by `_roomThread` and `_roomComposer` | F | Chat room skin: `NativeChatRoom.Prepare` stops when a member is missing, so the room keeps the client's look inside the Classic frame |
+| `_roomScroll`, `_roomLog`, `_roomOlder`, `_roomComposerRow`, `_roomInput`, `_roomRecord`, `_roomSend`, `_roomRecordStrip`, `_roomRecordClock`, `_roomRecordLevel` replaced by `_roomThread` and `_roomComposer` | F | Chat room skin: rebound to the shared thread and composer (next section) |
 | `_ncPriJoin`, `_ncPriLeave`, `_ncPriOpen`, `_ncPriChange`, `_ncPriPersons`, `_ncSearch`, `_ncMembers*`, `OpenNationSearch`, `NationChatRules.Summary`, window ids `nation_chat_members`, `nation_chat_search` (removed) | F/M | The Private tab is a search row (`_ncSearchEdit`, Search, Create room); members live in the room window |
 | `_bifrostRemaining`, `_isEventRegistered`, `_eventType`, `EndBifrostEvent` (removed): sign-ups are `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft`) | F | The Classic registration and countdown read the urgent and registered state from them (section "Events window and temple sign-ups on upstream fa3cfc3") |
 
@@ -600,6 +600,28 @@ tooltip popups. The Chaos skill page keeps the client's dimming (`ChaosSkillIcon
 Chaos blink); `event-windows-audit` checks it. The former 516-pixel body width of `events` is gone, so on clients
 before fa3cfc3 the old events window keeps its natural width (`ClassicEventFamilyLayout.BodyWidth` stays as the
 declarative per-window hook).
+
+### Chat room on the shared thread and composer, with reactions, on upstream fa3cfc3
+
+The room's log and composer are the client's shared controls (`ChatThreadView`, `ChatComposer`), also used by the
+whispers. `NativeChatRoom.Prepare` names them and their parts for the skin and the audit; the Classic room restyles
+the thread rows in place (the thread keeps its rows to refresh reactions and voice notes). The reaction popups live
+on the World's own `_reactionLayer` (CanvasLayer 80), shared by rooms and whispers; `NativeChatReactions.Attach`
+watches it through one tracked hook (`World._reactionLayer (reaction popups)`, released with the World or at
+shutdown, every handler guarded by `Plugin.Active`) and `ClassicReactionStyle` dresses each popup on the Classic menu
+panel as the client creates it. The client keeps building, sizing, placing and wiring every control; no facade
+covers the thread, the composer or the reactions, and the plugin subscribes no room, voice or reaction event.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `_roomThread` (`ChatThreadView : ScrollContainer`), its `_log` and `_older` | F | Named `room_log_scroll`, `room_log`, `room_older`: the Classic log field and scroll bar, the post rows dressed as they arrive, the Classic "Load older messages" |
+| `_roomComposer` (`ChatComposer : HBoxContainer`), its `_field`, `Input` (property), `_record`, `_send`, `_strip`, `_clock`, `_level` | F | Named `room_composer_row`, `room_field`, `room_input`, `room_record`, `room_send`, `room_record_strip`, `room_record_clock`, `room_record_level`: Classic field, cells, recording strip and meter. The composer widens its input style for the emoticon button each time it enters the tree; the Classic field keeps its own room |
+| `ChatThreadView` row shape: `MarginContainer` > `HBoxContainer` (alignment = side) > react slot `CenterContainer` > `Button` and stack `VBoxContainer` > bubble `PanelContainer`, pill holder `MarginContainer` > `HBoxContainer` > pill `PanelContainer`; day chips `MarginContainer` > `CenterContainer` > `PanelContainer`; notices `CenterContainer` (a `RichTextLabel` when they carry web links); `NoteRow` play `Button`, `VoiceWaveformView`, `NoteDownloadRing` | Look | `ClassicChatRoomSkin.StylePost`: Classic bubbles and sender colours as before, the react button in the original item cell (`ReactCell`, no longer flat so the cell shows), the reaction pill as a Classic chip (`Pill`; the client swaps its own hover style in on enter and exit, so the Classic one follows), Classic day chips and notices. `ReactCell` and `Pill` are public for the whisper skin |
+| The composer's `EmoticonPicker` (now the composer's own child) | F | Watched like the room layer; dressed synchronously before the client sizes and places it |
+| `World._reactionLayer` with `ReactionBar`, `ReactionDetails` and the reaction `EmoticonPicker` (matched by type name; they exist since fa3cfc3) | F | `ClassicReactionStyle`: opaque Classic menu panel with the client's padding; the bar's picks on the Classic menu hover and the current reaction in the gold selection frame (re-marked on `AboutToPopup` after the client's `ShowAbove`; the client's picks are flat, so its own marks never showed); the card's heading, filter chips (chosen chip in the gold selection frame), gold rule, Classic scroll bar and member rows (initial in the original item cell in the sender colour, Arial Bold name, "Click to remove" in the muted ink, Classic list hover) dressed again on every fill; the pickers' tabs as Classic toggles and the emoji on the Classic hover |
+| `_roomConfigKeep`, `_roomPushToTalk`, `_roomPeerMute` (`UiTheme.FlatCheck`, per-control SVG check icons since fa3cfc3) | F/Look | `ClassicChatRoomSkin.StylePopup` puts the original `{nation}_chat_us` check box (`btn_check_normal`) on every popup check; "Keep the room" keeps the client's autowrap inside the card |
+| `_roomVolume`, `_roomPeerVolume` (`VoiceLevels.MaxVolume` 2, "up to 200%") | Look | Classic slider unchanged; the range and the tooltip stay the client's |
+| `_ncPriJoin` (removed; a double-click on a row enters) | F | Preview only: `chat-room-audit` enters rooms of both nations by double-click |
 
 ### Preview-only members
 
