@@ -277,7 +277,9 @@ public static class NativeCape
         var race = net.LastEnter.Race;
         LookFraming.SetCape(state.Look, previewId, new Color(r / 255f, g / 255f, b / 255f), race);
         if (Native.Get<Node3D>(world, "_selfVisual") is not { } self) return;
-        Native.Call(typeof(World), "DressCape", self, previewId, r, g, b, false, race, true);
+        // DressCape is an instance method since fa3cfc3 (it reads the zone: no capes in the Chaos dungeon);
+        // calling it on the world binds both shapes.
+        Native.Call(world, "DressCape", self, previewId, r, g, b, false, race, true);
         Native.Set(world, "_capePreviewing", true);
     }
 
