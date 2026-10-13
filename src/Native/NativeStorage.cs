@@ -20,8 +20,9 @@ public static partial class NativeSetup
 /// builds the named stored and carried item cells and the pager the Classic storage skin arranges,
 /// names the native coin, PIN and key controls, and shows storage in Classic pages (24 cells; the
 /// 48-slot VIP vault in four pages of 12). Every transfer goes through the client's own handlers:
-/// right-click picks a destination, drag uses the chosen cell, stacks ask for an amount in the
-/// client's prompt, and the client validates, sends and applies each transfer.
+/// right-click picks a destination, drag uses the chosen cell, and the client validates, sends and
+/// applies each transfer. A whole stack asks for the count in the client's prompt, as the original
+/// storage did; a part picked with the mouse wheel during the drag moves at once.
 /// </summary>
 public sealed class NativeStorage
 {
@@ -66,6 +67,7 @@ public sealed class NativeStorage
     private readonly Label? _status;
     private readonly bool _nativePage;
     private int _page;
+    private object? _companion;
 
     private bool Vip => Kind == StorageKind.Vip;
     private int Slots => _slots.Length;
@@ -185,6 +187,7 @@ public sealed class NativeStorage
         Window.SetMeta("storage_page", page);
         Window.SetMeta("storage_pages", Pages);
         if (!Vip) Window.SetMeta("storage_money", Native.Get<int>(_world, Kind == StorageKind.Clan ? "_clanWhMoney" : "_whMoney"));
+        RouteCompanion();
         bool locked = !VaultOpen;
         for (int i = 0; i < _stored.Length; i++)
         {
@@ -258,16 +261,28 @@ public sealed class NativeStorage
     private ItemSlotView StoredCell(int index)
     {
         int Absolute() => Page * PageSize + index;
-        var cell = new ItemSlotView(CellSize) { Index = index, Name = "storage_cell_" + index, Veiled = true };
-        cell.RightClicked += _ => Native.Call(_world, Field("AskWithdraw", "AskVipWithdraw", "AskClanWithdraw"), Absolute(), -1);
+        // PicksAmount: a dragged stack arms the client's mouse-wheel dial, which wins over the page wheel while dragging.
+        var cell = new ItemSlotView(CellSize) { Index = index, Name = "storage_cell_" + index, Veiled = true, PicksAmount = true };
+        cell.RightClicked += _ => Withdraw(Absolute(), -1, null);
         cell.Hovered += c => Tooltip(-1, c);
         cell.Unhovered += _ => Native.Call(_world, "HideItemTooltip");
         cell.Wheeled += (_, step) => TurnPage(step);
-        cell.DragOut = _ => VaultOpen && !_slots[Absolute()].IsEmpty
-            ? (Variant)new Godot.Collections.Dictionary { { "companionFrom", Absolute() } }
-            : default(Variant);
+        cell.DragOut = c =>
+        {
+            if (!VaultOpen || _slots[Absolute()].IsEmpty) return default;
+            KnightOnlineUiClassic.Layout.ClassicStackDial.StyleNativeCount(c);
+            return new Godot.Collections.Dictionary { { "companionFrom", Absolute() } };
+        };
         cell.CanDrop = (_, data) => Native.Call(_world, Field("CanDropOnWarehouse", "CanDropOnVipVault", "CanDropOnClanWh"), Absolute(), data) is true;
-        cell.Dropped = (_, data) => Native.Call(_world, Field("DropOnWarehouse", "DropOnVipVault", "DropOnClanWh"), Absolute(), data);
+        cell.Dropped = (_, data) =>
+        {
+            int target = Absolute();
+            void Drop() => Native.Call(_world, Field("DropOnWarehouse", "DropOnVipVault", "DropOnClanWh"), target, data);
+            // A move inside the storage stays native: the client refuses a part of a stack there.
+            var d = data.AsGodotDictionary();
+            if (d.TryGetValue("invFrom", out var from)) Deposit(from.AsInt32(), target, DragLayer.ChosenAmount(d), Drop);
+            else Drop();
+        };
         return cell;
     }
 
@@ -275,30 +290,30 @@ public sealed class NativeStorage
 
     private ItemSlotView CarriedCell(int index)
     {
-        var cell = new ItemSlotView(CellSize) { Index = _gridStart + index, Name = "storage_bag_" + index, Veiled = true };
-        cell.RightClicked += c => Native.Call(_world, Field("WhTakeFromBag", "VipTakeFromBag", "ClanTakeFromBag"), c.Index);
+        var cell = new ItemSlotView(CellSize) { Index = _gridStart + index, Name = "storage_bag_" + index, Veiled = true, PicksAmount = true };
+        cell.RightClicked += c => Deposit(c.Index, -1, null, () => Native.Call(_world, Field("WhTakeFromBag", "VipTakeFromBag", "ClanTakeFromBag"), c.Index));
         cell.Hovered += c => Tooltip(c.Index, c);
         cell.Unhovered += _ => Native.Call(_world, "HideItemTooltip");
-        cell.DragOut = c => new Godot.Collections.Dictionary { { "invFrom", c.Index } };
+        cell.DragOut = c =>
+        {
+            KnightOnlineUiClassic.Layout.ClassicStackDial.StyleNativeCount(c);
+            return new Godot.Collections.Dictionary { { "invFrom", c.Index } };
+        };
         cell.CanDrop = (c, data) => !Busy && (BagMove(c.Index, data) || TakesFromStorage(data));
         cell.Dropped = (c, data) =>
         {
             var d = data.AsGodotDictionary();
-            if (BagMove(c.Index, data)) Native.Call(_world, "MoveBetween", d["invFrom"].AsInt32(), c.Index);
-            else if (TakesFromStorage(data)) WithdrawInto(d["companionFrom"].AsInt32(), c.Index, d);
+            int? amount = DragLayer.ChosenAmount(d);
+            if (BagMove(c.Index, data))
+            {
+                // Bag to bag through the inventory API: a part picked with the wheel splits the stack, as the client's bag does.
+                int from = d["invFrom"].AsInt32();
+                if (KnightOnlineUiClassic.Layout.ClassicStackDial.Part(amount, _inventory[from].Count) is int part) Plugin.Kit.Game.Inventory.MoveAmount(from, c.Index, part);
+                else Plugin.Kit.Game.Inventory.Move(from, c.Index);
+            }
+            else if (TakesFromStorage(data)) Withdraw(d["companionFrom"].AsInt32(), c.Index, amount);
         };
         return cell;
-    }
-
-    /// <summary>
-    /// ff78eef: the withdraw-into-bag methods also take the amount picked with the mouse wheel (null moves the
-    /// whole stack); older clients take only the two cells.
-    /// </summary>
-    private void WithdrawInto(int from, int to, Godot.Collections.Dictionary data)
-    {
-        string method = Field("WithdrawInto", "VipWithdrawInto", "ClanWithdrawInto");
-        int? amount = data.TryGetValue(DragLayer.AmountKey, out var picked) ? picked.AsInt32() : null;
-        if (!Native.TryCall(_world, method, out _, from, to, amount)) Native.Call(_world, method, from, to);
     }
 
     private bool BagMove(int target, Variant data)
@@ -315,6 +330,86 @@ public sealed class NativeStorage
         if (!d.ContainsKey("companionFrom")) return false;
         int from = d["companionFrom"].AsInt32();
         return from >= 0 && from < Slots && !_slots[from].IsEmpty;
+    }
+
+    // Count prompt ------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The original storage asks how many of a stack to move. Since ff78eef the client asks only on touch screens and
+    /// otherwise moves the amount the drag picked with the mouse wheel, or the whole stack. The Classic storage asks
+    /// for a whole stack (a right-click, or a drag without a part picked) in the client's prompt, prefilled with the
+    /// whole stack; a part picked with the wheel moves at once.
+    /// </summary>
+    private static bool AsksCount(ItemSlot slot, int? amount) =>
+        !slot.IsEmpty && slot.Count > 1 && ItemData.Get(slot.ItemId) is { Countable: not 0 } && (amount == null || amount >= slot.Count);
+
+    private bool Shown => Native.Get<bool>(_world, Field("_whShown", "_vipWhShown", "_clanWhShown"));
+
+    /// <summary>
+    /// Stores a carried item. A whole stack asks for the count first, then the client stores the chosen count through
+    /// <c>DepositSlot</c>/<c>VipDepositSlot</c>/<c>ClanDepositSlot(abs, target, amount)</c>. Everything else, and every
+    /// case the client refuses (busy, a locked vault, a vault key, an item the storage does not take), runs
+    /// <paramref name="native"/>, the client's own handler for the gesture.
+    /// </summary>
+    private void Deposit(int abs, int target, int? amount, Action native)
+    {
+        var slot = InMainBag(abs) ? _inventory[abs] : default;
+        if (Amount == null || !AsksCount(slot, amount) || Busy || !VaultOpen || !Fits(abs)
+            || Vip && Native.Call(_world, "IsVipVaultKey", slot.ItemId) is true)
+        {
+            native();
+            return;
+        }
+        Amount.Open(ItemData.Icon(slot.ItemId), $"Store {ItemData.DisplayName(slot.ItemId)}", $"You carry {slot.Count:n0}", slot.Count, slot.Count, n =>
+        {
+            if (Shown && _inventory[abs].Equals(slot))
+                Native.Call(_world, Field("DepositSlot", "VipDepositSlot", "ClanDepositSlot"), abs, target, (int?)(int)n);
+        }, "Store");
+    }
+
+    /// <summary>
+    /// Takes a stored item out into the bag (<paramref name="target"/>, or the client's choice for -1). A whole stack
+    /// asks for the count first; the client then takes it out through <c>AskWithdraw</c>/<c>AskVipWithdraw</c>/
+    /// <c>AskClanWithdraw(index, target, amount)</c>, which also refuses a busy storage, a locked vault or missing clan rights.
+    /// </summary>
+    private void Withdraw(int index, int target, int? amount)
+    {
+        string method = Field("AskWithdraw", "AskVipWithdraw", "AskClanWithdraw");
+        var slot = index >= 0 && index < Slots ? _slots[index] : default;
+        if (Amount == null || !AsksCount(slot, amount) || Busy || !VaultOpen
+            || Kind == StorageKind.Clan && !Native.Get<bool>(_world, "ClanCanWithdraw"))
+        {
+            Native.Call(_world, method, index, target, amount);
+            return;
+        }
+        Amount.Open(ItemData.Icon(slot.ItemId), $"Take out {ItemData.DisplayName(slot.ItemId)}", $"Stored {slot.Count:n0}", slot.Count, slot.Count, n =>
+        {
+            if (Shown && _slots[index].Equals(slot)) Native.Call(_world, method, index, target, (int?)(int)n);
+        }, "Take out");
+    }
+
+    /// <summary>
+    /// Routes the storage's bag companion (a right-click in the Classic bag, a stored item dropped on a Classic bag
+    /// cell) through the same count prompt. The client creates the companion when the storage first opens.
+    /// </summary>
+    private void RouteCompanion()
+    {
+        if (Native.Get<object>(_world, Field("_whCompanion", "_vipCompanion", "_clanCompanion")) is not { } companion
+            || ReferenceEquals(companion, _companion)) return;
+        _companion = companion;
+        if (Native.Get<Func<int, bool>>(companion, "Take") is { } take)
+            Native.Set(companion, "Take", new Func<int, bool>(abs =>
+            {
+                if (!InMainBag(abs)) return take(abs);
+                Deposit(abs, -1, null, () => take(abs));
+                return true;
+            }));
+        if (Native.MemberType(companion, "IntoBag") == typeof(Func<int, int, int?, bool>))
+            Native.Set(companion, "IntoBag", new Func<int, int, int?, bool>((from, to, amount) =>
+            {
+                Withdraw(from, to, amount);
+                return true;
+            }));
     }
 
     // VIP PIN -----------------------------------------------------------------------------------

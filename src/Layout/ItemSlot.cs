@@ -20,6 +20,10 @@ public partial class ItemSlot : Control
     public int Slot { get; set; }
     public Func<int, GameItem> Source { get; set; } = s => GameItem.Empty(s);
     public Action<int, int>? OnDrop { get; set; }
+    /// <summary>A drop that also takes the amount picked with the mouse wheel (null without one); used before <see cref="OnDrop"/>.</summary>
+    public Action<int, int, int?>? OnDropAmount { get; set; }
+    /// <summary>Whether a dragged stack arms the mouse-wheel amount dial (cells whose drops honour the amount).</summary>
+    public bool PicksAmount { get; set; }
     public Func<Variant, bool>? CanCompanionDrop { get; set; }
     public Action<Variant>? OnCompanionDrop { get; set; }
     public Action<int>? OnClick { get; set; }
@@ -159,8 +163,11 @@ public partial class ItemSlot : Control
         if (!InputEnabled || Current.IsEmpty || CanDrag?.Invoke() == false) return default;
         _suppressClick = false;
         OnHover?.Invoke(Slot, false);
-        DragLayer.Show(this,IconDragPreview.Create(_icon,_grabPoint));
-        return new Godot.Collections.Dictionary { { DragKeyItem, Current.ItemId }, { DragKeyFrom, Slot } };
+        var data = new Godot.Collections.Dictionary { { DragKeyItem, Current.ItemId }, { DragKeyFrom, Slot } };
+        var preview = IconDragPreview.Create(_icon, _grabPoint);
+        DragLayer.Show(this, preview);
+        if (PicksAmount) ClassicStackDial.Arm(preview, data, Current, _count);
+        return data;
     }
 
     public override bool _CanDropData(Vector2 atPosition, Variant data)
@@ -168,7 +175,7 @@ public partial class ItemSlot : Control
         if (!InputEnabled || CanDrag?.Invoke() == false || data.VariantType != Variant.Type.Dictionary) return false;
         var d = data.AsGodotDictionary();
         if (d.ContainsKey("companionFrom")) return CanCompanionDrop?.Invoke(data) == true;
-        return OnDrop != null && d.ContainsKey(DragKeyFrom) && d[DragKeyFrom].AsInt32() != Slot;
+        return (OnDrop != null || OnDropAmount != null) && d.ContainsKey(DragKeyFrom) && d[DragKeyFrom].AsInt32() != Slot;
     }
 
     public override void _DropData(Vector2 atPosition, Variant data)
@@ -176,7 +183,9 @@ public partial class ItemSlot : Control
         if(!InputEnabled || CanDrag?.Invoke() == false) return;
         _hover.Visible = false;
         if (data.AsGodotDictionary().ContainsKey("companionFrom")) { OnCompanionDrop?.Invoke(data); return; }
-        OnDrop?.Invoke(data.AsGodotDictionary()[DragKeyFrom].AsInt32(), Slot);
+        int from = data.AsGodotDictionary()[DragKeyFrom].AsInt32();
+        if (OnDropAmount != null) OnDropAmount(from, Slot, ClassicStackDial.Picked(data));
+        else OnDrop?.Invoke(from, Slot);
     }
 }
 

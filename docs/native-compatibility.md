@@ -56,12 +56,13 @@ This page covers:
   - character panel and NPC portrait;
   - chat history, item links and nearby players;
   - hotbar selection, run/sit/attack commands and minimap visibility;
-  - inventory `MoveAmount`, `TransferToInventorySlot` and `ConfirmDrop`.
+  - inventory `TransferToInventorySlot` and `ConfirmDrop` (part of a stack moves through the client's own
+    `IGameInventory.MoveAmount`).
 
   C# 14 extension members put these services on `IGameWindows`, `IGameChat`, `IGameHotbar`, `IGameCommands`,
   `IGameMap` and `IGameInventory`, so skin code reads like the old fork API. `ClientGame` is the runtime source.
   Each member falls back to what the public API already offers when native support is absent. For example,
-  `MoveAmount` moves the whole stack when the client has no `MoveBetween(int,int,int)`. The preview replaces
+  `ConfirmDrop` uses the public `Drop` when the client has no destroy queue. The preview replaces
   `NativeGame.Source` with fixture data.
 - **Live enable and disable (`NativeHooks`, `NativeSetup.Unregister`).** Upstream switches UI themes from Settings >
   Plugins without a restart. On disable the client calls `Plugin.Shutdown`, removes every `context.Ui` registration
@@ -142,9 +143,11 @@ The nation-transfer behaviour on bare upstream follows from the code paths above
 | `fix/transport-generations` | Core correctness. A reply decoded before a connection loss is now applied. |
 | `fix/vendor-exchange-validation` | Feature-detected: `SellSlot(int,int,int)`, `ItemSlot.IsTradable`, `_exConfirmedByPartner`. |
 
-**Build-time binding.** `InventoryWindow` calls `_game.Inventory.MoveAmount(...)`. Against a client that has
-`IGameInventory.MoveAmount` (`feat/magic-bag-amount`), that call compiles to the interface member. Against bare
-upstream it compiles to the plugin's extension. Install a build made against the same kind of client it will run on.
+**Build-time binding.** `InventoryWindow` and `NativeStorage` call `IGameInventory.MoveAmount(...)`, the client's
+facade from `feat/magic-bag-amount` (upstream since 9d0e0bb). The plugin's extension of the same name and its
+reflected `MoveBetween(int,int,int)` were removed on ff78eef, where the facade shadowed them. The stack split also
+binds `ItemSlotView.PicksAmount`, `StackDial` and `DragLayer.ChosenAmount` at build time, so a build needs an
+upstream client from ff78eef on. Install a build made against the client it will run on.
 
 ## 3. Reflected client members
 
@@ -219,7 +222,7 @@ listed. Preview-only members are listed at the end.
 
 | Member | Kind | Used for |
 | --- | --- | --- |
-| `MoveBetween(int,int,int)` *(feat/magic-bag-amount)* | M | Partial moves |
+| `IGameInventory.MoveAmount(int,int,int)` | API | Partial moves (bag, magic bags, the storages' embedded bag) |
 | `_moveInFlight`, `_bagPairing`, `BagPairing<>._openedByCompanion`, `_invDelSlot`, `_invDelItemId`, `RefuseItemInUse(int,int)`, `ConfirmDeleteItem()` | F/M | Embedded bag pairing, identity-checked destroy |
 | `_warehouse`, `_whCells`, `_whStatus`, `_whAmount`, `_whShown`, `_whMoney`, `_whInFlight` | F | Warehouse |
 | `WithdrawSlot(int)`, `DepositSlot(int,int)`, `AskWithdraw(int,int)`, `CanDropOnWarehouse(int,Variant)`, `DropOnWarehouse(int,Variant)` | M | Warehouse transfers |
@@ -471,6 +474,42 @@ the member it finds, so older clients keep the previous path.
 | `World+BagCompanion.IntoBag` (`Func<int, int, int?, bool>`: the amount picked with the mouse wheel; before `Func<int, int, bool>`) | P/T | `NativeVendor` reroutes buys through the Classic approval and `NativeAnvil` builds the anvil companion; the delegate shape comes from `Native.MemberType`, the amount is ignored (the approval asks the count, anvil items move whole) |
 | `WithdrawInto`, `VipWithdrawInto`, `ClanWithdrawInto` `(int, int, int? amount)`; `AskWithdraw`, `AskVipWithdraw`, `AskClanWithdraw`, `DepositSlot`, `OfferSlot` gained an optional `int? amount` | M | Storage drops into the bag pass the drag's `DragLayer.AmountKey` amount (null = whole stack); the optional ones bind through `Native.Method`'s default filling |
 | `AttachWeapons(Node3D, int[], HandWearer, int npcType)`, static `WeaponWearer(bool npc, bool statue, int race, int npcId, int size, int modelId)`, static `AttachBuiltInPlugs(Node3D, string)`, `_mobIndex`; `World+Ent.Race`, `Size`; `NoWeaponNpcIds` removed | M/F | NPC portrait: weapons by the model's plug slots and scale, the model's own built-in weapons on a freshly loaded model; the unarmed list is read only where it still exists |
+
+### Stack split and storage amounts on upstream ff78eef
+
+Upstream 115b830 splits a dragged stack with the mouse wheel: the client's `StackDial` steps 1/5/10/50/100 per four
+quick notches, the drag icon shows the count (white for the whole stack, `UiTheme.GoldBright` for a part) and the
+drag data carries it under `DragLayer.AmountKey`. On desktop the client then no longer asks for a quantity in the
+storages (`AsksStackAmount` is touch only), so a whole stack moved at once. The Classic UI keeps the original
+quantity prompt and adds the wheel:
+
+- **Classic dial** (`Layout/ClassicStackDial`). A Classic bag cell (`ItemSlot.PicksAmount`: the inventory window
+  and the trade's bag) arms the client's `StackDial` on the Classic drag icon (`IconDragPreview`), shows the count
+  in the cell's count type and corner, and publishes the amount like the client's own cells. While a stack is
+  dragged the wheel belongs to the dial (`_Input`, handled before the cells, so the storage pages do not turn).
+  `ItemSlot.OnDropAmount` hands the picked amount to the drop.
+- **Rule.** A part picked with the wheel moves at once. The whole stack (no wheel turn, or the wheel back at the
+  whole stack) keeps the original Classic flow: the storages and the trade ask the count in the client's prompt,
+  the magic bags ask in the Classic prompt, and a bag-to-bag move takes the whole stack. Bag-to-bag parts are
+  offered, as upstream allows (`ItemMove.SplitsAcross` includes `InventoryToInventory`); the client refuses a split
+  it cannot make. A part moved inside a storage is refused by the client ("Only whole stacks move inside the
+  storage.").
+- **Storages** (`NativeStorage`). The stored and embedded-bag cells set `ItemSlotView.PicksAmount`, so the client
+  arms its own dial on them; the plugin gives that drag count the Classic count type and corner (one deferred
+  restyle of the client's label on the drag icon). The whole-stack prompt opens the client's `_whAmount`,
+  `_vipWhAmount` or `_clanWhAmount` (Classic quantity skin) with the client's texts, and the chosen count goes to
+  the client again; every refusal stays the client's.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `ItemSlotView.PicksAmount` (init), `DragLayer.AmountKey`, `DragLayer.ChosenAmount(Dictionary)`, `StackDial` (`Applies`, `Turn`, `Amount`, `Whole`), `UiTheme.GoldBright`, `Platform.TouchUi` | API | Wheel dial on the Classic and storage cells, amount of a drop |
+| `DragLayer` node `DragLayer` (root `CanvasLayer`) and its `DragLayerRoot`; the drag icon's count `Label` | Node | Classic type for the client's drag count on storage cells (skipped when the layout differs) |
+| `DepositSlot`, `VipDepositSlot`, `ClanDepositSlot` `(int abs, int target, int? amount)` | M | Commit a stored count (prompt or wheel part) |
+| `AskWithdraw`, `AskVipWithdraw`, `AskClanWithdraw` `(int index, int target, int? amount)` | M | Commit a taken-out count; the client refuses a locked vault or missing clan rights |
+| `DropOnWarehouse`, `DropOnVipVault`, `DropOnClanWh` `(int, Variant)`; `WhTakeFromBag`, `VipTakeFromBag`, `ClanTakeFromBag` `(int)` | M | Whatever does not ask: singles, wheel parts, vault keys, refusals, moves inside the storage |
+| `_whShown`, `_vipWhShown`, `_clanWhShown`, `ClanCanWithdraw`, static `IsVipVaultKey(int)` | F/P/M | Prompt guards: a stale prompt does nothing, refusals stay the client's |
+| `_whCompanion`, `_vipCompanion`, `_clanCompanion`; `BagCompanion.Take`, `IntoBag` (`Func<int, int, int?, bool>`, init) | F/P | A right-click or drop in the Classic bag window while a storage is open takes the same route |
+| `OfferSlot(int abs, int? amount)` | M | Trade: a wheel part is offered without the prompt; the whole stack still asks (`OfferSlot(int)` on older clients) |
 
 ### Preview-only members
 

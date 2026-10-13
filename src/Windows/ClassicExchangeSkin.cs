@@ -137,7 +137,14 @@ public partial class ClassicExchangePanel : Control
             cells[i].Bind(i<groups.Length?groups[i].First().o:null,-1,i<groups.Length?groups[i].Sum(e=>e.o.Count):0);
     }
     public TradeItem? BagItem(int abs)=>_world==null?null:KnightOnlineUiClassic.Native.NativeTrade.Bag(_world).Where(b=>b.Slot==abs).Select(b=>(TradeItem?)b).FirstOrDefault();
-    public void Offer(int abs) {if(OfferBlocked || _world==null || BagItem(abs)==null)return;KnightOnlineUiClassic.Native.NativeTrade.Offer(_world,abs);}
+    /// <summary>Offers a bag slot; a part picked with the mouse wheel is offered at once, the whole stack asks the count.</summary>
+    public void Offer(int abs,int? picked=null)
+    {
+        if(OfferBlocked || _world==null || BagItem(abs) is not { } item)return;
+        KnightOnlineUiClassic.Native.NativeTrade.Offer(_world,abs,ClassicStackDial.Part(picked,item.Count));
+    }
+    /// <summary>Offers the bag slot a drop carries, with the amount picked on the drag.</summary>
+    public void OfferDrop(Variant data)=>Offer(data.AsGodotDictionary()["invFrom"].AsInt32(),ClassicStackDial.Picked(data));
     public void Tooltip(TradeItem? item,bool bag,bool over)
     {
         if(_world==null) return;
@@ -201,6 +208,7 @@ public partial class ClassicExchangeCell : ClassicSlot
         if(!bag)_socket=owner.OfferSocket();
         OnActivate=bag?slot=>owner.Offer(slot):null;OnDoubleClick=OnActivate;
         OnHover=(_,over)=>_owner.Tooltip(_item,_bag,over);
+        PicksAmount=bag;
     }
     public TradeItem? Item => _item;
     /// <summary>Shows an item (or an empty cell); bag cells keep their bag slot, offer cells the item's source slot.</summary>
@@ -212,7 +220,7 @@ public partial class ClassicExchangeCell : ClassicSlot
     }
     public override Variant _GetDragData(Vector2 atPosition)=>_bag && !_owner.OfferBlocked?base._GetDragData(atPosition):default;
     public override bool _CanDropData(Vector2 atPosition,Variant data)=>_acceptsOffer && _owner.ValidDrop(data);
-    public override void _DropData(Vector2 atPosition,Variant data){if(_CanDropData(atPosition,data))_owner.Offer(data.AsGodotDictionary()["invFrom"].AsInt32());}
+    public override void _DropData(Vector2 atPosition,Variant data){if(_CanDropData(atPosition,data))_owner.OfferDrop(data);}
     public override void _Draw(){if(_socket!=null)DrawStyleBox(_socket,new Rect2(Vector2.Zero,Size));}
 }
 
@@ -221,5 +229,5 @@ public partial class ClassicExchangeDrop : Control
     private readonly ClassicExchangePanel _owner;
     public ClassicExchangeDrop(ClassicExchangePanel owner){_owner=owner;MouseFilter=MouseFilterEnum.Stop;}
     public override bool _CanDropData(Vector2 p,Variant data)=>_owner.ValidDrop(data);
-    public override void _DropData(Vector2 p,Variant data){if(_CanDropData(p,data))_owner.Offer(data.AsGodotDictionary()["invFrom"].AsInt32());}
+    public override void _DropData(Vector2 p,Variant data){if(_CanDropData(p,data))_owner.OfferDrop(data);}
 }

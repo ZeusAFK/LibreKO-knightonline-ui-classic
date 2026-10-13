@@ -5,9 +5,9 @@ using LibreKO.Domain;
 namespace KnightOnlineUiClassic.Native;
 
 /// <summary>
-/// Inventory services the Classic inventory needs beyond <see cref="LibreKO.Plugins.IGameInventory"/>:
-/// partial magic bag moves, the destination of a magic bag right-click, and item destruction through the
-/// client's bulk destroy queue, confirmed by the Classic prompt.
+/// Inventory services the Classic inventory needs beyond <see cref="LibreKO.Plugins.IGameInventory"/>: the
+/// destination of a magic bag right-click, and item destruction through the client's bulk destroy queue,
+/// confirmed by the Classic prompt. Partial moves use the client's <c>IGameInventory.MoveAmount</c>.
 /// </summary>
 public static class NativeInventory
 {
@@ -21,13 +21,6 @@ public static class NativeInventory
                 return world;
             return Native.CurrentWorld;
         }
-    }
-
-    /// <summary>Moves <paramref name="count"/> items; clients without partial moves move the whole stack.</summary>
-    public static void MoveAmount(int from, int to, int count)
-    {
-        if (World is { } world && Native.TryCall(world, "MoveBetween", out _, from, to, count)) return;
-        Plugin.Kit.Game.Inventory.Move(from, to);
     }
 
     /// <summary>

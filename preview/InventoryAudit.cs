@@ -298,7 +298,7 @@ public partial class Preview
             inv[sealedSlot]=keep.Item1;inv[wornSlot]=keep.Item2;Refresh();await Frames();
         }
         var transferPrompt=(QuantityPrompt)typeof(InventoryWindow).GetField("_movePrompt",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(actual)!;
-        Invoke("RequestMove",InventoryConstants.InventoryStart+1,InventoryConstants.MagicBagStart);await Frames();
+        Invoke("RequestMove",InventoryConstants.InventoryStart+1,InventoryConstants.MagicBagStart,null!);await Frames();
         var amount=Descendants(transferPrompt).OfType<MoneyEdit>().Single();
         Require(transferPrompt.Visible && amount.Value==100,"Inventory-to-bag transfer asks for quantity, prefilled with the complete stack");
         await Capture("transfer-to-bag");
@@ -312,6 +312,55 @@ public partial class Preview
         bool acceptedQuantity=false;transferPrompt.Open(ItemData.Icon(stack),"Transfer","",100,25,n=>acceptedQuantity=n==25);
         transferPrompt.GetChildren().OfType<ClassicQuantityPanel>().Single()._Input(new InputEventKey {Pressed=true,Keycode=Key.Enter});
         Require(acceptedQuantity && !transferPrompt.Visible,"Enter confirms the selected amount exactly once");
+        // Mouse-wheel amounts (ff78eef): a part picked while dragging a stack moves at once, bag to bag and into a magic
+        // bag; the whole stack keeps the magic bag's count prompt.
+        {
+            object MoveField(string name){var step=DetailField(world,"_moveCur")!;return step.GetType().GetField(name)!.GetValue(step)!;}
+            // Split into a free cell: the last carried cell is emptied for the gesture and restored afterwards.
+            int free=InventoryConstants.InventoryStart+27;var freeItem=inv[free];inv[free]=default;Refresh();await Frames();
+            var source=all.Single(c=>c.Slot==InventoryConstants.InventoryStart+1);var target=all.Single(c=>c.Slot==free);
+            Vector2 start=source.GetGlobalRect().GetCenter(),end=target.GetGlobalRect().GetCenter();
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=start,GlobalPosition=start});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=true,Position=start,GlobalPosition=start});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=start+new Vector2(18,0),GlobalPosition=start+new Vector2(18,0),Relative=new Vector2(18,0),ButtonMask=MouseButtonMask.Left});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=end,GlobalPosition=end,Relative=end-start,ButtonMask=MouseButtonMask.Left});await Frames(2);
+            Require(GetViewport().GuiIsDragging(),"A carried stack is dragged with the pointer");
+            var dial=Descendants(GetTree().Root.GetNode("DragLayer")).OfType<ClassicStackDial>().Single();
+            var icon=(Control)dial.GetParent();
+            Require(dial.Text=="100" && dial.GetThemeColor("font_color")==Colors.White && dial.GetGlobalRect().End==icon.GetGlobalRect().End
+                && dial.GetThemeFontSize("font_size")==ItemCountStyle.FontSize,"The drag count shows the whole stack in white on the icon's bottom-right corner, in the cell's count type");
+            for(int i=0;i<3;i++)
+            {
+                Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.WheelDown,Pressed=true,Position=end,GlobalPosition=end,ButtonMask=MouseButtonMask.Left});
+                Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.WheelDown,Pressed=false,Position=end,GlobalPosition=end,ButtonMask=MouseButtonMask.Left});
+            }
+            await Frames(2);
+            Require(dial.Text=="97" && dial.GetThemeColor("font_color")==ClassicStackDial.PartColour,"The wheel picks a part of the stack, shown in gold");
+            {
+                var rect=new Rect2I((int)shell.Position.X,(int)shell.Position.Y,(int)actual.Size.X,(int)actual.Size.Y);
+                using var image=GetViewport().GetTexture().GetImage();using var crop=image.GetRegion(rect);crop.SavePng(output+"/"+prefix+"-bag-split-drag.png");
+                captures.Add(new {state="bag-split-drag",file=prefix+"-bag-split-drag.png",width=rect.Size.X,height=rect.Size.Y,selectedBag=bags[0].Slot,slotMapping=all.Concat(bags).Select(c=>c.Slot)});
+            }
+            Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=false,Position=end,GlobalPosition=end});await Frames(2);
+            Input.ParseInputEvent(new InputEventMouseMotion {Position=Vector2.Zero,GlobalPosition=Vector2.Zero});await Frames(2);
+            Require(!GetViewport().GuiIsDragging() && !transferPrompt.Visible && (bool)DetailField(world,"_moveInFlight")! && (ushort)MoveField("Amount")==97,
+                "Dropping the picked part on another bag cell moves it at once (the client's bag split)");
+            DetailCall(world,"OnItemMoveResult",true);
+            Require(inv[InventoryConstants.InventoryStart+1].Count==3 && inv[free].ItemId==stack && inv[free].Count==97,"The acknowledged split leaves the rest of the stack in place");
+            inv[free]=freeItem;inv[InventoryConstants.InventoryStart+1]=Item(stack,100);Refresh();await Frames();
+            var magic=bags[0];
+            var part=new Godot.Collections.Dictionary {{ClassicSlot.DragKeyFrom,InventoryConstants.InventoryStart+1},{ClassicSlot.DragKeyItem,stack},{DragLayer.AmountKey,40}};
+            Require(magic._CanDropData(Vector2.Zero,part),"A magic bag cell takes a dragged part");
+            magic._DropData(Vector2.Zero,part);
+            Require(!transferPrompt.Visible && (bool)DetailField(world,"_moveInFlight")! && (ushort)MoveField("Amount")==40 && (byte)MoveField("Dir")==ItemMove.InventoryToMagicBag,
+                "A part picked for a magic bag moves at once, without the count prompt");
+            DetailCall(world,"OnItemMoveResult",false);
+            var whole=new Godot.Collections.Dictionary {{ClassicSlot.DragKeyFrom,InventoryConstants.InventoryStart+1},{ClassicSlot.DragKeyItem,stack},{DragLayer.AmountKey,100}};
+            magic._DropData(Vector2.Zero,whole);await Frames();
+            Require(transferPrompt.Visible && amount.Value==100 && !(bool)DetailField(world,"_moveInFlight")!,"The whole stack dragged to a magic bag still asks the count");
+            transferPrompt.Close();
+            Require(inv[InventoryConstants.InventoryStart+1].Count==100 && inv[magic.Slot].Count==1,"Refused and cancelled moves keep both stacks");
+        }
         bool destroyed=false;var destroy=new ClassicInventoryDestroy(view,()=>destroyed=true);actual.AddChild(destroy);await Frames();
         await Capture("destroy-cancel");destroy._Input(new InputEventKey {Pressed=true,Keycode=Key.Escape});await Frames();
         Require(!destroyed,"Escape cancels native item destruction");
