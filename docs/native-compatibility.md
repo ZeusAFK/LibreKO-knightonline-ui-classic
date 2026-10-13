@@ -546,6 +546,23 @@ and `ChatEntry.Place`. `ChatCategories.Each` no longer lists `ChatCategory.ChatR
 | `ChatType.ChatRoom` (33) | API | `ClassicChatFormat.Channel` keeps its `room` tag and ink, because the client keeps the type, its category and its colour slot; no chat log line or bubble carries it |
 | `NationRoom.Nation`, `NationRow` nation marks (`assets/ui/nation_chat/karus.png`, `elmorad.png`) | Look | Rooms of either nation are listed and joined through the unchanged Classic nation chat skin; `chat-room-audit` checks a room of the other nation in the list, its password prompt, and its room window opened by the server's reply |
 
+### Changed shapes on upstream fa3cfc3
+
+Upstream fa3cfc3 (events on the USKO timetable, a new events window, chat reactions, whispers on the room thread)
+changed these members. The two compile breaks and the one run-time break below are fixed; the rest belong to the
+areas of the fa3cfc3 port (`research/upstream-fa3c/triage.md`) and degrade, log once and keep the native look
+until then.
+
+| Member | Kind | Used for |
+| --- | --- | --- |
+| `Net.WhisperLine` (removed), `Net.WhisperHistory(name)` now returns `IReadOnlyList<RoomPost>` | API | The whisper line restyle reads the `IGameWhispers.History` facade, which keeps `GameWhisperLine(Mine, Notice, Text)` on both clients (a voice note reads as "Voice note (m:ss)") |
+| `TempleEventType` moved from `LibreKO.Network` to `LibreKO.Domain` | API | Preview only (`ForgottenTempleAudit`) |
+| `World.DressCape` is an instance method (it hides capes in the Chaos dungeon) | M | The cape shop dresses the character's own body through the world instance, which binds the static and the instance shape |
+| `World+WhisperChat.Log`, `Scroll`, `Input` fields replaced by `Thread` (`ChatThreadView`) and `Composer` (`ChatComposer`) | F | Whisper skin: not restyled on fa3cfc3 yet |
+| `_roomScroll`, `_roomLog`, `_roomOlder`, `_roomComposerRow`, `_roomInput`, `_roomRecord`, `_roomSend`, `_roomRecordStrip`, `_roomRecordClock`, `_roomRecordLevel` replaced by `_roomThread` and `_roomComposer` | F | Chat room skin: `NativeChatRoom.Prepare` stops when a member is missing, so the room keeps the client's look inside the Classic frame |
+| `_ncPriJoin`, `_ncPriLeave`, `_ncPriOpen`, `_ncPriChange`, `_ncPriPersons`, `_ncSearch`, `_ncMembers*`, `OpenNationSearch`, `NationChatRules.Summary`, window ids `nation_chat_members`, `nation_chat_search` (removed) | F/M | The Private tab is a search row (`_ncSearchEdit`, Search, Create room); members live in the room window |
+| `_bifrostRemaining`, `_isEventRegistered`, `_eventType`, `EndBifrostEvent` (removed): sign-ups are `Net.SignUps` (`TempleSignUpBoard`: `Current`, `Registered`, `SecondsLeft`) | F | The Classic registration and countdown read the urgent and registered state from them |
+
 ### Preview-only members
 
 The preview fixtures also reach client internals that the plugin never touches at runtime. Examples are the
