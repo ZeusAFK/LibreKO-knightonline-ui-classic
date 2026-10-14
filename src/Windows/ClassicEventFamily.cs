@@ -361,7 +361,7 @@ public partial class ClassicFamilyGauge : ProgressBar
     private void Sync()
     {
         if (_source == null || !GodotObject.IsInstanceValid(_source)) return;
-        float shown = NativeApi.Get<float>(_source, "_frac");
+        float shown = NativeApi.Get<float>(_source, "frac");
         if (Math.Abs(Value - shown) > .0001f) Value = shown;
     }
 }

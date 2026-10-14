@@ -48,7 +48,7 @@ public abstract partial class ClassicEventPanel : Control
     public static Color Amount => new("dfc184");
 
     public HudWindow Window { get; }
-    protected World World { get; }
+    protected WorldRoot World { get; }
     protected readonly Control[] NativeControls;
     /// <summary>Everything except the title strip; hidden while the window is minimized.</summary>
     public Control Content { get; }
@@ -60,7 +60,7 @@ public abstract partial class ClassicEventPanel : Control
     private Vector2 _full;
     private bool _minimized;
 
-    protected ClassicEventPanel(HudWindow window, Control body, World world, Vector2 size, float alpha = 1)
+    protected ClassicEventPanel(HudWindow window, Control body, WorldRoot world, Vector2 size, float alpha = 1)
     {
         Window = window; World = world; Name = "classic_events"; TextureFilter = TextureFilterEnum.Nearest;
         NativeControls = CharacterDetailsSkin.Tree(body).OfType<Control>().ToArray();

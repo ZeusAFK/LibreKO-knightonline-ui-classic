@@ -60,7 +60,7 @@ public partial class InventoryPortrait : SubViewportContainer
         _viewport.ProcessMode=visible?ProcessModeEnum.Inherit:ProcessModeEnum.Disabled;
         _viewport.RenderTargetUpdateMode=visible ? SubViewport.UpdateMode.Always : SubViewport.UpdateMode.Disabled;
         if(!visible || !_scene.IsInsideTree() || !Plugin.Kit.Game.Available || !Godot.FileAccess.FileExists("res://assets/characters/index.json")) return;
-        var info=Net.I.LastEnter;
+        var info=Game.Session.Self.LastEnter;
         int[] gear=InventoryConstants.VisualSlots.Select(s=>Plugin.Kit.Game.Inventory.At(s).ItemId).ToArray();
         string signature=$"{info.Race}:{info.Face}:{info.Hair}:"+string.Join(',',gear);
         if(signature==_signature) return;

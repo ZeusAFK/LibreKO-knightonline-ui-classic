@@ -100,7 +100,7 @@ public static class ClassicNoticeBars
     /// <summary>The client's expand/collapse toggle on the original knob: + while one notice shows, − while all do.</summary>
     private static void SkinKnob(Button toggle)
     {
-        bool expanded = Net.I?.EventTitles.Expanded == true;
+        bool expanded = Game.Session.Zone.EventTitles.Expanded == true;
         if (Bar?.Find(expanded ? "btn_reduction" : "btn_extention") is not { } knob) return;
         toggle.Name = Knob;
         toggle.Text = "";
@@ -151,7 +151,7 @@ public static class ClassicNoticeBars
     {
         if (key == GmKey) return NativeGmList.Names.Count == 0 ? L.NoGms : string.Join("\n", NativeGmList.Names);
         if (Net.I is not { } net) return null;
-        foreach (var entry in net.EventTitles.Entries)
+        foreach (var entry in Game.Session.Zone.EventTitles.Entries)
             if (KeyOf(entry.Title) == key) return entry.Message.Length > 0 ? entry.Message : entry.Title;
         return null;
     }
@@ -176,7 +176,7 @@ public partial class ClassicNoticeStack : Control
     public string? OpenKey { get; private set; }
 
     /// <summary>The client world whose clock and clan state the group shows (the column's world).</summary>
-    public LibreKO.World? World { get; set; }
+    public LibreKO.Scene.WorldRoot? World { get; set; }
     /// <summary>The clock text ("12:00  Clear"); the client's clock by default.</summary>
     public Func<string?> ClockText { get; set; }
     /// <summary>The clan premium; the client's by default.</summary>
@@ -187,7 +187,7 @@ public partial class ClassicNoticeStack : Control
     public ClassicNoticeStack()
     {
         _column = null!; _premium = _clan = _bonus = _gm = null!; _time = _box = _clip = _thumb = null!; _timeValue = _text = null!;
-        ClockText = () => null; ClanSource = () => default; BonusSource = () => Net.NoClanBonus;
+        ClockText = () => null; ClanSource = () => default; BonusSource = () => ClanSession.NoClanBonus;
     }
 
     public ClassicNoticeStack(Container column)
@@ -196,7 +196,7 @@ public partial class ClassicNoticeStack : Control
         World = AncestorWorld(column);
         ClockText = () => NativePremium.Clock(World);
         ClanSource = () => NativePremium.ClanOf(World, Net.I);
-        BonusSource = () => Net.I?.ClanOnlineCount ?? Net.NoClanBonus;
+        BonusSource = () => Game.Session.Clan.ClanOnlineCount;
         MouseFilter = MouseFilterEnum.Ignore;
         TextureFilter = TextureFilterEnum.Nearest;
         _premium = new ClassicGroupBar(this, ClassicNoticeBars.PremiumKey) { Name = ClassicNoticeBars.PremiumBar };
@@ -264,15 +264,15 @@ public partial class ClassicNoticeStack : Control
         AddChild(_box);
         NativeGmList.Changed += Refresh;
         if (Net.I is { } net)
-            NativeHooks.Listen("Net.EventTitlesChangedEvent (notice group)", () => net.EventTitlesChangedEvent += Refresh, () => net.EventTitlesChangedEvent -= Refresh, this);
+            NativeHooks.Listen("Net.EventTitlesChangedEvent (notice group)", () => Game.Session.Zone.EventTitlesChangedEvent += Refresh, () => Game.Session.Zone.EventTitlesChangedEvent -= Refresh, this);
         NativeGmList.Attach(this);
         Sync();
     }
 
-    private static LibreKO.World? AncestorWorld(Node node)
+    private static LibreKO.Scene.WorldRoot? AncestorWorld(Node node)
     {
         for (var current = node.GetParent(); current != null; current = current.GetParent())
-            if (current is LibreKO.World world) return world;
+            if (current is LibreKO.Scene.WorldRoot world) return world;
         return null;
     }
 
@@ -342,7 +342,7 @@ public partial class ClassicNoticeStack : Control
     private NativePremium.ClanBonus Bonus()
     {
         int online = BonusSource();
-        return NativePremium.BonusLines(ClanSource().InClan && online != Net.NoClanBonus, online);
+        return NativePremium.BonusLines(ClanSource().InClan && online != ClanSession.NoClanBonus, online);
     }
 
     /// <summary>Premium, clan and bonus captions, the clock, and the client's own chips and clock kept hidden.</summary>

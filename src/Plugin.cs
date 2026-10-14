@@ -132,7 +132,7 @@ public sealed class Plugin : IPlugin
         {
             foreach (var child in node.GetChildren())
             {
-                if (child is LibreKO.World) continue;
+                if (child is LibreKO.Scene.WorldRoot) continue;
                 if (child.GetType().Assembly == plugin) found.Add(child);
                 else Visit(child);
             }

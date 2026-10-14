@@ -7,13 +7,13 @@ using LibreKO.Network;
 /// </summary>
 public static partial class PreviewFixtures
 {
-    public static void ShowQuestView(World world, QuestView view)
+    public static void ShowQuestView(WorldRoot world, QuestView view)
     {
         Call(world, "ShowQuestView", view);
         NativeNpc.QuestViewShown(world, view);
     }
 
-    public static void OnQuestView(World world, QuestView view)
+    public static void OnQuestView(WorldRoot world, QuestView view)
     {
         Call(world, "OnQuestView", view);
         if (!view.Notification && view.Open && view.Page != QuestPageKind.Conversation) NativeNpc.QuestViewShown(world, view);
@@ -24,7 +24,7 @@ public static partial class PreviewFixtures
     /// number), and a quest offer written as "[In progress] name" or "[Ready] name" passes its state as the
     /// client's state tag with the offer icon, as the client's own offer list does.
     /// </summary>
-    public static void AddNpcMenuButton(World world, string label, Action pressed)
+    public static void AddNpcMenuButton(WorldRoot world, string label, Action pressed)
     {
         var offer = System.Text.RegularExpressions.Regex.Match(label, @"^(?:\d+\.\s*)?\[(In progress|Ready|Completed)\]\s*(.+)$");
         if (!offer.Success) { Call(world, "AddNpcMenuButton", label, pressed, null, "", false); return; }
@@ -33,19 +33,19 @@ public static partial class PreviewFixtures
         Call(world, "AddNpcMenuButton", offer.Groups[2].Value, pressed, icon, state, state == "Ready");
     }
 
-    public static void BuildInZoneLeaveUi(World world)
+    public static void BuildInZoneLeaveUi(WorldRoot world)
     {
         Call(world, "BuildInZoneLeaveUi");
         NativeEvents.Prepare(world);
     }
 
-    public static void RefreshInZoneLeaveUi(World world)
+    public static void RefreshInZoneLeaveUi(WorldRoot world)
     {
         Call(world, "RefreshInZoneLeaveUi");
         NativeEvents.Refresh(world);
     }
 
-    public static void OnBbsList(World world, int page, int total, List<PartyBbsEntry> entries)
+    public static void OnBbsList(WorldRoot world, int page, int total, List<PartyBbsEntry> entries)
     {
         Call(world, "OnBbsList", page, total, entries);
         NativeParty.Listed(world, entries);
@@ -53,7 +53,7 @@ public static partial class PreviewFixtures
 }
 
 /// <summary>Reads the talking NPC's portrait descriptor for one audit world.</summary>
-public sealed class NpcPortraitProbe(World world)
+public sealed class NpcPortraitProbe(WorldRoot world)
 {
     public GameNpcPortrait? NpcPortrait => NativeNpc.DialogPortrait(world);
 }

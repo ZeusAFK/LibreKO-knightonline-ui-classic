@@ -21,9 +21,9 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
     private readonly VBoxContainer _winnerRows;
     private int _winnersRevision = -1;
 
-    public ClassicLotteryPanel(HudWindow window, Control body, World world) : base(window, body, world, Spec.Size)
+    public ClassicLotteryPanel(HudWindow window, Control body, WorldRoot world) : base(window, body, world, Spec.Size)
     {
-        AddClose(() => NativeApi.Call(World, "CloseLottery"));
+        AddClose(() => NativeApi.Call(World, "Lottery.Close"));
         Inset(Spec.Info);
         string[] captions = { "Time remaining", "Tickets sold", "Prize winners" };
         string[] values = { "lottery_time", "lottery_sold", "lottery_winners" };
@@ -91,7 +91,7 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         Refresh();
     }
 
-    private LibreKO.Network.LotteryState? State => NativeApi.Get<LibreKO.Network.LotteryState>(World, "_lotteryState");
+    private LibreKO.Network.LotteryState? State => NativeApi.Get<LibreKO.Network.LotteryState>(World, "Lottery.state");
 
     protected override void Refresh()
     {

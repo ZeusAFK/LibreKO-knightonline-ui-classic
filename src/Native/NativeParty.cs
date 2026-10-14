@@ -17,25 +17,25 @@ public static class NativeParty
     private const int MembersPerRecruitment = 8, ListingsPerPage = 10;
 
     /// <summary>The client's invite-by-name prompt (the Classic text prompt when the theme replaces it).</summary>
-    public static void InviteByName(World? world) { if (world != null) Native.TryCall(world, "OpenInvitePrompt", out _); }
+    public static void InviteByName(WorldRoot? world) { if (world != null) Native.TryCall(world, "Party.OpenInvitePrompt", out _); }
 
     /// <summary>The party board through the client's toggle, which also loads its list.</summary>
-    public static void ToggleBoard(World? world) { if (world != null) Native.TryCall(world, "ToggleSeekParty", out _); }
+    public static void ToggleBoard(WorldRoot? world) { if (world != null) Native.TryCall(world, "Party.ToggleSeek", out _); }
 
-    public static bool IsCommander(int memberId) => Net.I?.PartyCommanderId == memberId;
+    public static bool IsCommander(int memberId) => Game.Session.Party.PartyCommanderId == memberId;
 
     /// <summary>Shows the native member menu as the Classic context menu, titled with the member's name.</summary>
-    public static void PrepareMemberMenu(World? world, string name) =>
+    public static void PrepareMemberMenu(WorldRoot? world, string name) =>
         NativeContextMenus.MirrorPartyMenu(world)?.SetMeta(KnightOnlineUiClassic.Windows.ClassicContextMenu.TitleMeta, name);
 
-    public static void PrepareBoard(HudWindow window, World world)
+    public static void PrepareBoard(HudWindow window, WorldRoot world)
     {
-        if (Native.Get<VBoxContainer>(world, "_seekListBox") is not { } list) return;
+        if (Native.Get<VBoxContainer>(world, "Party.seekListBox") is not { } list) return;
         if (list.Name != "seek_members") list.Name = "seek_members";
-        NativeWindows.Name(Native.Get<OptionButton>(world, "_wantedClassOpt"), "seek_wanted_class");
-        NativeWindows.Name(Native.Get<LineEdit>(world, "_wantedMsgInput"), "seek_wanted_message");
-        NativeWindows.Name(Native.Get<HBoxContainer>(world, "_seekFilters"), "seek_filters");
-        if (Native.Get<HBoxContainer>(world, "_fullMoonRow") is { } fullMoon && NativeWindows.Name(fullMoon, "seek_full_moon"))
+        NativeWindows.Name(Native.Get<OptionButton>(world, "Party.wantedClassOpt"), "seek_wanted_class");
+        NativeWindows.Name(Native.Get<LineEdit>(world, "Party.wantedMsgInput"), "seek_wanted_message");
+        NativeWindows.Name(Native.Get<HBoxContainer>(world, "Party.seekFilters"), "seek_filters");
+        if (Native.Get<HBoxContainer>(world, "Party.fullMoonRow") is { } fullMoon && NativeWindows.Name(fullMoon, "seek_full_moon"))
         {
             // Enter, Party Board and (3277df5) Auto Entry, which joins the first fitting Full Moon Rift party.
             var actions = fullMoon.GetChildren().OfType<Button>().ToArray();
@@ -43,8 +43,8 @@ public static class NativeParty
             for (int i = 0; i < actions.Length && i < names.Length; i++) actions[i].Name = names[i];
             if (actions.Length > 2) actions[2].TooltipText = "Join the first open Full Moon Rift party that fits your class and level";
         }
-        NativeWindows.Name(Native.Get<Label>(world, "_seekHeading"), "seek_heading");
-        NativeWindows.Name(Native.Get<Label>(world, "_seekStatusLbl"), "seek_status");
+        NativeWindows.Name(Native.Get<Label>(world, "Party.seekHeading"), "seek_heading");
+        NativeWindows.Name(Native.Get<Label>(world, "Party.seekStatusLbl"), "seek_status");
         if (Native.Descendants(window.Body).OfType<Button>().FirstOrDefault(b => b.Text == "Invite by name") is { } byName) byName.Name = "seek_invite_name";
         // Rows from the previous page are queued for deletion; drop them before the new page is shown. Filter
         // changes rebuild the rows without a server reply, so rows are described as they arrive.
@@ -59,21 +59,21 @@ public static class NativeParty
         NativeWindows.Sync(window, () => Mirror(world));
         if (Net.I == null) return;
         var net = Net.I;
-        var weakWorld = new WeakReference<World>(world);
+        var weakWorld = new WeakReference<WorldRoot>(world);
         Action<int, int, List<PartyBbsEntry>> handler = (page, total, entries) =>
         {
             if (weakWorld.TryGetTarget(out var w) && GodotObject.IsInstanceValid(w)) Listed(w);
         };
-        NativeHooks.Listen("Net.PartyBbsListEvent", () => net.PartyBbsListEvent += handler, () => net.PartyBbsListEvent -= handler, world);
+        NativeHooks.Listen("Net.PartyBbsListEvent", () => Game.Session.Party.PartyBbsListEvent += handler, () => Game.Session.Party.PartyBbsListEvent -= handler, world);
     }
 
-    private static void Mirror(World world)
+    private static void Mirror(WorldRoot world)
     {
-        if (Native.Get<Button>(world, "_seekRegisterBtn") is { } register) register.SetMeta("seeking", Native.Get<bool>(world, "_seeking"));
-        if (Native.Get<Label>(world, "_seekPageLbl") is { } page && page.Text.StartsWith("Page ") && page.Text.Contains(" / "))
+        if (Native.Get<Button>(world, "Party.seekRegisterBtn") is { } register) register.SetMeta("seeking", Native.Get<bool>(world, "Party.seeking"));
+        if (Native.Get<Label>(world, "Party.seekPageLbl") is { } page && page.Text.StartsWith("Page ") && page.Text.Contains(" / "))
         {
-            int pages = Math.Max(1, (Native.Get<int>(world, "_seekTotal") + ListingsPerPage - 1) / ListingsPerPage);
-            page.SetMeta("page_caption", $"{Native.Get<int>(world, "_seekPage") + 1} / {pages}");
+            int pages = Math.Max(1, (Native.Get<int>(world, "Party.seekTotal") + ListingsPerPage - 1) / ListingsPerPage);
+            page.SetMeta("page_caption", $"{Native.Get<int>(world, "Party.seekPage") + 1} / {pages}");
         }
     }
 
@@ -81,20 +81,20 @@ public static class NativeParty
     /// Describes the board's rows after the client listed a page of seek-party entries: the rows show the
     /// entries that pass the client's board filter, without the player's own listing.
     /// </summary>
-    public static void Listed(World world, IReadOnlyList<PartyBbsEntry> _) => Listed(world);
+    public static void Listed(WorldRoot world, IReadOnlyList<PartyBbsEntry> _) => Listed(world);
 
-    public static void Listed(World world)
+    public static void Listed(WorldRoot world)
     {
-        if (Native.Get<VBoxContainer>(world, "_seekListBox") is not { } list) return;
-        var all = Native.Get<List<PartyBbsEntry>>(world, "_seekEntries") ?? new List<PartyBbsEntry>();
-        var filter = Native.Get<PartyBoardFilter>(world, "_seekFilter");
-        int zone = Native.Get<int>(world, "_zone"), level = Net.I?.Sheet.Level ?? 0;
-        string self = Net.I?.LastEnter.Name ?? "";
+        if (Native.Get<VBoxContainer>(world, "Party.seekListBox") is not { } list) return;
+        var all = Native.Get<List<PartyBbsEntry>>(world, "Party.seekEntries") ?? new List<PartyBbsEntry>();
+        var filter = Native.Get<PartyBoardFilter>(world, "Party.seekFilter");
+        int zone = Native.Get<int>(world, "zone"), level = Game.Session.Self.Sheet.Level;
+        string self = Game.Session.Self.LastEnter.Name ?? "";
         var entries = all.Where(e => filter.Passes(e, zone, level) && !string.Equals(e.Name, self, StringComparison.OrdinalIgnoreCase)).ToList();
         foreach (var old in list.GetChildren().Where(c => c.IsQueuedForDeletion()).ToArray()) list.RemoveChild(old);
         Mirror(world);
         var rows = list.GetChildren().OfType<PanelContainer>().ToArray();
-        var classes = Native.Get<Array>(typeof(World), "WantedClasses");
+        var classes = Native.Get<Array>(Native.StaticOwner("LibreKO.Features.Hud.PartyFeature"), "WantedClasses");
         for (int i = 0; i < rows.Length && i < entries.Count; i++)
         {
             var e = entries[i];
@@ -104,13 +104,13 @@ public static class NativeParty
             panel.SetMeta("seek_name", e.Name);
             panel.SetMeta("seek_level", e.IsLeaderRecruiting ? $"{e.MemberCount}/{MembersPerRecruitment}" : e.Level.ToString());
             panel.SetMeta("seek_class", e.IsLeaderRecruiting ? wanted : CharacterClassCatalog.DisplayName(e.ClassOrWanted));
-            panel.SetMeta("seek_detail", $"{Native.Call(typeof(World), "SeekZoneName", e.ZoneId)}\n{e.Message}");
+            panel.SetMeta("seek_detail", $"{Native.Call(Native.StaticOwner("LibreKO.Features.Hud.PartyFeature"), "SeekZoneName", e.ZoneId)}\n{e.Message}");
             if (panel.GetChildCount() > 0 && panel.GetChild(0) is HBoxContainer row && !row.GetChildren().OfType<Button>().Any(b => b.Text == "Private"))
             {
                 string name = e.Name;
                 var whisper = new Button { Text = "Private", Visible = false, FocusMode = Control.FocusModeEnum.None };
                 whisper.AddThemeFontSizeOverride("font_size", 12);
-                whisper.Pressed += () => { if (GodotObject.IsInstanceValid(world)) Native.Call(world, "OpenWhisperWith", name); };
+                whisper.Pressed += () => { if (GodotObject.IsInstanceValid(world)) Native.Call(world, "ChatRoom.OpenWhisperWith", name); };
                 row.AddChild(whisper);
             }
         }

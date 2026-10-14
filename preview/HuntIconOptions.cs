@@ -24,7 +24,7 @@ public partial class Preview
             var catalog = new List<(string Key, string Name, string Path, Texture2D Texture)>();
             foreach (var skill in SkillData.All.Where(s => Regex.IsMatch(s.Name, "slash|scream|howling|cleave|sword|attack|strike|stab|pierc|shot|hunt|curse|target|soul|thrust", RegexOptions.IgnoreCase)).GroupBy(s => s.Name).Select(g => g.First()).Take(54))
                 if (SkillData.Icon(skill.Id) is { } icon) catalog.Add(("S" + skill.Id, skill.Name, $"res://assets/skills/icons/{skill.Id}.png", icon));
-            var items = (Dictionary<int, ItemData.Item>)typeof(ItemData).GetField("_items", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+            var items = (Dictionary<int, ItemData.Item>)typeof(ItemData).GetField("items", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
             foreach (var item in items.Values.Where(i => Regex.IsMatch(i.Name, "monster stone|skull|fang|claw|bone", RegexOptions.IgnoreCase)).GroupBy(i => i.Icon).Select(g => g.First()).Take(14))
                 if (ResourceLoader.Exists($"res://assets/items/icons/{item.Icon}.png")) catalog.Add(("I" + item.Id, item.Name, $"res://assets/items/icons/{item.Icon}.png", ItemData.Icon(item.Id)));
             for (int i = 0; i < catalog.Count; i++)

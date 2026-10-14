@@ -28,7 +28,7 @@ public partial class ClassicCollectionRacePanel : ClassicEventPanel
     private readonly Section[] _sections;
     private float _top;
 
-    public ClassicCollectionRacePanel(HudWindow window, Control body, World world)
+    public ClassicCollectionRacePanel(HudWindow window, Control body, WorldRoot world)
         : base(window, body, world, new Vector2(Spec.Width, Spec.MaxHeight))
     {
         _scroll = new ScrollContainer { Name = "cr_scroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };

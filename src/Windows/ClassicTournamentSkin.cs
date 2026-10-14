@@ -10,7 +10,7 @@ public partial class ClassicTournamentPanel : ClassicEventPanel
 {
     private readonly Label[] _native, _values;
 
-    public ClassicTournamentPanel(HudWindow window, Control body, World world) : base(window, body, world, Spec.Size)
+    public ClassicTournamentPanel(HudWindow window, Control body, WorldRoot world) : base(window, body, world, Spec.Size)
     {
         Inset(Spec.Info);
         string[] captions = { "Round", "Participants", "Status" };
@@ -33,7 +33,7 @@ public partial class ClassicTournamentPanel : ClassicEventPanel
         _values[0].Text = After(_native[0].Text);
         _values[1].Text = After(_native[1].Text);
         _values[2].Text = NativeEventWindows.Tournament(World).PendingSince != 0 ? "Please wait…" : _native[2].Text;
-        bool registered = NativeApi.Get<bool>(World, "_tournamentRegistered");
+        bool registered = NativeApi.Get<bool>(World, "Tournament.registered");
         _values[2].AddThemeColorOverride("font_color", NativeEventWindows.Tournament(World).PendingSince != 0 ? Amount : registered ? Ready : Muted);
     }
 }

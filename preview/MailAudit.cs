@@ -10,7 +10,7 @@ using System.Reflection;
 public sealed class MailAudit : IDisposable
 {
     private readonly Net _net=new();
-    private readonly World _world=new();
+    private readonly WorldRoot _world=new();
     private readonly KoConn _connection;
     private readonly TcpListener _listener=new(IPAddress.Loopback,0);
     private TcpClient? _peer;
@@ -18,16 +18,16 @@ public sealed class MailAudit : IDisposable
     private readonly List<MailEntry> _mails=Enumerable.Range(1,3).Select(id=>new MailEntry { Id=id,Sender="Guardian",Subject="Mail "+id,SentAt=DateTime.UtcNow }).ToList();
     public IGameWindows Windows { get; }
     public int RefreshRequests { get; private set; }
-    private static void Field(World world,string name,object value) => typeof(World).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(world,value);
+    private static void Field(WorldRoot world,string name,object value) => Native.Set(world, name, value);
     public MailAudit()
     {
-        _connection=(KoConn)typeof(Net).GetField("_conn",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(_net)!;
+        _connection=(KoConn)typeof(Net).GetField("conn",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(_net)!;
         typeof(Net).GetProperty("I")!.SetValue(null,_net);
-        Windows=(IGameWindows)Activator.CreateInstance(typeof(World).GetNestedType("PluginGameBridge",BindingFlags.NonPublic)!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{_world},null)!;
+        Windows=(IGameWindows)Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{_world},null)!;
         var list=new VBoxContainer();var unread=new CheckButton();_world.AddChild(list);_world.AddChild(unread);
-        Field(_world,"_mailList",list);Field(_world,"_mailUnreadOnly",unread);Field(_world,"_mails",_mails);
-        Field(_world,"_mailSelectedId",999);
-        _net.MailReadEvent+=(id,ok,body)=>typeof(World).GetMethod("OnMailRead",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(_world,new object[]{id,ok,body});
+        Field(_world,"Mail.list",list);Field(_world,"Mail.unreadOnlyToggle",unread);Field(_world,"Mail.mails",_mails);
+        Field(_world,"Mail.selectedId",999);
+        Game.Session.Mail.MailReadEvent+=(id,ok,body)=>Native.Call(_world, "Mail.OnRead", id, ok, body);
     }
     public async Task Connect()
     {
@@ -39,10 +39,10 @@ public sealed class MailAudit : IDisposable
         if(!_connection.Connected) throw new Exception("Mail loopback fixture did not connect");
         SetCount(3);
         AuditAttachmentWireFormat();
-        _net.SendMailClaimAttachment(42,1);
+        Game.Requests.Mail.ClaimAttachment(42,1);
         byte[] claim=new byte[13];using var timeout=new CancellationTokenSource(4000);
         await _peer.GetStream().ReadExactlyAsync(claim,timeout.Token);
-        if(!claim.SequenceEqual(new byte[]{0xaa,0x55,7,0,(byte)GameOpcodes.GS_MAIL,Net.MailSubClaimAttachment,42,0,0,0,1}.Concat(new byte[]{0x55,0xaa})))
+        if(!claim.SequenceEqual(new byte[]{0xaa,0x55,7,0,(byte)GameOpcodes.GS_MAIL,LibreKO.Network.Requests.MailRequests.MailSubClaimAttachment,42,0,0,0,1}.Concat(new byte[]{0x55,0xaa})))
             throw new Exception("Single attachment claim wire format changed");
     }
     private void Handle(Packet packet) => typeof(Net).GetMethod("HandleMail",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(_net,new object[]{packet});
@@ -50,7 +50,7 @@ public sealed class MailAudit : IDisposable
     {
         List<MailEntry>? parsed=null;
         void Receive(List<MailEntry> rows)=>parsed=rows;
-        _net.MailListEvent+=Receive;
+        Game.Session.Mail.MailListEvent+=Receive;
         var packet=new Packet(GameOpcodes.GS_MAIL);packet.WriteByte(Net.MailSubList);packet.WriteUShort(2);
         for(int id=1;id<=2;id++)
         {
@@ -59,7 +59,7 @@ public sealed class MailAudit : IDisposable
             packet.WriteByte(1);packet.WriteByte((byte)MailAttachmentKind.Item);packet.WriteInt(810418000);packet.WriteInt(20);packet.WriteInt(9);
             packet.WriteByte((byte)(id==1?MailKind.Store:MailKind.Player));
         }
-        Handle(packet);_net.MailListEvent-=Receive;
+        Handle(packet);Game.Session.Mail.MailListEvent-=Receive;
         if(parsed?.Count!=2 || parsed[1].Id!=2 || parsed[0].Kind!=MailKind.Store || parsed[1].Kind!=MailKind.Player || parsed.Any(m=>m.Items.Single().Remaining!=11))
             throw new Exception("Mail list lost record alignment or claimed attachment counts");
     }

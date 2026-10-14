@@ -35,21 +35,21 @@ public partial class Preview
         GetWindow().Size = new Vector2I(1000, 760);
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1000, 760), MouseFilter = MouseFilterEnum.Ignore });
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        var world = new World();
+        var world = PreviewFixtures.Prepared(new WorldRoot());
         using var npcs = JsonDocument.Parse(System.IO.File.ReadAllText(ProjectSettings.GlobalizePath("res://../../LibreKO/Server/LibreKO.Game/Seed/Data/Npcs.json")));
         var patrick = npcs.RootElement.EnumerateArray().First(n => n.GetProperty("Id").GetInt32() == 13013);
-        var scene = (PackedScene?)typeof(World).GetMethod("ResolveMobScene", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(world, new object[] { patrick.GetProperty("ModelId").GetInt32() });
+        var scene = (PackedScene?)Native.Call(world, "EntityLooksSystem.ResolveMobScene", patrick.GetProperty("ModelId").GetInt32());
         if (scene == null) throw new Exception("Guard Patrick's source model is unavailable");
         scene.Instantiate<Node3D>().Free();
         var portrait = await NpcPortraitCache.Get(this, new GameNpcPortrait("quest-design-patrick", "[Guard] Patrick", 50, () => scene.Instantiate<Node3D>()));
         if (portrait == null) throw new Exception("The actual NPC portrait was not captured");
         var magpie = npcs.RootElement.EnumerateArray().First(n => n.GetProperty("Id").GetInt32() == 31506);
-        var magpieScene = (PackedScene?)typeof(World).GetMethod("ResolveMobScene", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(world, new object[] { magpie.GetProperty("ModelId").GetInt32() });
+        var magpieScene = (PackedScene?)Native.Call(world, "EntityLooksSystem.ResolveMobScene", magpie.GetProperty("ModelId").GetInt32());
         if (magpieScene == null) throw new Exception("Magpie's source model is unavailable");
         var magpiePortrait = await NpcPortraitCache.Get(this, new GameNpcPortrait("quest-design-magpie", "[Lunar Lady] Magpie", 50, () => magpieScene.Instantiate<Node3D>()));
         if (magpiePortrait == null) throw new Exception("The actual multi-objective NPC portrait was not captured");
         ItemData.EnsureLoaded();
-        var items = (Dictionary<int, ItemData.Item>)typeof(ItemData).GetField("_items", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+        var items = (Dictionary<int, ItemData.Item>)typeof(ItemData).GetField("items", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
         _designHelmetIds = new[] { "Half Plate Helmet", "Rogue Helmet", "Mage Linen Cap", "Priest Helmet" }
             .Select(name => items.Values.First(i => i.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && i.Icon > 0).Id + 5).ToArray();
         System.IO.File.WriteAllText(System.IO.Path.Combine(output, (nation == 1 ? "karus" : "human") + "-items.json"), JsonSerializer.Serialize(_designHelmetIds.Select(id => new { id, name = ItemData.Get(id)?.Name, icon = ItemData.Get(id)?.Icon, extensionIcon = ItemData.ExtFor(id)?.Icon })));

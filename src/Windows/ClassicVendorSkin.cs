@@ -23,7 +23,7 @@ public static class ClassicVendorSkin
         var footer = CharacterDetailsSkin.Tree(body).OfType<FooterBand>().Single();
         window.VisibilityChanged += () => { if (window.Visible) footer.ResetStatus(); };
         Node? root = window;
-        while (root != null && root is not World) root = root.GetParent();
+        while (root != null && root is not WorldRoot) root = root.GetParent();
         if (root != null)
             foreach (var prompt in root.GetChildren().OfType<QuantityPrompt>().Where(p => p.Layer == 76))
             { ClassicTradeQuantity.Apply(prompt, window); panel.BindQuantity(prompt); }

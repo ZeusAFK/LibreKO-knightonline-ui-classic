@@ -21,7 +21,7 @@ public static class ClassicExchangeSkin
         foreach(var child in window.GetChildren().OfType<Control>()) child.Visible=false;
         window.AddThemeStyleboxOverride("panel",new StyleBoxEmpty());
         var panel=new ClassicExchangePanel(window,body,grip,close); window.AddChild(panel); window.ResetSize();
-        Node root=window; while(root.GetParent()!=null && root is not World) root=root.GetParent();
+        Node root=window; while(root.GetParent()!=null && root is not WorldRoot) root=root.GetParent();
         foreach(var layer in CharacterDetailsSkin.Tree(root).OfType<CanvasLayer>().Where(l=>l.HasMeta("exchange_amount"))) ClassicExchangeAmount.Apply(layer,window);
         foreach(var layer in CharacterDetailsSkin.Tree(root).OfType<CanvasLayer>().Where(l=>l.HasMeta("exchange_request") || l.HasMeta("exchange_wait") || l.HasMeta("exchange_final"))) ClassicExchangeNotice.Apply(layer);
         return panel;
@@ -36,7 +36,7 @@ public static class ClassicExchangeSkin
 public partial class ClassicExchangePanel : Control
 {
     public readonly HudWindow Window;
-    private World? _world => KnightOnlineUiClassic.Native.NativeTrade.WorldOf(Window);
+    private WorldRoot? _world => KnightOnlineUiClassic.Native.NativeTrade.WorldOf(Window);
     private readonly LayoutNode _art;
     private readonly Label _myName, _theirName, _myGold, _theirGold, _wallet;
     private readonly Button _confirm, _otherConfirm, _gold;

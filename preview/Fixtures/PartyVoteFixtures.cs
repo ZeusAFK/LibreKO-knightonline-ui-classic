@@ -50,12 +50,12 @@ public static partial class PreviewFixtures
             if (buffs.Count == 10) break;
         }
         foreach (var m in members)
-            net.SeedPartyMemberPreview(m.Id, m.PingMs, m.LevelPermille, buffs.Skip(m.FirstBuff).Take(m.Buffs).ToArray());
+            Game.Session.Party.SeedMemberPreview(m.Id, m.PingMs, m.LevelPermille, buffs.Skip(m.FirstBuff).Take(m.Buffs).ToArray());
         return buffs;
     }
 
     /// <summary>Moves a world canvas layer into the preview scene so the windows the client adds to it render.</summary>
-    public static T Adopt<T>(World world, string layer, Node scene) where T : CanvasLayer
+    public static T Adopt<T>(WorldRoot world, string layer, Node scene) where T : CanvasLayer
     {
         var node = Field<T>(world, layer);
         node.Reparent(scene);

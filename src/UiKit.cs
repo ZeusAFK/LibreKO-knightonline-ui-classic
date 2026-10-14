@@ -16,7 +16,7 @@ public sealed class UiKit
 
     public PluginContext Context { get; }
     public PluginGame Game => Context.Game;
-    public int Nation => Game.Available ? Game.Character.Nation : LibreKO.Network.Net.I?.LastEnter.Nation ?? 2;
+    public int Nation => Game.Available ? Game.Character.Nation : LibreKO.Game.Session.Self.LastEnter.Nation;
     public PluginLog Log => Context.Log;
     public int LayoutCount { get; }
     public int TextureCount { get; }

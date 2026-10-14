@@ -24,21 +24,21 @@ public partial class Preview
         GetWindow().ContentScaleMode=Window.ContentScaleModeEnum.Disabled;GetWindow().Size=new Vector2I(900,680);
         AddChild(new ColorRect {Color=new Color("252822"),Size=new Vector2(900,680),MouseFilter=MouseFilterEnum.Ignore});
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
-        net.Sheet.SeedWealth(1_786_597_823,50_000);net.Sheet.SetMaxWeight(17_100);net.Sheet.SeedProgress(83,0,100);
-        typeof(Net).GetProperty("LastEnter")!.SetValue(net,new MyInfo {Nation=nation,Class=nation*100+6,Race=nation==1?1:11,
+        Game.Session.Self.Sheet.SeedWealth(1_786_597_823,50_000);Game.Session.Self.Sheet.SetMaxWeight(17_100);Game.Session.Self.Sheet.SeedProgress(83,0,100);
+        Native.Set(Game.Session.Self, "LastEnter",new MyInfo {Nation=nation,Class=nation*100+6,Race=nation==1?1:11,
             Name="Inventory Preview",Gear=new int[8],Inventory=new NativeSlot[InventoryConstants.InventoryTotal]});
         ItemData.EnsureLoaded();
-        var world=new World();
-        typeof(World).GetField("_selfClass",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(world,nation*100+6);
-        typeof(World).GetField("_selfRace",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(world,nation==1?1:11);
-        var inv=(Inventory)typeof(World).GetProperty("Inv",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(world)!;
+        var world=PreviewFixtures.Prepared(new WorldRoot());
+        Native.Set(Game.Session, "Self.Class", nation*100+6);
+        Native.Set(Game.Session, "Self.Race", nation==1?1:11);
+        var inv=(Inventory)Game.Session.Self.Inventory;
         inv.EnsureLength(InventoryConstants.InventoryTotal);
-        DetailCall(world,"BuildInventoryPanel");
-        var bridge=Activator.CreateInstance(typeof(World).GetNestedType("PluginGameBridge",BindingFlags.NonPublic)!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
+        DetailCall(world,"InventoryWindow.BuildPanel");
+        var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
         var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;
         attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
         NativeGame.Source=new ClientGame();
-        ((CanvasLayer)DetailField(world,"_itemTipLayer")!).Reparent(this);
+        ((CanvasLayer)DetailField(world,"ItemTooltip.tipLayer")!).Reparent(this);
         var shell=new Control {Position=new Vector2(300,42)};AddChild(shell);
         bool closed=false;
         var host=(WindowHost)Create(typeof(WindowHost),"inventory","Inventory",shell,(Action)(()=>closed=true));
@@ -50,24 +50,24 @@ public partial class Preview
         var checks=new List<string>();var captures=new List<object>();string prefix=nation==1?"karus":"human";
         void Require(bool valid,string message) {if(!valid) throw new Exception("INVENTORY_AUDIT: "+message);checks.Add(message);}
         Require(UiIcons.Get("system/move")!=null,"Updated client resource pack contains the upstream chat move icon");
-        var moveType=typeof(Net).GetNestedType("PendingItemMove",BindingFlags.NonPublic)!;
-        var pendingMove=typeof(Net).GetField("_pendingItemMove",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var moveType=Native.ClientType("LibreKO.Network.PendingItemMove")!;
+        var pendingMove=new PreviewFixtures.ClientMember("PendingMove");
         var moveHandler=typeof(Net).GetMethod("HandleItemMove",BindingFlags.Instance|BindingFlags.NonPublic)!;
         object PendingMove(byte direction,byte source,byte destination)=>Activator.CreateInstance(moveType,
             new object[]{direction,source,destination,(ushort)0}.Take(moveType.GetConstructors().Max(c=>c.GetParameters().Length)).ToArray())!;
-        var snapshot=net.LastEnter;
+        var snapshot=Game.Session.Self.LastEnter;
         snapshot.Inventory[InventoryConstants.InventoryStart]=new NativeSlot {ItemId=700011001,Count=1};
-        pendingMove.SetValue(net,PendingMove(ItemMove.InventoryToBagSlot,0,2));
+        pendingMove.SetValue(Game.Session.Items,PendingMove(ItemMove.InventoryToBagSlot,0,2));
         var accepted=new Packet(GameOpcodes.GS_ITEM_MOVE);accepted.WriteByte(1);accepted.WriteByte(1);moveHandler.Invoke(net,new object[]{accepted});
-        inv.Reset(net.LastEnter.Inventory);
+        inv.Reset(Game.Session.Self.LastEnter.Inventory);
         Require(inv[InventoryConstants.BagSlotFor(2)].ItemId==700011001 && inv[InventoryConstants.InventoryStart].IsEmpty,
             "Network acknowledgement preserves equipped bags when a new world reloads the cached inventory");
-        bool refused=false;net.ItemMoveResultEvent+=ok=>refused=!ok;
-        pendingMove.SetValue(net,PendingMove(ItemMove.BagSlotToInventory,2,0));
+        bool refused=false;Game.Session.Items.ItemMoveResultEvent+=ok=>refused=!ok;
+        pendingMove.SetValue(Game.Session.Items,PendingMove(ItemMove.BagSlotToInventory,2,0));
         var rejected=new Packet(GameOpcodes.GS_ITEM_MOVE);rejected.WriteByte(1);rejected.WriteByte(0);moveHandler.Invoke(net,new object[]{rejected});
-        Require(refused && pendingMove.GetValue(net)==null && net.LastEnter.Inventory[InventoryConstants.BagSlotFor(2)].ItemId==700011001,
+        Require(refused && pendingMove.GetValue(Game.Session.Items)==null && Game.Session.Self.LastEnter.Inventory[InventoryConstants.BagSlotFor(2)].ItemId==700011001,
             "Refused moves release the pending acknowledgement and preserve the zone snapshot");
-        Array.Clear(net.LastEnter.Inventory);inv.Reset(net.LastEnter.Inventory);
+        Array.Clear(Game.Session.Self.LastEnter.Inventory);inv.Reset(Game.Session.Self.LastEnter.Inventory);
         void Invoke(string method,params object[] args)=>typeof(InventoryWindow).GetMethod(method,BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(actual,args);
         void Refresh()=>typeof(PluginGame).GetMethod("RaiseInventory",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(game,null);
         int ItemFor(int type)=>ItemData.All().Where(i=>(i.Slot==type || type is 101 or 102 && i.Slot==100 || type==112 && i.Slot==127)
@@ -216,9 +216,9 @@ public partial class Preview
         using(var mask=((Texture2D)((ShaderMaterial)poisonPortrait.Material!).GetShaderParameter("portrait_mask")).GetImage())
             mask.SavePng(output+"/"+prefix+"-portrait-mask.png");
         var secondView=new SubViewport {Size=new Vector2I(176,260),OwnWorld3D=true,RenderTargetUpdateMode=SubViewport.UpdateMode.Disabled};AddChild(secondView);
-        var secondModel=CharacterPreview.Build(net.LastEnter.Race,0,InventoryConstants.VisualSlots.Select(s=>inv[s].ItemId).ToArray(),enableShine:true)!;
+        var secondModel=CharacterPreview.Build(Game.Session.Self.LastEnter.Race,0,InventoryConstants.VisualSlots.Select(s=>inv[s].ItemId).ToArray(),enableShine:true)!;
         secondView.AddChild(secondModel);await Frames(20);
-        var particleViews=Descendants(this).OfType<FxParticles>().Select(p=>(Part:p,Emitter:typeof(FxParticles).GetField("_shared",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(p) as GpuParticles3D)).Where(p=>p.Emitter!=null).ToArray();
+        var particleViews=Descendants(this).OfType<FxParticles>().Select(p=>(Part:p,Emitter:typeof(FxParticles).GetField("shared",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(p) as GpuParticles3D)).Where(p=>p.Emitter!=null).ToArray();
         Require(particleViews.Length>0 && particleViews.All(p=>p.Part.GetViewport()==p.Emitter!.GetViewport()),
             "Identical preview and world effects always acquire an emitter in their own viewport");
         await Capture("poison-raptor");
@@ -233,7 +233,7 @@ public partial class Preview
         foreach(var entry in costumeSeed) inv[entry.Slot]=entry.Item;
         Refresh();await Frames();
         var tipCell=all.First(c=>InventoryConstants.IsCospreSlot(c.Slot) && !c.Current.IsEmpty);tipCell.OnHover!(tipCell.Slot,true);await Frames();
-        Require(((CanvasLayer)DetailField(world,"_itemTipLayer")!).GetChildren().OfType<Control>().Any(c=>c.Visible),"Costume uses the actual native item tooltip");
+        Require(((CanvasLayer)DetailField(world,"ItemTooltip.tipLayer")!).GetChildren().OfType<Control>().Any(c=>c.Visible),"Costume uses the actual native item tooltip");
         tipCell.OnHover!(tipCell.Slot,false);
         foreach(var portrait in Descendants(actual).OfType<InventoryPortrait>())
         {
@@ -315,7 +315,7 @@ public partial class Preview
         // Mouse-wheel amounts (ff78eef): a part picked while dragging a stack moves at once, bag to bag and into a magic
         // bag; the whole stack keeps the magic bag's count prompt.
         {
-            object MoveField(string name){var step=DetailField(world,"_moveCur")!;return step.GetType().GetField(name)!.GetValue(step)!;}
+            object MoveField(string name){var step=DetailField(world,"InventoryWindow.moveCur")!;return step.GetType().GetField(name)!.GetValue(step)!;}
             // Split into a free cell: the last carried cell is emptied for the gesture and restored afterwards.
             int free=InventoryConstants.InventoryStart+27;var freeItem=inv[free];inv[free]=default;Refresh();await Frames();
             var source=all.Single(c=>c.Slot==InventoryConstants.InventoryStart+1);var target=all.Single(c=>c.Slot==free);
@@ -343,21 +343,21 @@ public partial class Preview
             }
             Input.ParseInputEvent(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=false,Position=end,GlobalPosition=end});await Frames(2);
             Input.ParseInputEvent(new InputEventMouseMotion {Position=Vector2.Zero,GlobalPosition=Vector2.Zero});await Frames(2);
-            Require(!GetViewport().GuiIsDragging() && !transferPrompt.Visible && (bool)DetailField(world,"_moveInFlight")! && (ushort)MoveField("Amount")==97,
+            Require(!GetViewport().GuiIsDragging() && !transferPrompt.Visible && (bool)DetailField(world,"InventoryWindow.moveInFlight")! && (ushort)MoveField("Amount")==97,
                 "Dropping the picked part on another bag cell moves it at once (the client's bag split)");
-            DetailCall(world,"OnItemMoveResult",true);
+            DetailCall(world,"InventoryWindow.OnItemMoveResult",true);
             Require(inv[InventoryConstants.InventoryStart+1].Count==3 && inv[free].ItemId==stack && inv[free].Count==97,"The acknowledged split leaves the rest of the stack in place");
             inv[free]=freeItem;inv[InventoryConstants.InventoryStart+1]=Item(stack,100);Refresh();await Frames();
             var magic=bags[0];
             var part=new Godot.Collections.Dictionary {{ClassicSlot.DragKeyFrom,InventoryConstants.InventoryStart+1},{ClassicSlot.DragKeyItem,stack},{DragLayer.AmountKey,40}};
             Require(magic._CanDropData(Vector2.Zero,part),"A magic bag cell takes a dragged part");
             magic._DropData(Vector2.Zero,part);
-            Require(!transferPrompt.Visible && (bool)DetailField(world,"_moveInFlight")! && (ushort)MoveField("Amount")==40 && (byte)MoveField("Dir")==ItemMove.InventoryToMagicBag,
+            Require(!transferPrompt.Visible && (bool)DetailField(world,"InventoryWindow.moveInFlight")! && (ushort)MoveField("Amount")==40 && (byte)MoveField("Dir")==ItemMove.InventoryToMagicBag,
                 "A part picked for a magic bag moves at once, without the count prompt");
-            DetailCall(world,"OnItemMoveResult",false);
+            DetailCall(world,"InventoryWindow.OnItemMoveResult",false);
             var whole=new Godot.Collections.Dictionary {{ClassicSlot.DragKeyFrom,InventoryConstants.InventoryStart+1},{ClassicSlot.DragKeyItem,stack},{DragLayer.AmountKey,100}};
             magic._DropData(Vector2.Zero,whole);await Frames();
-            Require(transferPrompt.Visible && amount.Value==100 && !(bool)DetailField(world,"_moveInFlight")!,"The whole stack dragged to a magic bag still asks the count");
+            Require(transferPrompt.Visible && amount.Value==100 && !(bool)DetailField(world,"InventoryWindow.moveInFlight")!,"The whole stack dragged to a magic bag still asks the count");
             transferPrompt.Close();
             Require(inv[InventoryConstants.InventoryStart+1].Count==100 && inv[magic.Slot].Count==1,"Refused and cancelled moves keep both stacks");
         }
@@ -369,11 +369,11 @@ public partial class Preview
         Require(destroyed,"Enter confirms native item destruction exactly once");
         // Bulk destroy: the Classic prompt drives the client's destroy queue.
         {
-            var queue=(DestroyQueue)DetailField(world,"_invDelQueue")!;
+            var queue=(DestroyQueue)DetailField(world,"InventoryWindow.invDelQueue")!;
             // The client keeps its queue while the inventory main window is open.
             var inventoryWindow=new HudWindow("inventory","Inventory") {Visible=true};
-            ((Dictionary<string,HudWindow>)DetailField(world,"_mainWindows")!)["Inventory"]=inventoryWindow;
-            var nativeCard=(Control)DetailField(world,"_invDelPanel")!;
+            ((Dictionary<string,HudWindow>)DetailField(world,"MainWindows.windows")!)["Inventory"]=inventoryWindow;
+            var nativeCard=(Control)DetailField(world,"InventoryWindow.invDelPanel")!;
             var picks=Enumerable.Range(InventoryConstants.InventoryStart,28).Where(s=>!inv[s].IsEmpty).Take(3).ToArray();
             Require(picks.Length==3 && KnightOnlineUiClassic.Native.NativeInventory.HasDestroyQueue,"The client offers a bulk destroy queue with carried items to queue");
             ClassicInventoryDestroy Prompt()=>actual.GetChildren().OfType<ClassicInventoryDestroy>().Single(p=>!p.IsQueuedForDeletion());
@@ -403,11 +403,11 @@ public partial class Preview
             Invoke("RequestDestroy",picks[0]);Invoke("RequestDestroy",picks[2]);await Frames();
             Prompt()._Input(new InputEventKey {Pressed=true,Keycode=Key.Enter});await Frames();
             Require(queue.Running && queue.Count==2,"Enter destroys the queue one server request at a time");
-            DetailCall(world,"OnItemRemoveResult",true,0);
+            DetailCall(world,"InventoryWindow.OnItemRemoveResult",true,0);
             Require(queue.Running && queue.Count==1,"Each acknowledgement sends the next queued item");
-            DetailCall(world,"OnItemRemoveResult",true,0);
+            DetailCall(world,"InventoryWindow.OnItemRemoveResult",true,0);
             Require(!queue.Running && queue.Count==0,"The last acknowledgement ends the queue");
-            ((Dictionary<string,HudWindow>)DetailField(world,"_mainWindows")!).Remove("Inventory");inventoryWindow.Free();
+            ((Dictionary<string,HudWindow>)DetailField(world,"MainWindows.windows")!).Remove("Inventory");inventoryWindow.Free();
         }
         view.Get<BaseButton>("btn_close")!.EmitSignal(BaseButton.SignalName.Pressed);Require(closed,"Original close action is preserved");
         string Hash(string path)=>Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(path)));
@@ -415,7 +415,7 @@ public partial class Preview
             clientHash=Hash(ProjectSettings.GlobalizePath("res://../../LibreKO/Client/.godot/mono/temp/bin/ExportRelease/LibreKO.dll")),captures,seeded,checks},new JsonSerializerOptions {WriteIndented=true}));
         GD.Print("INVENTORY_AUDIT_OK "+prefix+": "+captures.Count+" captures, "+checks.Count+" checks");
         Fx.BeginShutdown(GetTree().Root);shell.Free();
-        ((Control)DetailField(world,"_invContent")!).Free();world.Free();net.Free();await Frames(20);
+        ((Control)DetailField(world,"InventoryWindow.invContent")!).Free();world.Free();net.Free();await Frames(20);
         foreach(var release in (List<Action>)typeof(Shutdown).GetField("Releases",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!) release();
         await Frames(10);GC.Collect();GC.WaitForPendingFinalizers();await Frames(10);
     }

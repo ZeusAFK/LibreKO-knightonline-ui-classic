@@ -18,7 +18,7 @@ namespace KnightOnlineUiClassic.Windows;
 public partial class ClassicPartyHud : Control
 {
     private readonly IGameParty _party = null!;
-    private readonly Func<World?> _world = null!;
+    private readonly Func<WorldRoot?> _world = null!;
     private readonly ClassicPartyHudRow[] _rows = new ClassicPartyHudRow[8];
     private readonly Control _actions = new() { Name = "party_actions", MouseFilter = MouseFilterEnum.Ignore };
     private readonly Button _leave = null!, _meter = null!, _rejoin = null!, _commander = null!;
@@ -27,7 +27,7 @@ public partial class ClassicPartyHud : Control
 
     public ClassicPartyHud() { }
 
-    public ClassicPartyHud(IGameParty party, Func<World?> world)
+    public ClassicPartyHud(IGameParty party, Func<WorldRoot?> world)
     {
         _party = party; _world = world;
         Name = "classic_party_hud"; MouseFilter = MouseFilterEnum.Ignore; TextureFilter = TextureFilterEnum.Nearest;
@@ -75,7 +75,7 @@ public partial class ClassicPartyHud : Control
     }
 
     public IGameParty Party => _party;
-    public World? World => _world();
+    public WorldRoot? World => _world();
 
     public override void _Ready()
     {

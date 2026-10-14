@@ -23,17 +23,17 @@ public partial class Preview
         GetWindow().Size=new Vector2I(440,650);
         AddChild(new ColorRect {Color=new Color("252822"),Size=new Vector2(440,650),MouseFilter=MouseFilterEnum.Ignore});
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
-        net.Sheet.SeedProgress(83,0,100);
-        typeof(Net).GetProperty("LastEnter")!.SetValue(net,new MyInfo {Nation=nation,Class=nation*100+6,Race=nation==1?1:11,
+        Game.Session.Self.Sheet.SeedProgress(83,0,100);
+        Native.Set(Game.Session.Self, "LastEnter",new MyInfo {Nation=nation,Class=nation*100+6,Race=nation==1?1:11,
             Name="Skill Preview",Gear=new int[8],Inventory=new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]});
         SkillData.EnsureLoaded();ItemData.EnsureLoaded();
         byte[] seed={4,0,0,0,0,60,20,23,10};
-        net.Mastery.Seed(seed);
-        var world=new World();
-        var classField=typeof(World).GetField("_selfClass",BindingFlags.Instance|BindingFlags.NonPublic)!;
-        var zoneField=typeof(World).GetField("_zone",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        Game.Session.Self.Mastery.Seed(seed);
+        var world=PreviewFixtures.Prepared(new WorldRoot());
+        var classField=new PreviewFixtures.ClientMember("Session.Self.Class");
+        var zoneField=typeof(WorldRoot).GetField("zone",BindingFlags.Instance|BindingFlags.NonPublic)!;
         classField.SetValue(world,nation*100+6);
-        var bridge=Activator.CreateInstance(typeof(World).GetNestedType("PluginGameBridge",BindingFlags.NonPublic)!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
+        var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
         var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;
         attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
         var shell=new Control();AddChild(shell);
@@ -171,12 +171,12 @@ public partial class Preview
         Require(awakening._GetDragData(Vector2.Zero).VariantType==Variant.Type.Nil,"Awakening starts no drag");
         await Capture("master-awakening");
         // The owner's "62": one Master point at level 61 locks the two-point skill until level 62.
-        net.Sheet.SeedProgress(61,0,100);net.Mastery.Seed(new byte[]{0,0,0,0,0,40,20,23,1});Invoke("Rebuild");
+        Game.Session.Self.Sheet.SeedProgress(61,0,100);Game.Session.Self.Mastery.Seed(new byte[]{0,0,0,0,0,40,20,23,1});Invoke("Rebuild");
         awakening=Show(nation*100000+15802);
         Require(awakening.State==SkillLearnState.Locked && awakening.TooltipText.Contains("Reach level 62"),"Awakening at level 61 is locked until level 62");
         Require(awakening.GetNode<TextureRect>("icon").Texture==SkillData.EnigmaIcon(),"A locked skill shows the client's enigma icon");
         await Capture("master-locked-62");
-        net.Sheet.SeedProgress(83,0,100);net.Mastery.Seed(seed);
+        Game.Session.Self.Sheet.SeedProgress(83,0,100);Game.Session.Self.Mastery.Seed(seed);
         SetClass(6);
         var scream=Show(nation*100000+6802);
         Require(scream.State==SkillLearnState.Learned && scream.CanAdd && scream.CanDrag,"The active Master 2 skill Scream is placeable");
@@ -219,10 +219,10 @@ public partial class Preview
         Require(view.Get<BaseButton>("btn_right")!.Disabled,"Last-page arrow is disabled");
         Invoke("SelectTab",8);await Capture("master");
         // Mastery points the client applies without a plugin notification (a mastery plan) reach an open window.
-        net.Mastery.Seed(new byte[]{4,0,0,0,0,61,20,23,10});
+        Game.Session.Self.Mastery.Seed(new byte[]{4,0,0,0,0,61,20,23,10});
         await ToSignal(GetTree().CreateTimer(.4),SceneTreeTimer.SignalName.Timeout);
         Require(Label("string_4").Text=="61","An open window follows mastery points applied by the client");
-        net.Mastery.Seed(seed);
+        Game.Session.Self.Mastery.Seed(seed);
         await ToSignal(GetTree().CreateTimer(.4),SceneTreeTimer.SignalName.Timeout);
         // "+" spends on press and repeats while held, at the client's delays.
         var plus=view.Get<BaseButton>("btn_4")!;
@@ -232,7 +232,7 @@ public partial class Preview
         Require(!repeat.IsStopped() && Mathf.IsEqualApprox(repeat.WaitTime,SkillLearn.RepeatDelaySeconds),"Holding allocation starts the client's repeat delay");
         plus.EmitSignal(BaseButton.SignalName.ButtonUp);
         Require(repeat.IsStopped(),"Releasing allocation stops the repeat");
-        net.Mastery.SetPool(0);Invoke("Rebuild");await Capture("no-skill-points");
+        Game.Session.Self.Mastery.SetPool(0);Invoke("Rebuild");await Capture("no-skill-points");
         Require(view.Get<BaseButton>("btn_4")!.Disabled,"No mastery points disables allocation");
         // The client's Skill Preset entry sits in the free part of the Skill Point row and runs the client's Presets key.
         var presetButton=view.Get<Button>("btn_preset")!;
@@ -245,10 +245,10 @@ public partial class Preview
         Require(presetButton.GetThemeFont("font").GetStringSize(presetButton.Text,HorizontalAlignment.Left,-1,presetButton.GetThemeFontSize("font_size")).X<=presetButton.Size.X-4,
             "Skill Preset caption fits its button");
         bool presets=false;
-        ((Dictionary<KeyAction,Action>)typeof(World).GetField("_keyActions",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(world)!)[KeyAction.Presets]=()=>presets=true;
+        ((Dictionary<KeyAction,Action>)Native.Get<object>(world, "Hotkeys.keyActions")!)[KeyAction.Presets]=()=>presets=true;
         presetButton.EmitSignal(BaseButton.SignalName.Pressed);
         Require(presets,"Skill Preset opens the client's skill presets");
-        net.Mastery.SetPool(4);Invoke("Rebuild");Invoke("SelectTab",0);
+        Game.Session.Self.Mastery.SetPool(4);Invoke("Rebuild");Invoke("SelectTab",0);
         int skillId=Selected();var skill=SkillData.Get(skillId)!;
         string originalDescription=skill.Desc;
         try

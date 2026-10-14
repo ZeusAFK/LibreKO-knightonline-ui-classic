@@ -14,7 +14,7 @@ public static class ClassicMerchantSkin
         window.SetMeta("classic_merchant",true);
         if(window.Id=="wishfind") {var search=new ClassicMerchantSearch(window,body);window.AddChild(search);window.ResetSize();return search;}
         var panel=new ClassicMerchantPanel(window,body);window.AddChild(panel);window.ResetSize();
-        Node parent=window;while(parent.GetParent()!=null && parent is not World)parent=parent.GetParent();
+        Node parent=window;while(parent.GetParent()!=null && parent is not WorldRoot)parent=parent.GetParent();
         foreach(var layer in CharacterDetailsSkin.Tree(parent).OfType<CanvasLayer>().Where(l=>l.HasMeta("merchant_amount")))ClassicMerchantAmount.Apply(layer);
         foreach(var layer in CharacterDetailsSkin.Tree(parent).OfType<CanvasLayer>().Where(l=>l.HasMeta("merchant_advert")))ClassicMerchantAdvert.Apply(layer);
         return panel;
