@@ -142,7 +142,7 @@ public partial class ClassicStoragePanel : Control
         _status.Visible = _status.Text.Length > 0 && !_status.Text.StartsWith("Right-click")
             && !(_status is StatusLabel && _status.GetThemeColor(HotNames.FontColor) == UiTheme.TextDim);
         _status.TooltipText = _status.Text;
-        if (_status is not StatusLabel) _status.AddThemeColorOverride(HotNames.FontColor, new Color("e9b56a"));
+        if (_status is not StatusLabel) ThemeNames.SetColor(_status, HotNames.FontColor, new Color("e9b56a"));
         int page = Window.GetMeta(HotNames.StoragePage, 0).AsInt32(), pages = Window.GetMeta(HotNames.StoragePages, _vip ? 4 : 8).AsInt32();
         _prev.Disabled = page == 0; _next.Disabled = page >= pages - 1;
     }

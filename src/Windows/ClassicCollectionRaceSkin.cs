@@ -113,7 +113,7 @@ public partial class ClassicCollectionRacePanel : ClassicEventPanel
     protected override void Refresh()
     {
         _winnersRow.Visible = _nativeWinnersRow.Visible;
-        _completing.AddThemeColorOverride(HotNames.FontColor, _completing.Text == "0" ? Ink : Ready);
+        ThemeNames.SetColor(_completing, HotNames.FontColor, _completing.Text == "0" ? Ink : Ready);
         _complete.Visible = _nativeComplete.Visible;
         foreach (var section in _sections)
         {
@@ -132,7 +132,7 @@ public partial class ClassicCollectionRacePanel : ClassicEventPanel
         float content = _stack.GetMinimumSize().Y;
         float visible = Math.Min(content, Spec.MaxHeight - Spec.Top - Spec.Bottom);
         if (Math.Abs(_scroll.Size.Y - visible) > .5f) _scroll.Size = new Vector2(Spec.Content.Size.X, visible);
-        _lane.AddThemeConstantOverride(HotNames.MarginRight, content > visible + .5f ? 16 : 0);
+        ThemeNames.SetConstant(_lane, HotNames.MarginRight, content > visible + .5f ? 16 : 0);
         SetFullSize(new Vector2(Spec.Width, Mathf.Ceil(Spec.Top + visible + Spec.Bottom)));
         WholeItems(content, visible);
     }

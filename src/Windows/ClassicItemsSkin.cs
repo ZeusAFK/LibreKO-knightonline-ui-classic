@@ -435,22 +435,41 @@ public partial class ClassicItemsPanel : Control
     /// <summary>The help page's size: its measured content once the texts are laid out.</summary>
     public Vector2 HelpSize => _helpHeights != null ? ClassicItemsLayout.SealHelpSize(_helpHeights) : ClassicItemsLayout.Size("char_seal");
 
+    private static readonly StringName[] SealRowStates = { ThemeNames.Normal, ThemeNames.Hover, ThemeNames.Pressed, ThemeNames.HoverPressed, ThemeNames.Disabled };
+    private StyleBoxFlat? _sealSelected, _sealPlain;
+    private readonly StyleBoxEmpty _sealFocus = new();
+
+    private static StyleBoxFlat SealRow(bool selected)
+    {
+        var row = new StyleBoxFlat { BgColor = selected ? ClassicDarkFrame.SelectedRow : new Color(0, 0, 0, 0),
+            BorderColor = selected ? CaptionInk : Separator };
+        row.BorderWidthBottom = 1; if (selected) row.SetBorderWidthAll(1);
+        row.SetContentMargin(Side.Left, 8); row.SetContentMargin(Side.Right, 8);
+        return row;
+    }
+
+    /// <summary>
+    /// The slot rows' looks are built once and applied when the pick changes or when the client restyled a row: its
+    /// refresh resets the normal box and the font colour, which is what the check below looks at.
+    /// </summary>
     private void SyncCharacterSeal()
     {
         int picked = Window.GetMeta(PickedMeta, -1).AsInt32();
+        _sealSelected ??= SealRow(true);
+        _sealPlain ??= SealRow(false);
         for (int i = 0; Maybe<Button>("cs_slot_" + i) is { } slot; i++)
         {
             bool selected = i == picked;
-            var row = new StyleBoxFlat { BgColor = selected ? ClassicDarkFrame.SelectedRow : new Color(0, 0, 0, 0),
-                BorderColor = selected ? CaptionInk : Separator };
-            row.BorderWidthBottom = 1; if (selected) row.SetBorderWidthAll(1);
-            row.SetContentMargin(Side.Left, 8); row.SetContentMargin(Side.Right, 8);
-            foreach (string state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" })
-                slot.AddThemeStyleboxOverride(state, state == "focus" ? new StyleBoxEmpty() : row);
-            slot.AddThemeColorOverride(HotNames.FontColor, selected ? ClassicDesign.FrameTitle : ClassicDarkFrame.Value);
-            slot.AddThemeColorOverride(HotNames.FontHoverColor, ClassicDesign.FrameTitle);
-            slot.AddThemeColorOverride(HotNames.FontPressedColor, ClassicDesign.FrameTitle);
-            slot.AddThemeColorOverride(HotNames.FontDisabledColor, ClassicDesign.Muted * new Color(1, 1, 1, .8f));
+            var row = selected ? _sealSelected : _sealPlain;
+            var ink = selected ? ClassicDesign.FrameTitle : ClassicDarkFrame.Value;
+            if (slot.GetThemeStylebox(ThemeNames.Normal) == row && slot.HasThemeColorOverride(ThemeNames.FontColor)
+                && slot.GetThemeColor(ThemeNames.FontColor) == ink) continue;
+            foreach (var state in SealRowStates) slot.AddThemeStyleboxOverride(state, row);
+            slot.AddThemeStyleboxOverride(ThemeNames.Focus, _sealFocus);
+            slot.AddThemeColorOverride(ThemeNames.FontColor, ink);
+            slot.AddThemeColorOverride(ThemeNames.FontHoverColor, ClassicDesign.FrameTitle);
+            slot.AddThemeColorOverride(ThemeNames.FontPressedColor, ClassicDesign.FrameTitle);
+            slot.AddThemeColorOverride(ThemeNames.FontDisabledColor, ClassicDesign.Muted * new Color(1, 1, 1, .8f));
         }
     }
 
@@ -524,11 +543,3 @@ public partial class ClassicItemsPanel : Control
     }
 }
 
-/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
-file static class HotNames
-{
-    internal static readonly StringName FontColor = "font_color";
-    internal static readonly StringName FontDisabledColor = "font_disabled_color";
-    internal static readonly StringName FontHoverColor = "font_hover_color";
-    internal static readonly StringName FontPressedColor = "font_pressed_color";
-}

@@ -498,13 +498,13 @@ public partial class MykoQuestOption : MykoArtButton
         {
             var quest = state.ToLowerInvariant() switch { "in progress" => LibreKO.Network.QuestViewState.InProgress, "ready" => LibreKO.Network.QuestViewState.Claimable,
                 _ => LibreKO.Network.QuestViewState.Completed };
-            State.AddThemeColorOverride(HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : ClassicQuestStatus.Ink(quest));
+            ThemeNames.SetColor(State, HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : ClassicQuestStatus.Ink(quest));
             float width = State.GetThemeFont(HotNames.Font).GetStringSize(state, HorizontalAlignment.Left, -1, State.GetThemeFontSize(HotNames.FontSize)).X;
             ClassicNpcLayout.Place(State, new Rect2(Size.X - width - 8, 0, width, Size.Y));
             inset = width + 16;
         }
         Caption.Text = caption;
-        Caption.AddThemeColorOverride(HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : _ink);
+        ThemeNames.SetColor(Caption, HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : _ink);
         ClassicNpcLayout.Place(Caption, new Rect2(inset, 0, Math.Max(1, Size.X - 2 * inset), Size.Y));
         var font = Caption.GetThemeFont(HotNames.Font); int size = Caption.GetThemeFontSize(HotNames.FontSize);
         // The client repeats each caption as its tooltip; a row only needs it when the caption is cut.
@@ -538,7 +538,7 @@ public partial class MykoQuestAction : MykoArtButton
         if (Source.Text == _text && Source.Disabled == _disabled && Source.TooltipText == _tooltip) return;
         _text = Source.Text; _disabled = Source.Disabled; _tooltip = Source.TooltipText;
         Disabled = Source.Disabled; Caption.Text = Source.Text; TooltipText = Source.TooltipText;
-        Caption.AddThemeColorOverride(HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : _ink);
+        ThemeNames.SetColor(Caption, HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : _ink);
     }
 }
 
@@ -595,7 +595,7 @@ public partial class MykoQuestCell : Control
         if (First.GetThemeFont(HotNames.Font).GetStringSize(First.Text, HorizontalAlignment.Left, -1, size).X > First.Size.X) size--;
         First.AddThemeFontSizeOverride(HotNames.FontSize, size);
         Second.Text = upgrade.Success ? $"+{upgrade.Groups[2].Value} · {value}" : value;
-        Second.AddThemeColorOverride(HotNames.FontColor, done ? ClassicQuestStatus.Ink(LibreKO.Network.QuestViewState.Claimable) : _secondInk);
+        ThemeNames.SetColor(Second, HotNames.FontColor, done ? ClassicQuestStatus.Ink(LibreKO.Network.QuestViewState.Claimable) : _secondInk);
         TooltipText = name + (Source.TooltipText.Length > 0 ? "\n" + Source.TooltipText : "");
         if (selected != _selected) { _selected = selected; QueueRedraw(); }
     }

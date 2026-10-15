@@ -580,7 +580,7 @@ public partial class ClassicProgressionPanel : Control
                     if (Find<Label>(row + cell) is { } label && label.TooltipText != label.Text) label.TooltipText = label.Text;
                 // The player's own row reads in the gold of the selected Character-window entries.
                 if (i == ClassicProgressionLayout.Rank.Rows && Find<Label>(row + "_name") is { } self && self.GetThemeColor(HotNames.FontColor) != Gold)
-                    self.AddThemeColorOverride(HotNames.FontColor, Gold);
+                    ThemeNames.SetColor(self, HotNames.FontColor, Gold);
             }
     }
 
@@ -710,7 +710,7 @@ public partial class ClassicProgressionPanel : Control
             case "genie":
                 // The native status keeps its text; the Classic ink follows whether the reward is waiting.
                 if (Find<Label>("genie_daily_status") is { } status && Find<Button>("genie_claim") is { } claim)
-                    status.AddThemeColorOverride(HotNames.FontColor, claim.Disabled ? ClassicDesign.Muted : Gold);
+                    ThemeNames.SetColor(status, HotNames.FontColor, claim.Disabled ? ClassicDesign.Muted : Gold);
                 break;
         }
     }

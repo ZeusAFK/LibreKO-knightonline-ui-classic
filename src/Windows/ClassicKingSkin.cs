@@ -366,7 +366,7 @@ public partial class ClassicKingPanel : Control
                     var ink = SelectedCandidate == i ? Colors.White : Yellow;
                     foreach (var label in new[] { Find<Label>("king_vote_number_" + i), Find<Label>("king_vote_name_" + i), _clans[i] })
                     {
-                        label.AddThemeColorOverride(HotNames.FontColor, ink);
+                        ThemeNames.SetColor(label, HotNames.FontColor, ink);
                         // Long names and clans are trimmed to the original columns; the full text stays on hover.
                         label.TooltipText = label.Text; label.MouseFilter = label.Text.Length > 0 ? MouseFilterEnum.Pass : MouseFilterEnum.Ignore;
                     }
@@ -386,7 +386,7 @@ public partial class ClassicKingPanel : Control
         {
             int length = _counted.Text.Length;
             if (Window.Id == "nationintro") _count.Text = $"{length} / {_limit}";
-            _count.AddThemeColorOverride(HotNames.FontColor, length > _limit ? Refused : Plain);
+            ThemeNames.SetColor(_count, HotNames.FontColor, length > _limit ? Refused : Plain);
         }
     }
 

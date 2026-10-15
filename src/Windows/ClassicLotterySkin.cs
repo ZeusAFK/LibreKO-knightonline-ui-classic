@@ -100,10 +100,10 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         _coin.Visible = active && state!.ReqItemId is QuestData.CoinItemId or 0;
         // The client tints the timer only while it counts; derive the ink from the draw itself.
         _time.SelfModulate = Colors.White;
-        _time.AddThemeColorOverride(HotNames.FontColor, !active ? Muted : state!.RemainingSeconds <= 60 ? Refused : Ready);
+        ThemeNames.SetColor(_time, HotNames.FontColor, !active ? Muted : state!.RemainingSeconds <= 60 ? Refused : Ready);
         if (_status.SelfModulate != Colors.White)
         {
-            _status.AddThemeColorOverride(HotNames.FontColor, Semantic(_status.SelfModulate, Ink));
+            ThemeNames.SetColor(_status, HotNames.FontColor, Semantic(_status.SelfModulate, Ink));
             _status.SelfModulate = Colors.White;
         }
         foreach (var card in _rewards.GetChildren().OfType<PanelContainer>()) Cell(card);

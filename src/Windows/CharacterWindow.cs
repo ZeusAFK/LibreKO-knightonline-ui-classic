@@ -149,7 +149,7 @@ public partial class CharacterWindow : Control
         int[] emphasized = family switch { 1 => new[] { 0, 1 }, 2 => new[] { 1, 2 }, 3 => new[] { 3, 4 }, 4 => new[] { 0, 3 }, _ => Array.Empty<int>() };
         for (int i = 0; i < 5; i++)
             if (Find(_page, "stat_caption_" + i) is Label caption)
-                caption.AddThemeColorOverride(HotNames.FontColor, emphasized.Contains(i) ? ClassicReportDesign.Accent : ClassicReportDesign.Caption);
+                ThemeNames.SetColor(caption, HotNames.FontColor, emphasized.Contains(i) ? ClassicReportDesign.Accent : ClassicReportDesign.Caption);
         if (_titleButton != null) { _titleButton.Text = (panel?.TitleName ?? "Title: none").Replace("Title: ", ""); _titleButton.TooltipText = panel?.TitleName ?? "Choose a title"; }
         if (IsVisibleInTree()) RefreshPages();
     }

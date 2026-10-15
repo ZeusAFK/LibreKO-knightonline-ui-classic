@@ -453,7 +453,7 @@ public partial class ClassicGroupBar : Control
     public void SetCaption(string text, bool active)
     {
         if (Caption.Text != text) Caption.Text = text;
-        Caption.AddThemeColorOverride("font_color", active ? Colors.White : L.Muted);
+        ThemeNames.SetColor(Caption, ThemeNames.FontColor, active ? Colors.White : L.Muted);
     }
 
     public override void _Draw()

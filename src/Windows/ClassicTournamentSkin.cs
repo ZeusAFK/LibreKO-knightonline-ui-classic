@@ -1,4 +1,5 @@
 using NativeApi = KnightOnlineUiClassic.Native.Native;
+using KnightOnlineUiClassic.Layout;
 using Godot;
 using LibreKO;
 using Spec = KnightOnlineUiClassic.Layout.ClassicEventsLayout.Tournament;
@@ -34,7 +35,7 @@ public partial class ClassicTournamentPanel : ClassicEventPanel
         _values[1].Text = After(_native[1].Text);
         _values[2].Text = NativeEventWindows.Tournament(World).PendingSince != 0 ? "Please wait…" : _native[2].Text;
         bool registered = NativeApi.Get<bool>(World, "_tournamentRegistered");
-        _values[2].AddThemeColorOverride(HotNames.FontColor, NativeEventWindows.Tournament(World).PendingSince != 0 ? Amount : registered ? Ready : Muted);
+        ThemeNames.SetColor(_values[2], HotNames.FontColor, NativeEventWindows.Tournament(World).PendingSince != 0 ? Amount : registered ? Ready : Muted);
     }
 }
 

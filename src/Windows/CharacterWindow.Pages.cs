@@ -392,7 +392,7 @@ public partial class CharacterWindow
             button.Visible = id == "btn_knights" ? knights : id != "btn_clan" || !knights;
             button.SetPressedNoSignal(_activePage == page);
             foreach (var label in button.GetChildren().OfType<Label>())
-                label.AddThemeColorOverride(HotNames.FontColor, Plugin.Kit.Nation == 1 ? new Color("ece6d6") : new Color("f7de88"));
+                ThemeNames.SetColor(label, HotNames.FontColor, Plugin.Kit.Nation == 1 ? new Color("ece6d6") : new Color("f7de88"));
         }
     }
 

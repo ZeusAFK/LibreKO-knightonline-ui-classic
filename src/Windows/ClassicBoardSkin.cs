@@ -368,7 +368,7 @@ public partial class ClassicBoardPanel : Control
             case "report":
                 // The native gate and status colours follow the sheriff state; the gate keeps the Classic palette.
                 bool eligible = !Find<Button>("report_file").Disabled;
-                Find<Label>("report_gate").AddThemeColorOverride(HotNames.FontColor, eligible ? Highlight : Muted);
+                ThemeNames.SetColor(Find<Label>("report_gate"), HotNames.FontColor, eligible ? Highlight : Muted);
                 _voteYes!.Disabled = RowButton("Vote Yes") is not { Disabled: false };
                 _voteNo!.Disabled = RowButton("Vote No") is not { Disabled: false };
                 var status = Find<Label>("report_status"); status.TooltipText = status.Text;
@@ -389,7 +389,7 @@ public partial class ClassicBoardPanel : Control
                 break;
             case "forces":
                 bool joined = Find<Button>("forces_join").Disabled;
-                Find<Label>("forces_state").AddThemeColorOverride(HotNames.FontColor, joined ? Highlight : Muted);
+                ThemeNames.SetColor(Find<Label>("forces_state"), HotNames.FontColor, joined ? Highlight : Muted);
                 var points = Find<Label>("forces_points");
                 const string prefix = "Force Points: ";
                 if (points.Text.StartsWith(prefix, StringComparison.Ordinal)) points.Text = points.Text[prefix.Length..];
