@@ -71,6 +71,7 @@ public partial class ClassicKingPanel : Control
             case "nationtax": Treasury(bar); break;
         }
         VisibilityChanged += () => { if (!IsVisibleInTree()) SelectedCandidate = -1; };
+        ShownOnly.Gate(this, Sync);
     }
 
     private T Find<T>(string name) where T : Control => _native.OfType<T>().Single(c => c.Name == name);
@@ -333,7 +334,10 @@ public partial class ClassicKingPanel : Control
         control.SetMeta("king_expected_rect", rect);
     }
 
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+
+    /// <summary>Mirrors the native window into the Classic composition; runs every frame while shown.</summary>
+    private void Sync()
     {
         bool pending = Window.GetMeta("king_pending", false).AsBool();
         foreach (var button in _pendingButtons) Disable(button, pending);

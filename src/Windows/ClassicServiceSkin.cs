@@ -105,6 +105,7 @@ public partial class ClassicServicePanel : Control
                 Texture = ClassicChatControls.Atlas(coin), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore });
         }
+        ShownOnly.Gate(this, Sync);
     }
     /// <summary>
     /// The redistribution menu on the original co_change_us window: the client's description as the white greeting,
@@ -404,7 +405,9 @@ public partial class ClassicServicePanel : Control
         }
         Visit(root);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    /// <summary>Keeps the Classic rows, cells and actions on the native state; runs every frame while shown.</summary>
+    private void Sync()
     {
         if (_warpList != null)
             foreach (var row in CharacterDetailsSkin.Tree(_warpList).OfType<PanelContainer>())
@@ -440,8 +443,9 @@ public partial class ClassicWarpSelection : Control
 {
     private readonly PanelContainer _row;
     private bool _selected;
-    public ClassicWarpSelection(PanelContainer row) { _row = row; MouseFilter = MouseFilterEnum.Ignore; }
-    public override void _Process(double delta)
+    public ClassicWarpSelection(PanelContainer row) { _row = row; MouseFilter = MouseFilterEnum.Ignore; ShownOnly.Gate(this, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         bool selected = _row.GetMeta("service_selected", false).AsBool();
         if (_selected != selected) { _selected = selected; QueueRedraw(); }
@@ -456,8 +460,9 @@ public partial class ClassicServiceSelection : Control
 {
     private readonly ItemSlotView _cell;
     private SlotLook _look;
-    public ClassicServiceSelection(ItemSlotView cell) { _cell = cell; MouseFilter = MouseFilterEnum.Ignore; }
-    public override void _Process(double delta)
+    public ClassicServiceSelection(ItemSlotView cell) { _cell = cell; MouseFilter = MouseFilterEnum.Ignore; ShownOnly.Gate(this, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (Size != _cell.Size) { Size = _cell.Size; QueueRedraw(); }
         if (_look != _cell.Look) { _look = _cell.Look; QueueRedraw(); }

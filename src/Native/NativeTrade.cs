@@ -105,6 +105,8 @@ public static class NativeTrade
         window.VisibilityChanged += () =>
         {
             if (window.Visible) Callable.From(() => { if (GodotObject.IsInstanceValid(world)) KeepInventoryClosed(world); }).CallDeferred();
+            // The per-frame tick mirrors the window metas only while the window is shown; catch up before it draws.
+            if (window.IsVisibleInTree()) Callable.From(() => { if (GodotObject.IsInstanceValid(world)) Sync(world); }).CallDeferred();
         };
         if (Native.Get<CanvasLayer>(world, "_exWaitLayer") is { } wait) { wait.Name = "exchange_wait"; wait.SetMeta("exchange_wait", true); }
         if (Native.Get<CanvasLayer>(world, "_exAmountLayer") is { } amount)
@@ -168,8 +170,12 @@ public static class NativeTrade
         return canvas;
     }
 
-    /// <summary>Mirrors the trade state into the window metas and keeps the Classic modals in step.</summary>
-    internal static void Sync(World world)
+    /// <summary>
+    /// Mirrors the trade state into the window metas and keeps the Classic modals in step. The per-frame
+    /// <paramref name="tick"/> skips the window metas and the status wording while the trade window is hidden: only
+    /// the window reads them, and the window's show catches up before it draws.
+    /// </summary>
+    internal static void Sync(World world, bool tick = false)
     {
         var state = StateOf(world);
         if (Native.Get<HudWindow>(world, "_exPanel") is not { } panel) return;
@@ -177,6 +183,25 @@ public static class NativeTrade
         if (state.FinalPending && (!shown || Native.Get<bool>(world, "_exConfirmedByMe") || Offers(world) != state.Offers)) CloseFinal(world);
         if (!amountShown) state.Gold = false;
 
+        if (!tick || panel.IsVisibleInTree()) Mirror(world, panel, state, amountShown);
+        else Native.Get<CanvasLayer>(world, "_exAmountLayer")?.SetMeta("ex_gold", state.Gold);
+
+        bool pending = Native.Get<bool>(world, "_exRequestPending");
+        if (state.Request is { } request && panel.HasMeta("classic_exchange"))
+        {
+            if (pending && !request.Visible)
+            {
+                state.RequestLabel!.Text = $"{Native.Get<string>(world, "_exPartnerName")} wants to trade with you.\nDo you agree?";
+                request.Visible = true;
+            }
+            else if (!pending && request.Visible) request.Visible = false;
+            // The Classic request replaces the desktop dialog; hiding it does not answer the request.
+            if (Native.Get<Window>(world, "_exAskDialog") is { Visible: true } dialog) dialog.Hide();
+        }
+    }
+
+    private static void Mirror(World world, HudWindow panel, State state, bool amountShown)
+    {
         panel.SetMeta("ex_locked", Native.Get<bool>(world, "_exConfirmedByMe"));
         panel.SetMeta("ex_partner_locked", Native.Get<bool>(world, "_exConfirmedByPartner"));
         panel.SetMeta("ex_pending", Native.Get<bool>(world, "_exAddInFlight"));
@@ -198,19 +223,6 @@ public static class NativeTrade
                 var other => other,
             };
             if (text != status.Text) status.Text = text;
-        }
-
-        bool pending = Native.Get<bool>(world, "_exRequestPending");
-        if (state.Request is { } request && panel.HasMeta("classic_exchange"))
-        {
-            if (pending && !request.Visible)
-            {
-                state.RequestLabel!.Text = $"{Native.Get<string>(world, "_exPartnerName")} wants to trade with you.\nDo you agree?";
-                request.Visible = true;
-            }
-            else if (!pending && request.Visible) request.Visible = false;
-            // The Classic request replaces the desktop dialog; hiding it does not answer the request.
-            if (Native.Get<Window>(world, "_exAskDialog") is { Visible: true } dialog) dialog.Hide();
         }
     }
 
@@ -333,7 +345,10 @@ public static class NativeTrade
     }
 }
 
-/// <summary>Runs the trade synchronisation every frame, including while the trade window is hidden.</summary>
+/// <summary>
+/// Runs the trade synchronisation every frame, including while the trade window is hidden: a request, a closed trade
+/// or a changed offer must reach the Classic modals at once. The window metas follow only while the window is shown.
+/// </summary>
 public partial class NativeTradeSync : Node
 {
     private readonly World? _world;
@@ -348,6 +363,6 @@ public partial class NativeTradeSync : Node
 
     public override void _Process(double delta)
     {
-        if (_world != null && IsInstanceValid(_world)) NativeTrade.Sync(_world);
+        if (_world != null && IsInstanceValid(_world)) NativeTrade.Sync(_world, tick: true);
     }
 }

@@ -82,6 +82,7 @@ public partial class ClassicExchangePanel : Control
         _bagCells=new ClassicExchangeCell[28];
         for(int i=0;i<28;i++) {var cell=new ClassicExchangeCell(this,true,i);_bagCells[i]=cell;AddChild(cell);cell.Position=ClassicExchangeLayout.BagCell(i).Position;cell.Size=ClassicExchangeLayout.BagCell(i).Size;}
         Resized+=()=>Size=CustomMinimumSize;
+        ShownOnly.Gate(this,Sync);
     }
     private Label Text(string text,Rect2 rect,int size=12) {
         var label=ClassicPartySkin.Caption(this,text,rect,ClassicDesign.Karus?new Color("c0c0c0"):new Color("f8d987"),12);
@@ -162,7 +163,9 @@ public partial class ClassicExchangePanel : Control
             && !(Window.HasMeta("ex_modal") && Window.GetMeta("ex_modal").AsBool()))
             GetViewport().SetInputAsHandled();
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta)=>Sync();
+    /// <summary>Grids, names, coins and confirmations from the trade state; runs every frame while shown.</summary>
+    private void Sync()
     {
         if(Shown()!=_shown) Refresh();
         string Meta(string name,string fallback)=>Window.HasMeta(name)?Window.GetMeta(name).AsString():fallback;

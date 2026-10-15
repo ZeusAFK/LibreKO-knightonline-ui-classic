@@ -115,6 +115,7 @@ public partial class ClassicStoragePanel : Control
         }
         if (window.HasMeta("storage_amount")) ClassicTradeQuantity.Apply((QuantityPrompt)window.GetMeta("storage_amount").AsGodotObject(), this);
         Resized += () => Size = CustomMinimumSize;
+        ShownOnly.Gate(this, Sync);
     }
 
     private void Move(Control control, Rect2 rect)
@@ -128,7 +129,10 @@ public partial class ClassicStoragePanel : Control
         var label = ClassicPartySkin.Caption(this, text, rect, new Color("c0c0c0"));
         ClassicMerchantSkin.Font(label); label.SetMeta("storage_expected_rect", rect); return label;
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+
+    /// <summary>Wallet, weight, stored coins, status and paging; runs every frame while shown.</summary>
+    private void Sync()
     {
         var character = Plugin.Kit.Game.Character;
         _wallet.Text = character.Gold.ToString("n0");
@@ -184,8 +188,9 @@ public partial class ClassicStorageCell : Control
     private readonly ItemSlotView _cell;
     private readonly StyleBoxEmpty _empty = new();
     private SlotLook _look;
-    public ClassicStorageCell(ItemSlotView cell) { _cell = cell; MouseFilter = MouseFilterEnum.Ignore; }
-    public override void _Process(double delta)
+    public ClassicStorageCell(ItemSlotView cell) { _cell = cell; MouseFilter = MouseFilterEnum.Ignore; ShownOnly.Gate(this, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (_cell.GetThemeStylebox("panel") != _empty) _cell.AddThemeStyleboxOverride("panel", _empty);
         Size = _cell.Size;

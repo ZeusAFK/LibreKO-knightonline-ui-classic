@@ -78,6 +78,7 @@ public partial class ClassicItemsPanel : Control
             case "char_seal_sheet": Sheet(); break;
         }
         PlaceFrameControls();
+        ShownOnly.Gate(this, Sync);
     }
 
     private string PageOf() => Window.GetMeta(NativeItems.PageMeta, "").AsString();
@@ -485,7 +486,10 @@ public partial class ClassicItemsPanel : Control
 
     // Frame and state -----------------------------------------------------------------------------
 
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+
+    /// <summary>Keeps the Classic composition on the native state; runs every frame while shown.</summary>
+    private void Sync()
     {
         foreach (var cell in _cells) if (cell.GetThemeStylebox("panel") != _cell) cell.AddThemeStyleboxOverride("panel", _cell);
         if (Window.Id is "char_seal" or "char_seal_sheet")

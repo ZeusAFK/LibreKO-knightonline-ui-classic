@@ -122,6 +122,8 @@ public partial class NativeSync : Node
         _window = window;
         _sync = sync;
         ProcessPriority = int.MinValue;
+        // The window's own visibility signal fires before its skins' signals, so this catch-up runs first on show.
+        KnightOnlineUiClassic.Layout.ShownOnly.Gate(this, window, sync);
     }
 
     public override void _Process(double delta)
