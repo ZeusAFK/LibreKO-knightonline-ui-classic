@@ -137,7 +137,11 @@ public partial class NationHud : Control
 {
     private readonly Func<Control> _factory;
     private int _nation = -1;
+    private static readonly List<NationHud> _live = new();
+    /// <summary>The HUD parts in the tree, in the order they entered it (for placement checks that avoid the HUD).</summary>
+    public static IReadOnlyList<NationHud> Live => _live;
     public NationHud(Func<Control> factory) { _factory=factory; MouseFilter=MouseFilterEnum.Ignore; }
+    public override void _EnterTree() => _live.Add(this);
     public override void _Ready()
     {
         Plugin.Kit.Game.BecameAvailable += Refresh;
@@ -155,6 +159,7 @@ public partial class NationHud : Control
     }
     public override void _ExitTree()
     {
+        _live.Remove(this);
         if (!Plugin.Active) return;
         Plugin.Kit.Game.BecameAvailable -= Refresh;
         Plugin.Kit.Game.Character.Changed -= Refresh;

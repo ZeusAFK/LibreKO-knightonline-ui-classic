@@ -155,14 +155,25 @@ public static class NativeCommandList
     {
         var rects = new List<Rect2>();
         if (!world.IsInsideTree()) return rects;
-        foreach (var layer in world.GetChildren().OfType<CanvasLayer>())
-            foreach (var hud in Native.Descendants(layer).OfType<NationHud>())
-                foreach (var part in hud.GetChildren().OfType<Control>())
-                    if (part.IsVisibleInTree()) rects.Add(part.GetGlobalRect());
+        // The live HUD parts under one of the World's canvas layers: the parts a walk of those layers finds,
+        // without walking the whole HUD on every open.
+        foreach (var hud in NationHud.Live)
+        {
+            if (!GodotObject.IsInstanceValid(hud) || !UnderWorldLayer(hud, world)) continue;
+            foreach (var part in hud.GetChildren().OfType<Control>())
+                if (part.IsVisibleInTree()) rects.Add(part.GetGlobalRect());
+        }
         if (Native.Get<Control>(world, "_genieSub") is { } genie && GodotObject.IsInstanceValid(genie) && genie.IsVisibleInTree()) rects.Add(genie.GetGlobalRect());
         try { if (Native.TryCall(world, "DockHudRects", out var dock) && dock is IEnumerable<Rect2> client) rects.AddRange(client); }
         catch (Exception) { }
         return rects.Where(r => r.HasArea()).ToList();
+    }
+
+    private static bool UnderWorldLayer(Node node, World world)
+    {
+        for (Node? child = node, parent = node.GetParent(); parent != null; child = parent, parent = parent.GetParent())
+            if (parent == world) return child is CanvasLayer && child != node;
+        return false;
     }
 
     /// <summary>Runs a listed row the way a double click does (the client's <c>ItemActivated</c> handler).</summary>
