@@ -134,6 +134,10 @@ public partial class LogText : Control
     {
         _flushQueued = false;
         if (_appended.Count == 0 || !IsInstanceValid(_label)) return;
+        // A line of several paragraphs may hold a tag across them, so removing it paragraph by paragraph is not
+        // safe; such a line (rare) takes the full set, as every line did before.
+        int trim = Math.Max(0, _shown.Count + _appended.Count - Kept);
+        if (_appended.Any(line => line.Contains('\n')) || _shown.Take(trim).Any(paragraphs => paragraphs > 1)) { Apply(); return; }
         foreach (var line in _appended)
         {
             _label.AppendText(_shown.Count > 0 ? "\n" + line : line);
