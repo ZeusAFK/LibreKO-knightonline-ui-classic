@@ -6,7 +6,12 @@ public partial class LogText : Control
 {
     private readonly RichTextLabel _label;
     private readonly ScrollContainer _scroll;
+    private const int Kept = 200;
     private readonly Queue<string> _lines = new();
+    // The label's lines in order with their paragraph counts, and the appended lines not yet on the label.
+    private readonly Queue<int> _shown = new();
+    private readonly Queue<string> _appended = new();
+    private bool _flushQueued;
     private VScrollBar? _rail;
     private bool _syncing;
     private bool _follow = true;
@@ -107,11 +112,44 @@ public partial class LogText : Control
         _lines.Clear();foreach(var line in lines) _lines.Enqueue(line);Apply();
     }
 
+    /// <summary>
+    /// Adds a line at the end. Lines that arrive in one frame are appended to the label together, before the frame
+    /// draws: only the new paragraphs are parsed and laid out, and the oldest lines past the kept 200 are removed
+    /// without laying the others out again (each line is a closed BBCode run). A full <see cref="Set"/> parses
+    /// every line, which in combat cost a 10 ms relayout per line.
+    /// </summary>
     public void Append(string bbcode)
     {
         if (!_contentPending) _follow = AtEnd();
+        _contentPending = true;
         _lines.Enqueue(bbcode);
-        Apply();
+        while (_lines.Count > Kept) _lines.Dequeue();
+        _appended.Enqueue(bbcode);
+        if (_flushQueued) return;
+        _flushQueued = true;
+        Callable.From(Flush).CallDeferred();
+    }
+
+    private void Flush()
+    {
+        _flushQueued = false;
+        if (_appended.Count == 0 || !IsInstanceValid(_label)) return;
+        foreach (var line in _appended)
+        {
+            _label.AppendText(_shown.Count > 0 ? "\n" + line : line);
+            _shown.Enqueue(Paragraphs(line));
+        }
+        _appended.Clear();
+        while (_shown.Count > Kept)
+            for (int paragraph = _shown.Dequeue(); paragraph > 0; paragraph--) _label.RemoveParagraph(0, true);
+        Callable.From(() => { FollowEnd(); _contentPending = false; }).CallDeferred();
+    }
+
+    private static int Paragraphs(string line)
+    {
+        int count = 1;
+        foreach (char c in line) if (c == '\n') count++;
+        return count;
     }
 
     public void Scroll(float pixels)
@@ -128,8 +166,12 @@ public partial class LogText : Control
 
     private void Apply()
     {
-        while (_lines.Count > 200) _lines.Dequeue();
+        while (_lines.Count > Kept) _lines.Dequeue();
         _contentPending = true;
+        // A full set replaces whatever was appended this frame (those lines are already in _lines).
+        _appended.Clear();
+        _shown.Clear();
+        foreach (var line in _lines) _shown.Enqueue(Paragraphs(line));
         _label.Text = string.Join("\n", _lines);
         Callable.From(() => { FollowEnd(); _contentPending = false; }).CallDeferred();
     }
