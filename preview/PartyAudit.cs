@@ -141,7 +141,9 @@ public partial class Preview
             var at=local is { } point?owner.GlobalPosition+point:owner.GetGlobalRect().GetCenter();
             GetViewport().PushInput(new InputEventMouseMotion{Position=at,GlobalPosition=at});
             PopupPanel? popup=null;
-            for(int i=0;i<120&&popup==null;i++)
+            // Godot opens a tooltip after its delay in seconds; at a high frame rate 120 frames pass sooner.
+            ulong until=Time.GetTicksMsec()+3000;
+            for(int i=0;(i<120||Time.GetTicksMsec()<until)&&popup==null;i++)
             {
                 await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
                 popup=PartyEverything(GetTree().Root).OfType<PopupPanel>().FirstOrDefault(p=>p.Visible&&owner.IsAncestorOf(p));
