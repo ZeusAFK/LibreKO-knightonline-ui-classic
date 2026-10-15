@@ -109,7 +109,7 @@ public static class NativeInventory
     /// <summary>Hides the client's own queue card; the Classic prompt shows the queue instead.</summary>
     public static void HideDestroyCard()
     {
-        if (World is { } world && Native.Get<Control>(world, "InventoryWindow.invDelPanel") is { Visible: true } card) card.Visible = false;
+        if (World is { } world && Native.Get<Control>(world, "InventoryWindow.InvDelPanel") is { Visible: true } card) card.Visible = false;
     }
 
     private static int FirstFreeCell()

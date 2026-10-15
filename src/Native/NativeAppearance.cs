@@ -50,8 +50,8 @@ public static class NativeAppearance
     public static void PrepareGender(HudWindow window, WorldRoot world)
     {
         if (!NativeIdentity.Begin(window, "native_appearance")) return;
-        var preview = Native.Get<LookPreview>(world, "GenderChangeWindow.preview");
-        var editor = Native.Get<LookEditor>(world, "GenderChangeWindow.editor");
+        var preview = Native.Get<LookPreview>(world, "GenderChangeWindow.Preview");
+        var editor = Native.Get<LookEditor>(world, "GenderChangeWindow.Editor");
         var status = Native.Get<Label>(world, "GenderChangeWindow.status");
         var accept = Native.Get<Button>(world, "GenderChangeWindow.confirm");
         if (preview == null || editor == null || status == null || accept == null) return;
@@ -64,13 +64,13 @@ public static class NativeAppearance
     public static void PrepareBeauty(HudWindow window, WorldRoot world)
     {
         if (!NativeIdentity.Begin(window, "native_appearance")) return;
-        var preview = Native.Get<LookPreview>(world, "ChangeHair.beautyPreview");
-        var editor = Native.Get<LookEditor>(world, "ChangeHair.beautyEditor");
+        var preview = Native.Get<LookPreview>(world, "ChangeHair.BeautyPreview");
+        var editor = Native.Get<LookEditor>(world, "ChangeHair.BeautyEditor");
         var status = Native.Get<Label>(world, "ChangeHair.status");
         var accept = Native.Get<Button>(world, "ChangeHair.beautyConfirm");
         // The client's "Change hair color" action sits between the editor and the status line.
         var palette = window.Body.GetChildren().OfType<Button>().FirstOrDefault();
-        if (preview == null || editor == null || status == null || accept == null || palette == null || !Native.Has(world, "ChangeHair.beautyInFlight")) return;
+        if (preview == null || editor == null || status == null || accept == null || palette == null || !Native.Has(world, "ChangeHair.BeautyInFlight")) return;
         if (!NameCommon(preview, editor, status, accept)) return;
         NativeLookEditor.Attach(editor, () => CharacterPreview.HairCount(editor.Race) > 0);
         if (Native.Get<ColorPickerButton>(editor, "colourPicker") is not { } picker || picker.GetParent() is not HBoxContainer colourRow) return;
@@ -96,7 +96,7 @@ public static class NativeAppearance
         NativeWindows.Sync(window, () =>
         {
             // A sent look cannot be edited until the server answers; the palette closes with it.
-            bool busy = Native.Get<bool>(world, "ChangeHair.beautyInFlight");
+            bool busy = Native.Get<bool>(world, "ChangeHair.BeautyInFlight");
             if (NativeLookEditor.Locked(editor) != busy)
             {
                 NativeLookEditor.SetLocked(editor, busy);
@@ -123,7 +123,7 @@ public static class NativeAppearance
 
     /// <summary>The Beauty Shop or gender editor whose colour the palette edits.</summary>
     public static LookEditor? PaletteTarget(WorldRoot world) =>
-        Native.Get<LookEditor>(world, "ChangeHair.hairPaletteTarget") ?? Native.Get<LookEditor>(world, "ChangeHair.beautyEditor");
+        Native.Get<LookEditor>(world, "ChangeHair.hairPaletteTarget") ?? Native.Get<LookEditor>(world, "ChangeHair.BeautyEditor");
 
     public static void PrepareTransfer(HudWindow window, WorldRoot world)
     {
@@ -205,7 +205,7 @@ public static class NativeAppearance
             SetPreviewAvailable(preview, false);
             Native.Call(world, "NationTransfer.SetTransferStatus", "", false);
             Native.Get<Button>(world, "NationTransfer.transferConfirm")!.Disabled = true;
-            Native.Get<HudWindow>(world, "NationTransfer.transferPanel")!.Visible = true;
+            Native.Get<HudWindow>(world, "NationTransfer.TransferPanel")!.Visible = true;
             Native.Set(world, "NationTransfer.transferShown", true);
             return;
         }

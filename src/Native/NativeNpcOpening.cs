@@ -45,7 +45,7 @@ public static class NativeNpcOpening
     /// <summary>Marks the choice buttons of the NPC dialogue the client has just built as the <paramref name="kind"/> opening.</summary>
     public static void Opened(WorldRoot world, string kind)
     {
-        if (Native.Get<HudWindow>(world, "NpcDialogWindow.panel") is not { Visible: true }) return;
+        if (Native.Get<HudWindow>(world, "NpcDialogWindow.Panel") is not { Visible: true }) return;
         if (Native.Get<VBoxContainer>(world, "NpcDialogWindow.menuBox") is not { } menu || !GodotObject.IsInstanceValid(menu)) return;
         foreach (var choice in menu.GetChildren().OfType<Button>()) _choices.AddOrUpdate(choice, kind);
     }

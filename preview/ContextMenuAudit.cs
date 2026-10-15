@@ -121,13 +121,13 @@ public partial class Preview
         }
 
         // ---- Loot box (client look first) -----------------------------------------------------------------
-        var lootLayer = Field<CanvasLayer>("Loot.layer"); var lootPanel = Field<PanelContainer>("Loot.panel");
+        var lootLayer = Field<CanvasLayer>("Loot.layer"); var lootPanel = Field<PanelContainer>("Loot.Panel");
         var lootCells = Field<ItemSlotView[]>("Loot.cells");
         var entries = new List<LootEntry> { new(Net.GoldItemId, 1520), new(plain, 1), new(stackable, 25), new(longest, 1) };
         if (graded > 0) entries.Add(new(graded, 1));
         void ShowLoot()
         {
-            var list = Field<List<LootEntry>>("Loot.entries"); list.Clear(); list.AddRange(entries);
+            var list = Field<List<LootEntry>>("Loot.Entries"); list.Clear(); list.AddRange(entries);
             SetField("Loot.openBundleId", 7);
             Call("Loot.RefreshWindow"); lootLayer.Visible = true;
         }

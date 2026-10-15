@@ -25,7 +25,7 @@ public static class NativeRepurchase
         var prices = Native.Get<Label[]>(world, "Repurchase.rbPrices");
         var times = Native.Get<Label[]>(world, "Repurchase.rbTimes");
         var buys = Native.Get<Button[]>(world, "Repurchase.rbBuy");
-        var scroll = Native.Get<VScrollBar>(world, "Repurchase.rbScroll");
+        var scroll = Native.Get<VScrollBar>(world, "Repurchase.RbScroll");
         var empty = Native.Get<Label>(world, "Repurchase.rbEmpty");
         if (names == null || prices == null || times == null || buys == null || scroll == null || empty == null
             || names.Length != Rows || prices.Length != Rows || times.Length != Rows || buys.Length != Rows

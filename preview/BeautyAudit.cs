@@ -41,7 +41,7 @@ public partial class Preview
         T Find<T>(string name) where T : Control => Descendants(panel).OfType<T>().Single(c => c.Name == name);
         var editor = Find<LookEditor>("look_editor"); var preview = Find<LookPreview>("look_preview");
         var swatch = Find<Button>("look_palette"); var accept = Find<Button>("look_accept"); var zoom = Find<Button>("look_zoom");
-        bool Busy() => (bool)DetailField(world, "ChangeHair.beautyInFlight")!;
+        bool Busy() => (bool)DetailField(world, "ChangeHair.BeautyInFlight")!;
         bool NetBusy() => PreviewFixtures.ChangeHairPending(net);
         Node3D Pivot() => (Node3D)typeof(LookPreview).GetField("pivot", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(preview)!;
         void Open() => DetailCall(world, "ChangeHair.Open");

@@ -159,9 +159,9 @@ public partial class Preview
             int Schedule(WorldRoot world, HudWindow window, string state, bool races, bool mine, int? live = null)
             {
                 string tag = "events " + state;
-                var tabs = new[] { Part<Button>(world, "Events.tab"), Part<Button>(world, "Events.tabRaces") };
+                var tabs = new[] { Part<Button>(world, "Events.tab"), Part<Button>(world, "Events.TabRaces") };
                 var toggle = Part<Button>(world, "Events.myLevel");
-                var scroll = Part<ScrollContainer>(world, "Events.scroll");
+                var scroll = Part<ScrollContainer>(world, "Events.Scroll");
                 var empty = Part<Label>(world, "Events.empty");
                 var filters = (Control)tabs[0].GetParent();
                 Require(scroll.Size.X >= 640 && Mathf.IsEqualApprox(window.Size.X, scroll.Size.X + 2 * Spec.Margin), tag + ": the client's 640-pixel list in the plain frame " + window.Size);
@@ -281,7 +281,7 @@ public partial class Preview
             Require(fitting > 0 && fitting < all && Cards(world).All(c => Descendants(c).OfType<Label>().First().GetThemeColor("font_color") != ClassicEventPanel.Muted),
                 $"events: Only my level keeps the {fitting} of {all} events level 62 may join");
             await Capture(window, "only-my-level");
-            Part<Button>(world, "Events.tabRaces").ButtonPressed = true; await Frames(4);
+            Part<Button>(world, "Events.TabRaces").ButtonPressed = true; await Frames(4);
             Require(Schedule(world, window, "empty", true, true) == 0 && Part<Label>(world, "Events.empty").Text == "Nothing to show here.", "events: no race for level 62 shows the empty text");
             await Capture(window, "empty");
             toggle.ButtonPressed = false; Part<Button>(world, "Events.tab").ButtonPressed = true; await Frames(4);
@@ -325,7 +325,7 @@ public partial class Preview
             await Close(world, window);
             (world, window) = await Open("Preview.BuildEvents", "end");
             await Frames(4);
-            var endScroll = Part<ScrollContainer>(world, "Events.scroll");
+            var endScroll = Part<ScrollContainer>(world, "Events.Scroll");
             Schedule(world, window, "end", false, false, live: 1);
             var last = Cards(world).Last();
             Require(endScroll.ScrollVertical > 0 && Inside(endScroll.GetGlobalRect(), last.GetGlobalRect()), "events: the end of the list shows the last card whole " + last.GetGlobalRect());

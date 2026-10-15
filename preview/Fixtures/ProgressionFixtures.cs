@@ -50,15 +50,15 @@ public static partial class PreviewFixtures
             });
         }
         if (view is "list" or "claimed") Call(world, "Achievement.SelectTab", AchievementTab.War);
-        if (view == "claimed") Field<CheckButton>(world, "Achievement.achHideClaimed").ButtonPressed = true;
-        return DetachWindow(world, "Achievement.achLayer", "Achievement.achPanel");
+        if (view == "claimed") Field<CheckButton>(world, "Achievement.AchHideClaimed").ButtonPressed = true;
+        return DetachWindow(world, "Achievement.achLayer", "Achievement.AchPanel");
     }
 
     public static HudWindow BuildAttendanceUiPreview(WorldRoot world, string view)
     {
         ItemData.EnsureLoaded();
         Call(world, "Attendance.Build");
-        Game.Session.Attendance.AttendanceAutoOpened = true;
+        Native.Call(Game.Session.Attendance, "NoteAutoOpened");
         int total = Net.AttendanceDailySlots + Net.AttendanceBonusSlots;
         var slots = new int[total]; var states = new byte[total];
         int attended = view switch { "empty" => 0, "complete" => Net.AttendanceDailySlots, _ => 12 };
@@ -79,7 +79,7 @@ public static partial class PreviewFixtures
         Call(world, "Attendance.OnBoard", slots, states);
         Call(world, "Attendance.Open");
         if (view == "failed") Call(world, "Attendance.OnFailed", Net.EventBoardAttendanceClaim, Net.AttendanceClaimInventoryFull);
-        return DetachWindow(world, "Attendance.layer", "Attendance.panel");
+        return DetachWindow(world, "Attendance.layer", "Attendance.Panel");
     }
 
     public static List<RankEntry> RankRows(int nation, int count)
@@ -103,9 +103,9 @@ public static partial class PreviewFixtures
         bool karus = Game.Session.Self.LastEnter.Nation == Nations.Karus;
         Call(world, "Rank.OnData", new PkLadderReply(RankRows(1, karus ? own : other), RankRows(2, karus ? other : own),
             view == "empty" ? 0 : 6, view == "empty" ? 0 : 21_344, view == "empty" ? 0 : 480));
-        var window = Field<HudWindow>(world, "Rank.panel");
+        var window = Field<HudWindow>(world, "Rank.Panel");
         window.Visible = true; SetField(world, "Rank.shown", true);
-        return DetachWindow(world, "Rank.layer", "Rank.panel");
+        return DetachWindow(world, "Rank.layer", "Rank.Panel");
     }
 
     /// <summary>The column a skill belongs to, as the client sorts them: enemy skills, HP/MP restoring skills, the rest.</summary>
@@ -122,7 +122,7 @@ public static partial class PreviewFixtures
         if (view != "empty")
         {
             SkillData.EnsureLoaded();
-            var setup = Field<GenieSetup>(world, "Genie.genie");
+            var setup = Field<GenieSetup>(world, "Genie.Genie");
             // Every other cell of each column takes a class skill with an icon; some support skills also go to the party.
             var known = SkillData.ForClass(KnightOnlineUiClassic.Plugin.Kit.Nation == 1 ? 105 : 205).Where(s => SkillData.Icon(s.Id) != null).ToList();
             foreach (var kind in new[] { GenieCellKind.Attack, GenieCellKind.Recovery, GenieCellKind.Support })
@@ -137,7 +137,7 @@ public static partial class PreviewFixtures
             setup.Set(GenieOther.FeedFamiliar, true);
             Call(world, "Genie.SyncControls");
             foreach (var name in new[] { "Bulture", "Dark Mare", "Ash Knight Warrior With A Very Long Name", "Treant", "Lich", "Bone Dragon" })
-                Field<HashSet<string>>(world, "Genie.monsters").Add(name);
+                Field<HashSet<string>>(world, "Genie.Monsters").Add(name);
             Call(world, "Genie.RefreshMonsters");
         }
         Call(world, "Genie.Toggle");
@@ -150,11 +150,11 @@ public static partial class PreviewFixtures
         }
         else if (view == "pending")
         {
-            SetField(world, "Genie.requestPending", true);
+            SetField(world, "Genie.RequestPending", true);
             Field<Button>(world, "Genie.start").Disabled = true;
-            Field<Label>(world, "Genie.runLabel").Text = "Waiting for server response…";
+            Field<Label>(world, "Genie.RunLabel").Text = "Waiting for server response…";
         }
         else Call(world, "Genie.OnSystemState", false, view == "empty" ? 0 : 240);
-        return DetachWindow(world, "Genie.layer", "Genie.panel");
+        return DetachWindow(world, "Genie.Layer", "Genie.Panel");
     }
 }

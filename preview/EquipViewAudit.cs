@@ -105,7 +105,7 @@ public partial class Preview
             GetViewport().PushInput(new InputEventMouseMotion { Position = new Vector2(3, 3), GlobalPosition = new Vector2(3, 3) }, true); await Frames(2);
             p = weapon.GetGlobalRect().GetCenter(); GetViewport().PushInput(new InputEventMouseMotion { Position = p, GlobalPosition = p }, true); await Frames();
             Require(world.ItemTooltipVisible, "Actual native item hover opens snapshot tooltip"); await Capture("weapon-tooltip-callback", tooltip: true);
-            var tip = (Control)DetailField(world, "ItemTooltip.tipPanel")!;
+            var tip = (Control)DetailField(world, "ItemTooltip.TipPanel")!;
             Require(GetViewportRect().Encloses(tip.GetGlobalRect()), "Actual snapshot tooltip remains within viewport");
             Require(tip.Position.X > 0 && tip.Position.Y > 0, "Actual tooltip follows native mouse position");
             GetViewport().PushInput(new InputEventMouseMotion { Position = new Vector2(3, 3), GlobalPosition = new Vector2(3, 3) }, true); await Frames();

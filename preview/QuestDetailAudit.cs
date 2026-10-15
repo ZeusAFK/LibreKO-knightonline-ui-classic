@@ -64,8 +64,8 @@ public partial class Preview
         var model = PreviewFixtures.Prepared(new WorldRoot());
         DetailCall(model, "Quest.BuildLog");
         var native = new HudWindow("quests", "QUESTS", new Vector2(170, 86), 420, persistLayout: false) { Visible = false };
-        native.Body.AddChild((Control)DetailField(model, "Quest.questsContent")!);
-        ((Dictionary<string, HudWindow>)DetailField(model, "MainWindows.windows")!)["Quests"] = native;
+        native.Body.AddChild((Control)DetailField(model, "Quest.QuestsContent")!);
+        ((Dictionary<string, HudWindow>)DetailField(model, "MainWindows.Windows")!)["Quests"] = native;
         var shell = new Control(); AddChild(shell);
         var host = (LibreKO.Plugins.WindowHost)Create(typeof(LibreKO.Plugins.WindowHost), "character_info", "Character", shell, (Action)(() => { }));
         var bridge = CharacterPanelBridge.For(model);
@@ -123,7 +123,7 @@ public partial class Preview
                 {
                     string file = prefix + "-reload-" + answers + "-" + reloads.Count + ".png";
                     using (var shot = GetViewport().GetTexture().GetImage()) shot.SavePng(System.IO.Path.Combine(output, file));
-                    var shown = new { file, selected = DetailField(model, "Quest.selected"), hint = empty.IsVisibleInTree(), title = title.Text };
+                    var shown = new { file, selected = DetailField(model, "Quest.Selected"), hint = empty.IsVisibleInTree(), title = title.Text };
                     reloads.Add(shown);
                     GD.Print("QUEST_DETAIL_RELOAD " + shown);
                 }
@@ -169,9 +169,9 @@ public partial class Preview
         {
             await Frames(4);
             using (var shot = GetViewport().GetTexture().GetImage()) shot.SavePng(System.IO.Path.Combine(output, prefix + "-" + state + ".png"));
-            GD.Print($"QUEST_DETAIL_STATE {state}: selected={DetailField(model, "Quest.selected")} body={body.IsVisibleInTree()} empty={empty.IsVisibleInTree()} title='{title.Text}' sub='{sub.Text}' facts='{facts.Text}' desc='{desc.GetParsedText()}' titleRect={title.GetGlobalRect()}");
+            GD.Print($"QUEST_DETAIL_STATE {state}: selected={DetailField(model, "Quest.Selected")} body={body.IsVisibleInTree()} empty={empty.IsVisibleInTree()} title='{title.Text}' sub='{sub.Text}' facts='{facts.Text}' desc='{desc.GetParsedText()}' titleRect={title.GetGlobalRect()}");
             Require(page.IsVisibleInTree(), state + ": Quest Details subpage is shown");
-            Require((int)DetailField(model, "Quest.selected")! == q.Id, state + ": client selection is quest " + q.Id + " (was " + DetailField(model, "Quest.selected") + ")");
+            Require((int)DetailField(model, "Quest.Selected")! == q.Id, state + ": client selection is quest " + q.Id + " (was " + DetailField(model, "Quest.Selected") + ")");
             Require(body.IsVisibleInTree() && !empty.IsVisibleInTree(), state + ": details body shown instead of the empty hint");
             Require(title.Text == q.Title, state + ": title '" + title.Text + "' is '" + q.Title + "'");
             Require(sub.Text.Contains("In progress") && sub.Text.Contains("Hunt"), state + ": state line '" + sub.Text + "'");

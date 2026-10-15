@@ -72,8 +72,8 @@ public partial class Preview
                 && button.GetThemeStylebox("pressed") is StyleBoxTexture, $"{what}: original button art in every state");
             Require(button.GetThemeColor("font_color").A == 0 && button.GetThemeColor("font_hover_color").A == 0, $"{what}: only the art caption draws '{text}'");
         }
-        var zone = typeof(WorldRoot).GetField("zone", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        void SetZone(int value) => zone.SetValue(world, Convert.ChangeType(value, zone.FieldType));
+        var zone = typeof(WorldRoot).GetProperty("ZoneId", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        void SetZone(int value) => zone.SetValue(world, Convert.ChangeType(value, zone.PropertyType));
         var banner = (Control)DetailField(world, "Bifrost.inZoneLeaveBanner")!;
         var title = (Label)DetailField(world, "Bifrost.inZoneLeaveTitleLbl")!;
         DetailCall(world, "Bifrost.OnTime", 600, TempleEventType.ForgottenTemple);

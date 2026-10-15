@@ -20,7 +20,7 @@ public static class NativeChatRoom
     /// <summary>The room's World members: the thread, the composer, the voice row and the members column.</summary>
     private static readonly (string Field, string Name)[] Named =
     {
-        ("ChatRoom.roomThread", "room_log_scroll"), ("ChatRoom.roomComposer", "room_composer_row"),
+        ("ChatRoom.RoomThread", "room_log_scroll"), ("ChatRoom.RoomComposer", "room_composer_row"),
         ("ChatRoom.roomVoiceRow", "room_voice_row"), ("ChatRoom.roomMembersToggle", "room_members_toggle"),
         ("ChatRoom.roomConfigButton", "room_config"), ("ChatRoom.roomJoin", "room_join"), ("ChatRoom.roomDeafen", "room_deafen"), ("ChatRoom.roomVolume", "room_volume"),
         ("ChatRoom.roomMic", "room_mic"), ("ChatRoom.roomVoiceGear", "room_voice_gear"), ("ChatRoom.roomVoiceLeave", "room_voice_leave"),

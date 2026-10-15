@@ -33,11 +33,11 @@ public static class NativeNpc
     /// </summary>
     public static GameNpcPortrait? DialogPortrait(WorldRoot world)
     {
-        bool shown = Native.Get<bool>(world, "NpcDialogWindow.shown") || Native.Get<HudWindow>(world, "NpcDialogWindow.panel") is { Visible: true };
+        bool shown = Native.Get<bool>(world, "NpcDialogWindow.shown") || Native.Get<HudWindow>(world, "NpcDialogWindow.Panel") is { Visible: true };
         if (!shown) return null;
         int talk = Game.Session.NpcQuest.TalkingNpcId;
         int target = talk >= 0 ? talk : Game.Session.NpcQuest.LastNpcId;
-        if (Native.Get<EntityRegistry>(world, "EntitySystem.ents") is not { } ents || !ents.TryGetValue(target, out var npc)) return null;
+        if (Native.Get<EntityRegistry>(world, "EntitySystem.Ents") is not { } ents || !ents.TryGetValue(target, out var npc)) return null;
         if (!Native.Get<bool>(npc, "IsNpc") || Native.Get<bool>(npc, "Dead")) return null;
         string name = Native.Get<string>(npc, "Name") ?? "";
         int level = Native.Get<int>(npc, "Level"), modelId = Native.Get<int>(npc, "ModelId");
@@ -63,7 +63,7 @@ public static class NativeNpc
                 model = scene.Instantiate<Node3D>();
                 Native.Call(Native.StaticOwner("LibreKO.Presentation.ModelAnimation"), "ForceDoubleSidedOnce", model, scene.ResourcePath);
                 // ff78eef: an NPC shows the weapons its own model carries (built-in plugs), as in the world.
-                if (Native.Get<IDictionary>(w, "EntityLooksSystem.mobIndex") is { } mobs && mobs.Contains(modelId) && mobs[modelId] is string stem)
+                if (Native.Get<IDictionary>(w, "EntityLooksSystem.MobIndex") is { } mobs && mobs.Contains(modelId) && mobs[modelId] is string stem)
                     Native.TryCall(Native.StaticOwner("LibreKO.Presentation.ModelNodes"), "AttachBuiltInPlugs", out _, model, stem);
             }
             else
@@ -112,7 +112,7 @@ public static class NativeNpc
     /// </summary>
     public static void QuestViewShown(WorldRoot world, QuestView view)
     {
-        if (Native.Get<VBoxContainer>(world, "NpcDialogWindow.questContent") is not { } content || !GodotObject.IsInstanceValid(content)) return;
+        if (Native.Get<VBoxContainer>(world, "NpcDialogWindow.QuestContent") is not { } content || !GodotObject.IsInstanceValid(content)) return;
         // The view opens with the client's title line (or, on older clients, its dialogue paragraph).
         if (content.GetChildCount() == 0 || content.GetChild(0) is not (RichTextLabel or HBoxContainer)) return;
         var caption = UiTheme.Text(view.StateLabel, 13, UiTheme.Gold);
@@ -140,7 +140,7 @@ public static class NativeNpc
         void Mark(Node node)
         {
             if (node is not Label label || label.GetParent() != body || label.HasMeta("quest_status")) return;
-            var views = Native.Get<List<QuestView>>(world, "QuestNotifications.questNotifications");
+            var views = Native.Get<List<QuestView>>(world, "QuestNotifications.QuestNotifications");
             int index = Native.Get<int>(world, "QuestNotifications.notificationIndex");
             if (views == null || index < 0 || index >= views.Count) return;
             label.SetMeta("quest_status", (int)views[index].State);

@@ -124,7 +124,7 @@ public sealed class NativeAnvil
     private bool Compound => Native.Get<object>(_world, "Upgrade.anvilBench") is { } bench && Convert.ToInt32(bench) == CompoundBench;
     private int MaterialEnd => Compound ? AccessoryBenchSlots : UpgradeSlotCount;
     private bool Shown => Native.Get<bool>(_world, "Upgrade.shown");
-    private bool Awaiting => Native.Get<UpgradeSession>(_world, "Upgrade.session") is { Awaiting: true };
+    private bool Awaiting => Native.Get<UpgradeSession>(_world, "Upgrade.Session") is { Awaiting: true };
 
     /// <summary>Whether a request, its answer or its result animation currently owns the bench.</summary>
     public bool Locked => Native.Has(_world, "Upgrade.InteractionLocked")
@@ -534,7 +534,7 @@ public sealed class NativeAnvil
 
     private void Open(int anvilId)
     {
-        Native.Set(_world, "Upgrade.anvilId", anvilId);
+        Native.Set(_world, "Upgrade.AnvilId", anvilId);
         Native.Call(_world, "Vendor.Close");
         ShowChoice();
     }

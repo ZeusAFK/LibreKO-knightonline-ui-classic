@@ -122,7 +122,7 @@ public partial class Preview
         await click(Descendants(Part<PanelContainer>("details")).OfType<Button>().Single(b => b.TooltipText == "Close"));
         require(!Part<Control>("overlay").Visible && cart.Units == units + 1, "Closing the details leaves the basket unchanged");
         // Pager: a long category turns by whole pages (buttons and wheel).
-        var original = ((List<PowerUpStoreEntry>)DetailField(world, "ShoppingMall.catalog")!).ToList();
+        var original = ((List<PowerUpStoreEntry>)DetailField(world, "ShoppingMall.Catalog")!).ToList();
         var longer = original.Concat(Enumerable.Range(0, 18).Select(i => original[i % original.Count] with { Id = 200 + i, Category = 1, Featured = false })).ToList();
         DetailCall(world, "ShoppingMall.OnCatalog", longer); await frames(8);
         var page = Part<Label>("page"); var scroll = Part<ScrollContainer>("grid_scroll");

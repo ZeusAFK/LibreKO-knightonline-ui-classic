@@ -39,7 +39,7 @@ public partial class Preview
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
         string? Applied() => (string?)typeof(GameCursor).GetField("applied", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null);
         GameCursorKind Kind() => (GameCursorKind)typeof(GameCursor).GetField("kind", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
-        bool InFlight(WorldRoot w) => (bool)DetailField(w, "Repair.inFlight")!;
+        bool InFlight(WorldRoot w) => (bool)DetailField(w, "Repair.InFlight")!;
 
         // Native repair world and the actual Classic inventory in repair mode.
         var world = PreviewFixtures.Prepared(new WorldRoot()); var window = (HudWindow)DetailCall(world, "Preview.BuildRepair")!;
@@ -66,10 +66,10 @@ public partial class Preview
         var attach = typeof(PluginGame).GetMethod("Attach", flags)!;
         attach.Invoke(game, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
         var shell = new HudWindow("inventory", "Inventory") { Visible = false };
-        shell.Body.AddChild((Control)DetailField(world, "InventoryWindow.invContent")!);
+        shell.Body.AddChild((Control)DetailField(world, "InventoryWindow.InvContent")!);
         foreach (var child in shell.GetChildren().OfType<Control>()) child.Visible = false;
         shell.AddThemeStyleboxOverride("panel", new StyleBoxEmpty()); AddChild(shell);
-        ((Dictionary<string, HudWindow>)DetailField(world, "MainWindows.windows")!)["Inventory"] = shell;
+        ((Dictionary<string, HudWindow>)DetailField(world, "MainWindows.Windows")!)["Inventory"] = shell;
         var host = (WindowHost)Create(typeof(WindowHost), "inventory", "Inventory", shell, (Action)(() => DetailCall(world, "MainWindows.Hide", "Inventory")));
         var actual = new InventoryWindow(host); shell.AddChild(actual); shell.ResetSize();
         void Refresh() => typeof(InventoryWindow).GetMethod("Refresh", flags)!.Invoke(actual, null);

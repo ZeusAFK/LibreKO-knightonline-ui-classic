@@ -56,7 +56,7 @@ public static class NativeTrade
     public static IReadOnlyList<TradeItem> Offers(WorldRoot world, bool mine)
     {
         var result = new List<TradeItem>();
-        foreach (var offer in Native.Get<IEnumerable>(world, mine ? "Exchange.myOffer" : "Exchange.theirOffer") ?? Array.Empty<object>())
+        foreach (var offer in Native.Get<IEnumerable>(world, mine ? "Exchange.MyOffer" : "Exchange.TheirOffer") ?? Array.Empty<object>())
             result.Add(new TradeItem(Native.Get<int>(offer!, "SourceAbs"), Native.Get<int>(offer!, "ItemId"), Native.Get<int>(offer!, "Count"), Native.Get<short>(offer!, "Dura")));
         return result;
     }
@@ -172,19 +172,19 @@ public static class NativeTrade
     internal static void Sync(WorldRoot world)
     {
         var state = StateOf(world);
-        if (Native.Get<HudWindow>(world, "Exchange.panel") is not { } panel) return;
+        if (Native.Get<HudWindow>(world, "Exchange.Panel") is not { } panel) return;
         bool shown = Native.Get<bool>(world, "Exchange.shown"), amountShown = Native.Get<bool>(world, "Exchange.amountShown");
-        if (state.FinalPending && (!shown || Native.Get<bool>(world, "Exchange.confirmedByMe") || Offers(world) != state.Offers)) CloseFinal(world);
+        if (state.FinalPending && (!shown || Native.Get<bool>(world, "Exchange.ConfirmedByMe") || Offers(world) != state.Offers)) CloseFinal(world);
         if (!amountShown) state.Gold = false;
 
-        panel.SetMeta("ex_locked", Native.Get<bool>(world, "Exchange.confirmedByMe"));
-        panel.SetMeta("ex_partner_locked", Native.Get<bool>(world, "Exchange.confirmedByPartner"));
+        panel.SetMeta("ex_locked", Native.Get<bool>(world, "Exchange.ConfirmedByMe"));
+        panel.SetMeta("ex_partner_locked", Native.Get<bool>(world, "Exchange.ConfirmedByPartner"));
         panel.SetMeta("ex_pending", Native.Get<bool>(world, "Exchange.addInFlight"));
         panel.SetMeta("ex_modal", amountShown || state.FinalPending);
         panel.SetMeta("ex_wallet", Game.Session.Self.Sheet.Gold);
-        panel.SetMeta("ex_my_gold", Native.Get<int>(world, "Exchange.myGoldOffer"));
-        panel.SetMeta("ex_other_gold", Native.Get<int>(world, "Exchange.theirGoldOffer"));
-        panel.SetMeta("ex_partner", Native.Get<string>(world, "Exchange.partnerName") ?? "Player");
+        panel.SetMeta("ex_my_gold", Native.Get<int>(world, "Exchange.MyGoldOffer"));
+        panel.SetMeta("ex_other_gold", Native.Get<int>(world, "Exchange.TheirGoldOffer"));
+        panel.SetMeta("ex_partner", Native.Get<string>(world, "Exchange.PartnerName") ?? "Player");
         panel.SetMeta("ex_self", Game.Session.Self.LastEnter.Name ?? "You");
         Native.Get<CanvasLayer>(world, "Exchange.amountLayer")?.SetMeta("ex_gold", state.Gold);
 
@@ -205,7 +205,7 @@ public static class NativeTrade
         {
             if (pending && !request.Visible)
             {
-                state.RequestLabel!.Text = $"{Native.Get<string>(world, "Exchange.partnerName")} wants to trade with you.\nDo you agree?";
+                state.RequestLabel!.Text = $"{Native.Get<string>(world, "Exchange.PartnerName")} wants to trade with you.\nDo you agree?";
                 request.Visible = true;
             }
             else if (!pending && request.Visible) request.Visible = false;
@@ -223,14 +223,14 @@ public static class NativeTrade
     }
 
     private static (int, int, int, int) Offers(WorldRoot world) => (
-        Native.Get<ICollection>(world, "Exchange.myOffer")?.Count ?? 0, Native.Get<ICollection>(world, "Exchange.theirOffer")?.Count ?? 0,
-        Native.Get<int>(world, "Exchange.myGoldOffer"), Native.Get<int>(world, "Exchange.theirGoldOffer"));
+        Native.Get<ICollection>(world, "Exchange.MyOffer")?.Count ?? 0, Native.Get<ICollection>(world, "Exchange.TheirOffer")?.Count ?? 0,
+        Native.Get<int>(world, "Exchange.MyGoldOffer"), Native.Get<int>(world, "Exchange.TheirGoldOffer"));
 
     /// <summary>The Trade button asks first; Enter never reaches this decision.</summary>
     public static void RequestFinal(WorldRoot world)
     {
         var state = StateOf(world);
-        if (!Native.Get<bool>(world, "Exchange.shown") || Native.Get<bool>(world, "Exchange.confirmedByMe") || state.FinalPending) return;
+        if (!Native.Get<bool>(world, "Exchange.shown") || Native.Get<bool>(world, "Exchange.ConfirmedByMe") || state.FinalPending) return;
         if (Native.Get<bool>(world, "Exchange.addInFlight") || Native.Get<bool>(world, "Exchange.amountShown"))
         {
             Native.Call(world, "Exchange.SetStatus", "Finish adding your offer before confirming.", true);
@@ -257,7 +257,7 @@ public static class NativeTrade
         if (!state.FinalPending) return;
         bool unchanged = Offers(world) == state.Offers;
         CloseFinal(world);
-        if (!unchanged || !Native.Get<bool>(world, "Exchange.shown") || Native.Get<bool>(world, "Exchange.confirmedByMe")
+        if (!unchanged || !Native.Get<bool>(world, "Exchange.shown") || Native.Get<bool>(world, "Exchange.ConfirmedByMe")
             || Native.Get<bool>(world, "Exchange.addInFlight") || Native.Get<bool>(world, "Exchange.amountShown")) return;
         Native.Call(world, "Exchange.OnConfirm");
         Sync(world);
@@ -268,14 +268,14 @@ public static class NativeTrade
     {
         var state = StateOf(world);
         int gold = Game.Session.Self.Sheet.Gold;
-        if (!Native.Get<bool>(world, "Exchange.shown") || Native.Get<bool>(world, "Exchange.confirmedByMe") || Native.Get<bool>(world, "Exchange.confirmedByPartner")
+        if (!Native.Get<bool>(world, "Exchange.shown") || Native.Get<bool>(world, "Exchange.ConfirmedByMe") || Native.Get<bool>(world, "Exchange.ConfirmedByPartner")
             || Native.Get<bool>(world, "Exchange.addInFlight") || state.FinalPending || gold <= 0) return;
         if (Native.Get<CanvasLayer>(world, "Exchange.amountLayer") is not { } layer || Native.Get<SpinBox>(world, "Exchange.amountSpin") is not { } spin) return;
         Native.Call(world, "ItemTooltip.Hide");
         state.Gold = true;
         Native.Set(world, "Exchange.amountSlot", -1);
         Native.Set(world, "Exchange.amountMax", gold);
-        if (Native.Get<TextureRect>(world, "Exchange.amountIcon") is { } icon) icon.Texture = UiIcons.Get("system/coin");
+        if (Native.Get<TextureRect>(world, "Exchange.AmountIcon") is { } icon) icon.Texture = UiIcons.Get("system/coin");
         if (Native.Get<Label>(world, "Exchange.amountName") is { } name) name.Text = "Offer coins";
         if (Native.Get<Label>(world, "Exchange.amountHint") is { } hint) hint.Text = $"You have {gold:n0}";
         spin.MaxValue = gold;
@@ -324,7 +324,7 @@ public static class NativeTrade
     {
         var counted = new HashSet<int>();
         int count = 0;
-        foreach (var item in Native.Get<IEnumerable>(world, "Exchange.myOffer") ?? Array.Empty<object>())
+        foreach (var item in Native.Get<IEnumerable>(world, "Exchange.MyOffer") ?? Array.Empty<object>())
         {
             int id = Native.Get<int>(item!, "ItemId");
             if ((ItemData.Get(id)?.Countable ?? 0) == 0 || counted.Add(id)) count++;

@@ -37,8 +37,8 @@ public partial class Preview
         var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
         var invLayer=(CanvasLayer)DetailField(world,"InventoryWindow.invLayer")!;invLayer.Reparent(this);
         var invWindow=new HudWindow("inventory","Inventory",new Vector2(520,48)) { Visible=false };
-        invLayer.AddChild(invWindow);invWindow.Body.AddChild((Control)DetailField(world,"InventoryWindow.invContent")!);
-        ((Dictionary<string,HudWindow>)DetailField(world,"MainWindows.windows")!).Add("Inventory",invWindow);
+        invLayer.AddChild(invWindow);invWindow.Body.AddChild((Control)DetailField(world,"InventoryWindow.InvContent")!);
+        ((Dictionary<string,HudWindow>)DetailField(world,"MainWindows.Windows")!).Add("Inventory",invWindow);
         foreach(var c in invWindow.GetChildren().OfType<Control>()) c.Visible=false;
         invWindow.AddThemeStyleboxOverride("panel",new StyleBoxEmpty());
         var host=(WindowHost)Create(typeof(WindowHost),"inventory","Inventory",invWindow,(Action)(()=>invWindow.Visible=false));
@@ -48,14 +48,14 @@ public partial class Preview
             DetailCall(world,"InventoryWindow.RefreshUI");
             typeof(PluginGame).GetMethod("RaiseInventory",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(game,null);
         }
-        var vendor=(HudWindow)DetailField(world,"Vendor.panel")!;NativeVendor.Prepare(vendor,world);
+        var vendor=(HudWindow)DetailField(world,"Vendor.Panel")!;NativeVendor.Prepare(vendor,world);
         var sourceActions=Descendants(vendor.Body).OfType<BaseButton>().Select(b=>b.GetInstanceId()).ToArray();
         bool nativeReference=OS.GetCmdlineUserArgs().Contains("vendor-native-reference");
         var shell=nativeReference?null:ClassicVendorSkin.Apply(vendor.Body)!;
         PluginHost.Ui.ReplaceDialogs(request=>new KnightOnlineUiClassic.Windows.MessageBox(request));
         ((CanvasLayer)DetailField(world,"Vendor.layer")!).Reparent(this);
         ((CanvasLayer)DetailField(world,"ItemTooltip.tipLayer")!).Reparent(this);
-        var quantity=(QuantityPrompt)DetailField(world,"Vendor.tradePrompt")!;quantity.Reparent(this);
+        var quantity=(QuantityPrompt)DetailField(world,"Vendor.TradePrompt")!;quantity.Reparent(this);
         using var npcSeed=JsonDocument.Parse(System.IO.File.ReadAllText(ProjectSettings.GlobalizePath("res://../../LibreKO/Server/LibreKO.Game/Seed/Data/Npcs.json")));
         string shopName=npcSeed.RootElement.EnumerateArray().First(n=>n.GetProperty("SellingGroup").GetInt32()==group.Key).GetProperty("Name").GetString()!;
         void OpenShop(int sellingGroup)
@@ -108,8 +108,9 @@ public partial class Preview
         }
         void ApplyGold(int total)
         {
-            NativeGoldLog.Changed(world,total);DetailCall(world,"Stats.OnGoldChange",total);RaiseNew();
-            DetailCall(world,"Vendor.OnGold",total);
+            var change=new GoldChange(total,total-Game.Session.Self.Sheet.Gold,false);Game.Session.Self.Sheet.SetGold(total);
+            NativeGoldLog.Changed(world,change);DetailCall(world,"Stats.OnGoldChange",change);RaiseNew();
+            DetailCall(world,"Vendor.OnGold",change);
         }
         // Shop trades are logged once, by the client's own shop line (the plugin only applies the balance).
         string ShopLine(int textId,int amount)=>ItemData.Text(textId,"%d").Replace("%d",amount.ToString("n0"));
@@ -196,7 +197,7 @@ public partial class Preview
         }
         await Capture("catalogue");
         Require(sourceActions.All(id=>Descendants(vendor).OfType<BaseButton>().Any(b=>b.GetInstanceId()==id)),"All original vendor action instances retained");
-        var cells=(ItemSlotView[])DetailField(world,"Vendor.cells")!;
+        var cells=(ItemSlotView[])DetailField(world,"Vendor.Cells")!;
         Require(cells.Select(c=>c.Position).Distinct().Count()==24 && cells.All(c=>c.Size==new Vector2(45,45)),"24 actual catalogue cells occupy distinct 45px bounds");
         Require(cells.All(cell=>CountLabel(cell).VerticalAlignment==VerticalAlignment.Bottom
             && CountLabel(cell).HorizontalAlignment==HorizontalAlignment.Right
@@ -207,7 +208,7 @@ public partial class Preview
         Require(!((Button)DetailField(world,"Vendor.buy")!).IsVisibleInTree(),"Trade is driven by item drag instead of a separate Buy action");
         var pager=(ServicePager)DetailField(world,"Vendor.pager")!;pager.Step(1);await Capture("page-2");
         Require(pager.Page==1,"Native catalogue paging keeps original packet positions");
-        var search=(LineEdit)DetailField(world,"Vendor.search")!;
+        var search=(LineEdit)DetailField(world,"Vendor.Search")!;
         Require(!search.IsVisibleInTree() && !Descendants(shell).OfType<LineEdit>().Any(e=>e.IsVisibleInTree()),"Original shop composition has no visible search field");
         Require(Descendants(shell).OfType<TextureRect>().Single(t=>t.Name=="trade_coin").IsVisibleInTree(),"Gold wallet uses the original nation-specific coin artwork");
         async Task<ClassicTradeCatalogueSlot> ShowItem(int id)
@@ -233,7 +234,7 @@ public partial class Preview
         var initialAmount=Descendants(quantity).OfType<MoneyEdit>().Single();
         Require(quantity.Visible && !InFlight() && initialAmount.Value==63,"Right-clicking a bag stack prefills its entire carried quantity");Escape();await Frames();
         var hover=hit.GetGlobalRect().GetCenter();Input.ParseInputEvent(new InputEventMouseMotion {Position=hover,GlobalPosition=hover});await Frames();
-        var tip=(Control)DetailField(world,"ItemTooltip.tipPanel")!;tip.Position=new Vector2(693,120);await Capture("item-tooltip");
+        var tip=(Control)DetailField(world,"ItemTooltip.TipPanel")!;tip.Position=new Vector2(693,120);await Capture("item-tooltip");
         // The client's shop-goods tooltip line: the purchase price with the zone tariff, red when the wallet is short.
         string Digits(string text)=>new string(text.Where(char.IsDigit).ToArray());
         var hoveredDef=ItemData.Get(entry.Id)!;
@@ -436,7 +437,7 @@ public partial class Preview
         Require(Descendants(classicInventory).OfType<ClassicSlot>().Where(c=>c.Current.ItemId==entry.Id && c.Current.Count==1).All(c=>CountBadge(c)=="1")
             && Descendants(classicInventory).OfType<ClassicSlot>().Any(c=>c.Current.ItemId==entry.Id && c.Current.Count==1),
             "The same one-unit stack displays 1 in the separate Classic inventory");
-        var nativeInv=(System.Collections.IList)DetailField(world,"InventoryWindow.invBagCells")!;
+        var nativeInv=(System.Collections.IList)DetailField(world,"InventoryWindow.InvBagCells")!;
         NativeCountBadge.Apply((Control)nativeInv[1]!);Require(CountBadge(nativeInv[1]!)=="1","The native inventory also displays a one-unit stack badge");
         foreach(string typeName in new[]{"WarehouseCell","MerchantCell"})
         {
@@ -478,16 +479,16 @@ public partial class Preview
         RefreshBag();DetailCall(world,"Vendor.RefreshDetail");await Frames();await PointerDrag(hit,target);await Capture("bags-full");
         Require(!quantity.Visible && !InFlight() && Status().Contains("full"),"Full inventory and capped stacks reject a purchase with a visible reason");
         for(int i=0;i<saved.Length;i++) inventory[Inventory.GridStart+i]=saved[i];RefreshBag();DetailCall(world,"Vendor.RefreshDetail");
-        Game.Session.Self.Sheet.SeedWealth(0,50_000);DetailCall(world,"Vendor.OnGold",0);await RightClick(hit);await Capture("insufficient-gold");
+        Game.Session.Self.Sheet.SeedWealth(0,50_000);DetailCall(world,"Vendor.OnGold",new GoldChange(0,0,false));await RightClick(hit);await Capture("insufficient-gold");
         Require(!quantity.Visible && !InFlight() && Status().Contains("gold"),"Right-click purchase with insufficient funds is refused with the native reason");
-        Game.Session.Self.Sheet.SeedWealth(1_234_567,50_000);DetailCall(world,"Vendor.OnGold",1_234_567);
+        Game.Session.Self.Sheet.SeedWealth(1_234_567,50_000);DetailCall(world,"Vendor.OnGold",new GoldChange(1_234_567,0,false));
         if(quantity.Visible) { Escape();await Frames(); }
         Game.Session.Self.Sheet.SetGold(ItemData.BuyPrice(entry.Id));DetailCall(world,"Vendor.OnGold",Game.Session.Self.Sheet.Gold);
         await PointerDrag(hit,target);await Capture("single-buy-approval");
         Require(!quantity.Visible && shell.ModalOpen && !InFlight(),"When only one unit can be bought, purchase skips quantity and requests approval");
         Game.Session.Self.Sheet.SetGold(0);DetailCall(world,"Vendor.OnGold",0);await Approve();await Capture("approval-funds-changed");
         Require(!InFlight() && !shell.ModalOpen && Status().Contains("gold"),"Final buy confirmation rechecks funds changed after the approval opened");
-        Game.Session.Self.Sheet.SeedWealth(1_234_567,50_000);DetailCall(world,"Vendor.OnGold",1_234_567);
+        Game.Session.Self.Sheet.SeedWealth(1_234_567,50_000);DetailCall(world,"Vendor.OnGold",new GoldChange(1_234_567,0,false));
         var weighted=groups.SelectMany(g=>g.Value.Select(e=>(Group:g.Key,Entry:e))).First(e=>ItemData.Get(e.Entry.Id) is {Countable:>0,Weight:>1} && ItemData.BuyPrice(e.Entry.Id)>0);
         OpenShop(weighted.Group);hit=await ShowItem(weighted.Entry.Id);
         Game.Session.Self.Sheet.SetMaxWeight(1);RefreshBag();await PointerDrag(hit,target);await Capture("weight-limit");
@@ -541,7 +542,7 @@ public partial class Preview
         foreach(var fixture in new[]{(255000,"sundries"),(267000,"dc-sundries"),(277000,"ghost-sundries"),(253000,"potions"),(201001,"weapons"),(202001,"armor"),(254000,"upgrade-scrolls"),(250000,"scrolls")})
         {
             OpenShop(fixture.Item1);await Capture(fixture.Item2);
-            var catalogue=(ShopCatalogue)DetailField(world,"Vendor.catalogue")!;
+            var catalogue=(ShopCatalogue)DetailField(world,"Vendor.Catalogue")!;
             var expected=groups.GetValueOrDefault(fixture.Item1,new()).Where(e=>ItemData.Get(e.Id)!=null && e.List>=0 && e.List<24).OrderBy(e=>e.Line).ThenBy(e=>e.List).ToArray();
             Require(pager.Pages==ShopCatalogue.PagesFor(expected.Length),$"{fixture.Item2}: page count packs all real source products without empty source pages");
             var ids=new List<int>();

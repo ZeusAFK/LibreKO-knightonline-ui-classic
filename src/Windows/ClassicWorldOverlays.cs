@@ -520,7 +520,7 @@ public static class ClassicWorldOverlays
     /// </summary>
     private static void Wanted(Button button)
     {
-        if (NativeApi.WorldOf(button) is not { } world || NativeApi.Get<CanvasLayer>(world, "VanguardWindow.layer") is not { } layer) return;
+        if (NativeApi.WorldOf(button) is not { } world || NativeApi.Get<CanvasLayer>(world, "VanguardWindow.Layer") is not { } layer) return;
         if (layer.GetNodeOrNull<ClassicWantedPlaque>("classic_wanted") is not { } plaque)
         {
             plaque = new ClassicWantedPlaque(world) { Name = "classic_wanted" };
@@ -868,7 +868,7 @@ public partial class ClassicWantedPlaque : Control
     public override void _Process(double delta)
     {
         if (!GodotObject.IsInstanceValid(_world)) return;
-        int zone = Convert.ToInt32(NativeApi.Get<object>(_world, "zone") ?? 0);
+        int zone = Convert.ToInt32(NativeApi.Get<object>(_world, "ZoneId") ?? 0);
         bool shown = LibreKO.Domain.PkLadder.IsLadderZone(zone);
         if (Visible != shown) Visible = shown;
         var at = new Vector2(GetViewportRect().Size.X - Size.X - ClassicOverlayLayout.Wanted.Margin, ClassicOverlayLayout.Wanted.Top);

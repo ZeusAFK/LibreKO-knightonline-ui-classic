@@ -78,7 +78,7 @@ public static class NativeKing
     {
         var text = Native.Get<Label>(world, "King.nominateText");
         var note = text?.GetParent()?.GetChildren().OfType<Label>().FirstOrDefault(l => l != text);
-        var edit = Native.Get<LineEdit>(world, "King.nomineeEdit");
+        var edit = Native.Get<LineEdit>(world, "King.NomineeEdit");
         var caption = edit?.GetParent()?.GetChildren().OfType<Label>().FirstOrDefault();
         return NativeWindows.Name(text, "king_nominate_text") & NativeWindows.Name(note, "king_nominate_note")
             & NativeWindows.Name(caption, "king_nominate_caption") & NativeWindows.Name(edit, "king_nominee")
@@ -87,7 +87,7 @@ public static class NativeKing
 
     private static bool Plan(HudWindow window, WorldRoot world)
     {
-        bool named = NativeWindows.Name(Native.Get<TextEdit>(world, "King.planEdit"), "king_plan_text")
+        bool named = NativeWindows.Name(Native.Get<TextEdit>(world, "King.PlanEdit"), "king_plan_text")
             & NativeWindows.Name(Native.Get<Label>(world, "King.planCount"), "king_plan_count")
             & NameAll(Footer(window), "king_plan_accept", "king_plan_cancel");
         Pending(window, world, "King.planBusy");

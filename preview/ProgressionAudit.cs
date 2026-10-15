@@ -78,7 +78,7 @@ public partial class Preview
                 var war = tabs.First(t => t.Name == "ach_tab_" + (int)AchievementTab.War);
                 await Hover(war); await Capture(window, "tab-hover"); Leave();
                 war.EmitSignal(BaseButton.SignalName.Pressed); await Frames();
-                Require(!(bool)DetailField(world, "Achievement.achOnSummary")! && (AchievementTab)DetailField(world, "Achievement.achTab")! == AchievementTab.War, "Category tab invokes the native category selection");
+                Require(!(bool)DetailField(world, "Achievement.ViewingSummary")! && (AchievementTab)DetailField(world, "Achievement.Tab")! == AchievementTab.War, "Category tab invokes the native category selection");
                 Require(war.GetMeta("progression_tab_selected").AsBool(), "Selected category keeps the pressed plate after the native refresh");
                 Require(Named<HBoxContainer>(panel, "ach_list_row").Visible && Named<HBoxContainer>(panel, "ach_filters").Visible, "Category list and filters become visible");
             }
@@ -121,7 +121,7 @@ public partial class Preview
                 Require(panel.Frame.Get("ach_category_frame")!.GetGlobalRect().Encloses(column.GetGlobalRect()) && panel.Frame.Get("ach_list_frame")!.GetGlobalRect().Encloses(scroll.GetGlobalRect()), "Category column and list inside their insets");
                 Require(!column.GetGlobalRect().Intersects(scroll.GetGlobalRect()), "Category column and list do not overlap");
                 categories[1].EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left }); await Frames(3);
-                Require((int)DetailField(world, "Achievement.achGroup")! != AchievementData.AllGroups, "Category row invokes the native group selection");
+                Require((int)DetailField(world, "Achievement.Group")! != AchievementData.AllGroups, "Category row invokes the native group selection");
                 var chosen = Named<VBoxContainer>(panel, "ach_categories").GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion()).ToArray();
                 Require(chosen.Length > 1 && chosen[1].GetMeta("ach_category_chosen", false).AsBool() && !chosen[0].GetMeta("ach_category_chosen", false).AsBool(), "Chosen category moves to the clicked row");
                 await Capture(window, "category");
@@ -135,7 +135,7 @@ public partial class Preview
                 var status = Named<OptionButton>(panel, "ach_status");
                 Require(status.ItemCount == 3 && status.GetThemeStylebox("normal") is StyleBoxTexture, "Status filter on the Classic button art");
                 status.Select(2); status.EmitSignal(OptionButton.SignalName.ItemSelected, 2L); await Frames(3);
-                Require((AchievementStatusFilter)DetailField(world, "Achievement.achStatusFilter")! == AchievementStatusFilter.Completed, "Status filter invokes the native filter");
+                Require((AchievementStatusFilter)DetailField(world, "Achievement.StatusFilter")! == AchievementStatusFilter.Completed, "Status filter invokes the native filter");
                 await Capture(window, "completed");
                 var change = Named<Button>(panel, "ach_change_title");
                 Require(Connected(change) && change.GetThemeStylebox("normal") is StyleBoxTexture && change.Size.Y == ClassicProgressionLayout.Row, "Change title keeps its native callback on a Classic button");
@@ -147,7 +147,7 @@ public partial class Preview
                 Require(Named<Label>(panel, "ach_summary").Text.Length >= 0, "Empty state renders");
             }
             Named<Control>(panel.Frame, "btn_close").EmitSignal(BaseButton.SignalName.Pressed);
-            Require(!window.Visible && !(bool)DetailField(world, "Achievement.achShown")!, view + " Close ornament invokes the native close");
+            Require(!window.Visible && !(bool)DetailField(world, "Achievement.Shown")!, view + " Close ornament invokes the native close");
             await Done(world, window);
         }
 
@@ -241,7 +241,7 @@ public partial class Preview
         foreach (string view in new[] { "configured", "empty", "running", "pending", "claimed" })
         {
             var (world, window, panel) = Open("BuildGenieUiPreview", view);
-            var layer = (CanvasLayer)DetailField(world, "Genie.layer")!; world.RemoveChild(layer); AddChild(layer);
+            var layer = (CanvasLayer)DetailField(world, "Genie.Layer")!; world.RemoveChild(layer); AddChild(layer);
             // The genie quick panel on the same layer gets its Classic box as the live overlay check gives it.
             NativeOverlays.PrepareLater(world);
             await Frames();
@@ -294,7 +294,7 @@ public partial class Preview
                 Require(list.ItemCount == before - 1, "Remove invokes the native monster list edit");
                 await Hover(slots[0]); await Capture(window, "slot-hover"); Leave();
                 slots[1].EmitSignal(BaseButton.SignalName.Pressed); await Frames(3);
-                var picker = (PopupMenu)DetailField(world, "Genie.skillPicker")!;
+                var picker = (PopupMenu)DetailField(world, "Genie.SkillPicker")!;
                 Require(picker.Visible && (int)DetailField(world, "Genie.editingSlot")! == 1, "Skill cell opens the native skill picker");
                 Require(picker.GetThemeStylebox("panel") is StyleBoxFlat { BgColor.A: 1 }, "Skill picker uses the Classic popup material");
                 await Capture(window, "skill-picker"); picker.Hide(); await Frames(2);
@@ -302,9 +302,9 @@ public partial class Preview
                 var nativeModes = (System.Collections.IDictionary)DetailField(world, "Genie.modes")!;
                 Require(ReferenceEquals(nativeModes[GenieMode.Attack], mode), "The Attack Mode toggle is the client's own GenieMode.Attack control");
                 mode.EmitSignal(BaseButton.SignalName.Pressed); mode.ButtonPressed = !was;
-                Require(((GenieSetup)DetailField(world, "Genie.genie")!).Has(GenieMode.Attack) == !was, "Mode toggles are the native settings controls");
+                Require(((GenieSetup)DetailField(world, "Genie.Genie")!).Has(GenieMode.Attack) == !was, "Mode toggles are the native settings controls");
                 mode.ButtonPressed = was;
-                var setup = (GenieSetup)DetailField(world, "Genie.genie")!;
+                var setup = (GenieSetup)DetailField(world, "Genie.Genie")!;
                 bool wasParty = party[2].ButtonPressed; party[2].ButtonPressed = !wasParty;
                 Require(setup.SupportParty[2] == !wasParty, "A party check writes the client's SupportParty flag of its cell");
                 party[2].ButtonPressed = wasParty;
@@ -331,7 +331,7 @@ public partial class Preview
             Require(((CheckButton)DetailField(world, "Genie.returnHome")!).ButtonPressed == !wasHome, view + " options are the client's own settings controls");
             home.ButtonPressed = wasHome;
             var pet = Named<CheckButton>(panel, "genie_pet_potion"); bool wasPet = pet.ButtonPressed; pet.ButtonPressed = !wasPet;
-            Require(((GenieSetup)DetailField(world, "Genie.genie")!).Has(GenieMoreMode.PetPotion) == !wasPet, view + " the Familiar potion toggle writes the client's PetPotion mode");
+            Require(((GenieSetup)DetailField(world, "Genie.Genie")!).Has(GenieMoreMode.PetPotion) == !wasPet, view + " the Familiar potion toggle writes the client's PetPotion mode");
             pet.ButtonPressed = wasPet;
             foreach (var hint in new[] { "genie_ptcode_hint", "genie_leader_hint", "genie_scroll_hint", "genie_scroll_status", "genie_daily_status", "genie_hint" }.Select(n => Named<Label>(panel, n)))
                 Require(hint.GetVisibleLineCount() == hint.GetLineCount(), view + " every line of " + hint.Name + " is shown (" + hint.GetLineCount() + ")");
@@ -360,7 +360,7 @@ public partial class Preview
             Require(!Named<Control>(panel, "genie_ptcode").IsVisibleInTree() && !Named<Control>(panel, "genie_slot_0").IsVisibleInTree(), view + " Others page never overlaps Main or Misc");
             var feed = rules[Array.FindIndex(GenieTownReturn.OtherRows, r => r.Option == GenieOther.FeedFamiliar)].GetChildren().OfType<CheckButton>().First();
             bool wasFeed = feed.ButtonPressed; feed.ButtonPressed = !wasFeed;
-            Require(((GenieSetup)DetailField(world, "Genie.genie")!).Has(GenieOther.FeedFamiliar) == !wasFeed, view + " the familiar feeding row writes the client's FeedFamiliar rule");
+            Require(((GenieSetup)DetailField(world, "Genie.Genie")!).Has(GenieOther.FeedFamiliar) == !wasFeed, view + " the familiar feeding row writes the client's FeedFamiliar rule");
             feed.ButtonPressed = wasFeed;
             await Capture(window, view + "-others");
             Named<Button>(panel, "genie_tab_main").EmitSignal(BaseButton.SignalName.Pressed); await Frames();

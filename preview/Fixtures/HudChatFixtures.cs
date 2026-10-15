@@ -17,7 +17,7 @@ public static partial class PreviewFixtures
         Native.Call(chat, "DetachNetwork");
         Native.Call(world, "ChatHost.BuildColors");
         var layer = Native.Get<CanvasLayer>(world, "ChatHost.colorsLayer")!;
-        var window = Native.Get<HudWindow>(world, "ChatHost.colorsWindow")!;
+        var window = Native.Get<HudWindow>(world, "ChatHost.ColorsWindow")!;
         NativeChatColours.Prepare(window, world);
         Native.Call(world, "ChatHost.OpenColors");
         var panel = Native.Get<Control>(chat, "Panel")!;

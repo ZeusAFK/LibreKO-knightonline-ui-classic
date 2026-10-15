@@ -102,8 +102,8 @@ public partial class Preview
         await ToSignal(GetTree().CreateTimer(.1),SceneTreeTimer.SignalName.Timeout);await shot("pm-stack-open");
         first.SetMinimized(false);
         var world=PreviewFixtures.Prepared(new WorldRoot());var worldType=typeof(WorldRoot);
-        Native.Set(world,"ChatRoom.whisperLayer",pmLayer);
-        var chats=Native.Get<object>(world,"ChatRoom.whispers")!;
+        Native.Set(world,"Whispers.whisperLayer",pmLayer);
+        var chats=Native.Get<object>(world,"Whispers.Windows")!;
         var chatType=Native.ClientType("LibreKO.Features.Social.ChatRoomFeature+Whisper")!;
         foreach(var fixture in new[]{first,latest})
         {

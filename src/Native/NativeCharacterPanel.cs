@@ -76,7 +76,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
         get
         {
             if (W is not { } w) return Array.Empty<Window>();
-            return new[] { "Clan.inviteAsk", "Clan.disbandAsk", "Clan.leaveAsk", "Clan.removeAsk", "Clan.allianceAsk", "Clan.confirmAsk", "Clan.memberMenu" }
+            return new[] { "Clan.inviteAsk", "Clan.disbandAsk", "Clan.LeaveAsk", "Clan.removeAsk", "Clan.allianceAsk", "Clan.confirmAsk", "Clan.memberMenu" }
                 .Select(member => Native.Get<Window>(w, member)).OfType<Window>().ToArray();
         }
     }
@@ -100,16 +100,14 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     }
 
     /// <summary>
-    /// Escape closes Knights Management before the main windows. The client's escape order has no
-    /// seam, so the entry goes ahead of its last two entries (main windows, then whispers).
+    /// Escape closes Knights Management before the main windows.
     /// </summary>
     private static void EscapeCloses(WorldRoot w, HudWindow window)
     {
-        const int TrailingEntries = 2;
         var weak = new WeakReference<HudWindow>(window);
         bool Open() => weak.TryGetTarget(out var shown) && GodotObject.IsInstanceValid(shown) && shown.Visible;
         void Close() { if (weak.TryGetTarget(out var shown) && GodotObject.IsInstanceValid(shown)) shown.Visible = false; }
-        NativeEscape.CloseBeforeTrailing(w, Open, Close, TrailingEntries);
+        NativeEscape.CloseOnEscape(w, Open, Close);
     }
 
     /// <summary>
@@ -118,7 +116,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     /// </summary>
     private void SyncClanContent(WorldRoot w)
     {
-        if (ClanDetails is { } details && Native.Get<Control>(w, "Clan.content") is { } content)
+        if (ClanDetails is { } details && Native.Get<Control>(w, "Clan.Content") is { } content)
             content.Visible = _page == ClanKey || details.Visible;
     }
 
@@ -268,12 +266,12 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
             case "union_chat": OpenChannel(w, AllianceChannel, "&"); return;
             case "friend_add":
                 if (Native.Get<LineEdit>(w, "Friends.friendAddInput") is { } input)
-                    input.Text = value.Trim().Length > 0 ? value.Trim() : SelectedPlayer(w) is { } id && Native.Get<IDictionary>(w, "EntitySystem.ents")?[id] is { } target
+                    input.Text = value.Trim().Length > 0 ? value.Trim() : SelectedPlayer(w) is { } id && Native.Get<IDictionary>(w, "EntitySystem.Ents")?[id] is { } target
                         ? Native.Get<string>(target, "Name") ?? "" : "";
                 Call(w, "Friends.DoFriendAdd");
                 return;
             case "friend_remove": if (friends.Any(f => f.Name == selection)) Game.Requests.Friends.FriendRemove(selection); return;
-            case "friend_private": if (friends.Any(f => f.Name == selection && f.IsOnline)) Call(w, "ChatRoom.OpenWhisperWith", selection); return;
+            case "friend_private": if (friends.Any(f => f.Name == selection && f.IsOnline)) Call(w, "Whispers.OpenWhisperWith", selection); return;
             case "friend_party": if (friends.Any(f => f.Name == selection && f.IsOnline)) Call(w, "PlayerMenu.InviteToParty", selection); return;
             case "quest_filter": if (int.TryParse(value, out int filter) && filter is >= 0 and <= LastQuestFilter) Call(w, "Quest.SetFilter", filter); return;
             case "quest_kind":
@@ -290,8 +288,8 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
 
     private static int? SelectedPlayer(WorldRoot w)
     {
-        int id = Int(w, "Selection.selectedId");
-        return id > 0 && Native.Get<EntityRegistry>(w, "EntitySystem.ents") is { } ents && ents.TryGetValue(id, out var ent)
+        int id = Int(w, "Selection.SelectedId");
+        return id > 0 && Native.Get<EntityRegistry>(w, "EntitySystem.Ents") is { } ents && ents.TryGetValue(id, out var ent)
             && !Native.Get<bool>(ent, "IsNpc") ? id : null;
     }
 
@@ -313,7 +311,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     {
         if (!int.TryParse(selection, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id)
             || Call(w, "Quest.QuestsInView") is not List<(int QuestId, int State)> quests || quests.All(q => q.QuestId != id)) return false;
-        Native.Set(w, "Quest.selected", id);
+        Native.Set(w, "Quest.Selected", id);
         Call(w, "Quest.RefreshDetail");
         return true;
     }
@@ -321,7 +319,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     /// <summary>Shows the native Quests window without the refresh that would reload and reset the selection.</summary>
     private static void ShowQuestsWindow(WorldRoot w)
     {
-        if (Native.Get<Dictionary<string, HudWindow>>(w, "MainWindows.windows") is not { } windows || !windows.TryGetValue("Quests", out var window)) return;
+        if (Native.Get<Dictionary<string, HudWindow>>(w, "MainWindows.Windows") is not { } windows || !windows.TryGetValue("Quests", out var window)) return;
         window.Visible = true;
         window.GetParent()?.MoveChild(window, window.GetParent().GetChildCount() - 1);
         Native.TryCall(w, "MainWindows.SyncState", out _);
@@ -333,7 +331,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     /// </summary>
     private void OpenClanDetails(WorldRoot w)
     {
-        if (Native.Get<Control>(w, "Clan.content") is not { } content) return;
+        if (Native.Get<Control>(w, "Clan.Content") is not { } content) return;
         if (ClanDetails == null)
         {
             int width = LibreKO.UiKit.CharacterPageWidth;

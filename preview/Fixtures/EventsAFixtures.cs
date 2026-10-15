@@ -65,7 +65,7 @@ public static partial class PreviewFixtures
         EventsPlayer(nation);
         Call(world, "CollectionRace.BuildWindow");
         Call(world, "CollectionRace.Show", CollectionRaceEventsState(completed, crowded));
-        return EventsLayer(world, "CollectionRace.crLayer", "CollectionRace.crWindow");
+        return EventsLayer(world, "CollectionRace.crLayer", "CollectionRace.CrWindow");
     }
 
     public static CanvasLayer BuildLotteryEventsPreview(WorldRoot world, int nation)

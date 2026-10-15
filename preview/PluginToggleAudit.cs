@@ -222,11 +222,11 @@ public partial class Preview
         }
         Dictionary<string, bool> HudState(WorldRoot world) => new()
         {
-            ["status bars"] = Shown(Field<Control?>(world, "StatusHud.root")),
+            ["status bars"] = Shown(Field<Control?>(world, "StatusHud.Root")),
             ["hotbar"] = Shown(Field<CanvasLayer>(world, "Hotbar.layer").GetChildren().OfType<Control>().FirstOrDefault()),
             ["exp bar"] = Field<CanvasLayer?>(world, "ExpBar.layer") is { Visible: true },
             ["launcher"] = Field<CanvasLayer>(world, "HudLauncher.layer").Visible,
-            ["mini map"] = Shown(Field<MiniMap>(world, "Map.mini")),
+            ["mini map"] = Shown(Field<MiniMap>(world, "Map.MiniMap")),
             ["plugin hud parts"] = ((IDictionary)Native.Get<object>(world, "pluginHud")!).Count > 0,
             // The top-right icons whose windows the Classic status bar's G, E and R open.
             ["genie icon"] = Shown(Field<Control?>(world, "TopIcons.Icon:Genie")),
@@ -274,7 +274,7 @@ public partial class Preview
         WorldRoot? world = null;
         async Task<WorldRoot> Rebuilt(WorldRoot? previous, string why)
         {
-            await Until(() => GetTree().CurrentScene is WorldRoot w && !ReferenceEquals(w, previous) && Field<bool>(w, "worldReady"), "World scene is rebuilt in place: " + why);
+            await Until(() => GetTree().CurrentScene is WorldRoot w && !ReferenceEquals(w, previous) && Field<bool>(w, "WorldReady"), "World scene is rebuilt in place: " + why);
             var next = (WorldRoot)GetTree().CurrentScene;
             await Until(() => Field<LoadingScreen?>(next, "loadingLayer") == null, "World loading completes: " + why);
             Require(previous == null || !GodotObject.IsInstanceValid(previous), "The previous World is freed: " + why);

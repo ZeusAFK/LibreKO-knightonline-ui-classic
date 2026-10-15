@@ -60,7 +60,7 @@ public static class NativeMarket
         var chart = Native.Get<PriceChart>(world, "Merchant.marketPriceChart");
         var updated = Native.Get<Label>(world, "Merchant.marketPriceUpdated");
         var status = Native.Get<Label>(world, "Merchant.marketPriceStatus");
-        var search = Native.Get<ItemSearchPanel>(world, "Merchant.marketPriceSearch");
+        var search = Native.Get<ItemSearchPanel>(world, "Merchant.MarketPriceSearch");
         if (slot == null || name == null || trades == null || chart == null || updated == null || status == null || search == null) return;
         var find = name.GetParent().GetChildren().OfType<Button>().FirstOrDefault();
         var caption = trades.GetParent().GetChildren().OfType<Label>().FirstOrDefault(l => l != trades);
@@ -248,7 +248,7 @@ public static class NativeMarket
     {
         if (node is not Button button || button.GetParent() != list) return;
         var categories = Native.Get<IList>(world, "ShoppingMall.categories");
-        var catalogue = Native.Get<IList>(world, "ShoppingMall.catalog");
+        var catalogue = Native.Get<IList>(world, "ShoppingMall.Catalog");
         var search = Native.Get<LineEdit>(world, "ShoppingMall.searchInput");
         if (categories == null || catalogue == null || search == null) return;
         var ids = new List<int>();
@@ -257,7 +257,7 @@ public static class NativeMarket
         int index = button.GetIndex();
         if (index >= ids.Count) return;
         button.Name = "pus_category_" + ids[index];
-        button.SetMeta("pus_category_selected", ids[index] == Native.Get<int>(world, "ShoppingMall.category") && search.Text.Trim().Length == 0);
+        button.SetMeta("pus_category_selected", ids[index] == Native.Get<int>(world, "ShoppingMall.Category") && search.Text.Trim().Length == 0);
     }
 
     private static PowerUpStoreEntry? CardEntry(WorldRoot world, Control card)
@@ -289,7 +289,7 @@ public static class NativeMarket
     {
         if (!card.HasMeta("pus_card_id") || !card.IsInsideTree()) return;
         int id = card.GetMeta("pus_card_id").AsInt32();
-        int inCart = Native.Get<PowerUpStoreCart>(world, "ShoppingMall.cart")?.Lines.FirstOrDefault(l => l.Entry.Id == id)?.Count ?? 0;
+        int inCart = Native.Get<PowerUpStoreCart>(world, "ShoppingMall.Cart")?.Lines.FirstOrDefault(l => l.Entry.Id == id)?.Count ?? 0;
         bool active = inCart > 0 || Native.Get<int>(world, "ShoppingMall.hoveredCard") == id && Convert.ToInt32(Native.Get<object>(world, "ShoppingMall.modal")) == 0;
         card.SetMeta("pus_card_active", active);
         string key = "pus_card_" + (card.GetMeta("pus_card_featured").AsBool() ? "featured_" : "") + (active ? "active" : "normal");
@@ -301,7 +301,7 @@ public static class NativeMarket
     private static void DescribeCartLine(WorldRoot world, VBoxContainer lines, Node node)
     {
         if (node is not Control row || row.GetParent() != lines) return;
-        var cart = Native.Get<PowerUpStoreCart>(world, "ShoppingMall.cart")?.Lines.ToArray();
+        var cart = Native.Get<PowerUpStoreCart>(world, "ShoppingMall.Cart")?.Lines.ToArray();
         int index = row.GetIndex();
         if (cart != null && index < cart.Length) row.Name = "pus_cart_line_" + cart[index].Entry.Id;
     }
@@ -362,7 +362,7 @@ public static class NativeMarket
         ("SpecialAuctionWindow.auctionSelectedName", "selected_name"), ("SpecialAuctionWindow.auctionGold", "gold"), ("SpecialAuctionWindow.auctionChecks", "checks"),
         ("SpecialAuctionWindow.auctionTotal", "total"), ("SpecialAuctionWindow.auctionWords", "words"), ("SpecialAuctionWindow.auctionCurrent", "current"),
         ("SpecialAuctionWindow.auctionMinimum", "minimum"), ("SpecialAuctionWindow.auctionClock", "clock"), ("SpecialAuctionWindow.auctionStatus", "status"),
-        ("SpecialAuctionWindow.auctionMillions", "millions"), ("SpecialAuctionWindow.auctionCheckInput", "check_input"), ("SpecialAuctionWindow.auctionSchedule", "schedule"),
+        ("SpecialAuctionWindow.AuctionMillions", "millions"), ("SpecialAuctionWindow.AuctionCheckInput", "check_input"), ("SpecialAuctionWindow.auctionSchedule", "schedule"),
         ("SpecialAuctionWindow.auctionBidList", "bid_list"), ("SpecialAuctionWindow.auctionWinList", "win_list"), ("SpecialAuctionWindow.auctionLog", "log"),
     };
 

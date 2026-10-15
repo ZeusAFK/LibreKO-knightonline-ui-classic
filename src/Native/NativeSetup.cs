@@ -41,6 +41,7 @@ public static partial class NativeSetup
         RegisterOverlays(context);
         RegisterQuestHud(context);
         NativeWindows.Register(context.Ui);
+        NativeEscape.Attach(context.Ui);
     }
 
     /// <summary>

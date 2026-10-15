@@ -22,7 +22,7 @@ public static partial class PreviewFixtures
     /// </summary>
     private static void TrackTooltip(WorldRoot world)
     {
-        var panel = Field<PanelContainer>(world, "ItemTooltip.tipPanel");
+        var panel = Field<PanelContainer>(world, "ItemTooltip.TipPanel");
         var tree = (SceneTree)Engine.GetMainLoop();
         void Place()
         {
@@ -39,7 +39,7 @@ public static partial class PreviewFixtures
     public static CanvasLayer BuildMailClassicUiPreview(WorldRoot world, string view)
     {
         ItemData.EnsureLoaded(); Call(world, "Mail.BuildWindow"); Call(world, "Mail.BuildComposeWindow");
-        var layer = Field<CanvasLayer>(world, "Mail.layer");
+        var layer = Field<CanvasLayer>(world, "Mail.Layer");
         PrepareCommunication(layer, world);
         layer.Ready += () => Callable.From(() =>
         {
@@ -48,7 +48,7 @@ public static partial class PreviewFixtures
             for (int i = 0; i < 24; i++) mails.Add(new MailEntry { Id = i + 10, Sender = "LongCharacterName1299", Subject = "A long message subject that should stay in its own column", Read = i % 2 == 0, SentAt = DateTime.UtcNow.AddDays(-1), Attachments = MailAttachmentState.None });
             if (view == "empty") mails.Clear();
             Call(world, "Mail.OnList", mails); Call(world, "Mail.OnUnread", mails.Count(m => !m.Read));
-            if (view is "inbox" or "empty") { SetField(world, "Mail.shown", true); Field<HudWindow>(world, "Mail.window").Visible = true; }
+            if (view is "inbox" or "empty") { SetField(world, "Mail.shown", true); Field<HudWindow>(world, "Mail.Window").Visible = true; }
             else if (view == "read")
             {
                 Call(world, "Mail.Select", 3); Call(world, "Mail.OnRead", 3, true, string.Concat(Enumerable.Repeat("You completed the Collection Race in Moradon. Your rewards are attached to this letter.\n\n", 12)));
@@ -64,12 +64,12 @@ public static partial class PreviewFixtures
                 inv[Inventory.GridStart] = new ItemSlot { ItemId = 810418000, Count = 20, Durability = 1 };
                 inv[Inventory.GridStart + 1] = new ItemSlot { ItemId = 379154000, Count = 1, Durability = 1 };
                 inv[Inventory.GridStart + 2] = new ItemSlot { ItemId = 389018000, Count = 5, Durability = 1 };
-                Field<SortedSet<string>>(world, "Mail.contacts").UnionWith(new[] { "Rikka", "Zeus", "Ariel", "Marduk", "Ranger", "Guardian", "Magician", "LongCharacterName1299", "Warrior" });
+                Field<SortedSet<string>>(world, "Mail.Contacts").UnionWith(new[] { "Rikka", "Zeus", "Ariel", "Marduk", "Ranger", "Guardian", "Magician", "LongCharacterName1299", "Warrior" });
                 Game.Session.Self.Sheet.SetGold(100_000); Call(world, "Mail.OpenCompose");
-                Field<LineEdit>(world, "Mail.recipient").Text = "Rikka"; Field<LineEdit>(world, "Mail.subjectInput").Text = "Apples for the raid";
-                Field<TextEdit>(world, "Mail.bodyInput").Text = "Here are the apples you asked for. Good hunting!"; Field<MoneyEdit>(world, "Mail.gold").Value = 25_000;
+                Field<LineEdit>(world, "Mail.Recipient").Text = "Rikka"; Field<LineEdit>(world, "Mail.SubjectInput").Text = "Apples for the raid";
+                Field<TextEdit>(world, "Mail.BodyInput").Text = "Here are the apples you asked for. Good hunting!"; Field<MoneyEdit>(world, "Mail.Gold").Value = 25_000;
                 Call(world, "Mail.OnBodyChanged");
-                var picks = Field<List<(int Slot, int Count)>>(world, "Mail.attachments");
+                var picks = Field<List<(int Slot, int Count)>>(world, "Mail.Attachments");
                 picks.Add((Inventory.GridStart, 20)); picks.Add((Inventory.GridStart + 1, 1)); Call(world, "Mail.RenderAttachments");
             }
         }).CallDeferred();
@@ -103,7 +103,7 @@ public static partial class PreviewFixtures
     {
         ItemData.EnsureLoaded(); SkillData.EnsureLoaded(); Call(world, "ItemTooltip.Build"); Call(world, "Merchant.BuildMarketPricePanel");
         var layer = Field<CanvasLayer>(world, "Merchant.marketPriceLayer"); PrepareMarket(layer, world);
-        var amount = new CanvasLayer { Visible = false }; SetField(world, "Merchant.amountLayer", amount); layer.AddChild(amount);
+        var amount = new CanvasLayer { Visible = false }; SetField(world, "Merchant.AmountLayer", amount); layer.AddChild(amount);
         Field<CanvasLayer>(world, "ItemTooltip.tipLayer").Reparent(layer, false); TrackTooltip(world);
         world.RemoveChild(layer); return layer;
     }
@@ -113,7 +113,7 @@ public static partial class PreviewFixtures
         ItemData.EnsureLoaded(); SkillData.EnsureLoaded(); Call(world, "Merchant.BuildSearchPanel"); Call(world, "Merchant.BuildMarketPricePanel");
         var layer = Field<CanvasLayer>(world, "Merchant.searchLayer"); PrepareMarket(layer, world);
         var marketPrice = Field<CanvasLayer>(world, "Merchant.marketPriceLayer"); PrepareMarket(marketPrice, world);
-        var whispers = new CanvasLayer { Layer = 79 }; SetField(world, "ChatRoom.whisperLayer", whispers); layer.AddChild(whispers);
+        var whispers = new CanvasLayer { Layer = 79 }; SetField(world, "Whispers.whisperLayer", whispers); layer.AddChild(whispers);
         marketPrice.Reparent(layer, false); Call(world, "Merchant.OnSearchOpen");
         world.RemoveChild(layer); return layer;
     }
@@ -137,13 +137,13 @@ public static partial class PreviewFixtures
         inv[gridStart + 7] = (ItemSlot)Native.Call(Native.StaticOwner("LibreKO.WorldPreview"), "PreviewItem", SpecialAuction.MythrilCheck, 1, 1)!;
         Call(world, "SpecialAuctionWindow.EnsureAuctionTable"); Call(world, "SpecialAuctionWindow.BuildPanel");
         var layer = Field<CanvasLayer>(world, "SpecialAuctionWindow.layer"); PrepareMarket(layer, world);
-        Call(world, "SpecialAuctionWindow.Reset"); SetField(world, "SpecialAuctionWindow.auctionOpening", true);
+        Call(world, "SpecialAuctionWindow.Reset"); SetField(world, "SpecialAuctionWindow.AuctionOpening", true);
         int Const(string name) => Native.Get<int>(Native.StaticOwner("LibreKO.WorldPreview"), name);
         int[] items = [Const("AgilityNecklace"), Const("StrengthNecklace"), Const("ShadowPiece"), Const("ElfMetalEarrings"), Const("PreviewHpPotion"), Const("PreviewMpPotion"), Const("PreviewUpgradedWeapon"), 379021000];
         int previewDay = Const("AuctionPreviewDay"), previewSeconds = Const("AuctionPreviewSeconds");
         Call(world, "SpecialAuctionWindow.OnAuctionToday", new AuctionToday(SpecialAuction.Bidding, 1, previewSeconds, previewDay,
             [new AuctionOffer(0, items[0], 0, ""), new AuctionOffer(1, items[1], 1_012_000_000, "Rikka"), new AuctionOffer(2, items[2], 230_000_000, "Zeus")]));
-        Call(world, "SpecialAuctionWindow.SelectAuctionLot", 1); Field<SpinBox>(world, "SpecialAuctionWindow.auctionMillions").Value = 13; Field<SpinBox>(world, "SpecialAuctionWindow.auctionCheckInput").Value = 1; Call(world, "SpecialAuctionWindow.RefreshAuctionTotal");
+        Call(world, "SpecialAuctionWindow.SelectAuctionLot", 1); Field<SpinBox>(world, "SpecialAuctionWindow.AuctionMillions").Value = 13; Field<SpinBox>(world, "SpecialAuctionWindow.AuctionCheckInput").Value = 1; Call(world, "SpecialAuctionWindow.RefreshAuctionTotal");
         var table = new List<AuctionScheduleLot>();
         for (int day = 1; day <= SpecialAuction.DaysPerGroup; day++)
             for (int slot = 0; slot < items.Length; slot++)
@@ -151,7 +151,7 @@ public static partial class PreviewFixtures
         SetField(world, "SpecialAuctionWindow.auctionTable", table.ToArray());
         Call(world, "SpecialAuctionWindow.OnAuctionToday", new AuctionToday(SpecialAuction.Bidding, 1, previewSeconds, previewDay,
             items.Select((item, slot) => new AuctionOffer(slot, item, slot == 1 ? 1_012_000_000 : slot == 2 ? 230_000_000 : 0, slot == 1 ? "Rikka" : slot == 2 ? "Zeus" : "")).ToArray()));
-        Call(world, "SpecialAuctionWindow.SelectAuctionLot", 1); Field<SpinBox>(world, "SpecialAuctionWindow.auctionMillions").Value = 13; Field<SpinBox>(world, "SpecialAuctionWindow.auctionCheckInput").Value = 1; Call(world, "SpecialAuctionWindow.RefreshAuctionTotal");
+        Call(world, "SpecialAuctionWindow.SelectAuctionLot", 1); Field<SpinBox>(world, "SpecialAuctionWindow.AuctionMillions").Value = 13; Field<SpinBox>(world, "SpecialAuctionWindow.AuctionCheckInput").Value = 1; Call(world, "SpecialAuctionWindow.RefreshAuctionTotal");
         Field<CanvasLayer>(world, "ItemTooltip.tipLayer").Reparent(layer, false); TrackTooltip(world);
         world.RemoveChild(layer); return layer;
     }

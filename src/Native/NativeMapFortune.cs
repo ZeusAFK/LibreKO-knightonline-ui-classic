@@ -48,8 +48,8 @@ public static class NativeMapFortune
     /// <summary>Card fan, greeting lines, the face with its turn and reveal animations, stars, reading and OK.</summary>
     private static bool PrepareFortune(HudWindow window, WorldRoot world)
     {
-        var pick = Native.Get<Control>(world, "Fortune.pick");
-        var stage = Native.Get<Control>(world, "Fortune.stage");
+        var pick = Native.Get<Control>(world, "Fortune.Pick");
+        var stage = Native.Get<Control>(world, "Fortune.Stage");
         var cards = Native.Get<List<TextureButton>>(world, "Fortune.cards");
         var lines = Native.Get<List<Label>>(world, "Fortune.lines");
         if (pick?.GetParent() is not Control canvas || stage == null || cards == null || lines == null || !window.Body.IsAncestorOf(canvas)) return false;
@@ -61,7 +61,7 @@ public static class NativeMapFortune
         for (int i = 0; i < lines.Count; i++) lines[i].Name = "fortune_line_" + i;
         return NativeWindows.Name(Native.Get<Control>(world, "Fortune.face"), "fortune_face")
             & NativeWindows.Name(Native.Get<Control>(world, "Fortune.spin"), "fortune_spin")
-            & NativeWindows.Name(Native.Get<Control>(world, "Fortune.final"), "fortune_final")
+            & NativeWindows.Name(Native.Get<Control>(world, "Fortune.Final"), "fortune_final")
             & NativeWindows.Name(Native.Get<Control>(world, "Fortune.stars"), "fortune_stars")
             & NativeWindows.Name(Native.Get<Label>(world, "Fortune.name"), "fortune_name")
             & NativeWindows.Name(Native.Get<Label>(world, "Fortune.reveal"), "fortune_reveal")

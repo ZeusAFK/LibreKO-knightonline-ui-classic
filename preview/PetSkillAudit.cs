@@ -23,7 +23,7 @@ public partial class Preview
         }
         double Now() => Time.GetTicksMsec() / 1000d;
         var sheet = Game.Session.Pet.Pet!; int oldLevel = sheet.Level, oldMp = sheet.Mp, oldMaxMp = sheet.MaxMp;
-        var cooldowns = Field<Dictionary<int, double>>("Hotbar.petSkillReadyAt");
+        var cooldowns = Field<Dictionary<int, double>>("Hotbar.PetSkillReadyAt");
         var connection = (KoConn)typeof(Net).GetField("conn", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(net)!;
         var skillIds = PetSkills.BarSkills(SkillData.All.Select(s => (s.Id, s.Tree)), sheet.Class);
         int unlockedLevel = Math.Max(oldLevel, skillIds.Max(id => SkillData.Get(id)!.Level));
@@ -98,11 +98,11 @@ public partial class Preview
         var manaSkill = skillIds.Select(SkillData.Get).OfType<SkillData.Skill>().First(s => s.Msp > 0);
         DetailCall(world, "Hotbar.UsePetSkill", manaSkill.Id); await Frames();
         require(!stream.DataAvailable && (!cooldowns.ContainsKey(manaSkill.Id) || cooldowns[manaSkill.Id] <= Now()), "Insufficient familiar MP does not start a new skill cooldown");
-        sheet.Mp = availableMana; SetField("Selection.selectedId", -1);
+        sheet.Mp = availableMana; SetField("Selection.SelectedId", -1);
         var hostile = skillIds.Select(SkillData.Get).OfType<SkillData.Skill>().First(s => s.Moral != PetSkills.OwnerMoral);
         cooldowns.Clear(); DetailCall(world, "Hotbar.UsePetSkill", hostile.Id); await Frames();
         require(!stream.DataAvailable && cooldowns.Count == 0, "Missing hostile target cannot start a familiar cast");
-        SetField("Selection.selectedId", 2); DetailCall(world, "Pet.RefreshUI");
+        SetField("Selection.SelectedId", 2); DetailCall(world, "Pet.RefreshUI");
 
         var cast = skillIds.Select(SkillData.Get).OfType<SkillData.Skill>().First(s => s.CastSeconds > 0);
         await SelectPageFor(cast.Id); await Click(SkillButton(cast.Id)); await ReadSkillPacket(cast.Id, PetSkills.StageCasting);

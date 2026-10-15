@@ -51,13 +51,13 @@ public static class NativeItems
 
     private static void PrepareExpSeal(HudWindow window, WorldRoot world)
     {
-        Name(world, "ExpSealWindow.jarRect", "exp_seal_jar");
+        Name(world, "ExpSealWindow.JarRect", "exp_seal_jar");
         Name(world, "ExpSealWindow.percent", "exp_seal_percent");
         Name(world, "ExpSealWindow.amountLabel", "exp_seal_amount");
         Name(world, "ExpSealWindow.onButton", "exp_seal_on");
         Name(world, "ExpSealWindow.offButton", "exp_seal_off");
-        Name(world, "ExpSealWindow.pick", "exp_seal_pick");
-        if (Native.Get<OptionButton>(world, "ExpSealWindow.pick")?.GetParent() is Container store)
+        Name(world, "ExpSealWindow.Pick", "exp_seal_pick");
+        if (Native.Get<OptionButton>(world, "ExpSealWindow.Pick")?.GetParent() is Container store)
             NativeWindows.Name(store.GetChildren().OfType<Button>().FirstOrDefault(b => b is not OptionButton), "exp_seal_obtain");
         if (Native.Get<Button>(world, "ExpSealWindow.onButton")?.GetParent() is Container toggle)
             NativeWindows.Name(toggle.GetChildren().OfType<Label>().FirstOrDefault(), "exp_seal_caption");
@@ -105,16 +105,16 @@ public static class NativeItems
 
     private static void PrepareCharacterSeal(HudWindow window, WorldRoot world)
     {
-        Name(world, "CharacterSealWindow.csSealingPage", "cs_page_help");
-        Name(world, "CharacterSealWindow.csSelectPage", "cs_page_select");
-        Name(world, "CharacterSealWindow.csCodePage", "cs_page_code");
-        Name(world, "CharacterSealWindow.csSelectTitle", "cs_select_title");
-        Name(world, "CharacterSealWindow.csSelectPrompt", "cs_select_prompt");
-        Name(world, "CharacterSealWindow.csCodeStars", "cs_code_stars");
+        Name(world, "CharacterSealWindow.CsSealingPage", "cs_page_help");
+        Name(world, "CharacterSealWindow.CsSelectPage", "cs_page_select");
+        Name(world, "CharacterSealWindow.CsCodePage", "cs_page_code");
+        Name(world, "CharacterSealWindow.CsSelectTitle", "cs_select_title");
+        Name(world, "CharacterSealWindow.CsSelectPrompt", "cs_select_prompt");
+        Name(world, "CharacterSealWindow.CsCodeStars", "cs_code_stars");
         Name(world, "CharacterSealWindow.csSelectOk", "cs_select_ok");
         Name(world, "CharacterSealWindow.csKeys", "cs_keys");
         NameAll(world, "CharacterSealWindow.csSlotButtons", "cs_slot_");
-        if (Native.Get<VBoxContainer>(world, "CharacterSealWindow.csSealingPage") is { } help)
+        if (Native.Get<VBoxContainer>(world, "CharacterSealWindow.CsSealingPage") is { } help)
         {
             var titles = help.GetChildren().OfType<Label>().ToArray();
             var panels = help.GetChildren().OfType<PanelContainer>().ToArray();
@@ -123,9 +123,9 @@ public static class NativeItems
                 NativeWindows.Name(panels[i].GetChildren().OfType<Label>().FirstOrDefault(), "cs_help_text_" + i);
             NameButtons(help, "cs_seal", "cs_unseal");
         }
-        if (Native.Get<VBoxContainer>(world, "CharacterSealWindow.csSelectPage") is { } select)
+        if (Native.Get<VBoxContainer>(world, "CharacterSealWindow.CsSelectPage") is { } select)
             NativeWindows.Name(select.GetChildren().OfType<HBoxContainer>().LastOrDefault()?.GetChildren().OfType<Button>().LastOrDefault(), "cs_select_cancel");
-        if (Native.Get<VBoxContainer>(world, "CharacterSealWindow.csCodePage") is { } code)
+        if (Native.Get<VBoxContainer>(world, "CharacterSealWindow.CsCodePage") is { } code)
         {
             NativeWindows.Name(code.GetChildren().OfType<Label>().FirstOrDefault(), "cs_code_title");
             var rows = code.GetChildren().OfType<HBoxContainer>().ToArray();
@@ -138,14 +138,14 @@ public static class NativeItems
         NativeWindows.Sync(window, () =>
         {
             window.SetMeta(PageMeta, CharacterSealPage(world));
-            window.SetMeta("cs_picked", Native.Get<int>(world, "CharacterSealWindow.csPicked"));
+            window.SetMeta("cs_picked", Native.Get<int>(world, "CharacterSealWindow.Picked"));
         });
     }
 
     /// <summary>The visible Character Seal page: help, select or code.</summary>
     public static string CharacterSealPage(WorldRoot world) =>
-        Native.Get<Control>(world, "CharacterSealWindow.csSelectPage") is { Visible: true } ? "select"
-        : Native.Get<Control>(world, "CharacterSealWindow.csCodePage") is { Visible: true } ? "code"
+        Native.Get<Control>(world, "CharacterSealWindow.CsSelectPage") is { Visible: true } ? "select"
+        : Native.Get<Control>(world, "CharacterSealWindow.CsCodePage") is { Visible: true } ? "code"
         : "help";
 
     private static void NameButtons(Node row, string first, string second)

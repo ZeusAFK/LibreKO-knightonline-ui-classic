@@ -22,10 +22,10 @@ public static partial class PreviewFixtures
             case "nation-private": return (HudWindow)Call(world, "Preview.BuildNationChat", "private")!;
             case "nation-create": return (HudWindow)Call(world, "Preview.BuildNationChat", "create")!;
             case "nation-password":
-                Call(world, "ChatRoom.NationInit");
-                Field<LineEdit>(world, "ChatRoom.ncPasswordEdit").Text = "1234";
-                Field<HudWindow>(world, "ChatRoom.ncPassword").Visible = true;
-                return Detached(Field<HudWindow>(world, "ChatRoom.ncPassword"));
+                Call(world, "NationChannels.Build");
+                Field<LineEdit>(world, "NationChannels.ncPasswordEdit").Text = "1234";
+                Field<HudWindow>(world, "NationChannels.ncPassword").Visible = true;
+                return Detached(Field<HudWindow>(world, "NationChannels.ncPassword"));
             case "commander": return (HudWindow)Call(world, "Preview.BuildCommander", (byte)0)!;
             case "clan-board": return (HudWindow)Call(world, "Preview.BuildClanBoards", "clan-board")!;
             case "clan-message": return (HudWindow)Call(world, "Preview.BuildClanBoards", "clan-message")!;

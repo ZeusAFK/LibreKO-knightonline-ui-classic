@@ -48,7 +48,7 @@ public partial class Preview
             int scrollSlot = Field<int>("PetHatch.petScrollSlot");
             if (transform) { var material = inventory[scrollSlot]; material.Count = 2; inventory.ApplySlotUpdate(scrollSlot, material); DetailCall(world, "RebuildPetPicks"); }
             for (int i = 0; i < inventory.Length; i++) Game.Session.Self.SetInventorySlot(i, inventory[i]);
-            var name = Field<LineEdit>("PetHatch.nameInput");
+            var name = Field<LineEdit>("PetHatch.NameInput");
             var status = Field<Label>("PetHatch.status");
             var action = Field<Button>("PetHatch.btn");
             int mutations = 0; Game.Session.Items.InventorySlotEvent += (_, _) => mutations++;
@@ -73,7 +73,7 @@ public partial class Preview
                 var hover = stage.GetGlobalRect().GetCenter();
                 GetViewport().PushInput(new InputEventMouseMotion { Position = hover, GlobalPosition = hover }, true); await Frames();
                 require(world.ItemTooltipVisible, "Actual " + service + " staged item hover opens the native item tooltip");
-                var tooltip = Field<PanelContainer>("ItemTooltip.tipPanel");
+                var tooltip = Field<PanelContainer>("ItemTooltip.TipPanel");
                 require(GetViewportRect().Encloses(tooltip.GetGlobalRect()) && Descendants(tooltip).OfType<Label>().Any(l => l.Text == ItemData.DisplayName(stage.Item.ItemId)), "Actual " + service + " tooltip is contained and identifies the staged item");
                 await Capture("tooltip");
                 var gridCell = Find<ItemSlotView>("pet_hatch_inventory_" + (slot - Inventory.GridStart));

@@ -52,7 +52,7 @@ public static partial class PreviewFixtures
     public static HudWindow BuildFortuneDragPreview(WorldRoot world)
     {
         Call(world, "Fortune.Build"); Call(world, "Fortune.Open");
-        var window = Detach<HudWindow>(world, "Fortune.panel");
+        var window = Detach<HudWindow>(world, "Fortune.Panel");
         NativeMapFortune.Prepare(window, world);
         return window;
     }

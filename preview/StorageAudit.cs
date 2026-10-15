@@ -32,14 +32,14 @@ public partial class Preview
         inventory[Inventory.GridStart + 1] = new NativeSlot { ItemId = weapon, Count = 1, Durability = 7000 };
         inventory[Inventory.GridStart + 2] = new NativeSlot { ItemId = 379021000, Count = 1, Durability = 1 };
         DetailCall(world, "InventoryWindow.BuildPanel");
-        var orphan = (Control)DetailField(world, "InventoryWindow.invContent")!; orphan.Visible = false; world.AddChild(orphan);
+        var orphan = (Control)DetailField(world, "InventoryWindow.InvContent")!; orphan.Visible = false; world.AddChild(orphan);
         DetailCall(world, "Warehouse.BuildPanel"); DetailCall(world, "VipWarehouse.BuildPanel"); DetailCall(world, "ClanWarehouse.BuildPanel");
         var bridge = Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { world }, null)!;
         var attach = typeof(PluginGame).GetMethod("Attach", BindingFlags.Instance | BindingFlags.NonPublic)!;
         attach.Invoke(game, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
-        foreach (string field in new[] { "Warehouse.layer", "VipWarehouse.layer", "ClanWarehouse.layer", "ItemTooltip.tipLayer", "Warehouse.amountPrompt" })
+        foreach (string field in new[] { "Warehouse.layer", "VipWarehouse.layer", "ClanWarehouse.layer", "ItemTooltip.tipLayer", "Warehouse.AmountPrompt" })
             ((Node)DetailField(world, field)!).Reparent(this);
-        var windows = new[] { "Warehouse.panel", "VipWarehouse.panel", "ClanWarehouse.panel" }.Select(f => (HudWindow)DetailField(world, f)!).ToArray();
+        var windows = new[] { "Warehouse.Panel", "VipWarehouse.Panel", "ClanWarehouse.Panel" }.Select(f => (HudWindow)DetailField(world, f)!).ToArray();
         var storages = windows.Select(w => NativeStorage.Prepare(w, world)!).ToArray();
         foreach (Node node in new Node[] { storages[1].Amount!, storages[2].Amount!, storages[1].PinPrompt! }) node.Reparent(this);
         var panels = windows.Select(w => ClassicStorageSkin.Apply(w.Body)!).ToArray();
@@ -96,8 +96,8 @@ public partial class Preview
             GetViewport().GetTexture().GetImage().SavePng(output + "/" + file);
             screens.Add(new { name, file, controls = controls.Where(c => c.HasMeta("storage_expected_rect")).Select(c => new { name = c.Name.ToString(), rect = c.GetGlobalRect().ToString() }).ToArray() });
         }
-        var warehouse = (NativeSlot[])DetailField(world, "Warehouse.slots")!;
-        Set("Warehouse.shown", true); Set("Warehouse.money", 4_820_000);
+        var warehouse = (NativeSlot[])DetailField(world, "Warehouse.StoredItems")!;
+        Set("Warehouse.shown", true); Set("Warehouse.Money", 4_820_000);
         DetailCall(world, "Warehouse.Refresh"); await Capture(0, "warehouse-empty");
         warehouse[0] = new NativeSlot { ItemId = weapon, Count = 1, Durability = 6200 };
         warehouse[1] = new NativeSlot { ItemId = potion, Count = 40, Durability = 1 };
@@ -111,10 +111,10 @@ public partial class Preview
         normalBag[Inventory.GridStart]._GuiInput(new InputEventMouseButton { Pressed = false, ButtonIndex = MouseButton.Left });
         Require(!(bool)DetailField(world, "Warehouse.inFlight")!, "A plain left click does not transfer an item");
         RightClick(normalBag[Inventory.GridStart + 2]);
-        Require((bool)DetailField(world, "Warehouse.inFlight")! && !((QuantityPrompt)DetailField(world, "Warehouse.amountPrompt")!).Visible, "A single countable unit transfers directly after right-click");
+        Require((bool)DetailField(world, "Warehouse.inFlight")! && !((QuantityPrompt)DetailField(world, "Warehouse.AmountPrompt")!).Visible, "A single countable unit transfers directly after right-click");
         DetailCall(world, "Warehouse.OnResult", (byte)2, (byte)0);
         Require(inventory[Inventory.GridStart + 2].Count == 1, "A refused single-unit transfer preserves the source");
-        ((StatusLabel)DetailField(world, "Warehouse.status")!).ResetStatus();
+        ((StatusLabel)DetailField(world, "Warehouse.Status")!).ResetStatus();
         Require(Descendants(panels[0]).OfType<ItemSlotView>().Count(c => c.Name.ToString().StartsWith("storage_cell_") && c.IsVisibleInTree()) == 24, "Classic storage has 24 slots per page");
         for (int i = 0; i < 9; i++) storages[0].TurnPage(1);
         Require(storages[0].Page == 7, "Last of eight pages is reachable and clamps at the end");
@@ -126,7 +126,7 @@ public partial class Preview
         Require(storages[0].Page == 1, "Next page button changes the visible storage page");
         await Capture(0, "warehouse-pagination"); normalPrev.EmitSignal(Button.SignalName.Pressed);
         Require(storages[0].Page == 0, "Previous page button restores the first page");
-        var qty = (QuantityPrompt)DetailField(world, "Warehouse.amountPrompt")!;
+        var qty = (QuantityPrompt)DetailField(world, "Warehouse.AmountPrompt")!;
         RightClick(normalBag[Inventory.GridStart]);
         Require(qty.Visible && Descendants(qty).OfType<MoneyEdit>().Single().Value == 100, "Normal storage asks quantity with the full carried stack");
         await Capture(0, "warehouse-quantity");
@@ -153,7 +153,7 @@ public partial class Preview
         // Mouse-wheel amounts (ff78eef): a part picked on the drag moves at once; the whole stack keeps the count prompt.
         int PendingCount(string field) { var pending = DetailField(world, field)!; return (int)pending.GetType().GetField("Count")!.GetValue(pending)!; }
         Variant Picked(ItemSlotView cell, int amount) { var data = cell.DragOut!(cell); data.AsGodotDictionary()[DragLayer.AmountKey] = amount; return data; }
-        var whStatus = (StatusLabel)DetailField(world, "Warehouse.status")!;
+        var whStatus = (StatusLabel)DetailField(world, "Warehouse.Status")!;
         normalCells[1]._DropData(Vector2.Zero, Picked(normalBag[Inventory.GridStart], 30));
         Require(!qty.Visible && (bool)DetailField(world, "Warehouse.inFlight")! && PendingCount("Warehouse.pending") == 30, "A part picked with the mouse wheel is stored at once, without the prompt");
         DetailCall(world, "Warehouse.OnResult", (byte)2, (byte)0); whStatus.ResetStatus();
@@ -238,7 +238,7 @@ public partial class Preview
                 "A part picked for the bag window is taken out at once");
             DetailCall(world, "Warehouse.OnResult", (byte)3, (byte)0); whStatus.ResetStatus();
         }
-        var vip = (NativeSlot[])DetailField(world, "VipWarehouse.slots")!; vip[0] = warehouse[0]; vip[1] = warehouse[1]; vip[47] = warehouse[2];
+        var vip = (NativeSlot[])DetailField(world, "VipWarehouse.StoredItems")!; vip[0] = warehouse[0]; vip[1] = warehouse[1]; vip[47] = warehouse[2];
         uint now = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         Set("Warehouse.shown", false); Set("VipWarehouse.shown", true); Set("VipWarehouse.open", true); Set("VipWarehouse.expiresAt", now + 172800u); DetailCall(world, "VipWarehouse.Refresh");
         await Capture(1, "vip-ready");
@@ -279,7 +279,7 @@ public partial class Preview
         Require(setPin.Text == "Change PIN" && clearPin.Visible && !clearPin.Disabled, "With a PIN the vault offers Change PIN and Clear PIN");
         {
             var vipBag = Descendants(panels[1]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_bag_")).ToDictionary(c => c.Index);
-            var vipStatusLabel = (StatusLabel)DetailField(world, "VipWarehouse.status")!;
+            var vipStatusLabel = (StatusLabel)DetailField(world, "VipWarehouse.Status")!;
             vipBag[Inventory.GridStart + 3]._DropData(Vector2.Zero, Picked(vipCells[1], 5));
             Require(!vipAmount.Visible && (bool)DetailField(world, "VipWarehouse.inFlight")! && PendingCount("VipWarehouse.pending") == 5, "VIP: a part picked with the mouse wheel is taken out at once");
             DetailCall(world, "VipWarehouse.OnResult", Net.VipWhOutputSub, Net.VipFail); vipStatusLabel.ResetStatus();
@@ -345,7 +345,7 @@ public partial class Preview
         Require(inventory[Inventory.GridStart + 1].IsEmpty && inventory[Inventory.GridStart + 10].ItemId == weapon, "Inventory acknowledgement refreshes the embedded bag cells");
         await Capture(2, "clan-inventory-rearranged");
         Set("ClanWarehouse.shown", false); Set("VipWarehouse.shown", true);
-        var vipStatus = (Label)DetailField(world, "VipWarehouse.status")!;
+        var vipStatus = (Label)DetailField(world, "VipWarehouse.Status")!;
         inventory[Inventory.GridStart + 5] = new NativeSlot { ItemId = WarehouseRules.NoTradeIdFirst, Count = 1, Durability = 1 };
         DetailCall(world, "VipWarehouse.Refresh"); for (int i = 0; i < 3; i++) windows[i].Visible = i == 1; await Frames(2);
         var vipBag5 = Descendants(panels[1]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_5");

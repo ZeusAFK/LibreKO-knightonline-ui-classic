@@ -116,7 +116,7 @@ public partial class Preview
             await Read(stream, GameOpcodes.GS_LOGIN); var login = new Packet(GameOpcodes.GS_LOGIN); login.WriteByte((byte)nation); await Send(stream, login);
             await Read(stream, GameOpcodes.GS_SELECT_CHARACTER); var select = new Packet(GameOpcodes.GS_SELECT_CHARACTER); select.WriteByte(1); select.WriteShort(32700); select.WriteShort(100); select.WriteShort(100); select.WriteShort(0); await Send(stream, select);
             await Read(stream, GameOpcodes.GS_GAMESTART); await Send(stream, MyInfoPacket());
-            await Until(() => GetTree().CurrentScene is WorldRoot w && (bool)Get(w, "worldReady")!, "Native World scene builds every facet", 60);
+            await Until(() => GetTree().CurrentScene is WorldRoot w && (bool)Get(w, "WorldReady")!, "Native World scene builds every facet", 60);
             var world = (WorldRoot)GetTree().CurrentScene;
             await Until(() => Get(world, "loadingLayer") == null, "Native loading screen completes", 60);
             _ = Task.Run(async () =>
@@ -175,7 +175,7 @@ public partial class Preview
             }
 
             // ---- Part 1: the quick panel ---------------------------------------------------------------------------
-            var panel = (PanelContainer)Get(world, "Genie.sub")!;
+            var panel = (PanelContainer)Get(world, "Genie.Sub")!;
             await Server(6, 87);
             await Until(() => panel.IsVisibleInTree(), "the client shows the quick panel once the server reports Genie time");
             await Until(() => panel.HasMeta("classic_overlay") && panel.FindChild(ClassicGenieQuick.Minimise, true, false) != null, "the Classic quick panel skin applies to the client's _genieSub");
@@ -261,7 +261,7 @@ public partial class Preview
             Call(world, "Genie.ToggleRun");
             var startRequests = new List<string>();
             await UntilWith(() => { startRequests.AddRange(Drain()); return startRequests.Contains("GS_GENIE_SYSTEM:1:4"); },
-                () => "Start asks the server to start the Genie: " + string.Join(" ", startRequests) + " pending=" + Get(world, "Genie.requestPending") + " dead=" + Get(world, "Avatar.Dead"));
+                () => "Start asks the server to start the Genie: " + string.Join(" ", startRequests) + " pending=" + Get(world, "Genie.RequestPending") + " dead=" + Get(world, "Avatar.Dead"));
             await Server(4, 1, 120);
             await Until(() => Game.Session.Genie.GenieRunning, "the server starts the Genie");
             await Frames(6);
@@ -280,14 +280,14 @@ public partial class Preview
             // attack (the R key's attack), relayed as GS_GENIE_SYSTEM 2/3. Attack skills, when set, are cast in between.
             var modes = (System.Collections.IDictionary)Get(world, "Genie.modes")!;
             // The client replaces its GenieSetup wholesale when options arrive; read it again for every edit.
-            GenieSetup Setup() => (GenieSetup)Get(world, "Genie.genie")!;
+            GenieSetup Setup() => (GenieSetup)Get(world, "Genie.Genie")!;
             Array.Clear(Setup().Attack);
             CheckButton Mode(GenieMode mode) => (CheckButton)modes[mode]!;
-            var mobIndex = (System.Collections.IDictionary?)Get(world, "EntityLooksSystem.mobIndex");
+            var mobIndex = (System.Collections.IDictionary?)Get(world, "EntityLooksSystem.MobIndex");
             int model = mobIndex?.Keys.Cast<object>().Select(Convert.ToInt32).FirstOrDefault() ?? 1;
             int nextMob = 30001;
-            var ents = (EntityRegistry)Get(world, "EntitySystem.ents")!;
-            var monsters = (HashSet<string>)Get(world, "Genie.monsters")!;
+            var ents = (EntityRegistry)Get(world, "EntitySystem.Ents")!;
+            var monsters = (HashSet<string>)Get(world, "Genie.Monsters")!;
             Vector2 Self() => new((float)Get(world, "Avatar.KoX")!, (float)Get(world, "Avatar.KoZ")!);
             Packet NpcIn(int id, short npcId, Vector2 at)
             {
@@ -321,9 +321,9 @@ public partial class Preview
             async Task<List<string>> Watch(double seconds) { Drain(); await Seconds(seconds); return Drain(); }
             int Count(List<string> list, string op) => list.Count(o => o == op);
             const string RelayAttack = "GS_GENIE_SYSTEM:2:3", RelayMove = "GS_GENIE_SYSTEM:2:1", RelayMagic = "GS_GENIE_SYSTEM:2:4";
-            int Selected() => (int)Get(world, "Selection.selectedId")!;
-            bool Auto() => Get(world, "CombatSystem.autoAttack") is true;
-            int AutoTarget() => (int)Get(world, "CombatSystem.autoTargetId")!;
+            int Selected() => (int)Get(world, "Selection.SelectedId")!;
+            bool Auto() => Get(world, "CombatSystem.AutoAttack") is true;
+            int AutoTarget() => (int)Get(world, "CombatSystem.AutoTargetId")!;
             void Finding(string scenario, List<string> requests, bool ok, string note)
             {
                 findings.Add(new { scenario, ok, note, attacks = Count(requests, RelayAttack), moves = Count(requests, RelayMove), magic = Count(requests, RelayMagic),

@@ -94,7 +94,7 @@ public partial class Preview
 
         // Collection Race -------------------------------------------------------------------------------
         {
-            var (world, layer, window, panel) = await Open("BuildCollectionRaceEventsPreview", "CollectionRace.crWindow", nation, false, false);
+            var (world, layer, window, panel) = await Open("BuildCollectionRaceEventsPreview", "CollectionRace.CrWindow", nation, false, false);
             window.Position = new Vector2(620, 60);
             await Capture(window, panel, "collectionrace", "progress");
             var cards = Descendants(panel).OfType<ClassicNpcCard>().ToArray();

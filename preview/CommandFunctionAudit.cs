@@ -111,7 +111,7 @@ public partial class Preview
             await Read(stream, GameOpcodes.GS_LOGIN); var login = new Packet(GameOpcodes.GS_LOGIN); login.WriteByte((byte)nation); await Send(stream, login);
             await Read(stream, GameOpcodes.GS_SELECT_CHARACTER); var select = new Packet(GameOpcodes.GS_SELECT_CHARACTER); select.WriteByte(1); select.WriteShort(32700); select.WriteShort(100); select.WriteShort(100); select.WriteShort(0); await Send(stream, select);
             await Read(stream, GameOpcodes.GS_GAMESTART); await Send(stream, MyInfoPacket());
-            await Until(() => GetTree().CurrentScene is WorldRoot w && (bool)Get(w, "worldReady")!, "Native World scene builds every facet");
+            await Until(() => GetTree().CurrentScene is WorldRoot w && (bool)Get(w, "WorldReady")!, "Native World scene builds every facet");
             var world = (WorldRoot)GetTree().CurrentScene;
             await Until(() => Get(world, "loadingLayer") == null, "Native loading screen completes");
             // Every request the client sends from here on is recorded by opcode.
@@ -133,7 +133,7 @@ public partial class Preview
             var background = new HashSet<string>(); while (sent.TryDequeue(out var idle)) background.Add(idle);
 
             DetailCall(world, "CommandList.Toggle"); await Frames(6);
-            var window = (HudWindow)Get(world, "CommandList.window")!;
+            var window = (HudWindow)Get(world, "CommandList.Window")!;
             var frame = window.GetChildren().OfType<ClassicCommandListFrame>().Single();
             await Until(() => frame.Bound, "The game's command window is the Classic window, bound to the client's list");
             Require(window.Visible && window.IsVisibleInTree(), "The command list key action opens the Classic window");
@@ -148,7 +148,7 @@ public partial class Preview
             TabbedLog Log() => (TabbedLog)Get(world, "Log.log")!;
             void ClearLog() => Set(world, "Log.log", new TabbedLog(Native.Get<int>(Native.StaticOwner("LibreKO.Features.CombatLog.CombatLogFeature"), "MaxLines")));
             object exitIdle = Get(world, "GameMenu.battleTimer")!;
-            string[] stateFields = { "Avatar.Running", "EntityStatesSystem.sitRequestPending", "Achievement.achShown", "Merchant.menuShown", "Party.seekShown", "ChatRoom.nationShown", "Merchant.marketPriceShown",
+            string[] stateFields = { "Avatar.Running", "EntityStatesSystem.sitRequestPending", "Achievement.Shown", "Merchant.MenuShown", "SeekParty.SeekShown", "NationChannels.NationShown", "Merchant.marketPriceShown",
                 "Session.UserOption.TradeRequestsBlocked", "Session.UserOption.PartyRequestsBlocked", "GameMenu.exitArmed", "VipWarehouse.shown", "Genie.shown", "GameMenu.shown" };
             Dictionary<string, string> State() => stateFields.Select(f => { string path = f; return (Field: f, Owner: PreviewFixtures.Target(world, ref path), Path: path); })
                 .Where(s => Native.Has(s.Owner, s.Path)).ToDictionary(s => s.Field, s => Native.Get<object>(s.Owner, s.Path)?.ToString() ?? "");
@@ -203,7 +203,7 @@ public partial class Preview
                     classicInput.Clear(); classicInput.ReleaseFocus();
                     Native.TryCall(chat, "Close", out _);
                     if (row.Id == "Exit") { Set(world, "GameMenu.exitArmed", Enum.ToObject(Native.ClientType("LibreKO.Features.Windows.GameMenuFeature+ExitKind")!, 0)); Set(world, "GameMenu.battleTimer", exitIdle); }
-                    foreach (var (field, close) in new[] { ("Achievement.achShown", "CloseAchievements"), ("Merchant.menuShown", "CloseMerchantMenu"), ("Party.seekShown", "Party.ToggleSeek"), ("ChatRoom.nationShown", "CloseNationChat") })
+                    foreach (var (field, close) in new[] { ("Achievement.Shown", "CloseAchievements"), ("Merchant.MenuShown", "CloseMerchantMenu"), ("SeekParty.SeekShown", "SeekParty.ToggleSeek"), ("NationChannels.NationShown", "CloseNationChat") })
                         if (Get(world, field) is true) DetailCall(world, close);
                     results.Add(result);
                     await Frames(2);
@@ -228,7 +228,7 @@ public partial class Preview
                 result["id"] = id; result["text"] = line;
                 results.Add(result);
                 classicInput.Clear(); Native.TryCall(chat, "Close", out _);
-                foreach (var (field, close) in new[] { ("Achievement.achShown", "CloseAchievements"), ("Merchant.menuShown", "CloseMerchantMenu"), ("Party.seekShown", "Party.ToggleSeek"), ("ChatRoom.nationShown", "CloseNationChat") })
+                foreach (var (field, close) in new[] { ("Achievement.Shown", "CloseAchievements"), ("Merchant.MenuShown", "CloseMerchantMenu"), ("SeekParty.SeekShown", "SeekParty.ToggleSeek"), ("NationChannels.NationShown", "CloseNationChat") })
                     if (Get(world, field) is true) DetailCall(world, close);
             }
             // Context commands with a name typed after them (the client's own argument forms).
@@ -283,7 +283,7 @@ public partial class Preview
                     await Send(stream, p);
                 }
                 var net = Net.I;
-                Label runLine = (Label)Get(world, "Genie.runLabel")!;
+                Label runLine = (Label)Get(world, "Genie.RunLabel")!;
                 void Key(Key key)
                 {
                     GetViewport().PushInput(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true }, true);
@@ -327,7 +327,7 @@ public partial class Preview
 
                 // Time left: Start runs the quick panel's Start (the client's ToggleGenieFromSub: options saved, start requested).
                 await Server(6, 120);
-                await Until(() => (int)Get(world, "Genie.points")! == 120, "the server reports 120 Genie minutes");
+                await Until(() => (int)Get(world, "Genie.Points")! == 120, "the server reports 120 Genie minutes");
                 await Frames(2);
                 Expect("120 minutes left, stopped", true, false, false, startTip: startHint, stopTip: runLine.Text);
                 var started = await Run("GenieStart", "start");
@@ -339,7 +339,7 @@ public partial class Preview
                 Expect("Genie running", false, true, false, startTip: runLine.Text, stopTip: stopHint);
                 // Reopened, the window opens beside the Genie quick panel that the Genie shows while it has time.
                 DetailCall(world, "CommandList.Toggle"); await Frames(2); DetailCall(world, "CommandList.Toggle"); await Frames(6); await ShowGenie();
-                var quick = (Control)Get(world, "Genie.sub")!;
+                var quick = (Control)Get(world, "Genie.Sub")!;
                 Require(quick.IsVisibleInTree() && !quick.GetGlobalRect().Intersects(window.GetGlobalRect()), $"the command list opens beside the Genie quick panel {quick.GetGlobalRect()} / {window.GetGlobalRect()}");
                 GetViewport().PushInput(new InputEventMouseMotion { Position = new Vector2(5, 5), GlobalPosition = new Vector2(5, 5) }, true); await Frames(2);
                 GetViewport().GetTexture().GetImage().SavePng(output + "/" + prefix + "-command-genie-running.png");
@@ -367,7 +367,7 @@ public partial class Preview
                 await Frames(2);
 
                 // Open position: the right edge, vertically centred, beside the Classic HUD, at several screen sizes.
-                Set(world, "Genie.points", 0); DetailCall(world, "Genie.RefreshSub"); await Frames(2);
+                Set(world, "Genie.Points", 0); DetailCall(world, "Genie.RefreshSub"); await Frames(2);
                 foreach (var size in new[] { new Vector2I(1200, 850), new Vector2I(1024, 768), new Vector2I(1280, 720), new Vector2I(1600, 900), new Vector2I(1920, 1080) })
                 {
                     if (window.Visible) DetailCall(world, "CommandList.Toggle");

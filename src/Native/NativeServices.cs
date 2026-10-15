@@ -65,7 +65,7 @@ public static class NativeServices
         NativeWindows.Sync(window, () =>
         {
             if (Native.Get<List<PanelContainer>>(world, "Warp.rows") is not { } rows) return;
-            int selected = Native.Get<int>(world, "Warp.selected");
+            int selected = Native.Get<int>(world, "Warp.Selected");
             for (int i = 0; i < rows.Count; i++)
                 if (GodotObject.IsInstanceValid(rows[i])) rows[i].SetMeta(SelectedMeta, i == selected);
         });
@@ -78,7 +78,7 @@ public static class NativeServices
         Name(world, "Seal.prompt", "seal_prompt");
         Name(world, "Seal.codeRow", "seal_code_row");
         Name(world, "Seal.codeField", "seal_code");
-        Name(world, "Seal.pad", "seal_keypad");
+        Name(world, "Seal.Pad", "seal_keypad");
         Name(world, "Seal.gold", "seal_gold");
         Name(world, "Seal.confirm", "seal_confirm");
         // The client docks the inventory window beside the seal; the Classic window keeps its own bag.
@@ -135,10 +135,10 @@ public static class NativeServices
     /// <summary>Character Seal scroll / Cypher Ring transfer: the seal layout with the Classic bag.</summary>
     private static void PrepareCharacterSealTrans(HudWindow window, WorldRoot world)
     {
-        Name(world, "CharacterSealWindow.csSocket", "cstrans_socket");
-        Name(world, "CharacterSealWindow.csTransHeadline", "cstrans_headline");
-        Name(world, "CharacterSealWindow.csTransGold", "cstrans_gold");
-        if (Native.Get<Label>(world, "CharacterSealWindow.csTransHeadline")?.GetParent() is Container stage)
+        Name(world, "CharacterSealWindow.CsSocket", "cstrans_socket");
+        Name(world, "CharacterSealWindow.CsTransHeadline", "cstrans_headline");
+        Name(world, "CharacterSealWindow.CsTransGold", "cstrans_gold");
+        if (Native.Get<Label>(world, "CharacterSealWindow.CsTransHeadline")?.GetParent() is Container stage)
             NativeWindows.Name(stage.GetChildren().OfType<Label>().LastOrDefault(l => l.Name != "cstrans_headline"), "cstrans_notice");
         var buttons = Native.Descendants(window.Body).OfType<Button>().Where(b => b.Text is "OK" or "Cancel").ToArray();
         if (buttons.Length >= 2)
@@ -146,10 +146,10 @@ public static class NativeServices
             buttons[0].Name = "cstrans_ok";
             buttons[1].Name = "cstrans_cancel";
         }
-        if (Native.Get<Label>(world, "CharacterSealWindow.csTransGold")?.GetParent() is Container footer)
+        if (Native.Get<Label>(world, "CharacterSealWindow.CsTransGold")?.GetParent() is Container footer)
             NativeWindows.Name(footer.GetChildren().OfType<Label>().FirstOrDefault(l => l.Name != "cstrans_gold"), "cstrans_gold_caption");
         NativeBagCells.Attach(window, world, "cstrans_bag_", "CharacterSealWindow.TakeFromBag", "CharacterSealWindow.FitAt");
-        DropOnSocket(world, "CharacterSealWindow.csSocket", "cstrans_drop", "CharacterSealWindow.csTransShown", "CharacterSealWindow.TakeFromBag");
+        DropOnSocket(world, "CharacterSealWindow.CsSocket", "cstrans_drop", "CharacterSealWindow.csTransShown", "CharacterSealWindow.TakeFromBag");
     }
 
     /// <summary>Lets a carried item be dragged onto a service socket; the client's bag action takes it.</summary>
@@ -185,7 +185,7 @@ public static class NativeServices
     /// </summary>
     public static void HookCombineAmount(WorldRoot world)
     {
-        if (Native.Get<CanvasLayer>(world, "Merchant.amountLayer") is not { } layer || !GodotObject.IsInstanceValid(layer)
+        if (Native.Get<CanvasLayer>(world, "Merchant.AmountLayer") is not { } layer || !GodotObject.IsInstanceValid(layer)
             || layer.HasMeta("classic_combine_amount")) return;
         layer.SetMeta("classic_combine_amount", true);
         layer.VisibilityChanged += () =>
@@ -309,10 +309,10 @@ public sealed class NativeRepair
     /// <summary>The Classic skin turns the repair window into the inventory repair mode.</summary>
     private bool Classic => _panel.GetMeta("classic_inventory_repair", false).AsBool();
     private bool Shown => Native.Get<bool>(_world, "Repair.shown");
-    private bool InFlight => Native.Get<bool>(_world, "Repair.inFlight");
+    private bool InFlight => Native.Get<bool>(_world, "Repair.InFlight");
 
     private HudWindow? Inventory =>
-        Native.Get<Dictionary<string, HudWindow>>(_world, "MainWindows.windows") is { } windows && windows.TryGetValue("Inventory", out var window)
+        Native.Get<Dictionary<string, HudWindow>>(_world, "MainWindows.Windows") is { } windows && windows.TryGetValue("Inventory", out var window)
             ? window : null;
 
     private void Sync()

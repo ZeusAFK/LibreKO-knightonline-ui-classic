@@ -56,7 +56,7 @@ public partial class Preview
         Control PieceDropTarget(WorldRoot world) => Descendants((Node)DetailField(world, "PieceChange.socket")!).OfType<ServiceDropTarget>().Single();
         void Dispose(WorldRoot world, HudWindow window)
         {
-            if (DetailField(world, "InventoryWindow.invContent") is Control orphan && GodotObject.IsInstanceValid(orphan) && orphan.GetParent() == null) orphan.Free();
+            if (DetailField(world, "InventoryWindow.InvContent") is Control orphan && GodotObject.IsInstanceValid(orphan) && orphan.GetParent() == null) orphan.Free();
             window.Free(); world.Free();
         }
 
@@ -163,7 +163,7 @@ public partial class Preview
         materials[0]._GuiInput(new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Right });
         Require(materials[0].Item.IsEmpty, "Combination right-click returns a staged material");
         DetailCall(combineWorld, "BuildCombineAmountPrompt");
-        var amount = (CanvasLayer)DetailField(combineWorld, "Merchant.amountLayer")!; amount.Reparent(this); ClassicMerchantAmount.Apply(amount);
+        var amount = (CanvasLayer)DetailField(combineWorld, "Merchant.AmountLayer")!; amount.Reparent(this); ClassicMerchantAmount.Apply(amount);
         DetailCall(combineWorld, "ItemCombineWindow.AskCombineCount", 0, Inventory.GridStart); await Frames();
         var amountPanel = amount.GetChildren().OfType<ClassicMerchantAmountPanel>().Single();
         string quantityFile = (nation == 1 ? "karus" : "human") + "-combination-quantity.png";
@@ -207,7 +207,7 @@ public partial class Preview
             dialog._Input(new InputEventKey { Keycode = Key.Enter, Pressed = true }); Require(confirmed, "Redistribution Enter invokes its live confirmation callback"); dialog.Free();
         }
         var redistributionWorld = PreviewFixtures.Prepared(new WorldRoot()); DetailCall(redistributionWorld, "ClassChange.BuildPanel");
-        var redistribution = (HudWindow)DetailField(redistributionWorld, "ClassChange.panel")!; redistribution.Reparent(this); NativeServices.Prepare(redistribution, redistributionWorld); ClassicServiceSkin.Apply(redistribution.Body);
+        var redistribution = (HudWindow)DetailField(redistributionWorld, "ClassChange.Panel")!; redistribution.Reparent(this); NativeServices.Prepare(redistribution, redistributionWorld); ClassicServiceSkin.Apply(redistribution.Body);
         await Capture(redistribution, "redistribute-menu");
         Descendants(redistribution).OfType<Button>().Single(b => b.Text == "Redistribute stat points").EmitSignal(BaseButton.SignalName.Pressed);
         Require(NativeServices.RedistributionKind(redistributionWorld) == Net.ResetKindStat, "Original redistribution menu queries the stat reset price before confirming");
@@ -242,10 +242,10 @@ public partial class Preview
         var attach = typeof(PluginGame).GetMethod("Attach", flags)!;
         attach.Invoke(game, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
         var inventoryShell = new HudWindow("inventory", "Inventory") { Visible = false };
-        inventoryShell.Body.AddChild((Control)DetailField(repairWorld, "InventoryWindow.invContent")!);
+        inventoryShell.Body.AddChild((Control)DetailField(repairWorld, "InventoryWindow.InvContent")!);
         foreach (var child in inventoryShell.GetChildren().OfType<Control>()) child.Visible = false;
         inventoryShell.AddThemeStyleboxOverride("panel", new StyleBoxEmpty()); AddChild(inventoryShell);
-        var windows = (Dictionary<string, HudWindow>)DetailField(repairWorld, "MainWindows.windows")!; windows["Inventory"] = inventoryShell;
+        var windows = (Dictionary<string, HudWindow>)DetailField(repairWorld, "MainWindows.Windows")!; windows["Inventory"] = inventoryShell;
         var host = (WindowHost)Create(typeof(WindowHost), "inventory", "Inventory", inventoryShell, (Action)(() => DetailCall(repairWorld, "MainWindows.Hide", "Inventory")));
         var actual = new InventoryWindow(host); inventoryShell.AddChild(actual); inventoryShell.ResetSize();
         DetailCall(repairWorld, "Repair.Open"); await Frames();
@@ -273,14 +273,14 @@ public partial class Preview
         Require(Descendants(tip).OfType<Label>().Any(l => l.Text == "Repair Cost"), "Original repair tooltip shows price and durability");
         var equipment = cells.Single(c => c.Slot == InventoryConstants.RightHand);
         equipment._GuiInput(new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Right });
-        Require(!(bool)DetailField(repairWorld, "Repair.inFlight")!, "Repair mode suppresses right-click equip and use");
+        Require(!(bool)DetailField(repairWorld, "Repair.InFlight")!, "Repair mode suppresses right-click equip and use");
         Require(equipment._GetDragData(Vector2.One).VariantType == Variant.Type.Nil, "Repair mode prevents item dragging");
         equipment._GuiInput(new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
         equipment._GuiInput(new InputEventMouseButton { Pressed = false, ButtonIndex = MouseButton.Left, Position = new Vector2(-10, -10) });
-        Require(!(bool)DetailField(repairWorld, "Repair.inFlight")!, "Releasing outside the item does not repair it");
+        Require(!(bool)DetailField(repairWorld, "Repair.InFlight")!, "Releasing outside the item does not repair it");
         equipment._GuiInput(new InputEventMouseButton { Pressed = true, ButtonIndex = MouseButton.Left });
         equipment._GuiInput(new InputEventMouseButton { Pressed = false, ButtonIndex = MouseButton.Left });
-        Require((bool)DetailField(repairWorld, "Repair.inFlight")!, "Left-click repairs equipped gear through the native callback");
+        Require((bool)DetailField(repairWorld, "Repair.InFlight")!, "Left-click repairs equipped gear through the native callback");
         Require(inventoryShell.GetMeta("classic_repair_pending").AsBool(), "Repair serializes requests while waiting for the server");
         Require(CursorKind() == GameCursorKind.RepairAlt, "A submitted repair switches to the original working hammer cursor");
         await RepairCapture("repair-pending");
@@ -291,16 +291,16 @@ public partial class Preview
         Game.Session.Self.Sheet.SeedWealth(0, 0);
         var bagCell = cells.Single(c => c.Slot == Inventory.GridStart);
         bagCell.OnClick!(bagCell.Slot);
-        Require(!(bool)DetailField(repairWorld, "Repair.inFlight")!, "Insufficient Noahs prevents repair submission");
+        Require(!(bool)DetailField(repairWorld, "Repair.InFlight")!, "Insufficient Noahs prevents repair submission");
         Game.Session.Self.Sheet.SeedWealth(1180000, 2450);
         bagCell.OnClick!(bagCell.Slot);
-        Require((bool)DetailField(repairWorld, "Repair.inFlight")!, "Left-click repairs carried gear without picking it up");
+        Require((bool)DetailField(repairWorld, "Repair.InFlight")!, "Left-click repairs carried gear without picking it up");
         Require((int)typeof(InventoryWindow).GetField("_carried", flags)!.GetValue(actual)! == -1, "Repair never enters inventory carry mode");
         DetailCall(repairWorld, "DeliverRepairResult", false, 0);
         Descendants(actual).OfType<Button>().Single(b => b.Text == "Repair All").EmitSignal(BaseButton.SignalName.Pressed);
-        Require((bool)DetailField(repairWorld, "Repair.inFlight")! && ((Queue<int>)DetailField(repairWorld, "Repair.queue")!).Count > 0,
+        Require((bool)DetailField(repairWorld, "Repair.InFlight")! && ((Queue<int>)DetailField(repairWorld, "Repair.queue")!).Count > 0,
             "Repair All remains available through the inventory and serializes damaged gear");
-        while ((bool)DetailField(repairWorld, "Repair.inFlight")!) DetailCall(repairWorld, "DeliverRepairResult", true, 0);
+        while ((bool)DetailField(repairWorld, "Repair.InFlight")!) DetailCall(repairWorld, "DeliverRepairResult", true, 0);
         inventory.SetDurability(Inventory.GridStart, 1100); bagCell.OnClick!(bagCell.Slot);
         inventory[Inventory.GridStart] = inventory[Inventory.GridStart + 1];
         inventory.SetDurability(Inventory.GridStart, 500);

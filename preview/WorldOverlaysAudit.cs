@@ -39,7 +39,7 @@ public partial class Preview
         Call("DeathDialog.BuildDeathDialog"); Call("TownRecall.Build"); Call("Challenge.BuildPrompt"); Call("Party.BuildPanel");
         Call("UpgradeNotice.BuildBanner"); Call("Shout.BuildBanner"); Call("BattleEvent.BuildUi");
         Call("ClanBattle.BuildBanner"); Call("ZoneAbility.BuildChip");
-        SetField("BorderDefenseWar.bdwHudLayer", new CanvasLayer { Layer = 95 }); world.AddChild(Field<CanvasLayer>("BorderDefenseWar.bdwHudLayer")); Call("BorderDefenseWar.BuildBdwScoreBanner");
+        SetField("BorderDefenseWar.HudLayer", new CanvasLayer { Layer = 95 }); world.AddChild(Field<CanvasLayer>("BorderDefenseWar.HudLayer")); Call("BorderDefenseWar.BuildBdwScoreBanner");
         Call("Loot.BuildWindow"); Call("Loot.BuildPrompt");
         foreach (var layer in world.GetChildren().OfType<CanvasLayer>().ToArray()) layer.Reparent(this);
 
@@ -89,16 +89,16 @@ public partial class Preview
         var invite = Field<ConfirmationDialog>("Party.inviteAskDialog");
         var duel = Field<ConfirmationDialog>("Challenge.askDialog");
         var recall = Field<ConfirmationDialog>("TownRecall.dialog");
-        var deathLayer = Field<CanvasLayer>("DeathDialog.layer");
-        var deathPanel = Field<PanelContainer>("DeathDialog.panel");
+        var deathLayer = Field<CanvasLayer>("DeathDialog.Layer");
+        var deathPanel = Field<PanelContainer>("DeathDialog.Panel");
         var upgradeLayer = Field<CanvasLayer>("UpgradeNotice.layer"); var upgradeLabel = Field<Label>("UpgradeNotice.label");
         var shoutLayer = Field<CanvasLayer>("Shout.layer"); var shoutLabel = Field<Label>("Shout.label");
         var battleBanner = Field<PanelContainer>("BattleEvent.battleeventBanner"); var battleBannerLabel = Field<Label>("BattleEvent.battleeventBannerLbl");
         var battleResult = Field<PanelContainer>("BattleEvent.battleeventResult"); var battleResultLabel = Field<Label>("BattleEvent.battleeventResultLbl");
         var clanBattle = Field<PanelContainer>("ClanBattle.panel"); var clanBattleLabel = Field<Label>("ClanBattle.label");
-        var chip = Field<PanelContainer>("ZoneAbility.zoneabilityChip"); var chipLabel = Field<Label>("ZoneAbility.zoneabilityTypeLbl");
-        var board = Field<WarScoreStrip>("BattleEvent.battleeventBoard"); var bdw = Field<WarScoreStrip>("BorderDefenseWar.bdwScoreBanner");
-        var lootLayer = Field<CanvasLayer>("Loot.layer"); var lootPanel = Field<PanelContainer>("Loot.panel");
+        var chip = Field<PanelContainer>("ZoneAbility.ZoneabilityChip"); var chipLabel = Field<Label>("ZoneAbility.zoneabilityTypeLbl");
+        var board = Field<WarScoreStrip>("BattleEvent.BattleeventBoard"); var bdw = Field<WarScoreStrip>("BorderDefenseWar.BdwScoreBanner");
+        var lootLayer = Field<CanvasLayer>("Loot.layer"); var lootPanel = Field<PanelContainer>("Loot.Panel");
         var lootCells = Field<ItemSlotView[]>("Loot.cells"); var lootPrompt = Field<Label>("Loot.prompt");
 
         void ShowBanners()
@@ -134,7 +134,7 @@ public partial class Preview
         // The client places the box at its 3D anchor; the audit shows the contents as the client's refresh does.
         void ShowLoot(List<LootEntry> entries)
         {
-            var list = Field<List<LootEntry>>("Loot.entries"); list.Clear(); list.AddRange(entries);
+            var list = Field<List<LootEntry>>("Loot.Entries"); list.Clear(); list.AddRange(entries);
             Call("Loot.RefreshWindow"); lootLayer.Visible = true;
         }
         SetField("Loot.openBundleId", 7);

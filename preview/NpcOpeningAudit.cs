@@ -49,22 +49,22 @@ public partial class Preview
         var world = PreviewFixtures.Prepared(new WorldRoot());
         ((Inventory)Game.Session.Self.Inventory).EnsureLength(InventoryConstants.InventoryTotal);
         DetailCall(world, "InventoryWindow.BuildPanel");
-        var orphan = (Control)DetailField(world, "InventoryWindow.invContent")!; orphan.Visible = false; world.AddChild(orphan);
+        var orphan = (Control)DetailField(world, "InventoryWindow.InvContent")!; orphan.Visible = false; world.AddChild(orphan);
         DetailCall(world, "ItemTooltip.Build");
         DetailCall(world, "NpcDialogWindow.BuildNpcDialog");
         DetailCall(world, "Warehouse.Build"); DetailCall(world, "VipWarehouse.BuildPanel"); DetailCall(world, "Seal.BuildWindow");
-        var sealLayer = new CanvasLayer(); world.AddChild(sealLayer); Native.Set(world, "CharacterSealWindow.csLayer", sealLayer); DetailCall(world, "CharacterSealWindow.BuildWindow");
+        var sealLayer = new CanvasLayer(); world.AddChild(sealLayer); Native.Set(world, "CharacterSealWindow.Layer", sealLayer); DetailCall(world, "CharacterSealWindow.BuildWindow");
         DetailCall(world, "ClanCreate.Build");
         // The Blacksmith's services and the client's own network subscription (RepairInit), the merchant window and the redistribution menu.
         DetailCall(world, "Repair.Build"); DetailCall(world, "Vendor.BuildPanel"); DetailCall(world, "ClassChange.BuildPanel");
         var npcLayer = (Node)DetailField(world, "NpcDialogWindow.layer")!; npcLayer.Reparent(this);
         // Clan naming focuses its field, which needs the scene tree; the window itself stays out of the captures.
         var clanLayer = (Node)DetailField(world, "ClanCreate.layer")!; clanLayer.Reparent(this);
-        var window = (HudWindow)DetailField(world, "NpcDialogWindow.panel")!;
+        var window = (HudWindow)DetailField(world, "NpcDialogWindow.Panel")!;
 
         var actorType = Native.ClientType("LibreKO.Presentation.EntityView")!;
         var actor = Activator.CreateInstance(actorType, nonPublic: true)!;
-        ((EntityRegistry)DetailField(world, "EntitySystem.ents")!)[701] = (EntityView)actor;
+        ((EntityRegistry)DetailField(world, "EntitySystem.Ents")!)[701] = (EntityView)actor;
         void Npc(string name, int id, int type)
         {
             foreach (var (field, value) in new (string, object)[] { ("NpcId", id), ("ModelId", id), ("Level", 50), ("NpcType", type), ("Name", name), ("IsNpc", true), ("Gear", new int[8]) })
@@ -296,7 +296,7 @@ public partial class Preview
                 ["Create a Clan"] = new(() => { }, () => (bool)DetailField(world, "ClanCreate.shown")!, () => DetailCall(world, "ClanCreate.Close")),
                 ["Seal / Cancel (anti-theft)"] = new(() => { }, () => (bool)DetailField(world, "Seal.shown")! && DetailField(world, "Seal.mode")!.ToString() == "Secret", () => DetailCall(world, "Seal.Close")),
                 ["Seal / Cancel"] = new(() => { }, () => (bool)DetailField(world, "Seal.shown")! && DetailField(world, "Seal.mode")!.ToString() == "Bind", () => DetailCall(world, "Seal.Close")),
-                ["Character Seal/Unseal"] = new(() => { }, () => ((HudWindow)DetailField(world, "CharacterSealWindow.csWindow")!).Visible, () => DetailCall(world, "CharacterSealWindow.Close")),
+                ["Character Seal/Unseal"] = new(() => { }, () => ((HudWindow)DetailField(world, "CharacterSealWindow.CsWindow")!).Visible, () => DetailCall(world, "CharacterSealWindow.Close")),
                 ["Close"] = new(() => { }, () => !(bool)DetailField(world, "NpcDialogWindow.shown")!, () => { }),
             })));
         if (!innOnly)
@@ -319,7 +319,7 @@ public partial class Preview
             const string name = "change";
             var layout = ClassicNpcOpeningLayout.Change;
             var layer = (Node)DetailField(world, "ClassChange.layer")!; layer.Reparent(this);
-            var menu = (HudWindow)DetailField(world, "ClassChange.panel")!;
+            var menu = (HudWindow)DetailField(world, "ClassChange.Panel")!;
             NativeServices.Prepare(menu, world);
             var panel = ClassicServiceSkin.Apply(menu.Body)!;
             Npc("[Redistribution]", 35000, 35);

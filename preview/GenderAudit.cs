@@ -43,7 +43,7 @@ public partial class Preview
         T Find<T>(string name) where T : Control => Descendants(panel).OfType<T>().Single(c => c.Name == name);
         var editor = Find<LookEditor>("look_editor"); var preview = Find<LookPreview>("look_preview");
         var colour = Find<ColorPickerButton>("look_colour"); var accept = Find<Button>("look_accept");
-        bool Busy() => (bool)DetailField(world, "GenderChangeWindow.inFlight")!;
+        bool Busy() => (bool)DetailField(world, "GenderChangeWindow.InFlight")!;
         bool Armed() => (bool)DetailField(world, "GenderChangeWindow.armed")!;
         Node3D Pivot() => (Node3D)typeof(LookPreview).GetField("pivot", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(preview)!;
         void Open() => DetailCall(world, "GenderChangeWindow.Open");

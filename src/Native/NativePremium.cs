@@ -113,7 +113,7 @@ public static class NativePremium
 
     /// <summary>The client's clock text ("12:00  Clear"): the time of day the server sends and the weather.</summary>
     public static string? Clock(WorldRoot? world) =>
-        world != null && Native.Get<RichTextLabel>(world, "ScenerySystem.clockLabel") is { } label && GodotObject.IsInstanceValid(label) ? label.GetParsedText().Trim() : null;
+        world != null && Native.Get<RichTextLabel>(world, "ScenerySystem.ClockLabel") is { } label && GodotObject.IsInstanceValid(label) ? label.GetParsedText().Trim() : null;
 
     /// <summary>
     /// Hides the client's clan premium chip, clan bonus chip and clock while the group shows them. The account premium
@@ -122,9 +122,9 @@ public static class NativePremium
     /// </summary>
     public static void HideClientChips(WorldRoot world, float width)
     {
-        foreach (var field in new[] { "ClanPremium.chip", "Premium.clanBonusChip", "ScenerySystem.clockLabel" })
+        foreach (var field in new[] { "ClanPremium.chip", "Premium.ClanBonusChip", "ScenerySystem.ClockLabel" })
             if (Native.Get<CanvasItem>(world, field) is { Visible: true } native) native.Visible = false;
-        if (Native.Get<Control>(world, "Premium.chip") is not { } chip || chip.Modulate.A == 0) return;
+        if (Native.Get<Control>(world, "Premium.Chip") is not { } chip || chip.Modulate.A == 0) return;
         chip.Modulate = Colors.Transparent;
         chip.MouseFilter = Control.MouseFilterEnum.Ignore;
         foreach (var child in Native.Descendants(chip).OfType<Control>()) child.MouseFilter = Control.MouseFilterEnum.Ignore;

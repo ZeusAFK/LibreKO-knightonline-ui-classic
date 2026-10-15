@@ -86,21 +86,21 @@ public static class NativeOverlays
     private static readonly (string Field, NativeOverlay Part, string Name)[] Later =
     {
         ("SoccerSystem.soccerBoard", NativeOverlay.Score, "soccer_score"),
-        ("Chaos.nestTimerPanel", NativeOverlay.Toast, "event_timer"),
-        ("KnightRoyaleWindow.royaleBoard", NativeOverlay.Board, "royale_board"),
-        ("Genie.sub", NativeOverlay.GenieQuick, "genie_quick"),
-        ("EventTitlesWindow.titleColumn", NativeOverlay.Titles, "event_titles"),
+        ("Chaos.NestTimerPanel", NativeOverlay.Toast, "event_timer"),
+        ("KnightRoyaleWindow.RoyaleBoard", NativeOverlay.Board, "royale_board"),
+        ("Genie.Sub", NativeOverlay.GenieQuick, "genie_quick"),
+        ("EventTitlesWindow.TitleColumn", NativeOverlay.Titles, "event_titles"),
         ("GatherSystem.gatherChip", NativeOverlay.Chip, "gather_chip"),
         ("KnightRoyaleWindow.areaBanner", NativeOverlay.Announcement, "area_banner"),
         ("MsgOut.msgOut", NativeOverlay.Announcement, "skill_message"),
         ("ChatNotices.orderMessage", NativeOverlay.Announcement, "order_message"),
         ("KillSplash.killSplash", NativeOverlay.Announcement, "kill_splash"),
-        ("Nereid.flagBoard", NativeOverlay.LabelPlate, "nereid_flags"),
-        ("Nereid.scoreBoard", NativeOverlay.LabelPlate, "nereid_score"),
-        ("Nereid.strip", NativeOverlay.MapPlate, "nereid_strip"),
-        ("SiegeTowerSystem.dropOff", NativeOverlay.Action, "siege_drop_off"),
-        ("SiegeTowerSystem.towerButton", NativeOverlay.TowerButton, "siege_tower"),
-        ("RankerMessageWindow.paper", NativeOverlay.Paper, "ranker_paper"),
+        ("Nereid.FlagBoard", NativeOverlay.LabelPlate, "nereid_flags"),
+        ("Nereid.ScoreBoard", NativeOverlay.LabelPlate, "nereid_score"),
+        ("Nereid.Strip", NativeOverlay.MapPlate, "nereid_strip"),
+        ("SiegeTowerSystem.DropOff", NativeOverlay.Action, "siege_drop_off"),
+        ("SiegeTowerSystem.TowerButton", NativeOverlay.TowerButton, "siege_tower"),
+        ("RankerMessageWindow.Paper", NativeOverlay.Paper, "ranker_paper"),
         ("VanguardWindow.wantedToggle", NativeOverlay.Wanted, "wanted_toggle"),
         ("VanguardWindow.wantedOpen", NativeOverlay.Wanted, "wanted_open"),
     };
@@ -131,7 +131,7 @@ public static class NativeOverlays
         if (!GodotObject.IsInstanceValid(world) || world.HasMeta(Prepared)) return;
         world.SetMeta(Prepared, true);
         PrepareEvents(world);
-        Apply(NativeOverlay.Death, Named(world, "DeathDialog.panel", "death_notice"));
+        Apply(NativeOverlay.Death, Named(world, "DeathDialog.Panel", "death_notice"));
         foreach (var (field, name) in new[] { ("Party.inviteAskDialog", "party_invite_prompt"), ("Challenge.askDialog", "duel_prompt"), ("TownRecall.dialog", "town_recall_prompt") })
             Apply(NativeOverlay.Prompt, Named(world, field, name));
         foreach (var (field, name) in new[] { ("UpgradeNotice.label", "upgrade_announcement"), ("Shout.label", "shout_announcement") })
@@ -140,9 +140,9 @@ public static class NativeOverlays
         Apply(NativeOverlay.Announcement, Named(world, "BattleEvent.battleeventResult", "battle_result"));
         Apply(NativeOverlay.Announcement, Named(world, "ClanBattle.panel", "clan_battle_announcement"));
         Apply(NativeOverlay.Announcement, Named(world, "Loot.prompt", "loot_prompt"));
-        Apply(NativeOverlay.Chip, Named(world, "ZoneAbility.zoneabilityChip", "zone_chip"));
-        Apply(NativeOverlay.Score, Named(world, "BattleEvent.battleeventBoard", "battle_score"));
-        Apply(NativeOverlay.Score, Named(world, "BorderDefenseWar.bdwScoreBanner", "border_war_score"));
+        Apply(NativeOverlay.Chip, Named(world, "ZoneAbility.ZoneabilityChip", "zone_chip"));
+        Apply(NativeOverlay.Score, Named(world, "BattleEvent.BattleeventBoard", "battle_score"));
+        Apply(NativeOverlay.Score, Named(world, "BorderDefenseWar.BdwScoreBanner", "border_war_score"));
         PrepareLoot(world);
         NativeContextMenus.Prepare(world);
         PrepareLater(world);
@@ -221,7 +221,7 @@ public static class NativeOverlays
     private static void PrepareLoot(WorldRoot world)
     {
         // The loot box is a twelve-cell grid of client item cells (entry order) with Take all and Filter under it.
-        if (Named(world, "Loot.panel", "loot_window") is not { } panel || Native.Get<ItemSlotView[]>(world, "Loot.cells") is not { } cells) return;
+        if (Named(world, "Loot.Panel", "loot_window") is not { } panel || Native.Get<ItemSlotView[]>(world, "Loot.cells") is not { } cells) return;
         for (int i = 0; i < cells.Length; i++)
         {
             if (Named(cells[i], "loot_slot_" + i) == null) return;

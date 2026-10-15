@@ -29,7 +29,7 @@ public static class NativeCommandList
     {
         PlaceAndEscape(window, world);
         if (window.HasMeta(Gate)) return;
-        var groups = Native.Get<ItemList>(world, "CommandList.groups");
+        var groups = Native.Get<ItemList>(world, "CommandList.Groups");
         var entries = Native.Get<ItemList>(world, "CommandList.entries");
         if (groups == null || entries == null || Native.Get<IList>(world, "CommandList.cmdShown") == null) return;
         if (!Native.HasMethod(world, "CommandList.FillEntries") || Native.ClientType("LibreKO.Domain.CommandCatalog") == null) return;
@@ -42,7 +42,7 @@ public static class NativeCommandList
     /// <summary>The World whose command list the window shows (the skin binds once the gate is set).</summary>
     public const string WorldMeta = "classic_command_world";
 
-    public static ItemList? Groups(WorldRoot world) => Native.Get<ItemList>(world, "CommandList.groups");
+    public static ItemList? Groups(WorldRoot world) => Native.Get<ItemList>(world, "CommandList.Groups");
     public static ItemList? Entries(WorldRoot world) => Native.Get<ItemList>(world, "CommandList.entries");
 
     /// <summary>
@@ -125,10 +125,9 @@ public static class NativeCommandList
         if (window.HasMeta(PlacedMeta)) return;
         window.SetMeta(PlacedMeta, true);
         window.DockTo(() => OpenSpot(window, world));
-        const int TrailingEntries = 2;
         bool Open() => GodotObject.IsInstanceValid(window) && window.Visible;
         void Close() { if (GodotObject.IsInstanceValid(window)) window.Visible = false; }
-        NativeEscape.CloseBeforeTrailing(world, Open, Close, TrailingEntries);
+        NativeEscape.CloseOnEscape(world, Open, Close);
     }
 
     /// <summary>Where the window opens now: <see cref="ClassicCommandListLayout.OpenSpot"/> for this screen and HUD.</summary>
@@ -158,7 +157,7 @@ public static class NativeCommandList
             foreach (var hud in Native.Descendants(layer).OfType<NationHud>())
                 foreach (var part in hud.GetChildren().OfType<Control>())
                     if (part.IsVisibleInTree()) rects.Add(part.GetGlobalRect());
-        if (Native.Get<Control>(world, "Genie.sub") is { } genie && GodotObject.IsInstanceValid(genie) && genie.IsVisibleInTree()) rects.Add(genie.GetGlobalRect());
+        if (Native.Get<Control>(world, "Genie.Sub") is { } genie && GodotObject.IsInstanceValid(genie) && genie.IsVisibleInTree()) rects.Add(genie.GetGlobalRect());
         try { if (Native.TryCall(world, "DockHudRects", out var dock) && dock is IEnumerable<Rect2> client) rects.AddRange(client); }
         catch (Exception) { }
         return rects.Where(r => r.HasArea()).ToList();

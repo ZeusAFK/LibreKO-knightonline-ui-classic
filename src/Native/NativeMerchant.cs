@@ -57,7 +57,7 @@ public static class NativeMerchant
         switch (window.Id)
         {
             case "sellstall":
-                Cells(world, "Merchant.sellStallCells", index => Native.Call(world, "Merchant.UnstageStallItem", index), (bag, slot) => StageStallItemAt(world, bag, slot));
+                Cells(world, "Merchant.SellStallCells", index => Native.Call(world, "Merchant.UnstageStallItem", index), (bag, slot) => StageStallItemAt(world, bag, slot));
                 Cells(world, "Merchant.sellBagCells", index => Native.Call(world, "Merchant.StageStallItem", index));
                 if (Native.Descendants(window.Body).OfType<Button>().FirstOrDefault(b => b.Text == "Confirm") is { } confirm)
                     NativeVendor.Rewire(confirm, () => ConfirmSellStall(world));
@@ -105,7 +105,7 @@ public static class NativeMerchant
     /// <summary>Names the amount prompt for the Classic prompt skin and validates its quantity and price.</summary>
     public static void PrepareAmount(WorldRoot world)
     {
-        if (Native.Get<CanvasLayer>(world, "Merchant.amountLayer") is not { } layer || layer.HasMeta("merchant_amount")) return;
+        if (Native.Get<CanvasLayer>(world, "Merchant.AmountLayer") is not { } layer || layer.HasMeta("merchant_amount")) return;
         layer.SetMeta("merchant_amount", true);
         layer.SetMeta("merchant_error", "");
         if (Native.Get<Control>(world, "Merchant.amountMarketRow") is { } row)
@@ -129,14 +129,14 @@ public static class NativeMerchant
 
     private static void SyncAmount(WorldRoot world)
     {
-        if (Native.Get<CanvasLayer>(world, "Merchant.amountLayer") is not { } layer) return;
+        if (Native.Get<CanvasLayer>(world, "Merchant.AmountLayer") is not { } layer) return;
         // The Classic prompt moves and hides the price editor itself; the fixed price label is untouched.
         layer.SetMeta("merchant_price_editable", Native.Get<Control>(world, "Merchant.amountPriceFixed")?.Visible == false);
         layer.SetMeta("merchant_quantity", Native.Get<Control>(world, "Merchant.amountCountRow")?.Visible == true);
         layer.SetMeta("merchant_market_available", Native.Get<Control>(world, "Merchant.amountMarketRow")?.Visible == true);
         layer.SetMeta("merchant_market_open", Native.Get<bool>(world, "Merchant.marketPriceShown"));
         // Opening or closing price history changes which keys the prompt may use in the same frame.
-        if (Native.Get<HudWindow>(world, "Merchant.marketPricePanel") is { } market && !market.HasMeta("native_merchant_market"))
+        if (Native.Get<HudWindow>(world, "Merchant.MarketPricePanel") is { } market && !market.HasMeta("native_merchant_market"))
         {
             market.SetMeta("native_merchant_market", true);
             market.VisibilityChanged += () => SyncAmount(world);
@@ -145,7 +145,7 @@ public static class NativeMerchant
 
     private static void AcceptAmount(WorldRoot world)
     {
-        if (Native.Get<CanvasLayer>(world, "Merchant.amountLayer") is not { } layer) return;
+        if (Native.Get<CanvasLayer>(world, "Merchant.AmountLayer") is not { } layer) return;
         SyncAmount(world);
         var count = Native.Get<SpinBox>(world, "Merchant.amountCount");
         int amount = 1;
@@ -155,7 +155,7 @@ public static class NativeMerchant
             layer.SetMeta("merchant_error", "Enter a valid quantity.");
             return;
         }
-        if (layer.GetMeta("merchant_price_editable", false).AsBool() && Native.Get<MoneyEdit>(world, "Merchant.amountPrice")?.Value < 1)
+        if (layer.GetMeta("merchant_price_editable", false).AsBool() && Native.Get<MoneyEdit>(world, "Merchant.AmountPrice")?.Value < 1)
         {
             layer.SetMeta("merchant_error", "Enter a valid price.");
             return;
@@ -166,7 +166,7 @@ public static class NativeMerchant
 
     private static void BuildAdvert(WorldRoot world, State state)
     {
-        if (Native.Get<LineEdit>(world, "Merchant.sellAdvert") is not { } edit) return;
+        if (Native.Get<LineEdit>(world, "Merchant.SellAdvert") is not { } edit) return;
         var layer = new CanvasLayer { Name = "merchant_advert", Layer = 77, Visible = false };
         layer.SetMeta("merchant_advert", true);
         layer.SetMeta("merchant_advert_edit", edit);
@@ -193,7 +193,7 @@ public static class NativeMerchant
     {
         var state = StateOf(world);
         bool staged = Native.Get<MerchantStallItem[]>(world, "Merchant.myStall")?.Any(item => !item.IsEmpty) == true;
-        bool classic = Native.Get<HudWindow>(world, "Merchant.sellStallPanel")?.HasMeta("classic_merchant") == true;
+        bool classic = Native.Get<HudWindow>(world, "Merchant.SellStallPanel")?.HasMeta("classic_merchant") == true;
         if (staged && classic && state.Advert != null && !state.AdvertAccepted)
         {
             state.Advert.Visible = true;
@@ -236,7 +236,7 @@ public static class NativeMerchant
     /// <summary>Sells to a buying stall; the full stack is offered and the payout cannot exceed the gold cap.</summary>
     public static void SellToWanted(WorldRoot world, int gridIndex, int wantedSlot)
     {
-        var layer = Native.Get<CanvasLayer>(world, "Merchant.amountLayer");
+        var layer = Native.Get<CanvasLayer>(world, "Merchant.AmountLayer");
         var accept = Native.Get<Delegate>(world, "Merchant.amountAccept");
         Native.Call(world, "SellToWanted", gridIndex, wantedSlot);
         if (layer == null || !layer.Visible || ReferenceEquals(accept, Native.Get<Delegate>(world, "Merchant.amountAccept"))) return;
@@ -339,7 +339,7 @@ public static class NativeMerchant
 
     private static IEnumerable<(int CharId, object Stall)> Stalls(WorldRoot world)
     {
-        if (Native.Get<IDictionary>(world, "Merchant.stalls") is not { } stalls) yield break;
+        if (Native.Get<IDictionary>(world, "Merchant.Stalls") is not { } stalls) yield break;
         foreach (DictionaryEntry entry in stalls)
             if (entry.Value != null) yield return ((int)entry.Key, entry.Value);
     }

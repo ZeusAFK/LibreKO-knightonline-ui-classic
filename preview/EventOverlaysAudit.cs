@@ -118,18 +118,18 @@ public partial class Preview
             ((Label)DetailField(world, "GatherSystem.gatherChipText")!).Text = "Gathering: Iron Ore";
             Show(chip, new Vector2(520, 200));
             var nereid = Show((Control)DetailCall(world, "Preview.BuildNereid")!, new Vector2(500, 360));
-            ((Label)DetailField(world, "Nereid.flagBoard")!).Text = "Monuments  Karus 3 : 2 El Morad";
-            ((Label)DetailField(world, "Nereid.scoreBoard")!).Text = "Karus 1.250 : 980 El Morad";
+            ((Label)DetailField(world, "Nereid.FlagBoard")!).Text = "Monuments  Karus 3 : 2 El Morad";
+            ((Label)DetailField(world, "Nereid.ScoreBoard")!).Text = "Karus 1.250 : 980 El Morad";
             // The strip lives on the client's mini map, inside the world.
-            var mapStrip = (Label)DetailField(world, "Nereid.strip")!; mapStrip.GetParent().RemoveChild(mapStrip); world.AddChild(mapStrip);
+            var mapStrip = (Label)DetailField(world, "Nereid.Strip")!; mapStrip.GetParent().RemoveChild(mapStrip); world.AddChild(mapStrip);
             NativeOverlays.PrepareLater(world);
             await Frames();
             Plaque(chip, "gather chip");
             var stop = Descendants(chip).OfType<Button>().Single();
             Require(stop.GetThemeStylebox("normal") is StyleBoxTexture && stop.Size == Spec.Plaque.Action, "gather chip: Stop on the chat tab art");
-            var strip = (Label)DetailField(world, "Nereid.strip")!;
+            var strip = (Label)DetailField(world, "Nereid.Strip")!;
             Require(strip.GetParent() is CanvasLayer plates && plates.Name == "classic_map_plates" && plates.GetParent() == world, "nereid strip: re-hosted from the hidden mini map");
-            foreach (var board in new[] { "Nereid.flagBoard", "Nereid.scoreBoard", "Nereid.strip" })
+            foreach (var board in new[] { "Nereid.FlagBoard", "Nereid.ScoreBoard", "Nereid.Strip" })
             {
                 var label = (Label)DetailField(world, board)!;
                 Require(label.GetThemeColor("font_color") == ClassicWorldOverlays.PlaqueInk && label.GetNodeOrNull<Control>("plaque_back") is { ShowBehindParent: true } back
@@ -169,8 +169,8 @@ public partial class Preview
             var target = new TargetFrame(); AddChild(target); target.Visible = true; target.Position = new Vector2(478, 40);
             NativeOverlays.PrepareLater(world);
             await Frames(10);
-            var tower = (Button)DetailField(world, "SiegeTowerSystem.towerButton")!;
-            var dropOff = (Button)DetailField(world, "SiegeTowerSystem.dropOff")!;
+            var tower = (Button)DetailField(world, "SiegeTowerSystem.TowerButton")!;
+            var dropOff = (Button)DetailField(world, "SiegeTowerSystem.DropOff")!;
             Require(tower.GetParent() == target && tower.Visible, "siege tower: the Board button hangs under the Classic target frame");
             Require(Mathf.Abs(tower.GetGlobalRect().GetCenter().X - target.GetGlobalRect().GetCenter().X) <= 1 && tower.GetGlobalRect().Position.Y >= target.GetGlobalRect().End.Y,
                 "siege tower: centred under the target frame");
@@ -192,12 +192,12 @@ public partial class Preview
         // Wanted buttons: on the hidden client mini map, re-hosted on a plaque in the Ronark Land ladder zones.
         {
             var world = PreviewFixtures.Prepared(new WorldRoot());
-            var vanguard = new CanvasLayer(); world.AddChild(vanguard); PreviewFixtures.SetField(world, "VanguardWindow.layer", vanguard);
+            var vanguard = new CanvasLayer(); world.AddChild(vanguard); PreviewFixtures.SetField(world, "VanguardWindow.Layer", vanguard);
             var map = new Control(); world.AddChild(map);
             var toggle = new Button { TooltipText = "Wanted List UI on/off" }; map.AddChild(toggle); PreviewFixtures.SetField(world, "VanguardWindow.wantedToggle", toggle);
             var open = new Button { TooltipText = "Wanted List UI" }; map.AddChild(open); PreviewFixtures.SetField(world, "VanguardWindow.wantedOpen", open);
             bool opened = false; open.Pressed += () => opened = true;
-            Native.Set(world, "zone", 71);
+            Native.Set(world, "ZoneId", 71);
             NativeOverlays.PrepareLater(world);
             world.RemoveChild(vanguard); AddChild(vanguard);
             await Frames();
@@ -209,7 +209,7 @@ public partial class Preview
             open.EmitSignal(BaseButton.SignalName.Pressed);
             Require(opened, "wanted: List keeps the native open action");
             await Shot("wanted", plaque);
-            Native.Set(world, "zone", 21);
+            Native.Set(world, "ZoneId", 21);
             await Frames(2);
             Require(!plaque.Visible, "wanted: hidden outside the ladder zones");
             vanguard.QueueFree(); world.Free();

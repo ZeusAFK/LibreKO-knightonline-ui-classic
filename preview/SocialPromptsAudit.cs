@@ -101,7 +101,7 @@ public partial class Preview
         {
             var world = PreviewFixtures.Prepared(new WorldRoot());
             var window = (HudWindow)DetailCall(world, "Preview.BuildWhisper", false)!;
-            var layer = (CanvasLayer)DetailField(world, "ChatRoom.whisperLayer")!;
+            var layer = (CanvasLayer)DetailField(world, "Whispers.whisperLayer")!;
             layer.Reparent(this); layer.AddChild(window); window.Visible = true;
             var thread = Descendants(window.Body).OfType<ChatThreadView>().Single();
             var composer = Descendants(window.Body).OfType<ChatComposer>().Single();
@@ -203,12 +203,12 @@ public partial class Preview
             thread.Refresh(plain); await Frames(2);
             var plainPill = Descendants(plainRow).OfType<PanelContainer>().Single(p => p.Name == "whisper_reactions");
             Require(plainRow.GetParent() == log && plainPill.IsVisibleInTree() && plainPill.GetThemeStylebox("panel") is StyleBoxFlat { CornerRadiusTopLeft: 0 }, "whisper: a reaction refresh keeps the row and shows the Classic chip");
-            var chats = (System.Collections.IDictionary)DetailField(world, "ChatRoom.whispers")!;
-            DetailCall(world, "ChatRoom.AddWhisperPost", chats["Rikka"], LibreKO.Domain.RoomPost.Line(PreviewPartner(timeline, self), "Rikka", "on my way", DateTime.Now)); await Frames(3);
+            var chats = (System.Collections.IDictionary)DetailField(world, "Whispers.Windows")!;
+            DetailCall(world, "Whispers.AddWhisperPost", chats["Rikka"], LibreKO.Domain.RoomPost.Line(PreviewPartner(timeline, self), "Rikka", "on my way", DateTime.Now)); await Frames(3);
             var fresh = (Control)log.GetChildren().Last();
             Require(fresh.GetMeta(ClassicWhisperThread.RowMeta, "").AsString() == "line" && Descendants(fresh).OfType<RichTextLabel>().Single().Text.Contains("[color=#" + ClassicWhisperThread.Partner.ToHtml(false) + "]"), "whisper: a new line from the partner arrives as a cyan Classic line");
             // A size or transparency change re-renders the whole thread (Reset and Render) and resizes the window.
-            DetailCall(world, "ChatRoom.OnWhisperLookChanged"); await Frames(3);
+            DetailCall(world, "Whispers.OnWhisperLookChanged"); await Frames(3);
             Require(log.GetChildCount() > 0 && log.GetChildren().All(r => r.HasMeta(ClassicWhisperThread.RowMeta)) && thread.GetRect() == logArea && window.Size == open.SizeVec,
                 "whisper: after a look change the re-rendered rows are Classic and the frame keeps its log area " + thread.GetRect() + " " + window.Size);
 
@@ -250,8 +250,8 @@ public partial class Preview
             if (!picker.Visible) { picker.Popup(); await Frames(2); }
             await Shot("whisper-emoticons", window);
             picker.Hide();
-            DetailCall(world, "ChatRoom.BuildWhisperOptions"); DetailCall(world, "ChatRoom.RefreshWhisperOptions");
-            var options = (PopupPanel)DetailField(world, "ChatRoom.whisperOptions")!;
+            DetailCall(world, "Whispers.BuildWhisperOptions"); DetailCall(world, "Whispers.RefreshWhisperOptions");
+            var options = (PopupPanel)DetailField(world, "Whispers.whisperOptions")!;
             options.Position = (Vector2I)(window.GlobalPosition + new Vector2(150, 30)); options.Popup(); await Frames(4);
             Require(options.HasMeta("classic_popup"), "whisper: the size and transparency popup uses the Classic menu panel");
             await Shot("whisper-options", window);
@@ -279,8 +279,8 @@ public partial class Preview
             // which needs the world's viewport) that blinks in the Classic bar.
             var note = new LibreKO.Domain.RoomPost(301, LibreKO.Domain.RoomPostKind.VoiceNote, 4242, "Valka", DateTime.Now, "", 52, 12000) { Waveform = Enumerable.Range(0, 48).Select(i => (byte)(40 + (i * 37) % 180)).ToArray() };
             Game.Session.RoomMedia.DirectTimeline("Valka").Add(note);
-            DetailCall(world, "ChatRoom.GetOrCreateWhisper", "Valka", true);
-            DetailCall(world, "ChatRoom.OnDirectPosted", "Valka", note);
+            DetailCall(world, "Whispers.GetOrCreateWhisper", "Valka", true);
+            DetailCall(world, "Whispers.OnDirectPosted", "Valka", note);
             var incoming = Native.Get<HudWindow>(chats["Valka"]!, "Window")!;
             NativeWhispers.Prepare(incoming, world); await Frames(4);
             var compact = Descendants(incoming).OfType<Label>().Single(l => l.Text == "Valka" && l.IsVisibleInTree());

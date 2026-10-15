@@ -91,7 +91,7 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         Refresh();
     }
 
-    private LibreKO.Network.LotteryState? State => NativeApi.Get<LibreKO.Network.LotteryState>(World, "Lottery.state");
+    private LibreKO.Network.LotteryState? State => NativeApi.Get<LibreKO.Network.LotteryState>(World, "Lottery.State");
 
     protected override void Refresh()
     {

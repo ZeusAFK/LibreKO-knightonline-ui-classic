@@ -27,14 +27,14 @@ public static partial class PreviewFixtures
         {
             var king = new CanvasLayer(); world.AddChild(king); SetField(world, "King.layer", king);
             Call(world, "King.BuildNationTaxRate"); Call(world, "King.OnTariffRead", new KingTariff(KingElection.Success, 3));
-            var nation = Detach<HudWindow>(world, "King.nationTaxRatePanel");
+            var nation = Detach<HudWindow>(world, "King.NationTaxRatePanel");
             NativeIdentity.Prepare(nation, world);
             return nation;
         }
         var siege = new CanvasLayer(); world.AddChild(siege); SetField(world, "Siege.layer", siege);
         Call(world, "Siege.BuildTaxRate"); SetField(world, "Siege.rates", new SiegeTaxRates(SiegeWarfare.Success, 3, 4, SiegeWarfare.FeeLimit));
         Call(world, "Siege.OpenTaxRate", view == "fee" ? SiegeRateKind.DungeonFee : SiegeRateKind.Moradon);
-        var window = Detach<HudWindow>(world, "Siege.taxRatePanel");
+        var window = Detach<HudWindow>(world, "Siege.TaxRatePanel");
         NativeIdentity.Prepare(window, world);
         return window;
     }
@@ -79,7 +79,7 @@ public static partial class PreviewFixtures
         });
         Field<CharacterSheet>(world, "Session.Self.Sheet").ApplyLevel(55, 0, 100, 1000);
         Call(world, "DisguiseWindow.PickGroup", 0); SetField(world, "DisguiseWindow.shown", true);
-        var window = Detach<HudWindow>(world, "DisguiseWindow.panel");
+        var window = Detach<HudWindow>(world, "DisguiseWindow.Panel");
         window.Visible = true;
         NativeIdentity.Prepare(window, world);
         return window;
@@ -94,7 +94,7 @@ public static partial class PreviewFixtures
         var layer = Field<CanvasLayer>(world, "EquipView.layer");
         Field<CanvasLayer>(world, "ItemTooltip.tipLayer").Reparent(layer, false);
         world.RemoveChild(layer);
-        NativeEquipView.Prepare(Field<HudWindow>(world, "EquipView.panel"), world);
+        NativeEquipView.Prepare(Field<HudWindow>(world, "EquipView.Panel"), world);
         return layer;
     }
 
@@ -110,7 +110,7 @@ public static partial class PreviewFixtures
     /// <summary>The fork placed the tooltip in its own viewport; the audit world itself is not in the tree.</summary>
     public static void UpdateInventoryTooltip(WorldRoot world)
     {
-        var panel = Field<Control>(world, "ItemTooltip.tipPanel");
+        var panel = Field<Control>(world, "ItemTooltip.TipPanel");
         if (panel == null || !panel.Visible || panel.GetViewport() is not { } viewport) return;
         var visible = viewport.GetVisibleRect().Size;
         var p = viewport.GetMousePosition() + new Vector2(16, 16);
@@ -150,7 +150,7 @@ public static partial class PreviewFixtures
         Seed(world, me);
         Call(world, "GenderChangeWindow.BuildPanel"); Call(world, "GenderChangeWindow.Open");
         var layer = Detach<CanvasLayer>(world, "GenderChangeWindow.layer");
-        NativeAppearance.Prepare(Field<HudWindow>(world, "GenderChangeWindow.panel"), world);
+        NativeAppearance.Prepare(Field<HudWindow>(world, "GenderChangeWindow.Panel"), world);
         return layer;
     }
 
@@ -164,7 +164,7 @@ public static partial class PreviewFixtures
         SetField(world, "Session.Self.Race", me.Race); SetField(world, "Session.Self.Face", me.Face); SetField(world, "Session.Self.Hair", me.Hair);
         Call(world, "ChangeHair.Build"); Call(world, "ChangeHair.Open");
         var layer = Detach<CanvasLayer>(world, "ChangeHair.layer");
-        NativeAppearance.Prepare(Field<HudWindow>(world, "ChangeHair.panel"), world);
+        NativeAppearance.Prepare(Field<HudWindow>(world, "ChangeHair.Panel"), world);
         return layer;
     }
 
@@ -189,7 +189,7 @@ public static partial class PreviewFixtures
         Seed(world, me);
         Call(world, "NationTransfer.Build");
         var layer = Detach<CanvasLayer>(world, "NationTransfer.transferLayer");
-        NativeAppearance.Prepare(Field<HudWindow>(world, "NationTransfer.transferPanel"), world);
+        NativeAppearance.Prepare(Field<HudWindow>(world, "NationTransfer.TransferPanel"), world);
         return layer;
     }
 
@@ -227,7 +227,7 @@ public static partial class PreviewFixtures
         Native.Call(Game.Session.Clan, "SeedPreview", Native.Call(Native.StaticOwner("LibreKO.WorldPreview"), "PreviewClan", true, ClanTypes.Royal1));
         Call(world, "CapeWindow.Build"); Call(world, "ToggleCape");
         var layer = Detach<CanvasLayer>(world, "CapeWindow.layer");
-        NativeCape.Prepare(Field<HudWindow>(world, "CapeWindow.panel"), world);
+        NativeCape.Prepare(Field<HudWindow>(world, "CapeWindow.Panel"), world);
         return layer;
     }
 

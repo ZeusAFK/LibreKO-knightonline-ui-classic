@@ -58,7 +58,7 @@ public partial class Preview
         var defaultAt = (Vector2)DetailCall(world, "PetBarDefaultPosition")!;
         require(bar.Position == defaultAt, "Classic familiar default position uses its actual compact bounds");
         bar.Position = new Vector2(208, 580);
-        var skillIds = Field<List<int>>("Hotbar.petBarSkills");
+        var skillIds = Field<List<int>>("Hotbar.PetBarSkills");
         require(cells.Select(SkillId).SequenceEqual(skillIds.Take(8)), "Familiar HUD first page retains native table order");
         await Capture("first-page");
         await Click(page);
@@ -72,7 +72,7 @@ public partial class Preview
         sheet.Mp = 0; DetailCall(world, "Hotbar.RefreshPetBar"); await Capture("no-mana");
         require(cells.Where(c => SkillId(c) != 0 && SkillData.Get(SkillId(c))!.Msp > 0).All(c => c.GetNode<TextureRect>("pet_bar_slot_overlay/pet_bar_icon").Modulate.R < .5f), "Native insufficient MP dims the shared Classic skill icons");
         sheet.Mp = Math.Max(oldMp, skillIds.Max(id => SkillData.Get(id)!.Msp)); DetailCall(world, "Hotbar.RefreshPetBar");
-        var cooldowns = Field<Dictionary<int, double>>("Hotbar.petSkillReadyAt"); cooldowns.Clear();
+        var cooldowns = Field<Dictionary<int, double>>("Hotbar.PetSkillReadyAt"); cooldowns.Clear();
         var instant = cells.First(c => SkillId(c) != 0 && SkillData.Get(SkillId(c)) is { CastSeconds: 0, RecastSeconds: > 0 });
         int instantId = SkillId(instant);
         var connection = (KoConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;

@@ -48,7 +48,7 @@ public static class NativeVendor
         window.SetMeta("vendor_dead", Callable.From(() => Native.Get<bool>(world, "Avatar.Dead")));
         window.SetMeta("vendor_group", Native.Get<int>(world, "Vendor.group"));
 
-        if (Native.Get<ItemSlotView[]>(world, "Vendor.cells") is { } cells)
+        if (Native.Get<ItemSlotView[]>(world, "Vendor.Cells") is { } cells)
             foreach (var cell in cells)
             {
                 var drag = cell.DragOut;
@@ -93,7 +93,7 @@ public static class NativeVendor
         window.SetMeta("vendor_group", Native.Get<int>(world, "Vendor.group"));
         CompactCatalogue(world);
         RouteCompanion(world);
-        if (Native.Get<ItemSlotView[]>(world, "Vendor.cells") is { } cells)
+        if (Native.Get<ItemSlotView[]>(world, "Vendor.Cells") is { } cells)
             foreach (var cell in cells) NativeCountBadge.Apply(cell);
     }
 
@@ -101,12 +101,12 @@ public static class NativeVendor
     private static void CompactCatalogue(WorldRoot world)
     {
         var state = StateOf(world);
-        if (Native.Get<ShopCatalogue>(world, "Vendor.catalogue") is not { } catalogue || ReferenceEquals(catalogue, state.Compacted)) return;
+        if (Native.Get<ShopCatalogue>(world, "Vendor.Catalogue") is not { } catalogue || ReferenceEquals(catalogue, state.Compacted)) return;
         var ids = catalogue.Pages.SelectMany(page => catalogue.Page(page).Where(id => id != 0)).ToArray();
         var compact = new ShopCatalogue(ids.Select((id, i) => new ShopCatalogue.Entry(id, i / ShopCatalogue.PageSize, i % ShopCatalogue.PageSize)),
             ItemData.DisplayName);
         state.Compacted = compact;
-        if (!Native.Set(world, "Vendor.catalogue", compact)) return;
+        if (!Native.Set(world, "Vendor.Catalogue", compact)) return;
         Native.Call(world, "Vendor.ShowPage", 0);
     }
 
@@ -124,7 +124,7 @@ public static class NativeVendor
         }));
         Func<int, int, bool> buy = (cell, abs) =>
         {
-            var ids = Native.Get<int[]>(world, "Vendor.cellIds");
+            var ids = Native.Get<int[]>(world, "Vendor.CellIds");
             if (ids == null || cell < 0 || cell >= ids.Length || ids[cell] == 0) return false;
             AskBuy(world, ids[cell], abs);
             return true;
@@ -138,7 +138,7 @@ public static class NativeVendor
     {
         if (Busy(world) || native == null) return default;
         var data = native(cell);
-        var ids = Native.Get<int[]>(world, "Vendor.cellIds");
+        var ids = Native.Get<int[]>(world, "Vendor.CellIds");
         if (data.VariantType == Variant.Type.Dictionary && ids != null && cell.Index >= 0 && cell.Index < ids.Length)
             data.AsGodotDictionary()["id"] = ids[cell.Index];
         return data;
@@ -146,7 +146,7 @@ public static class NativeVendor
 
     private static void CellBuy(WorldRoot world, ItemSlotView cell)
     {
-        var ids = Native.Get<int[]>(world, "Vendor.cellIds");
+        var ids = Native.Get<int[]>(world, "Vendor.CellIds");
         if (ids == null || cell.Index < 0 || cell.Index >= ids.Length || ids[cell.Index] == 0) return;
         Native.Call(world, "Vendor.SelectItem", ids[cell.Index]);
         AskBuy(world, ids[cell.Index], -1);
@@ -185,7 +185,7 @@ public static class NativeVendor
             return;
         }
         string currency = Currency(world);
-        Native.Get<QuantityPrompt>(world, "Vendor.tradePrompt")?.Open(ItemData.Icon(itemId), $"Buy {ItemData.DisplayName(itemId)}",
+        Native.Get<QuantityPrompt>(world, "Vendor.TradePrompt")?.Open(ItemData.Icon(itemId), $"Buy {ItemData.DisplayName(itemId)}",
             $"{price:n0} {currency} each · up to {max:n0}", max, 1, n => ConfirmBuy(world, entry, (int)n, preferred),
             "Buy", n => $"Total {(long)price * n:n0} {currency} · {(long)def.Weight * n / 10f:0.0} wt");
     }
@@ -224,7 +224,7 @@ public static class NativeVendor
             ConfirmSell(world, abs, 1, slot.ItemId);
             return;
         }
-        Native.Get<QuantityPrompt>(world, "Vendor.tradePrompt")?.Open(ItemData.Icon(slot.ItemId), $"Sell {ItemData.DisplayName(slot.ItemId)}",
+        Native.Get<QuantityPrompt>(world, "Vendor.TradePrompt")?.Open(ItemData.Icon(slot.ItemId), $"Sell {ItemData.DisplayName(slot.ItemId)}",
             $"{unit:n0} gold each · you carry {slot.Count:n0}", slot.Count, slot.Count, n => ConfirmSell(world, abs, (int)n, slot.ItemId),
             "Sell", n => $"Sells for {(long)unit * n:n0} gold");
     }
@@ -257,7 +257,7 @@ public static class NativeVendor
             if (Native.Get<bool>(world, "Vendor.shown") && Native.Get<int>(world, "Vendor.group") == group
                 && Game.Session.NpcQuest.LastNpcId == npc && !Busy(world)) send();
         }
-        var panel = Native.Get<HudWindow>(world, "Vendor.panel");
+        var panel = Native.Get<HudWindow>(world, "Vendor.Panel");
         if (panel == null || !panel.HasMeta("vendor_confirmation"))
         {
             Accept();
@@ -328,43 +328,33 @@ public static class NativeCountBadge
 /// <summary>
 /// Reports gold changes the client does not log itself in Info: income in green and spending in red,
 /// both signed. Shop trades and server gold notices are logged by the client (its shop and coin lines),
-/// so they only update the balance here. This handler runs ahead of the client's own and applies the
-/// total first, so the client records no second change.
+/// and gold moved between your own bag, storages and trade offer is not income, so those are skipped.
 /// </summary>
 public static class NativeGoldLog
 {
     public static readonly Color Income = new("79d892");
     public static readonly Color Expense = new("f07870");
 
-    private static readonly ConditionalWeakTable<WorldRoot, Action<int>> _handlers = new();
+    private static readonly ConditionalWeakTable<WorldRoot, Action<GoldChange>> _handlers = new();
     private static int? _clientLogged;
 
     public static void Attach(WorldRoot world)
     {
         if (_handlers.TryGetValue(world, out _)) return;
-        var progress = Game.Session.Progress;
-        Action<int> handler = total => Changed(world, total);
+        Action<GoldChange> handler = change => Changed(world, change);
         Action<GoldChangeReply> logged = reply => _clientLogged = reply.Total;
         _handlers.Add(world, handler);
-        var current = Native.Get<Delegate>(progress, "GoldChangeEvent");
-        if (!Native.Set(progress, "GoldChangeEvent", Delegate.Combine(handler, current))) return;
-        NativeHooks.Hold("Net.GoldChangeEvent (prepended)",
-            () => Native.Set(progress, "GoldChangeEvent", Delegate.Remove(Native.Get<Delegate>(progress, "GoldChangeEvent"), handler)), world);
-        NativeHooks.Listen("Net.GoldChangeLogEvent", () => Game.Session.Progress.GoldChangeLogEvent += logged, () => Game.Session.Progress.GoldChangeLogEvent -= logged, world);
+        NativeHooks.Listen("Progress.GoldChangeLogEvent", () => Game.Session.Progress.GoldChangeLogEvent += logged, () => Game.Session.Progress.GoldChangeLogEvent -= logged, world);
+        NativeHooks.Listen("Progress.GoldChangeEvent", () => Game.Session.Progress.GoldChangeEvent += handler, () => Game.Session.Progress.GoldChangeEvent -= handler, world);
     }
 
-    /// <summary>Applies a new gold total before the client sees it and logs it unless the client does.</summary>
-    public static void Changed(WorldRoot world, int total)
+    /// <summary>Logs a gold change unless the client logs it or it only moved between your own holdings.</summary>
+    public static void Changed(WorldRoot world, GoldChange change)
     {
-        var sheet = Game.Session.Self.Sheet;
-        long change = (long)total - sheet.Gold;
-        bool clientLogs = _clientLogged == total || Game.Session.Vendor.TradeInFlight;
+        bool clientLogs = _clientLogged == change.Total || Game.Session.Vendor.TradeInFlight;
         _clientLogged = null;
-        if (change == 0) return;
-        sheet.SetGold(total);
-        if (clientLogs) return;
-        if (change > 0 && Native.Get<object>(world, "Floaters") is { } floaters) Native.Call(floaters, "Gold", change);
+        if (change.Delta == 0 || change.Transfer || clientLogs) return;
         Native.Call(world, "PluginBridge.LogAdd", GameLogKind.Item,
-            change > 0 ? $"You received +{change:n0} gold." : $"You spent −{-change:n0} gold.", change > 0 ? Income : Expense);
+            change.Delta > 0 ? $"You received +{change.Delta:n0} gold." : $"You spent −{-change.Delta:n0} gold.", change.Delta > 0 ? Income : Expense);
     }
 }

@@ -165,7 +165,7 @@ public partial class Preview
             NativeChatRoom.Prepare(window, world);
             // The reaction pages build the World's reaction layer; in game it is the World's child in the scene. It
             // enters the tree after the preparer watches it, so its popups are dressed as they enter, like in game.
-            if (DetailField(world, "ChatRoom.reactionLayer") is CanvasLayer reactions && IsInstanceValid(reactions))
+            if (DetailField(world, "ChatReactions.ReactionLayer") is CanvasLayer reactions && IsInstanceValid(reactions))
             {
                 reactions.GetParent()?.RemoveChild(reactions); reactions.Name = "reactions_" + page; AddChild(reactions);
             }
@@ -175,8 +175,8 @@ public partial class Preview
         }
         void Done((WorldRoot World, HudWindow Window) opened)
         {
-            DetailCall(opened.World, "ChatRoom.Dispose");
-            if (DetailField(opened.World, "ChatRoom.reactionLayer") is CanvasLayer reactions && IsInstanceValid(reactions) && reactions.GetParent() == this) reactions.QueueFree();
+            DetailCall(opened.World, "ChatRoom.Dispose"); DetailCall(opened.World, "NationChannels.Dispose"); DetailCall(opened.World, "Whispers.Dispose"); DetailCall(opened.World, "ChatReactions.Dispose");
+            if (DetailField(opened.World, "ChatReactions.ReactionLayer") is CanvasLayer reactions && IsInstanceValid(reactions) && reactions.GetParent() == this) reactions.QueueFree();
             opened.Window.GetParent().QueueFree(); opened.World.QueueFree();
         }
         // Two audit processes run at once: an embedded popup can close when the other window takes the focus. The
@@ -314,7 +314,7 @@ public partial class Preview
             }
             logScroll.EnsureControlVisible(link!); await Frames(4);
             link!.EmitSignal(RichTextLabel.SignalName.MetaClicked, "i:" + linked); await Frames(4);
-            var tip = (Control)DetailField(world, "ItemTooltip.tipPanel")!;
+            var tip = (Control)DetailField(world, "ItemTooltip.TipPanel")!;
             Require(world.ItemTooltipVisible && Descendants(tip).OfType<Label>().Any(l => l.Text.Contains(ItemData.DisplayName(linked).Trim())), "links: clicking the link opens the client's tooltip for the item");
             window.Position = new Vector2(40, 40); await Frames(2);
             tip.Position = new Vector2(window.GetGlobalRect().End.X + 12, 40); await Frames(3);
@@ -407,7 +407,7 @@ public partial class Preview
             Done(opened);
         }
         // Popups: voice settings and room settings on the Classic menu panel; room settings validation.
-        foreach (var (page, field) in new[] { ("settings", "ChatRoom.roomVoiceSettings"), ("config", "ChatRoom.roomConfig") })
+        foreach (var (page, field) in new[] { ("settings", "ChatRoom.RoomVoiceSettings"), ("config", "ChatRoom.RoomConfig") })
         {
             var opened = await Open(page); var (world, window) = opened;
             var popup = (PopupPanel)Native.Get<object>(world, field)!;
@@ -475,11 +475,11 @@ public partial class Preview
         {
             var opened = await Open("reactions"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
             await Wait(0.5);
-            var thread = (ChatThreadView)DetailField(world, "ChatRoom.roomThread")!;
-            var card = (PopupPanel)DetailField(world, "ChatRoom.reactionDetails")!;
-            var bar = (PopupPanel)DetailField(world, "ChatRoom.reactionBar")!;
-            var picker = (PopupPanel)DetailField(world, "ChatRoom.reactionPicker")!;
-            var layer = (CanvasLayer)DetailField(world, "ChatRoom.reactionLayer")!;
+            var thread = (ChatThreadView)DetailField(world, "ChatRoom.RoomThread")!;
+            var card = (PopupPanel)DetailField(world, "ChatReactions.ReactionDetails")!;
+            var bar = (PopupPanel)DetailField(world, "ChatReactions.ReactionBar")!;
+            var picker = (PopupPanel)DetailField(world, "ChatReactions.reactionPicker")!;
+            var layer = (CanvasLayer)DetailField(world, "ChatReactions.ReactionLayer")!;
             Require(picker.GetParent() == layer && picker.HasMeta(ClassicReactionStyle.StyledMeta) && bar.HasMeta(ClassicReactionStyle.StyledMeta),
                 "reactions: the popups on the World's reaction layer are dressed as they enter it");
             Require(card.GetParent() == window && card.HasMeta(ClassicReactionStyle.StyledMeta), "reactions: the details card (moved into the window by the preview) stays Classic");
@@ -494,7 +494,7 @@ public partial class Preview
             Hover(pill, false); await Frames(2);
             Require(pill.GetThemeStylebox("panel") is StyleBoxFlat { BorderColor: var rest } && rest == ClassicDarkFrame.Line, "reactions: the pill returns to the gold line");
             card.Hide(); await Frames(2);
-            DetailCall(world, "ChatRoom.OpenReactionDetails", thread, post, pill);
+            DetailCall(world, "ChatReactions.OpenReactionDetails", thread, post, pill);
             Require(card.Visible, "reactions: a click on the pill opens the client's details card");
             await Frames(6); await Reshow(card);
             ClassicMenuPanel(card, "reactions");
@@ -575,9 +575,9 @@ public partial class Preview
         {
             var opened = await Open("react"); var (world, window) = opened; var frame = ClassicChatRoomFrame.Of(window)!;
             await Wait(0.5);
-            var thread = (ChatThreadView)DetailField(world, "ChatRoom.roomThread")!;
-            var bar = (PopupPanel)DetailField(world, "ChatRoom.reactionBar")!;
-            var picker = (PopupPanel)DetailField(world, "ChatRoom.reactionPicker")!;
+            var thread = (ChatThreadView)DetailField(world, "ChatRoom.RoomThread")!;
+            var bar = (PopupPanel)DetailField(world, "ChatReactions.ReactionBar")!;
+            var picker = (PopupPanel)DetailField(world, "ChatReactions.reactionPicker")!;
             var post = Game.Session.RoomMedia.RoomTimeline.Find(106)!;
             Require(bar.GetParent() == window && bar.HasMeta(ClassicReactionStyle.StyledMeta), "react: the quick bar stays Classic in the window");
             window.Position = new Vector2(40, 40); bar.Hide(); await Frames(4);
@@ -585,7 +585,7 @@ public partial class Preview
             thread.Pinned = post; thread.ShowReactButton(post);
             thread.EnsureControlVisible(react); await Frames(4);
             Require(react.IsVisibleInTree() && react.Name == "room_react", "react: the pinned post shows its react button");
-            DetailCall(world, "ChatRoom.OpenReactionBar", thread, post, react);
+            DetailCall(world, "ChatReactions.OpenReactionBar", thread, post, react);
             Require(bar.Visible, "react: the react button opens the client's quick bar");
             await Frames(6); await Reshow(bar);
             ClassicMenuPanel(bar, "react");
@@ -624,18 +624,18 @@ public partial class Preview
             var whisper = (HudWindow)DetailCall(world, "Preview.BuildWhisper", false)!;
             var whisperLayer = new CanvasLayer { Name = "whisper_reactions" }; AddChild(whisperLayer); whisperLayer.AddChild(whisper); whisper.Visible = true;
             NativeChatReactions.Attach(world);
-            var layer = (CanvasLayer)DetailField(world, "ChatRoom.reactionLayer")!;
+            var layer = (CanvasLayer)DetailField(world, "ChatReactions.ReactionLayer")!;
             layer.GetParent()?.RemoveChild(layer); AddChild(layer);
             whisper.Position = new Vector2(40, 40); await Frames(8);
-            var chats = (System.Collections.IDictionary)DetailField(world, "ChatRoom.whispers")!;
+            var chats = (System.Collections.IDictionary)DetailField(world, "Whispers.Windows")!;
             var chat = chats["Rikka"]!;
             var thread = (ChatThreadView)chat.GetType().GetField("Thread")!.GetValue(chat)!;
             var post = Game.Session.RoomMedia.DirectTimeline("Rikka").Find(207)!;
             thread.StickBottom = false; await Frames(2);
             var pill = (PanelContainer)typeof(ChatThreadView).GetMethod("PillOf", Flags)!.Invoke(thread, new object[] { post })!;
             thread.EnsureControlVisible(pill); await Frames(4);
-            DetailCall(world, "ChatRoom.OpenReactionDetails", thread, post, pill);
-            var card = (PopupPanel)DetailField(world, "ChatRoom.reactionDetails")!;
+            DetailCall(world, "ChatReactions.OpenReactionDetails", thread, post, pill);
+            var card = (PopupPanel)DetailField(world, "ChatReactions.ReactionDetails")!;
             Require(card.Visible && card.GetParent() == layer, "whisper: a whisper pill opens the shared details card on the reaction layer");
             await Frames(6); await Reshow(card);
             ClassicMenuPanel(card, "whisper");
@@ -644,7 +644,7 @@ public partial class Preview
             string file = prefix + "-whisper-reactions.png";
             GetViewport().GetTexture().GetImage().SavePng(output + "/" + file); screens.Add(new { state = "whisper-reactions", file, bounds = new Rect2(card.Position, card.Size).ToString() });
             card.Hide();
-            DetailCall(world, "ChatRoom.WhisperDispose");
+            DetailCall(world, "Whispers.Dispose");
             layer.QueueFree(); whisperLayer.QueueFree(); world.QueueFree(); await Frames(2);
         }
         // Minimized from the start (the client's preview state), then restored.
@@ -671,24 +671,24 @@ public partial class Preview
             var list = (HudWindow)DetailCall(world, "Preview.BuildNationChat", "private")!;
             var me = Game.Session.Self.LastEnter; me.Name = "Tester10"; me.Nation = own;
             Native.Call(Game.Session.Self, "SeedPreviewEnter", me);
-            Native.Set(world, "myId", 9006);
+            Native.Set(world, "MyId", 9006);
             // The client's fixture rooms plus two rooms of the other nation: an open one and a locked one.
             var open = new NationRoom(1005, "Border traders", false, other, 3, 20);
             var locked = new NationRoom(1006, "Ronark Land watch", true, other, 5, 10);
-            var rooms = new List<NationRoom>((List<NationRoom>)DetailField(world, "ChatRoom.ncRooms")!) { open, locked };
+            var rooms = new List<NationRoom>((List<NationRoom>)DetailField(world, "NationChannels.ncRooms")!) { open, locked };
             Require(rooms.Any(r => r.Nation == own) && rooms.Count(r => r.Nation == other) >= 2, "nations: the list holds rooms of both nations");
-            Game.Session.NationChat.NationChat.Left(); DetailCall(world, "ChatRoom.RefreshNationButtons");
-            DetailCall(world, "ChatRoom.OnNationRooms", rooms);
+            Game.Session.NationChat.NationChat.Left(); DetailCall(world, "NationChannels.RefreshNationButtons");
+            DetailCall(world, "NationChannels.OnNationRooms", rooms);
             var listLayer = new CanvasLayer { Name = "nation_rooms" }; AddChild(listLayer); listLayer.AddChild(list); list.Visible = true;
             NativeSocial.Prepare(list, world);
-            var password = (HudWindow)DetailCall(world, "Preview.DetachPreviewControl", (HudWindow)DetailField(world, "ChatRoom.ncPassword")!)!;
+            var password = (HudWindow)DetailCall(world, "Preview.DetachPreviewControl", (HudWindow)DetailField(world, "NationChannels.ncPassword")!)!;
             listLayer.AddChild(password);
             await Frames(8);
-            var rows = (VBoxContainer)DetailField(world, "ChatRoom.ncPrivateRows")!;
+            var rows = (VBoxContainer)DetailField(world, "NationChannels.ncPrivateRows")!;
             PanelContainer Row(NationRoom room) => rows.GetChildren().OfType<PanelContainer>().Where(r => !r.IsQueuedForDeletion())
                 .Single(r => Descendants(r).OfType<Label>().Any(l => l.Text == NationChatRules.Row(room.Name, room.Members, room.MaxMembers)));
             LeftClick(Row(open)); await Frames(6);
-            Require((int)DetailField(world, "ChatRoom.ncSelectedRoom")! == open.Id, "nations: a click selects the other nation's room natively");
+            Require((int)DetailField(world, "NationChannels.NationSelectedRoom")! == open.Id, "nations: a click selects the other nation's room natively");
             list.Position = ((GetViewportRect().Size - list.Size) / 2).Round(); await Frames(4);
             Require(list.GetChildren().OfType<ClassicSocialFrame>().Count() == 1 && GetViewportRect().Encloses(list.GetGlobalRect()), "nations: the room list in the Classic social frame inside the viewport " + list.GetGlobalRect());
             string listFile = prefix + "-nation-rooms-both.png";
@@ -723,11 +723,11 @@ public partial class Preview
             Require(Pending() == open.Name && !password.Visible && log.Lines(LogTab.All).Count == notices, "nations: a double-click joins the other nation's room without a notice (" + string.Join(" | ", log.Lines(LogTab.All).Skip(notices)) + ")");
 
             // The server's enter reply opens the room window; members and a line follow.
-            DetailCall(world, "ChatRoom.Build");
+            DetailCall(world, "ChatReactions.Build"); DetailCall(world, "Whispers.Build"); DetailCall(world, "NationChannels.Build"); DetailCall(world, "ChatRoom.Build");
             var entered = new Packet(GameOpcodes.GS_NATION_CHAT);
             entered.WriteByte(NationChatReplies.NationRooms); entered.WriteByte(NationChatReplies.PrivateEnter); entered.WriteByte(0); entered.WriteUShort((ushort)open.Id);
             Handle("HandleNationChat", entered); await Frames(4);
-            var roomWindow = (HudWindow)DetailField(world, "ChatRoom.roomWindow")!;
+            var roomWindow = (HudWindow)DetailField(world, "ChatRoom.RoomWindow")!;
             Require(Game.Session.NationChat.NationChat.InPrivate && Game.Session.NationChat.NationChat.RoomId == open.Id && roomWindow.Visible, "nations: the enter reply opens the other nation's room");
             DetailCall(world, "Preview.DetachPreviewControl", roomWindow);
             var roomLayer = new CanvasLayer { Name = "room_other_nation" }; AddChild(roomLayer); roomLayer.AddChild(roomWindow);
@@ -758,8 +758,8 @@ public partial class Preview
             Require(Named<Label>(frame, "room_title").Text == NationChatRules.Title(open.Name, open.Members + 1, open.MaxMembers), "nations: the room title is the other nation's room: " + Named<Label>(frame, "room_title").Text);
             listLayer.Visible = false;
             await Capture(roomWindow, "other-nation-room");
-            DetailCall(world, "ChatRoom.Dispose"); DetailCall(world, "ChatRoom.NationDispose");
-            Game.Session.NationChat.NationChat.Left(); Game.Session.RoomMedia.ChatRoomPanelShown = false;
+            DetailCall(world, "ChatRoom.Dispose"); DetailCall(world, "NationChannels.Dispose"); DetailCall(world, "Whispers.Dispose"); DetailCall(world, "ChatReactions.Dispose");
+            Game.Session.NationChat.NationChat.Left(); Native.Call(Game.Session.RoomMedia, "HideRoomPanel");
             listLayer.QueueFree(); roomLayer.QueueFree(); world.QueueFree(); await Frames(2);
         }
         // Chat categories: Noah Knights lines reach the Classic chat (the old 1023 mask hid them) and keep the ink of

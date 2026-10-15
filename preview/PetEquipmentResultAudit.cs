@@ -46,7 +46,7 @@ public partial class Preview
         var attach = typeof(PluginGame).GetMethod("Attach", flags)!;
         var bridge = Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { world }, null)!;
-        Native.Set(world, "PluginBridge.pluginBridge", bridge);
+        Native.Set(world, "PluginBridge.GameBridge", bridge);
         foreach (var g in games) attach.Invoke(g, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
         // The standalone preview owns a separate plugin context; forward the native notification to its proxy.
         Action forwardInventory = () => typeof(PluginGame).GetMethod("RaiseInventory", flags)!.Invoke(game, null);

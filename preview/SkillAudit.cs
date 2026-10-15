@@ -31,7 +31,7 @@ public partial class Preview
         Game.Session.Self.Mastery.Seed(seed);
         var world=PreviewFixtures.Prepared(new WorldRoot());
         var classField=new PreviewFixtures.ClientMember("Session.Self.Class");
-        var zoneField=typeof(WorldRoot).GetField("zone",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var zoneField=typeof(WorldRoot).GetProperty("ZoneId",BindingFlags.Instance|BindingFlags.NonPublic)!;
         classField.SetValue(world,nation*100+6);
         var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
         var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;

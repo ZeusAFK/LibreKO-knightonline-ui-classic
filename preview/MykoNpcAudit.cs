@@ -56,10 +56,10 @@ public partial class Preview
         var layer = (CanvasLayer)DetailField(world, "NpcDialogWindow.layer")!; layer.Reparent(this);
         DetailCall(world, "ItemTooltip.Build");
         var tooltipLayer = (CanvasLayer)DetailField(world, "ItemTooltip.tipLayer")!; tooltipLayer.Reparent(this);
-        var window = (HudWindow)DetailField(world, "NpcDialogWindow.panel")!;
+        var window = (HudWindow)DetailField(world, "NpcDialogWindow.Panel")!;
         var actorType = Native.ClientType("LibreKO.Presentation.EntityView")!;
         var actor = Activator.CreateInstance(actorType, nonPublic: true)!;
-        ((EntityRegistry)DetailField(world, "EntitySystem.ents")!)[701] = (EntityView)actor;
+        ((EntityRegistry)DetailField(world, "EntitySystem.Ents")!)[701] = (EntityView)actor;
         using var seed = JsonDocument.Parse(System.IO.File.ReadAllText(ProjectSettings.GlobalizePath("res://../../LibreKO/Server/LibreKO.Game/Seed/Data/Npcs.json")));
         var prototypes = seed.RootElement.EnumerateArray().GroupBy(p => p.GetProperty("Id").GetInt32()).ToDictionary(g => g.Key, g => g.Last());
         void SetNpc(int id)
@@ -339,7 +339,7 @@ public partial class Preview
         var itemCell = myko.Cells[0];
         Pointer(itemCell.GetGlobalRect().Position + new Vector2(20, 20)); await Frames(3);
         Check(world.ItemTooltipVisible, "item cell hover opens the client's item tooltip");
-        var tooltip = (Control)DetailField(world, "ItemTooltip.tipPanel")!;
+        var tooltip = (Control)DetailField(world, "ItemTooltip.TipPanel")!;
         tooltip.Position = new Vector2(Math.Min(armorFrame.End.X + 12, GetViewportRect().Size.X - tooltip.Size.X - 8), armorFrame.Position.Y); await Frames(2);
         await Save("viewer-item-tooltip", armorFrame.Merge(tooltip.GetGlobalRect()));
         Pointer(Vector2.Zero); await Frames(3); Check(!world.ItemTooltipVisible, "tooltip closes on exit");

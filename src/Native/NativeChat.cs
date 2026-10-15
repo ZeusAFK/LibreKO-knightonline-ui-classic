@@ -174,15 +174,15 @@ public static class NativeChat
     /// </summary>
     public static IReadOnlyList<NearbyRow> NearbyPlayers()
     {
-        if (NativeHudChat.World is not { } world || !Native.Get<bool>(world, "worldReady") || Native.Get<Node3D>(world, "Avatar.Body") == null)
+        if (NativeHudChat.World is not { } world || !Native.Get<bool>(world, "WorldReady") || Native.Get<Node3D>(world, "Avatar.Body") == null)
             return Array.Empty<NearbyRow>();
         var state = _nearby.GetOrCreateValue(world);
-        int zone = Native.Get<int>(world, "zone");
+        int zone = Native.Get<int>(world, "ZoneId");
         if (state.Zone != zone)
         {
             state.Zone = zone;
-            Native.Get<System.Collections.IList>(world, "ChatHost.nearbyRows")?.Clear();
-            Native.Get<System.Collections.IList>(world, "ChatHost.nearbyRows")?.Clear();
+            Native.Get<System.Collections.IList>(world, "ChatHost.NearbyRows")?.Clear();
+            Native.Get<System.Collections.IList>(world, "ChatHost.NearbyRows")?.Clear();
             state.NextPoll = 0;
             Native.Set(world, "ChatHost.nearbyFirstPoll", true);
         }
@@ -194,7 +194,7 @@ public static class NativeChat
             state.NextPoll = now + NearbyPollMs;
         }
         Native.TryCall(world, "ChatHost.RebuildNearby", out _);
-        return Native.Get<List<NearbyRow>>(world, "ChatHost.nearbyRows")?.ToArray() ?? Array.Empty<NearbyRow>();
+        return Native.Get<List<NearbyRow>>(world, "ChatHost.NearbyRows")?.ToArray() ?? Array.Empty<NearbyRow>();
     }
 }
 
@@ -219,7 +219,7 @@ public static class NativeWhispers
 
     internal static bool IsWhisper(HudWindow window) =>
         window.Id.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) && Native.WorldOf(window) is { } world
-        && Native.Get<CanvasLayer>(world, "ChatRoom.whisperLayer") is { } layer && window.GetParent() == layer;
+        && Native.Get<CanvasLayer>(world, "Whispers.whisperLayer") is { } layer && window.GetParent() == layer;
 
     private static Type? ChatSystemType => Native.ClientType("LibreKO.Features.Social.ChatSystem");
 
@@ -258,7 +258,7 @@ public static class NativeWhispers
     }
 
     private static object? Conversation(WorldRoot world, string name) =>
-        Native.Get<System.Collections.IDictionary>(world, "ChatRoom.whispers") is { } chats && chats.Contains(name) ? chats[name] : null;
+        Native.Get<System.Collections.IDictionary>(world, "Whispers.Windows") is { } chats && chats.Contains(name) ? chats[name] : null;
 
     /// <summary>
     /// The conversation's composer on clients where whispers share the room's thread and composer (fa3cfc3);
@@ -419,8 +419,8 @@ public static class NativeWhispers
     public static void FocusAt(WorldRoot world, Vector2 at)
     {
         var state = _states.GetOrCreateValue(world);
-        if (Native.Get<CanvasLayer>(world, "ChatRoom.whisperLayer") is not { } layer
-            || Native.Get<System.Collections.IDictionary>(world, "ChatRoom.whispers") is not { } chats) return;
+        if (Native.Get<CanvasLayer>(world, "Whispers.whisperLayer") is not { } layer
+            || Native.Get<System.Collections.IDictionary>(world, "Whispers.Windows") is not { } chats) return;
         for (int i = layer.GetChildCount() - 1; i >= 0; i--)
         {
             if (layer.GetChild(i) is not HudWindow window || !window.Visible || !window.GetGlobalRect().HasPoint(at)) continue;
@@ -466,7 +466,7 @@ public partial class NativeWhisperInput : Node
 
     public override void _Input(InputEvent ev)
     {
-        if (_world == null || !Native.Get<bool>(_world, "worldReady") || Net.I is not { } net || net.ReconnectBlocking) return;
+        if (_world == null || !Native.Get<bool>(_world, "WorldReady") || Net.I is not { } net || net.ReconnectBlocking) return;
         if (ev is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } press)
         {
             NativeWhispers.FocusAt(_world, press.Position);

@@ -49,7 +49,7 @@ public partial class Preview
                 "Pet equipment count shares the fixed Classic overlay " + i);
             var at = cell.GetGlobalRect().GetCenter(); GetViewport().PushInput(new InputEventMouseMotion { Position = at, GlobalPosition = at }); await Frames();
             require(world.ItemTooltipVisible, "Actual familiar equipment hover opens native tooltip " + i);
-            var tooltip = Field<PanelContainer>("ItemTooltip.tipPanel");
+            var tooltip = Field<PanelContainer>("ItemTooltip.TipPanel");
             require(Descendants(tooltip).OfType<Control>().Prepend(tooltip).All(c => c.MouseFilter == Control.MouseFilterEnum.Ignore),
                 "Familiar item tooltip cannot intercept neighboring equipment pointer input " + i);
             require(GetViewportRect().Encloses(tooltip.GetGlobalRect()), "Familiar item tooltip is contained " + i);
@@ -105,7 +105,7 @@ public partial class Preview
 
         DetailCall(world, "Pet.SetStatus", "", false);
         var oldName = sheet.Name; sheet.Name = "WWWWWWWWWWWWWWW";
-        var entities = (EntityRegistry)Field<object>("EntitySystem.ents"); var actor = entities[1]!;
+        var entities = (EntityRegistry)Field<object>("EntitySystem.Ents"); var actor = entities[1]!;
         actor.GetType().GetField("Name")!.SetValue(actor, sheet.Name);
         DetailCall(world, "Pet.RefreshUI"); await capture("long-name");
         require(Find<Label>("pet_name").GetLineCount() == 1 && Find<Label>("pet_name").TooltipText == sheet.Name,

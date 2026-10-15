@@ -32,13 +32,13 @@ public partial class Preview
         Field<CanvasLayer>("Party.dialogLayer").Reparent(this);
         // The party window is gone upstream: the Classic party list replaces the client's party HUD and is
         // driven by the plugin party API the client's bridge implements.
-        SetField("myId",300);
+        SetField("MyId",300);
         Call("Party.BuildHud"); Call("PluginBridge.SocialInit"); Game.Session.Self.Vitals.Seed(3100,3400,2500,2800);
         var hudLayer=new CanvasLayer{Layer=64};AddChild(hudLayer);
         var partyPanel=new ClassicPartyHud(LibreKO.Plugins.PluginHost.Game.Party,()=>world);hudLayer.AddChild(partyPanel);
-        Call("Party.BuildSeekPanel");Field<CanvasLayer>("Party.seekLayer").Reparent(this);
-        var board=Field<Control>("Party.seekPanel");board.Position=new Vector2(222,30);board.Visible=true;
-        SetField("Party.seekShown",true);
+        Call("SeekParty.BuildSeekPanel");Field<CanvasLayer>("SeekParty.seekLayer").Reparent(this);
+        var board=Field<Control>("SeekParty.SeekPanel");board.Position=new Vector2(222,30);board.Visible=true;
+        SetField("SeekParty.SeekShown",true);
         NativeCharacterNpc.Prepare((HudWindow)board,world);
         ClassicPartySkin.Apply(((HudWindow)board).Body);
         await Settled();
@@ -235,7 +235,7 @@ public partial class Preview
         var commander=PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_commander_bar");
         Check(!commander.Visible,"commander restore hidden while the bar shows");
         Native.Set(Game.Session.Party, "PartyCommanderId",300);
-        SetField("Party.commanderUserHidden",true);
+        SetField("PartyCommander.commanderUserHidden",true);
         Call("Party.RefreshUI");await Settled();
         Check(party.CommanderBarHidden && commander.Visible,"commander: the restore action shows while the commander hid the bar");
         await Capture("commander-restore");
@@ -244,17 +244,17 @@ public partial class Preview
         Native.Set(Game.Session.Party, "PartyCommanderId",-1);Call("Party.RefreshUI");await Settled();
         partyPanel.GetNode<ClassicPartyHudRow>("party_member_3").EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
         await Settled();
-        Check(Field<int>("Party.pick") == 303,"left click picks the member natively without targeting a different entity");
+        Check(Field<int>("Party.Pick") == 303,"left click picks the member natively without targeting a different entity");
         Check(partyPanel.GetNode<ClassicPartyHudRow>("party_member_3").Member.Picked,"picked member carries the selection");
         // ff78eef: the client lights the row of the party member who is the world target (PartyHighlight) and
         // notifies the change; targeting someone outside the party clears it.
-        SetField("Selection.selectedId",302);Call("Party.FollowHighlight");await Settled();
+        SetField("Selection.SelectedId",302);Call("Party.FollowHighlight");await Settled();
         Check(partyPanel.GetChildren().OfType<ClassicPartyHudRow>().Where(r=>r.Visible&&r.Member.Picked).Select(r=>r.Member.Id).SequenceEqual(new[]{302}),"the selection follows the world target onto a party member");
         await Capture("target-member");
-        SetField("Selection.selectedId",9001);Call("Party.FollowHighlight");await Settled();
+        SetField("Selection.SelectedId",9001);Call("Party.FollowHighlight");await Settled();
         Check(!partyPanel.GetChildren().OfType<ClassicPartyHudRow>().Any(r=>r.Visible&&r.Member.Picked),"targeting someone outside the party clears the selection");
         await Capture("target-outside");
-        SetField("Selection.selectedId",-1);Call("Party.FollowHighlight");
+        SetField("Selection.SelectedId",-1);Call("Party.FollowHighlight");
         partyPanel.GetNode<ClassicPartyHudRow>("party_member_3").EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
         await Settled();
         Check(partyPanel.GetNode<ClassicPartyHudRow>("party_member_3").Member.Picked,"a click picks the member again");
@@ -262,30 +262,30 @@ public partial class Preview
         // Off -> Damage -> Healing -> Off through the client's toggle.
         var meter=PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_meter");
         Check(meter.Text=="Meter: Off" && party.RowMeterMode==PartyWarBoard.ModeOff,"row meter starts off");
-        void PressMeter(){SetField("Party.meterToggleSentAt",double.NegativeInfinity);meter.EmitSignal(BaseButton.SignalName.Pressed);}
+        void PressMeter(){SetField("WarBoard.meterToggleSentAt",double.NegativeInfinity);meter.EmitSignal(BaseButton.SignalName.Pressed);}
         PressMeter();await Settled();
-        Check(Game.Session.Party.PartyRowMeterMode==PartyWarBoard.ModeDamage && meter.Text=="Meter: Damage","Meter runs the native row meter toggle: damage dealt");
-        Call("Party.OnWarBoard",new WarBoardReply(PartyWarBoard.TargetRows,PartyWarBoard.ModeDamage,members.Select((m,i)=>new WarBoardShare(m.CharId,(8-i)*60)).ToList()));
+        Check(Config.PartyRowMeter==PartyWarBoard.ModeDamage && meter.Text=="Meter: Damage","Meter runs the native row meter toggle: damage dealt");
+        Call("WarBoard.OnWarBoard",new WarBoardReply(PartyWarBoard.TargetRows,PartyWarBoard.ModeDamage,members.Select((m,i)=>new WarBoardShare(m.CharId,(8-i)*60)).ToList()));
         await Settled();
         Check(party.RowMeterShare(300)==480,"the client's row shares reach the cells");
         var meterShot=await Capture("meter-damage");
         Check(AnyPixel(meterShot,InRow(firstRow,new Rect2(ClassicPartyHudLayout.Meter.Position+new Vector2(1,1),4,2)),c=>Near(c,ClassicPartyHudLayout.MeterDamage,.08f)),"damage strip in the damage colour");
         PressMeter();await Settled();
-        Check(Game.Session.Party.PartyRowMeterMode==PartyWarBoard.ModeHealing && meter.Text=="Meter: Healing","Meter: healing next");
+        Check(Config.PartyRowMeter==PartyWarBoard.ModeHealing && meter.Text=="Meter: Healing","Meter: healing next");
         PressMeter();await Settled();
-        Check(Game.Session.Party.PartyRowMeterMode==PartyWarBoard.ModeOff && meter.Text=="Meter: Off","Meter: off again");
+        Check(Config.PartyRowMeter==PartyWarBoard.ModeOff && meter.Text=="Meter: Off","Meter: off again");
         var statuses=(Dictionary<int,HashSet<byte>>)Native.Get<object>(Game.Session.Party, "status")!;
         statuses[302]=new HashSet<byte>{2,4};Call("Party.RefreshUI");await Settled();
         Check(partyPanel.GetNode<ClassicPartyHudRow>("party_member_2").Member.HpColour!=partyPanel.GetNode<ClassicPartyHudRow>("party_member_1").Member.HpColour,"status members show the native HP look");
-        var seekRows=Field<VBoxContainer>("Party.seekListBox").GetChildren().OfType<Control>().ToArray();
+        var seekRows=Field<VBoxContainer>("SeekParty.seekListBox").GetChildren().OfType<Control>().ToArray();
         seekRows[2].EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
         await Capture("selected-status");
-        SetField("Party.seeking",true);Call("Party.UpdateSeekStatus");
+        SetField("SeekParty.seeking",true);Call("SeekParty.UpdateSeekStatus");
         await Capture("registered");
         Check(PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Register").Disabled,"listed: duplicate register disabled");
         Check(!PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Delete").Disabled,"listed: delete enabled");
         Call("OnBbsList",1,24,new List<PartyBbsEntry>{new("PartyLeader",4,83,3,"Need a priest for Dark Stone hunting. All levels welcome.",71,5,nation)});
-        await Settled();Field<VBoxContainer>("Party.seekListBox").GetChildren().OfType<Control>().First().EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
+        await Settled();Field<VBoxContainer>("SeekParty.seekListBox").GetChildren().OfType<Control>().First().EmitSignal(Control.SignalName.GuiInput,new InputEventMouseButton{Pressed=true,ButtonIndex=MouseButton.Left});
         await Capture("recruiting");
         PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Recruit").EmitSignal(BaseButton.SignalName.Pressed);
         await Capture("recruit-form");
@@ -296,7 +296,7 @@ public partial class Preview
         Check(filterPanel.Visible && PartyTree(filterPanel).OfType<OptionButton>().Single().IsVisibleInTree() && PartyTree(filterPanel).OfType<CheckBox>().Count(c=>c.IsVisibleInTree())==2,"filter panel shows the native board filters");
         var sameZone=PartyTree(filterPanel).OfType<CheckBox>().First();
         sameZone.ButtonPressed=true;await Settled();
-        Check(((LibreKO.Domain.PartyBoardFilter)Native.Get<object>(world, "Party.seekFilter")!).SameZone,"filter check runs the native board filter");
+        Check(((LibreKO.Domain.PartyBoardFilter)Native.Get<object>(world, "SeekParty.seekFilter")!).SameZone,"filter check runs the native board filter");
         sameZone.ButtonPressed=false;
         PartyTree(boardPanel).OfType<Button>().Single(b=>b.Name=="seek_filter_toggle").EmitSignal(BaseButton.SignalName.Pressed);
         Game.Session.Party.SeedPreview(members.Take(2).ToArray());Call("Party.RefreshUI");await Capture("two-members");
@@ -304,10 +304,10 @@ public partial class Preview
         Check(PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Private").Disabled,"empty: stale private message disabled");
         Check(!PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Invite").Disabled,"empty: Invite stays available for invite by name");
         // Full Moon Rift board (3277df5 Auto Entry): the client's actions in the filter panel.
-        SetField("Party.seekBoard",(int)LibreKO.Domain.FullMoon.FullMoonBoard);
-        SetField("zone",71);
+        SetField("SeekParty.SeekBoardKind",(int)LibreKO.Domain.FullMoon.FullMoonBoard);
+        SetField("ZoneId",71);
         Game.Session.Self.Sheet.SeedProgress(80,0,100);
-        Call("Party.ApplySeekBoard");
+        Call("SeekParty.ApplySeekBoard");
         Call("OnBbsList",0,1,new List<PartyBbsEntry>{new("MoonLeader",0,80,3,"Full Moon Rift run",71,5,nation)});
         PartyTree(boardPanel).OfType<Button>().Single(b=>b.Name=="seek_filter_toggle").EmitSignal(BaseButton.SignalName.Pressed);
         await Capture("full-moon");
@@ -315,11 +315,11 @@ public partial class Preview
         var auto=PartyTree(moonPanel).OfType<Button>().Single(b=>b.Name=="seek_full_moon_auto");
         Check(auto.IsVisibleInTree() && auto.Text=="Auto Entry" && moonPanel.GetGlobalRect().Encloses(auto.GetGlobalRect()),"full moon: Auto Entry sits in the board's lower panel "+auto.GetGlobalRect());
         Check(PartyTree(moonPanel).OfType<Button>().Where(b=>b.IsVisibleInTree()).Select(b=>b.Name.ToString()).SequenceEqual(new[]{"seek_full_moon_enter","seek_full_moon_shout","seek_full_moon_auto"}),"full moon: Enter, Party Board and Auto Entry, named");
-        var moonTitle=Field<Label>("Party.seekHeading").Text;
+        var moonTitle=Field<Label>("SeekParty.seekHeading").Text;
         Check(moonTitle.Length>0 && PartyTree(boardPanel).OfType<Label>().Any(l=>l.IsVisibleInTree() && l.Text==moonTitle),"full moon: the board takes the client's Full Moon title");
         auto.EmitSignal(BaseButton.SignalName.Pressed);
-        Check((bool)Native.Get<object>(world, "Party.fullMoonAutoEntry")!,"full moon: Auto Entry starts the client's automatic entry for a fitting party");
-        SetField("Party.fullMoonAutoEntry",false);
+        Check((bool)Native.Get<object>(world, "SeekParty.fullMoonAutoEntry")!,"full moon: Auto Entry starts the client's automatic entry for a fitting party");
+        SetField("SeekParty.fullMoonAutoEntry",false);
         Config.SetPartyRowMeter(PartyWarBoard.ModeOff);
         System.IO.File.WriteAllText(output+"/"+prefix+"-verification.json",JsonSerializer.Serialize(new{nation,checks,captures,pluginHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(ProjectSettings.GlobalizePath("res://../bin/KnightOnlineUiClassic.dll"))))},new JsonSerializerOptions{WriteIndented=true}));
         world.Free(); net.Free();

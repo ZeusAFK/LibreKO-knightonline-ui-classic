@@ -24,10 +24,10 @@ public static partial class PreviewFixtures
         Call(world, "MonsterStone.BuildNestWindow");
         // A Monster Stone from the item table, with its own description as the explanation.
         var stone = ItemData.All().Where(i => i.Name.Contains("Monster Stone") || i.Name.Contains("Monster's Stone")).OrderBy(i => i.Id).FirstOrDefault();
-        var window = Field<HudWindow>(world, "MonsterStone.nestWindow");
-        SetField(world, "MonsterStone.nestStone", stone?.Id ?? 0);
+        var window = Field<HudWindow>(world, "MonsterStone.NestWindow");
+        SetField(world, "MonsterStone.NestStone", stone?.Id ?? 0);
         window.Title = stone != null ? ItemData.DisplayName(stone.Id) : "Monster Stone";
-        Field<Label>(world, "MonsterStone.nestExplain").Text = view == "long"
+        Field<Label>(world, "MonsterStone.NestExplain").Text = view == "long"
             ? string.Join(" ", Enumerable.Repeat(stone?.Desc is { Length: > 0 } desc ? desc : "Summons the monsters sealed in the stone into a private dungeon.", 3))
             : stone?.Desc is { Length: > 0 } text ? text : "Summons the monsters sealed in the stone into a private dungeon for you and your party.";
         return Detached(window);
@@ -40,7 +40,7 @@ public static partial class PreviewFixtures
     public static HudWindow BuildDailyRankBoardsUiPreview(WorldRoot world, string view)
     {
         var window = (HudWindow)Call(world, "Preview.BuildDailyRank", view)!;
-        var boards = Field<List<DailyRankBoardInfo>>(world, "DailyRankWindow.drBoards");
+        var boards = Field<List<DailyRankBoardInfo>>(world, "DailyRankWindow.DrBoards");
         if (boards.Count == 0)
         {
             boards.Add(new DailyRankBoardInfo(DailyRank.AdonisBoard, "Adonis",
@@ -58,15 +58,15 @@ public static partial class PreviewFixtures
     {
         Call(world, "Events.BuildWindow");
         Call(world, "Events.RefreshWindow");
-        return Detached(Field<HudWindow>(world, "Events.window"));
+        return Detached(Field<HudWindow>(world, "Events.Window"));
     }
 
     /// <summary>The client's schedule preview after a game master moved the event clock: the warning line shows.</summary>
     public static HudWindow BuildEventsShiftUiPreview(WorldRoot world, string view)
     {
         var window = (HudWindow)Call(world, "Preview.BuildEvents", "")!;
-        var schedule = Field<EventSchedule>(world, "Events.schedule");
-        SetField(world, "Events.schedule", new EventSchedule(TimeSpan.FromMinutes(-75), schedule.Now, schedule.Events, schedule.ReceivedUtc));
+        var schedule = Field<EventSchedule>(world, "Events.Schedule");
+        SetField(world, "Events.Schedule", new EventSchedule(TimeSpan.FromMinutes(-75), schedule.Now, schedule.Events, schedule.ReceivedUtc));
         Call(world, "Events.RefreshWindow");
         return window;
     }
@@ -75,10 +75,10 @@ public static partial class PreviewFixtures
     public static HudWindow BuildEventsLotteryUiPreview(WorldRoot world, string view)
     {
         var window = (HudWindow)Call(world, "Preview.BuildEvents", "")!;
-        var schedule = Field<EventSchedule>(world, "Events.schedule");
+        var schedule = Field<EventSchedule>(world, "Events.Schedule");
         var lottery = schedule.Events.First(e => e.Kind == EventKind.Lottery);
         var now = schedule.Now.Append(new EventNow(EventKind.Lottery, 0, lottery.Name, EventPhase.Running, 900, lottery.MinLevel, lottery.MaxLevel)).ToList();
-        SetField(world, "Events.schedule", new EventSchedule(schedule.ClockOffset, now, schedule.Events, schedule.ReceivedUtc));
+        SetField(world, "Events.Schedule", new EventSchedule(schedule.ClockOffset, now, schedule.Events, schedule.ReceivedUtc));
         Call(world, "Events.RefreshWindow");
         return window;
     }
@@ -89,6 +89,6 @@ public static partial class PreviewFixtures
         bool held = view == "held";
         Call(world, "Siege.ShowStatus", new SiegeWarStatus(held ? (byte)2 : SiegeWarStatus.Unheld, 1, 0, 0, held ? 845 : 0, 2_400,
             held ? "TheVeryLongClanNameOfAll" : ""));
-        return Detached(Field<HudWindow>(world, "Siege.warPanel"));
+        return Detached(Field<HudWindow>(world, "Siege.WarPanel"));
     }
 }

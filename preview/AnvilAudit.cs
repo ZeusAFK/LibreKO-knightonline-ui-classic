@@ -21,7 +21,7 @@ public partial class Preview
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
         Native.Set(Game.Session.Self, "LastEnter",new MyInfo{Nation=nation,Class=nation==1?105:205,Race=nation==1?1:11,Name="Anvil Preview",Gear=new int[8],Inventory=new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]});
         var world=PreviewFixtures.Prepared(new WorldRoot());DetailCall(world,"InventoryWindow.BuildPanel");
-        var orphan=(Control)DetailField(world,"InventoryWindow.invContent")!;orphan.Visible=false;world.AddChild(orphan);
+        var orphan=(Control)DetailField(world,"InventoryWindow.InvContent")!;orphan.Visible=false;world.AddChild(orphan);
         DetailCall(world,"NpcDialogWindow.BuildNpcDialog");
         var window=(HudWindow)DetailCall(world,"BuildUpgradeUiPreview")!;AddChild(window);
         var sheet=Game.Session.Self.Sheet;
@@ -117,7 +117,7 @@ public partial class Preview
         Require(dragCell._CanDropData(Vector2.Zero,potionDrag),"Inventory permits unrelated items to be dragged to another bag cell");
         var originCell=Descendants(shell).OfType<ItemSlotView>().Single(c=>c.Name=="anvil_item_0");
         originCell.EmitSignal(Control.SignalName.MouseEntered);
-        var tooltip=(PanelContainer)DetailField(world,"ItemTooltip.tipPanel")!;tooltip.Position=new Vector2(15,30);
+        var tooltip=(PanelContainer)DetailField(world,"ItemTooltip.TipPanel")!;tooltip.Position=new Vector2(15,30);
         await Frames();Require(tooltip.Visible,"Hover opens the native item tooltip");await Capture("item-tooltip");
         originCell.EmitSignal(Control.SignalName.MouseExited);Require(!tooltip.Visible,"Leaving the slot closes the native item tooltip");
         DetailCall(world,"Upgrade.Confirm");var notice=(Notice)DetailField(world,"Upgrade.confirm")!;notice.Reparent(this);await Capture("confirmation");

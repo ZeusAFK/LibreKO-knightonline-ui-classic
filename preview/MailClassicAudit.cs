@@ -98,7 +98,7 @@ public partial class Preview
             }
             else
             {
-                var to = (LineEdit)DetailField(world, "Mail.recipient")!; var subject = (LineEdit)DetailField(world, "Mail.subjectInput")!; var body = (TextEdit)DetailField(world, "Mail.bodyInput")!;
+                var to = (LineEdit)DetailField(world, "Mail.Recipient")!; var subject = (LineEdit)DetailField(world, "Mail.SubjectInput")!; var body = (TextEdit)DetailField(world, "Mail.BodyInput")!;
                 Require(((Label)DetailField(world, "Mail.bodyRemaining")!).Text == (Net.MailBodyMax - body.Text.Length).ToString(), "Initial draft remaining count matches its native body text");
                 to.EmitSignal(LineEdit.SignalName.TextSubmitted, to.Text); Require(subject.HasFocus(), "Recipient Enter moves to subject");
                 subject.EmitSignal(LineEdit.SignalName.TextSubmitted, subject.Text); Require(body.HasFocus(), "Subject Enter moves to message without sending");
@@ -112,7 +112,7 @@ public partial class Preview
                 body.Text = new string('a', Net.MailBodyMax + 20); DetailCall(world, "Mail.OnBodyChanged");
                 Require(body.Text.Length == Net.MailBodyMax && ((Label)DetailField(world, "Mail.bodyRemaining")!).Text == "0", "Message limit and remaining count stay authoritative");
                 body.Text = "A short letter."; DetailCall(world, "Mail.OnBodyChanged");
-                var picks = (List<(int Slot, int Count)>)DetailField(world, "Mail.attachments")!;
+                var picks = (List<(int Slot, int Count)>)DetailField(world, "Mail.Attachments")!;
                 var rows = (VBoxContainer)DetailField(world, "Mail.attachRows")!;
                 var spin = Descendants(rows).OfType<SpinBox>().Single(); spin.Value = 7;
                 Require(picks[0].Count == 7, "Attachment quantity adjusts the native outgoing item count");
@@ -120,7 +120,7 @@ public partial class Preview
                 GetViewport().PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = true });
                 GetViewport().PushInput(new InputEventKey { Keycode = Key.Enter, Pressed = false }); await Frames();
                 Require(picks[0].Count == 8 && !((Button)DetailField(world, "Mail.sendBtn")!).Disabled, "Attachment amount Enter applies the number without sending the letter");
-                var drop = (Control)DetailField(world, "Mail.dropZone")!;
+                var drop = (Control)DetailField(world, "Mail.AttachmentDrop")!;
                 var data = new Godot.Collections.Dictionary { { "invFrom", Inventory.GridStart + 2 } };
                 Require(drop._CanDropData(Vector2.Zero, data), "Valid inventory drag is accepted by native drop zone"); drop._DropData(Vector2.Zero, data); await Frames();
                 Require(((PanelContainer)drop).GetThemeStylebox("panel") == drop.GetMeta("classic_mail_idle").AsGodotObject(), "Drop completion restores the original Classic inset material");
@@ -139,16 +139,16 @@ public partial class Preview
                 Require(picks.Count == 3, "Remove action returns an attachment capacity slot without changing other picks");
                 rows.GetChildren().OfType<Control>().First().EmitSignal(Control.SignalName.MouseEntered); await Frames();
                 Require(world.ItemTooltipVisible, "Attachment hover opens the existing native item tooltip");
-                var tip = (PanelContainer)DetailField(world, "ItemTooltip.tipPanel")!;
+                var tip = (PanelContainer)DetailField(world, "ItemTooltip.TipPanel")!;
                 Require(Descendants(tip).OfType<Label>().Any(l => l.Text.Contains("Apples")), "Attachment tooltip describes the hovered native item");
                 rows.GetChildren().OfType<Control>().First().EmitSignal(Control.SignalName.MouseExited); await Frames();
                 Require(!world.ItemTooltipVisible, "Attachment mouse exit closes the native item tooltip");
                 to.Text = ""; DetailCall(world, "Mail.SendComposed");
                 Require(((Label)DetailField(world, "Mail.composeStatus")!).Text.Contains("recipient"), "Missing recipient retains native validation");
-                to.Text = "Rikka"; ((MoneyEdit)DetailField(world, "Mail.gold")!).Value = 100_001; DetailCall(world, "Mail.SendComposed");
+                to.Text = "Rikka"; ((MoneyEdit)DetailField(world, "Mail.Gold")!).Value = 100_001; DetailCall(world, "Mail.SendComposed");
                 Require(((Label)DetailField(world, "Mail.composeStatus")!).Text.Contains("gold"), "Excess coin transfer retains native balance validation");
                 await Capture(window, "invalid");
-                ((MoneyEdit)DetailField(world, "Mail.gold")!).Value = 100; DetailCall(world, "Mail.SendComposed");
+                ((MoneyEdit)DetailField(world, "Mail.Gold")!).Value = 100; DetailCall(world, "Mail.SendComposed");
                 Require(((Button)DetailField(world, "Mail.sendBtn")!).Disabled, "Native send waits for server acknowledgement");
                 DetailCall(world, "Mail.OpenCompose");
                 Require(((Button)DetailField(world, "Mail.sendBtn")!).Disabled && (bool)DetailField(world, "Mail.sending")!, "Opening compose again cannot bypass a pending send");

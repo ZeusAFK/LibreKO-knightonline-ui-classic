@@ -66,8 +66,8 @@ public static class NativeBoards
     /// <summary>Sheriff gate, filing form, paged open reports with their votes, and the status line.</summary>
     private static bool PrepareReport(HudWindow window, WorldRoot world)
     {
-        var target = Native.Get<LineEdit>(world, "Report.targetEdit");
-        var reason = Native.Get<LineEdit>(world, "Report.reasonEdit");
+        var target = Native.Get<LineEdit>(world, "Report.TargetEdit");
+        var reason = Native.Get<LineEdit>(world, "Report.ReasonEdit");
         var prev = Native.Get<Button>(world, "Report.prevBtn");
         var refresh = prev?.GetParent()?.GetChildren().OfType<Button>().LastOrDefault();
         var listTitle = prev?.GetParent()?.GetChildren().OfType<Label>().FirstOrDefault();

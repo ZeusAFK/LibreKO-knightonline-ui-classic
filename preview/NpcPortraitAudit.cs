@@ -25,12 +25,12 @@ public partial class Preview
         var model=PreviewFixtures.Prepared(new WorldRoot());
         DetailCall(model,"NpcDialogWindow.Build");
         var layer=(CanvasLayer)DetailField(model,"NpcDialogWindow.layer")!;layer.Reparent(this);
-        var panel=(HudWindow)DetailField(model,"NpcDialogWindow.panel")!;
+        var panel=(HudWindow)DetailField(model,"NpcDialogWindow.Panel")!;
         var actorType=Native.ClientType("LibreKO.Presentation.EntityView")!;
         var actor=Activator.CreateInstance(actorType,nonPublic:true)!;
         void Field(string name,object value) => actorType.GetField(name,BindingFlags.Instance|BindingFlags.Public)!.SetValue(actor,value);
         void Target(string name,int value) => Native.Set(model, name, value);
-        ((EntityRegistry)DetailField(model, "EntitySystem.ents")!)[701] = (EntityView)actor;
+        ((EntityRegistry)DetailField(model, "EntitySystem.Ents")!)[701] = (EntityView)actor;
         var native=new NpcPortraitProbe(model);
         var seedPath=ProjectSettings.GlobalizePath("res://../../LibreKO/Server/LibreKO.Game/Seed/Data/Npcs.json");
         using var seed=JsonDocument.Parse(System.IO.File.ReadAllText(seedPath));

@@ -79,12 +79,12 @@ public partial class Preview
         // ---- Quest notice (quest_available) ----------------------------------------------------------------------
         var world = PreviewFixtures.Prepared(new WorldRoot());
         DetailCall(world, "QuestNotifications.EnsureNotificationWindow");
-        var notice = (HudWindow)DetailField(world, "QuestNotifications.notificationWindow")!;
+        var notice = (HudWindow)DetailField(world, "QuestNotifications.NotificationWindow")!;
         notice.GetParent().RemoveChild(notice); layer.AddChild(notice);
         NativeCharacterNpc.Prepare(notice, world);
         Require(ClassicQuestNotice.Apply(notice.Body) is ClassicFrame, "The notice gets the plain Classic frame");
         Require(notice.GetChildren().OfType<ClassicFrame>().Single() is { Ornate: false }, "The notice frame is plain, not the ornate quest-talk frame");
-        var notifications = (List<QuestView>)DetailField(world, "QuestNotifications.questNotifications")!;
+        var notifications = (List<QuestView>)DetailField(world, "QuestNotifications.QuestNotifications")!;
         string longTitle = "The Very Long Quest About Every Supply Crate The Moradon Guards Lost";
         string longAnswer = "I will gladly bring every one of the supply crates the guards asked for";
         QuestView View(int index, QuestViewState state, string title, string dialogue, string[] topics) =>
@@ -303,9 +303,9 @@ public partial class Preview
         await Move(firstTitle.GetGlobalRect().GetCenter()); await Frames();
         Require(firstTitle.GetThemeStylebox("panel") is StyleBoxFlat lit && lit.BgColor == ClassicDarkFrame.SelectedRow, "Quest name row lights on hover");
         Save(trackerRect, "tracker-hover");
-        Native.Set(trackerWorld, "Quest.selected", -1);
+        Native.Set(trackerWorld, "Quest.Selected", -1);
         await Click(firstTitle);
-        int firstQuest = (int)DetailField(trackerWorld, "Quest.selected")!;
+        int firstQuest = (int)DetailField(trackerWorld, "Quest.Selected")!;
         Require(firstQuest == 60, "Clicking a quest name selects it in the client's journal (" + firstQuest + ")");
         await Move(Vector2.Zero);
         await Click(pageArrows[1]);

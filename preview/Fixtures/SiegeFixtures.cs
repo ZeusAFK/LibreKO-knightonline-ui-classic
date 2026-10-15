@@ -21,7 +21,7 @@ public static partial class PreviewFixtures
     public static HudWindow BuildSiegeDragPreview(WorldRoot world)
     {
         Call(world, "Siege.BuildWindows"); Call(world, "Siege.OpenGuard");
-        var window = Detach<HudWindow>(world, "Siege.guardPanel");
+        var window = Detach<HudWindow>(world, "Siege.GuardPanel");
         NativeSiege.Prepare(window, world);
         return window;
     }

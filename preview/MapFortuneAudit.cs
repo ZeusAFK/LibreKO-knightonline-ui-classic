@@ -187,7 +187,7 @@ public partial class Preview
             AddChild(window); var panel = ClassicMapFortuneSkin.Apply(window.Body)!;
             Require(panel is ClassicFortunePanel, "Fortune Classic skin applied to the prepared native window");
             await Frames();
-            var deck = (FortuneDeck)DetailField(world, "Fortune.deck")!;
+            var deck = (FortuneDeck)DetailField(world, "Fortune.Deck")!;
             Require(deck.Readings.Length > 0 && deck.FramesOf(Fortune.SpinFrames).Length > 0 && deck.FramesOf(Fortune.FinalFrames).Length > 0, "Fortune deck has readings and both card animations");
             var pick = Named<Control>(window, "fortune_pick"); var stage = Named<Control>(window, "fortune_stage");
             var cards = Enumerable.Range(0, Fortune.CardsShown).Select(i => Named<TextureButton>(window, "fortune_card_" + i)).ToArray();
@@ -216,7 +216,7 @@ public partial class Preview
             await Frames(6);
             await Capture(window, "fortune", "spin", size);
             await ToSignal(GetTree().CreateTimer(2.4), SceneTreeTimer.SignalName.Timeout); await Frames(4);
-            var drawn = (FortuneReading)DetailField(world, "Fortune.reading")!;
+            var drawn = (FortuneReading)DetailField(world, "Fortune.Reading")!;
             Require(name.Visible && name.Text == drawn.Title && ok.Visible && !reveal.Visible, "Fortune turn completes into the native reading");
             Require(face.Texture != null && stars.GetChildren().OfType<TextureRect>().Count(s => !s.IsQueuedForDeletion()) == Math.Clamp(drawn.Level, 0, Fortune.MaxStars), "Fortune reveals the card face and the reading's stars");
             void CheckLines()

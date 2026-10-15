@@ -41,7 +41,7 @@ public partial class Preview
             bool myko = panel is ClassicStoreMykoPanel; design = myko ? "myko-art" : "classic";
             if (myko == ClassicFallback) throw new Exception("STORE_AUDIT_FAIL: expected the " + (ClassicFallback ? "Classic fallback" : "bundled 2.x art") + " store, found " + design + " (art root " + Plugin.Kit.Local.Root + ")");
             T Find<T>(string name) where T : Control => Descendants(window).OfType<T>().Single(c => c.Name == "pus_" + name);
-            var cart = (PowerUpStoreCart)DetailField(world, "ShoppingMall.cart")!;
+            var cart = (PowerUpStoreCart)DetailField(world, "ShoppingMall.Cart")!;
             async Task Capture(string state)
             {
                 await Frames(); Require(GetViewportRect().Encloses(window.GetGlobalRect()), state + " window fits viewport " + window.GetGlobalRect());
@@ -114,7 +114,7 @@ public partial class Preview
                 Require(timers.Count > 0, "Native sale timer remains attached to catalogue");
                 timers[0] = (timers[0].Label, DateTime.UtcNow.AddSeconds(-1)); DetailCall(world, "ShoppingMall.TickTimers");
                 Require((bool)DetailField(world, "ShoppingMall.refreshing")! && timers[0].Label.Text == "", "Native expired sale timer requests catalogue refresh");
-                var catalogue = ((List<PowerUpStoreEntry>)DetailField(world, "ShoppingMall.catalog")!).ToList(); DetailCall(world, "ShoppingMall.OnCatalog", catalogue); await Frames();
+                var catalogue = ((List<PowerUpStoreEntry>)DetailField(world, "ShoppingMall.Catalog")!).ToList(); DetailCall(world, "ShoppingMall.OnCatalog", catalogue); await Frames();
                 Require(!(bool)DetailField(world, "ShoppingMall.refreshing")!, "Native catalogue reply clears refresh state and reprices cart");
                 var start = window.Position; var grip = Descendants(panel).OfType<Control>().Single(c => c.Name == "party_drag"); var at = grip.GetGlobalRect().Position + new Vector2(100, 12);
                 GetViewport().PushInput(new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = true }, true);
@@ -125,9 +125,9 @@ public partial class Preview
                 Require(query.Text == "zzmissing" && Find<GridContainer>("grid").GetChildCount() == 0 && Find<Label>("grid_empty").Visible, "Actual typed query updates native empty catalogue"); await Capture("pus-no-match");
                 await KeyInput(Key.Enter); Require(DetailField(world, "ShoppingMall.pending")!.ToString() == "None", "Query Enter never buys");
                 await Click(Find<Button>("tab_1")); Require(query.Text == "" && Find<GridContainer>("grid").GetChildCount() > 0, "Actual category tab click clears query and restores native catalogue");
-                Require(Find<Button>("tab_1").GetMeta("pus_tab_selected").AsBool() && (int)DetailField(world, "ShoppingMall.category")! == 1, "Category tab press selects the native category and the tab shows it");
+                Require(Find<Button>("tab_1").GetMeta("pus_tab_selected").AsBool() && (int)DetailField(world, "ShoppingMall.Category")! == 1, "Category tab press selects the native category and the tab shows it");
                 var other = Descendants(Find<Control>("tabs")).OfType<Button>().First(b => b.Name != "pus_tab_1"); string otherId = other.Name.ToString()["pus_tab_".Length..];
-                await Click(other); Require(DetailField(world, "ShoppingMall.category")!.ToString() == otherId && Find<Button>("tab_" + otherId).GetMeta("pus_tab_selected").AsBool() && !Find<Button>("tab_1").GetMeta("pus_tab_selected").AsBool(), "Second category tab moves the native selection " + otherId);
+                await Click(other); Require(DetailField(world, "ShoppingMall.Category")!.ToString() == otherId && Find<Button>("tab_" + otherId).GetMeta("pus_tab_selected").AsBool() && !Find<Button>("tab_1").GetMeta("pus_tab_selected").AsBool(), "Second category tab moves the native selection " + otherId);
                 await Capture("pus-tab-selected");
                 await Click(Find<Button>("tab_1"));
                 var sort = Find<OptionButton>("sort"); await Click(sort); Require(sort.GetPopup().Visible, "Native sort popup opens"); await Capture("pus-sort-menu");
@@ -156,7 +156,7 @@ public partial class Preview
                 var giftQuery = Find<LineEdit>("gift_query"); await Click(giftQuery); await KeyInput(Key.Escape); Require(!Find<Control>("overlay").Visible && window.Visible, "Focused gift query Escape closes modal before store");
                 await Click(Find<Button>("gift")); await Click(giftQuery); foreach (char c in "Rikka") await KeyInput(Key.None, c); await ToSignal(GetTree().CreateTimer(.3), SceneTreeTimer.SignalName.Timeout); await Frames();
                 Require(Find<VBoxContainer>("gift_list").GetChildCount() > 0, "Actual gift typing preserves debounced contact matching");
-                await KeyInput(Key.Enter); Require((string)DetailField(world, "ShoppingMall.giftChecking")! == "Rikka", "Gift query Enter checks native recipient without buying");
+                await KeyInput(Key.Enter); Require((string)DetailField(world, "ShoppingMall.GiftChecking")! == "Rikka", "Gift query Enter checks native recipient without buying");
                 DetailCall(world, "ShoppingMall.OnRecipient", PowerUpStoreResult.RecipientNotAllowed, "Rikka", 72, 211); Require(Find<Label>("gift_status").Visible && !Find<PanelContainer>("gift_card").Visible, "Native membership refusal retains picker and warning"); await Capture("pus-recipient-refused");
                 await KeyInput(Key.Enter); DetailCall(world, "ShoppingMall.OnRecipient", PowerUpStoreResult.Succeeded, "Rikka", 72, 211); await Frames();
                 Require(Find<PanelContainer>("gift_card").Visible && Find<Label>("recipient_name").Text == "Rikka", "Repeated Enter retains native verified recipient card");

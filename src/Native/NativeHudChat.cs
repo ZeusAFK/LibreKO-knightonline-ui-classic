@@ -71,9 +71,9 @@ public static class NativeHudChat
     {
         var icons = new (NativeHudPart Part, string Button, string? Blink)[]
         {
-            (NativeHudPart.MailIcon, "Mail.iconButton", null),
-            (NativeHudPart.AchievementsIcon, "Achievement.trophy", "Achievement.trophyBlink"),
-            (NativeHudPart.AttendanceIcon, "Attendance.gift", "Attendance.giftBlink"),
+            (NativeHudPart.MailIcon, "Mail.IconButton", null),
+            (NativeHudPart.AchievementsIcon, "Achievement.Trophy", "Achievement.trophyBlink"),
+            (NativeHudPart.AttendanceIcon, "Attendance.Gift", "Attendance.giftBlink"),
             (NativeHudPart.PowerUpStoreIcon, "TopIcons.powerUpStoreIcon", null),
             // The status bar's G, E and R open these; E and R flash for the alert and the new-day blink.
             (NativeHudPart.GenieIcon, TopIconPrefix + "Genie", null),
@@ -132,7 +132,7 @@ public static class NativeHudChat
     /// </summary>
     private static void DockClearOfStatus(WorldRoot world)
     {
-        if (Native.Get<System.Collections.IDictionary>(world, "MainWindows.windows") is not { } windows || !windows.Contains("Character")
+        if (Native.Get<System.Collections.IDictionary>(world, "MainWindows.Windows") is not { } windows || !windows.Contains("Character")
             || windows["Character"] is not HudWindow window || Native.Get<Func<Vector2>>(window, "dock") is not { } dock) return;
         var weak = new WeakReference<WorldRoot>(world);
         window.DockTo(() =>
@@ -152,7 +152,7 @@ public static class NativeHudChat
     /// </summary>
     private static void OpenClearOfMiniMap(WorldRoot world)
     {
-        if (Native.Get<HudWindow>(world, "Genie.panel") is not { } window || !GodotObject.IsInstanceValid(window.Layout)
+        if (Native.Get<HudWindow>(world, "Genie.Panel") is not { } window || !GodotObject.IsInstanceValid(window.Layout)
             || Native.Get<Func<Vector2>>(window.Layout, "defaultPosition") is not { } placement) return;
         var weak = new WeakReference<WorldRoot>(world);
         Native.Set(window.Layout, "defaultPosition", (Func<Vector2>)(() =>
@@ -205,8 +205,8 @@ public static class NativeHudChat
         get
         {
             if (World is not { } world) return -1;
-            int selected = Native.Get<int>(world, "Hotbar.hotSelected");
-            if (selected < 0 || Native.Get<int[]>(world, "Hotbar.hotbar") is not { } slots) return -1;
+            int selected = Native.Get<int>(world, "Hotbar.HotSelected");
+            if (selected < 0 || Native.Get<int[]>(world, "Hotbar.Slots") is not { } slots) return -1;
             return selected < slots.Length && slots[selected] != 0 ? selected : -1;
         }
     }
@@ -226,10 +226,10 @@ public static class NativeHudChat
     /// </summary>
     public static bool? HotbarUsable(int abs)
     {
-        if (World is not { } world || Native.Get<int[]>(world, "Hotbar.hotbar") is not { } slots || abs < 0 || abs >= slots.Length) return null;
+        if (World is not { } world || Native.Get<int[]>(world, "Hotbar.Slots") is not { } slots || abs < 0 || abs >= slots.Length) return null;
         int id = slots[abs];
         if (id == 0) return true;
-        int zone = Native.Get<int>(world, "zone");
+        int zone = Native.Get<int>(world, "ZoneId");
         var skill = SkillData.Get(id);
         if (skill == null && ItemData.Get(id) is { } item)
         {
@@ -247,7 +247,7 @@ public static class NativeHudChat
 
     public static bool Running => World is not { } world || Native.Get<bool>(world, "Avatar.Running");
     public static bool Sitting => World is { } world && Native.Get<bool>(world, "Avatar.Sitting");
-    public static bool AutoAttacking => World is { } world && Native.Get<bool>(world, "CombatSystem.autoAttack");
+    public static bool AutoAttacking => World is { } world && Native.Get<bool>(world, "CombatSystem.AutoAttack");
     // 3277df5 exposes these through IGameCommands (Run(KeyAction) runs the client's own key action handler,
     // ShowExitMenu opens the game menu); the camera half turn has no key action and stays reflected.
     public static void ToggleRun() { if (World != null) Plugin.Kit.Game.Commands.Run(KeyAction.ToggleRun); }
@@ -261,7 +261,7 @@ public static class NativeHudChat
     /// Whether the minimap is shown. The Classic HUD hides the native minimap layer, so the native
     /// control's own visibility only records the player's minimap toggle.
     /// </summary>
-    public static bool MiniMapVisible => World is not { } world || Native.Get<Control>(world, "Map.mini") is not { } map || map.Visible;
+    public static bool MiniMapVisible => World is not { } world || Native.Get<Control>(world, "Map.MiniMap") is not { } map || map.Visible;
 }
 
 /// <summary>
@@ -293,17 +293,17 @@ public sealed class NativeServiceWindows : IGameWindows
     private static readonly Dictionary<string, (string Shown, string Toggle, string? Close)> Services = new(StringComparer.OrdinalIgnoreCase)
     {
         ["mail"] = ("Mail.shown", "ToggleMail", null),
-        ["achievements"] = ("Achievement.achShown", "Achievement.ToggleAchievements", null),
+        ["achievements"] = ("Achievement.Shown", "Achievement.ToggleAchievements", null),
         ["attendance"] = ("Attendance.shown", "ToggleAttendance", null),
         ["shoppingmall"] = ("ShoppingMall.shown", "ToggleShoppingMall", null),
         ["zonemap"] = ("Map.fullShown", "ToggleFullMap", null),
         ["genie"] = ("Genie.shown", "Genie.Toggle", "Genie.Close"),
         // Shown by the window itself. The events toggle asks for the schedule; the daily rank one builds the window
         // on first use and records the day as viewed, as the client's top-right icons did.
-        ["events"] = ("Events.window", "ToggleEvents", null),
-        ["daily_rank"] = ("DailyRankWindow.drWindow", "OnDailyRankIcon", null),
+        ["events"] = ("Events.Window", "ToggleEvents", null),
+        ["daily_rank"] = ("DailyRankWindow.Window", "OnDailyRankIcon", null),
         // The party window is gone; the taskbar's party button opens the party board, which loads its list on open.
-        ["seek_party"] = ("Party.seekShown", "Party.ToggleSeek", null),
+        ["seek_party"] = ("SeekParty.SeekShown", "SeekParty.ToggleSeek", null),
     };
 
     private bool Service(string id, out (string Shown, string Toggle, string? Close) service) =>

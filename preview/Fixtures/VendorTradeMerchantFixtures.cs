@@ -36,7 +36,7 @@ public static partial class PreviewFixtures
     public static CanvasLayer BuildRepurchaseClassicUiPreview(WorldRoot world)
     {
         ItemData.EnsureLoaded(); Call(world, "ItemTooltip.Build"); Call(world, "Repurchase.Build");
-        var layer = Field<CanvasLayer>(world, "Repurchase.rbLayer");
+        var layer = Field<CanvasLayer>(world, "Repurchase.Layer");
         Field<CanvasLayer>(world, "ItemTooltip.tipLayer").Reparent(layer, false);
         world.RemoveChild(layer);
         return layer;

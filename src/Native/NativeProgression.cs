@@ -28,7 +28,7 @@ public static class NativeProgression
     public static void Prepare(HudWindow window, WorldRoot world)
     {
         // The Genie skill picker offers only skills the skill window lets go (no passive skills).
-        if (window.Id == "genie" && Native.Get<PopupMenu>(world, "Genie.skillPicker") is { } skillPicker)
+        if (window.Id == "genie" && Native.Get<PopupMenu>(world, "Genie.SkillPicker") is { } skillPicker)
             NativeSkills.FilterGenieSkillPicker(skillPicker, world);
         if (window.HasMeta(Gate)) return;
         bool ready = window.Id switch
@@ -52,7 +52,7 @@ public static class NativeProgression
         if (!Named(Native.Get<HBoxContainer>(world, "Achievement.achTabs"), "ach_tabs")
             || !Named(Native.Get<Button>(world, "Achievement.achSummaryTabButton"), "ach_tab_summary")
             || !Named(Native.Get<Label>(world, "Achievement.achSummary"), "ach_summary")
-            || !Named(Native.Get<CheckButton>(world, "Achievement.achHideClaimed"), "ach_hide_claimed")
+            || !Named(Native.Get<CheckButton>(world, "Achievement.AchHideClaimed"), "ach_hide_claimed")
             || !Named(Native.Get<ScrollContainer>(world, "Achievement.achScroll"), "ach_scroll")
             || !Named(Native.Get<VBoxContainer>(world, "Achievement.achSummaryPage"), "ach_summary_page")) return false;
         list.Name = "ach_list";
@@ -67,7 +67,7 @@ public static class NativeProgression
         }
         var search = Native.Get<LineEdit>(world, "Achievement.achSearch");
         if (Named(search, "ach_search")) Named(search!.GetParent(), "ach_filters");
-        Named(Native.Get<OptionButton>(world, "Achievement.achStatus"), "ach_status");
+        Named(Native.Get<OptionButton>(world, "Achievement.AchStatus"), "ach_status");
         var categories = Native.Get<VBoxContainer>(world, "Achievement.achCategoryBox");
         if (Named(categories, "ach_categories")) Named(categories!.GetParent(), "ach_category_panel");
         Named(Native.Get<HBoxContainer>(world, "Achievement.achListRow"), "ach_list_row");
@@ -77,8 +77,8 @@ public static class NativeProgression
 
     private static void SyncAchievements(HudWindow window, WorldRoot world, IDictionary tabs, VBoxContainer list)
     {
-        bool summary = Native.Get<bool>(world, "Achievement.achOnSummary");
-        int selected = summary ? -1 : Convert.ToInt32(Native.Get<object>(world, "Achievement.achTab") ?? 0);
+        bool summary = Native.Get<bool>(world, "Achievement.ViewingSummary");
+        int selected = summary ? -1 : Convert.ToInt32(Native.Get<object>(world, "Achievement.Tab") ?? 0);
         window.SetMeta("ach_selected", selected);
         var waiting = Native.Get<IDictionary>(world, "Achievement.achClaimablePerTab");
         foreach (DictionaryEntry tab in tabs)
@@ -105,7 +105,7 @@ public static class NativeProgression
 
     private static bool PrepareAttendance(HudWindow window, WorldRoot world)
     {
-        var daily = Native.Get<GridContainer>(world, "Attendance.grid");
+        var daily = Native.Get<GridContainer>(world, "Attendance.Grid");
         var bonus = Native.Get<GridContainer>(world, "Attendance.bonusRow");
         var count = Native.Get<Label>(world, "Attendance.countLabel");
         if (daily == null || bonus == null || count == null || count.GetParent() is not HBoxContainer header) return false;
@@ -249,7 +249,7 @@ public static class NativeProgression
             var actions = monsterBox.GetChildren().OfType<HBoxContainer>().FirstOrDefault()?.GetChildren().OfType<Button>().ToArray() ?? Array.Empty<Button>();
             if (actions.Length == 2) { actions[0].Name = "genie_monster_add"; actions[1].Name = "genie_monster_remove"; }
         }
-        var run = Native.Get<Label>(world, "Genie.runLabel");
+        var run = Native.Get<Label>(world, "Genie.RunLabel");
         Named(run, "genie_run");
         if (run != null && run.GetIndex() > 0) Named(main.GetChild(run.GetIndex() - 1) as Label, "genie_hint");
         start.Name = "genie_start";
@@ -303,15 +303,15 @@ public static class NativeProgression
                     if (row++ == 0 && items.IndexOf(line) is var at and > 0) Named(items[at - 1] as Label, "genie_others_title");
                 }
         }
-        Named(Native.Get<PopupMenu>(world, "Genie.skillPicker"), "genie_skill_picker");
-        Named(Native.Get<PopupMenu>(world, "Genie.potionPicker"), "genie_potion_picker");
+        Named(Native.Get<PopupMenu>(world, "Genie.SkillPicker"), "genie_skill_picker");
+        Named(Native.Get<PopupMenu>(world, "Genie.PotionPicker"), "genie_potion_picker");
         Named(Native.Get<PopupMenu>(world, "Genie.scrollPicker"), "genie_scroll_picker");
         // The pickers live on the genie layer; hand them to the skin through the window.
         int picker = 0;
         foreach (var menu in GeniePickers(world)) window.SetMeta("genie_picker_" + picker++, menu);
         NativeWindows.Sync(window, () =>
         {
-            window.SetMeta("genie_pending", Native.Get<bool>(world, "Genie.requestPending"));
+            window.SetMeta("genie_pending", Native.Get<bool>(world, "Genie.RequestPending"));
             window.SetMeta("genie_running", Game.Session.Genie.GenieRunning);
         });
         return true;
@@ -334,7 +334,7 @@ public static class NativeProgression
     /// <summary>The native genie popups, which live on the genie layer rather than in the window.</summary>
     public static IEnumerable<PopupMenu> GeniePickers(WorldRoot world)
     {
-        foreach (var field in new[] { "Genie.skillPicker", "Genie.potionPicker", "Genie.scrollPicker" })
+        foreach (var field in new[] { "Genie.SkillPicker", "Genie.PotionPicker", "Genie.scrollPicker" })
             if (Native.Get<PopupMenu>(world, field) is { } menu) yield return menu;
     }
 }

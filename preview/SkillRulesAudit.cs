@@ -93,7 +93,7 @@ public partial class Preview
         PreviewFixtures.ClientMember Field(string name) => new(name);
         Field("Session.Self.Class").SetValue(world, nation * 100 + 6);
         ((Inventory)Game.Session.Self.Inventory).EnsureLength(InventoryConstants.InventoryTotal);
-        var bar = (int[])Field("Hotbar.hotbar").GetValue(world)!;
+        var bar = (int[])Field("Hotbar.Slots").GetValue(world)!;
         var bridge = Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!, AnyMember, null, new object[] { world }, null)!;
         var attach = typeof(PluginGame).GetMethod("Attach", AnyMember)!;
         attach.Invoke(game, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
@@ -185,7 +185,7 @@ public partial class Preview
         try
         {
             Raise();
-            Require(Bar().GetNode<Label>("page_label").Text == "1" && (int)Field("Hotbar.hotPage").GetValue(world)! == 0, "The skill bar opens on the client's page 1");
+            Require(Bar().GetNode<Label>("page_label").Text == "1" && (int)Field("Hotbar.HotPage").GetValue(world)! == 0, "The skill bar opens on the client's page 1");
             Require(record.Drops.Count == 0, "Opening the bar changes no slot");
 
             // 1. The owner's report: the Kurian/Porutu Master 2 (level 62) skill is passive and never goes on the bar.
@@ -466,14 +466,14 @@ public partial class Preview
                 string castingFailed = LibreKO.Domain.GameText.System(Native.Get<int>(Native.StaticOwner("LibreKO.Features.Core.BuffSystem"), "TextCastingFailed"), "Casting failed");
                 int Refusals() => log.Lines(LogTab.System).Count(line => line.Contains(castingFailed));
                 int refusalsBefore = Refusals();
-                var pending = (System.Collections.ICollection)Field("CombatSystem.pendingCasts").GetValue(world)!;
+                var pending = (System.Collections.ICollection)Field("CombatSystem.PendingCasts").GetValue(world)!;
                 record.Cast = true;
                 record.Activated.Clear();
                 for (int i = 0; i < onBar.Count; i++) Click(i);
                 Require(record.Activated.SequenceEqual(Enumerable.Range(0, onBar.Count)), "While blinking, each click reaches the client's own skill bar, as a click on the native bar does");
                 Require(Refusals() - refusalsBefore == onBar.Count, "While blinking, the client refuses every clicked slot with its own notice '" + castingFailed + "' ("
                     + (Refusals() - refusalsBefore) + " of " + onBar.Count + ")");
-                Require(pending.Count == 0 && Game.Session.Self.SkillCooldowns.Count == 0 && (int)Field("BuffSystem.continuanceSkill").GetValue(world)! == 0,
+                Require(pending.Count == 0 && Game.Session.Self.SkillCooldowns.Count == 0 && (int)Field("BuffSystem.ContinuanceSkill").GetValue(world)! == 0,
                     "While blinking, no clicked slot starts a cast, a cooldown or a continuance");
                 await Capture("chaos-blink-bar", BarRegion());
                 var barBlink = await Shades(BarIcons(onBar.Count));

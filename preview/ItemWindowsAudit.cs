@@ -159,7 +159,7 @@ public partial class Preview
                     Require(slots[1].GetThemeColor("font_color") == ClassicDesign.FrameTitle, "The picked slot is highlighted");
                     var free = slots.First(s => !s.Disabled && s != slots[1]);
                     free.EmitSignal(BaseButton.SignalName.Pressed); await Frames(2);
-                    Require((int)DetailField(world, "CharacterSealWindow.csPicked")! == Array.IndexOf(slots, free) && free.GetThemeColor("font_color") == ClassicDesign.FrameTitle,
+                    Require((int)DetailField(world, "CharacterSealWindow.Picked")! == Array.IndexOf(slots, free) && free.GetThemeColor("font_color") == ClassicDesign.FrameTitle,
                         "A slot click picks it natively and moves the highlight");
                     Require(slots.Any(s => s.Disabled), "Unpickable slots stay visible but disabled");
                     await Capture(window, "char-seal-select-picked", panel);
@@ -179,7 +179,7 @@ public partial class Preview
                 {
                     DetailCall(world, "CharacterSealWindow.BuildTrans");
                     Named<Button>(panel, "cs_seal").EmitSignal(BaseButton.SignalName.Pressed);
-                    Require(!window.Visible && ((Control)DetailField(world, "CharacterSealWindow.csTrans")!).Visible, "Seal opens the native scroll transfer window");
+                    Require(!window.Visible && ((Control)DetailField(world, "CharacterSealWindow.CsTrans")!).Visible, "Seal opens the native scroll transfer window");
                 }
                 Dispose(world, window); await Frames();
             }

@@ -100,7 +100,7 @@ public partial class Preview
             Require(Find<Label>("market_price_name").TooltipText == ItemData.DisplayName(item), "Selected name retains full tooltip");
             var selectedSlot = Find<ItemSlotView>("market_price_item"); var hover = selectedSlot.GetGlobalRect().GetCenter();
             GetViewport().PushInput(new InputEventMouseMotion { Position = hover, GlobalPosition = hover }, true); await Frames();
-            Require(world.ItemTooltipVisible && Descendants((PanelContainer)DetailField(world, "ItemTooltip.tipPanel")!).OfType<Label>().Any(l => l.Text == ItemData.DisplayName(item)), "Actual selected-slot hover builds complete native item tooltip");
+            Require(world.ItemTooltipVisible && Descendants((PanelContainer)DetailField(world, "ItemTooltip.TipPanel")!).OfType<Label>().Any(l => l.Text == ItemData.DisplayName(item)), "Actual selected-slot hover builds complete native item tooltip");
             DetailCall(world, "ItemTooltip.Hide");
             hover = ((Control)results.GetChild(0)).GetGlobalRect().Position + new Vector2(40, 12);
             GetViewport().PushInput(new InputEventMouseMotion { Position = hover, GlobalPosition = hover }, true); await Frames();

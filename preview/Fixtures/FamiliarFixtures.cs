@@ -28,7 +28,7 @@ public static partial class PreviewFixtures
         var chatType = Native.ClientType("LibreKO.Features.Social.ChatSystem")!;
         var chat = Activator.CreateInstance(chatType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { world }, null)!;
         Native.Set(world, "Chat", chat); Native.Call(chat, "Build"); Native.Call(chat, "DetachNetwork");
-        Native.Set(world, "worldReady", true);
+        Native.Set(world, "WorldReady", true);
         world.SetProcess(false); world.SetPhysicsProcess(false); world.SetProcessUnhandledInput(false);
         world.SetProcessInput(true);
     }
@@ -49,14 +49,14 @@ public static partial class PreviewFixtures
         ItemData.EnsureLoaded(); SkillData.EnsureLoaded();
         var enter = Game.Session.Self.LastEnter; enter.Nation = nation; enter.Name = "FamiliarTester";
         Native.Call(Game.Session.Self, "SeedPreviewEnter", enter);
-        var ents = Field<EntityRegistry>(world, "EntitySystem.ents");
+        var ents = Field<EntityRegistry>(world, "EntitySystem.Ents");
         ents[1] = Entity(new() { ["Id"] = 1, ["Name"] = "Kauly", ["IsNpc"] = true, ["NpcType"] = NpcTypes.Pet, ["ModelId"] = 25500, ["Level"] = 12 });
-        SetField(world, "myId", 42); SetField(world, "Selection.selectedId", 2);
+        SetField(world, "myId", 42); SetField(world, "Selection.SelectedId", 2);
         ents[2] = Entity(new() { ["Id"] = 2, ["Name"] = "Gavolt", ["IsNpc"] = true, ["IsMonster"] = true, ["Attackable"] = true, ["Level"] = 10 });
         if (observeInventory)
         {
             Call(world, "InventoryWindow.Build");
-            var content = Field<Control>(world, "InventoryWindow.invContent"); content.Visible = false; world.AddChild(content);
+            var content = Field<Control>(world, "InventoryWindow.InvContent"); content.Visible = false; world.AddChild(content);
             Call(world, "Pet.Build");
         }
         else Call(world, "Pet.BuildPanel");
@@ -126,7 +126,7 @@ public static partial class PreviewFixtures
         SetField(world, "PetHatch.petTransformSlot", transform ? Inventory.GridStart + 1 : -1);
         SetField(world, "PetHatch.petScrollSlot", transform ? Inventory.GridStart + 9 : -1);
         Call(world, "PetHatch.RefreshPetPickLooks");
-        Field<LineEdit>(world, "PetHatch.nameInput").Text = "Kauly"; Call(world, "PetHatch.RefreshUI");
+        Field<LineEdit>(world, "PetHatch.NameInput").Text = "Kauly"; Call(world, "PetHatch.RefreshUI");
         var layer = Field<CanvasLayer>(world, "PetHatch.layer");
         world.RemoveChild(layer); return layer;
     }
@@ -152,7 +152,7 @@ public static partial class PreviewFixtures
     public static CanvasLayer BuildPetBarClassicUiPreview(WorldRoot world)
     {
         var layer = new CanvasLayer { Layer = 64 };
-        SetField(world, "Hotbar.petBarLayer", layer);
+        SetField(world, "Hotbar.PetBarLayer", layer);
         Call(world, "Hotbar.BuildPetBar"); Call(world, "Hotbar.OnPetBarSummoned", Game.Session.Pet.Pet!);
         return layer;
     }
@@ -169,7 +169,7 @@ public static partial class PreviewFixtures
     /// <summary>The bar's effective default position, including a familiar bar extender's placement.</summary>
     public static Vector2 PetBarDefaultPosition(WorldRoot world)
     {
-        var bar = Field<PanelContainer>(world, "Hotbar.petBar");
+        var bar = Field<PanelContainer>(world, "Hotbar.PetBar");
         var layout = bar.GetChildren().OfType<HudLayout>().Single();
         return Native.Get<Func<Vector2>>(layout, "defaultPosition")!();
     }

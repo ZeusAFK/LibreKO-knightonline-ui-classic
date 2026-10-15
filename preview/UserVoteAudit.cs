@@ -45,8 +45,8 @@ public partial class Preview
         void Set(string field, object? value) => Native.Set(world, field, value);
         T Get<T>(string field) => (T)Native.Get<object>(world, field)!;
         double Now() => Time.GetTicksMsec() / 1000.0;
-        Set("myId", 300);
-        Set("zone", UserVote.JuraidZone);
+        Set("MyId", 300);
+        Set("ZoneId", UserVote.JuraidZone);
         Game.Session.Party.SeedPreview(
             new PartyMember(301, 1, "Rikka", 4210, 3900, 83, nation * 100 + 8, 1820, 1500),
             new PartyMember(300, 1, "Canbo", 5120, 5120, 81, nation * 100 + 6, 1400, 1210),
@@ -165,9 +165,9 @@ public partial class Preview
         Require(Get<HudWindow?>("UserVoteWindow.notice") == null, "notice: OK closes through the client");
 
         // 4. The Classic war board beside the Classic party list.
-        DetailCall(world, "Party.WarBoardInit");
+        DetailCall(world, "WarBoard.Build");
         // As the client's HUD seam does in the game: the replaced board's layer stays in the tree, hidden.
-        var nativeBoard = Get<PanelContainer>("Party.warBoard").GetParent<CanvasLayer>();
+        var nativeBoard = Get<PanelContainer>("WarBoard.Panel").GetParent<CanvasLayer>();
         nativeBoard.Reparent(this); nativeBoard.Visible = false;
         float savedAlpha = PluginHost.Game.Party.WarBoardAlpha; byte savedMode = Config.PartyBoardMode;
         var hud = new CanvasLayer { Layer = 64 }; AddChild(hud);
@@ -178,7 +178,7 @@ public partial class Preview
         party.GetNode<Control>("party_actions").GetChildren().OfType<Button>().Single(b => b.Text == "War Board").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames(4);
         byte mode = PluginHost.Game.Party.WarBoardMode;
-        DetailCall(world, "Party.OnWarBoard", new WarBoardReply(PartyWarBoard.TargetBoard, mode,
+        DetailCall(world, "WarBoard.OnWarBoard", new WarBoardReply(PartyWarBoard.TargetBoard, mode,
             new List<WarBoardShare> { new(300, 312), new(301, 241), new(302, 168), new(303, 0) }));
         await Frames(4);
         Require(board.Visible && PluginHost.Game.Party.WarBoardOpen, "war board: War Board on the party list opens the client's board in the Classic frame");
@@ -227,13 +227,13 @@ public partial class Preview
         // reads the seconds from the party API (ff78eef) when the client raises Changed, without polling.
         var cooldown = board.GetNode<Label>("war_board_cooldown");
         Require(!board.IsProcessing(), "war board: no per-frame polling of the client's board");
-        DetailCall(world, "Party.WarBoardTick", Now()); await Frames(4);
+        DetailCall(world, "WarBoard.WarBoardTick", Now()); await Frames(4);
         int coolSeconds = PluginHost.Game.Party.WarBoardCooldown;
         Require(coolSeconds is >= 1 and <= 5 && cooldown.Visible && cooldown.Text == coolSeconds.ToString(),
             "war board: the client's tab cooldown (IGameParty.WarBoardCooldown) shows beside the tabs (" + cooldown.Text + ")");
         // A later second: the client notifies the change and the digits follow.
-        Set("Party.warBoardSentAt", Now() - PartyWarBoard.BoardTabSeconds + 2.5);
-        DetailCall(world, "Party.WarBoardTick", Now()); await Frames(4);
+        Set("WarBoard.warBoardSentAt", Now() - PartyWarBoard.BoardTabSeconds + 2.5);
+        DetailCall(world, "WarBoard.WarBoardTick", Now()); await Frames(4);
         Require(PluginHost.Game.Party.WarBoardCooldown == 3 && cooldown.Visible && cooldown.Text == "3",
             "war board: the digits follow the client's later second (" + PluginHost.Game.Party.WarBoardCooldown + " / " + cooldown.Text + ")");
         Require(cooldown.GetRect() == ClassicPartyHudLayout.WarBoard.Cooldown && !cooldown.GetRect().Intersects(healing.GetRect()) && new Rect2(Vector2.Zero, board.Size).Encloses(cooldown.GetRect()),
@@ -241,14 +241,14 @@ public partial class Preview
         var coolFont = cooldown.GetThemeFont("font"); int coolSize = cooldown.GetThemeFontSize("font_size");
         Require(coolFont.GetStringSize(cooldown.Text, HorizontalAlignment.Left, -1, coolSize).X <= cooldown.Size.X && coolFont.GetHeight(coolSize) <= cooldown.Size.Y + 1, "war board: the cooldown digits fit their place");
         await Shot("war-board-cooldown");
-        Set("Party.warBoardSentAt", Now() - PartyWarBoard.BoardTabSeconds - 1);
-        DetailCall(world, "Party.WarBoardTick", Now()); await Frames(4);
+        Set("WarBoard.warBoardSentAt", Now() - PartyWarBoard.BoardTabSeconds - 1);
+        DetailCall(world, "WarBoard.WarBoardTick", Now()); await Frames(4);
         Require(PluginHost.Game.Party.WarBoardCooldown == 0 && !cooldown.Visible, "war board: the cooldown hides once the client sends the held tab");
         var alpha = board.GetNode<HSlider>("war_board_alpha");
         alpha.Value = .5;
         await Frames(4);
         Require(Mathf.IsEqualApprox(PluginHost.Game.Party.WarBoardAlpha, .5f) && Mathf.IsEqualApprox(board.GetNode<ClassicFrame>("war_board_frame").BackgroundAlpha, .5f), "war board: the transparency slider sets the client's board alpha (" + PluginHost.Game.Party.WarBoardAlpha + ", " + board.GetNode<ClassicFrame>("war_board_frame").BackgroundAlpha + ", " + alpha.Value + ", " + Config.PartyBoardAlpha + ")");
-        DetailCall(world, "Party.OnWarBoard", new WarBoardReply(PartyWarBoard.TargetBoard, PartyWarBoard.ModeHealing,
+        DetailCall(world, "WarBoard.OnWarBoard", new WarBoardReply(PartyWarBoard.TargetBoard, PartyWarBoard.ModeHealing,
             new List<WarBoardShare> { new(303, 655), new(300, 120) }));
         await Frames(4);
         Require(board.GetChildren().OfType<ClassicWarBoardRow>().Count(r => r.Visible) == 2, "war board: rows follow the client's reply");

@@ -86,7 +86,7 @@ public sealed class NativeStorage
             _ => null,
         };
         if (kind == null) return null;
-        string slotsField = kind switch { StorageKind.Warehouse => "Warehouse.slots", StorageKind.Vip => "VipWarehouse.slots", _ => "ClanWarehouse.slots" };
+        string slotsField = kind switch { StorageKind.Warehouse => "Warehouse.StoredItems", StorageKind.Vip => "VipWarehouse.StoredItems", _ => "ClanWarehouse.slots" };
         if (!Native.TryGet<ItemSlot[]>(world, slotsField, out var slots) || Game.Session.Self.Inventory is not { } inventory)
             return null;
         var storage = new NativeStorage(window, world, kind.Value, slots, inventory);
@@ -109,9 +109,9 @@ public sealed class NativeStorage
         var controls = new Control { Name = "storage_classic_controls", Visible = false };
         window.Body.AddChild(controls);
         _stored = new ItemSlotView[PageSize];
-        HideNativeGrid(Field("Warehouse.cells", "VipWarehouse.cells", "ClanWarehouse.cells"));
+        HideNativeGrid(Field("Warehouse.Cells", "VipWarehouse.cells", "ClanWarehouse.cells"));
 
-        _status = Native.Get<Label>(world, Field("Warehouse.status", "VipWarehouse.status", "ClanWarehouse.status"));
+        _status = Native.Get<Label>(world, Field("Warehouse.Status", "VipWarehouse.Status", "ClanWarehouse.status"));
         _pageLabel = new Label { Name = "storage_page", Text = $"1 / {Pages}" };
         controls.AddChild(_pageLabel);
         foreach (int step in new[] { -1, 1 })
@@ -120,7 +120,7 @@ public sealed class NativeStorage
             button.Pressed += () => TurnPage(step);
             controls.AddChild(button);
         }
-        Amount = Native.Get<QuantityPrompt>(world, Field("Warehouse.amountPrompt", "VipWarehouse.amountPrompt", "ClanWarehouse.amountPrompt"));
+        Amount = Native.Get<QuantityPrompt>(world, Field("Warehouse.AmountPrompt", "VipWarehouse.amountPrompt", "ClanWarehouse.amountPrompt"));
         if (Vip)
         {
             NativeWindows.Name(Native.Get<Label>(world, "VipWarehouse.expiryLbl"), "storage_expiry");
@@ -186,7 +186,7 @@ public sealed class NativeStorage
         _pageLabel.TooltipText = "Storage page";
         Window.SetMeta("storage_page", page);
         Window.SetMeta("storage_pages", Pages);
-        if (!Vip) Window.SetMeta("storage_money", Native.Get<int>(_world, Kind == StorageKind.Clan ? "ClanWarehouse.money" : "Warehouse.money"));
+        if (!Vip) Window.SetMeta("storage_money", Native.Get<int>(_world, Kind == StorageKind.Clan ? "ClanWarehouse.money" : "Warehouse.Money"));
         RouteCompanion();
         bool locked = !VaultOpen;
         for (int i = 0; i < _stored.Length; i++)

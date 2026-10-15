@@ -114,7 +114,7 @@ public partial class Preview
             }
             else if(id=="quests")
             {
-                DetailCall(model,"Quest.BuildLog");body.AddChild((Control)DetailField(model,"Quest.questsContent")!);
+                DetailCall(model,"Quest.BuildLog");body.AddChild((Control)DetailField(model,"Quest.QuestsContent")!);
                 foreach(var tabs in Descendants(body).OfType<HBoxContainer>())
                     if(tabs.GetChildren().OfType<Button>().FirstOrDefault(b=>b.ToggleMode) is {} tab) tab.SetPressedNoSignal(true);
                 ((Control)DetailField(model,"Quest.detailEmpty")!).Visible=false;((Control)DetailField(model,"Quest.detailBody")!).Visible=true;
@@ -141,7 +141,7 @@ public partial class Preview
                 }
                 ((Control)DetailField(model,"Quest.detailBody")!).Visible=false;
                 ((Control)DetailField(model,"Quest.detailEmpty")!).Visible=true;
-                ((Dictionary<string,HudWindow>)DetailField(model,"MainWindows.windows")!)["Quests"]=panel;
+                ((Dictionary<string,HudWindow>)DetailField(model,"MainWindows.Windows")!)["Quests"]=panel;
                 CharacterPanelBridge.For(model).SelectPage("quest");
                 panel.Visible=false;
             }
@@ -164,7 +164,7 @@ public partial class Preview
             else if(id=="clanpoint")
             {
                 try { DetailCall(model,"Clan.PointsInit"); } catch(TargetInvocationException e) when(e.InnerException is NullReferenceException) { }
-                var built=(HudWindow)DetailField(model,"Clan.pointsPanel")!;
+                var built=(HudWindow)DetailField(model,"Clan.PointsPanel")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
                 ((Label)DetailField(model,"Clan.pointsMineLbl")!).Text="2,025,525,525";
                 ((Label)DetailField(model,"Clan.pointsFundLbl")!).Text="125,000 (12 points)";
@@ -173,14 +173,14 @@ public partial class Preview
             }
             else if(id=="quest_target")
             {
-                DetailCall(model,"Quest.EnsureTargetWindow");var built=(HudWindow)DetailField(model,"Quest.targetWindow")!;
+                DetailCall(model,"Quest.EnsureTargetWindow");var built=(HudWindow)DetailField(model,"Quest.TargetWindow")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
                 ((VBoxContainer)DetailField(model,"Quest.targetText")!).AddChild(new Label { Text="Bandicoot\nLook near the fields outside Moradon.",AutowrapMode=TextServer.AutowrapMode.WordSmart });
                 ((Label)DetailField(model,"Quest.targetCaption")!).Text="Moradon";
             }
             else if(id=="userinfo")
             {
-                DetailCall(model,"UserInfo.Build");var built=(HudWindow)DetailField(model,"UserInfo.panel")!;
+                DetailCall(model,"UserInfo.Build");var built=(HudWindow)DetailField(model,"UserInfo.Panel")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
                 // 3277df5: the card comes from the server reply through the client's own handler (rank boards for the row titles).
                 DetailCall(model,"DailyRankWindow.LoadBoards");
@@ -189,27 +189,27 @@ public partial class Preview
             else if(id=="quest_receipt")
             {
                 QuestReceived(model,new QuestReceipt(62,new[]{new QuestReceiptEntry(900001000,25000),new QuestReceiptEntry(900000000,10000)}));
-                var built=(HudWindow)DetailField(model,"Quest.receiptWindow")!;
+                var built=(HudWindow)DetailField(model,"Quest.ReceiptWindow")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
-                Native.Set(model, "Quest.receiptWindow", panel);
+                Native.Set(model, "Quest.ReceiptWindow", panel);
             }
             else if(id=="npc_dialog")
             {
                 panel.Title="Defeat the Monsters of Moradon";
                 DetailCall(model,"NpcDialogWindow.BuildNpcDialog");
-                var built=(HudWindow)DetailField(model,"NpcDialogWindow.panel")!;
+                var built=(HudWindow)DetailField(model,"NpcDialogWindow.Panel")!;
                 DetailCall(model,"ShowQuestView",new QuestView(62,1,21,true,false,true,false,QuestViewState.Claimable,0,
                     "Defeat the Monsters of Moradon","Return to the guard.","You have protected Moradon. Choose your reward before confirming the quest.",
                     new QuestObjectives(62,false,[new QuestKillGroup(10,[1],"Worm")]),[10],[new QuestTransfer(false,2,0,25000,0)],[])
                     { Options=[new QuestTransfer(false,1,0,10000,0),new QuestTransfer(false,2,0,30000,0)] });
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
-                Native.Set(model, "NpcDialogWindow.panel", panel);
+                Native.Set(model, "NpcDialogWindow.Panel", panel);
             }
             var originalActions=Descendants(body).OfType<BaseButton>().Select(b=>b.GetInstanceId()).ToHashSet();
             if(id is "titles" or "presets")
             {
                 string field=id=="titles"?"Achievement.titlePanel":"Stats.presetPanel";
-                string shown=id=="titles"?"Achievement.titleShown":"Stats.presetShown";
+                string shown=id=="titles"?"Achievement.TitleShown":"Stats.presetShown";
                 string close=id=="titles"?"CloseTitlePicker":"ClosePreset";
                 Native.Set(model, field, panel);
                 Native.Set(model, shown, true);
@@ -232,11 +232,11 @@ public partial class Preview
                     nativePanel.Act("quest_details","501");
                     CharacterPageRouter.Present("quests");
                     await ToSignal(GetTree().CreateTimer(.2),SceneTreeTimer.SignalName.Timeout);
-                    if((int)DetailField(model,"Quest.selected")! !=501 || !((Control)DetailField(model,"Quest.detailBody")!).IsVisibleInTree() || ((Control)DetailField(model,"Quest.detailEmpty")!).IsVisibleInTree()) throw new Exception("Native Details lost the selected quest");
+                    if((int)DetailField(model,"Quest.Selected")! !=501 || !((Control)DetailField(model,"Quest.detailBody")!).IsVisibleInTree() || ((Control)DetailField(model,"Quest.detailEmpty")!).IsVisibleInTree()) throw new Exception("Native Details lost the selected quest");
                     if(((Label)DetailField(model,"Quest.detailTitle")!).Text!="Defeat the Monsters of Moradon") throw new Exception("Native Details opened the wrong quest");
                     CheckRewardRows(model,[(900001000,25000),(900000000,10000),(810418000,2)]);
                     nativePanel.Act("quest_details","502");
-                    if((int)DetailField(model,"Quest.selected")! !=502 || ((Label)DetailField(model,"Quest.detailTitle")!).Text!="Daily Supply Delivery") throw new Exception("Native Details failed to change the selected quest");
+                    if((int)DetailField(model,"Quest.Selected")! !=502 || ((Label)DetailField(model,"Quest.detailTitle")!).Text!="Daily Supply Delivery") throw new Exception("Native Details failed to change the selected quest");
                     CheckRewardRows(model,[(900001000,850)]);
                     nativePanel.Act("quest_details","501");
                     GD.Print("NATIVE_QUEST_DETAILS_SELECTION_OK: cached native selection, no list reload, second quest, return to first");
@@ -405,15 +405,15 @@ public partial class Preview
                 await ToSignal(GetTree().CreateTimer(.3),SceneTreeTimer.SignalName.Timeout);await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
                 GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-clan-confederacy.png"));
                 try { DetailCall(model,"Clan.PointsInit"); } catch(TargetInvocationException e) when(e.InnerException is NullReferenceException) { }
-                var donation=(HudWindow)DetailField(model,"Clan.pointsPanel")!;
+                var donation=(HudWindow)DetailField(model,"Clan.PointsPanel")!;
                 if(donation.GetParent()!=null) donation.Reparent(this);else AddChild(donation);
                 var nested=CharacterDetailsSkin.Apply(donation.Body) as CharacterEmbeddedPage ?? throw new Exception("Donation subpage was not composed");
-                Native.Set(model, "Clan.pointsShown", true);
+                Native.Set(model, "Clan.PointsShown", true);
                 donation.Visible=true;CharacterPageRouter.Present("clanpoint");
                 await ToSignal(GetTree().CreateTimer(.1),SceneTreeTimer.SignalName.Timeout);
                 if(composed.Visible || !nested.Visible) throw new Exception("Nested donation did not replace management content");
                 nested.Back?.Invoke();
-                if(!composed.Visible || nested.Visible || (bool)DetailField(model,"Clan.pointsShown")!) throw new Exception("Nested Back did not restore management and close the native model");
+                if(!composed.Visible || nested.Visible || (bool)DetailField(model,"Clan.PointsShown")!) throw new Exception("Nested Back did not restore management and close the native model");
                 GD.Print("NESTED_DONATION_BACK_OK");
                 nested.QueueFree();donation.QueueFree();
             }
@@ -424,7 +424,7 @@ public partial class Preview
                 routed.Back?.Invoke();
                 if(routed.Visible || closed!=1) throw new Exception("Embedded Back did not close its native lifecycle");
                 if(id is "titles" or "presets")
-                    if((bool)DetailField(model,id=="titles"?"Achievement.titleShown":"Stats.presetShown")!) throw new Exception("Native model stayed open after Back");
+                    if((bool)DetailField(model,id=="titles"?"Achievement.TitleShown":"Stats.presetShown")!) throw new Exception("Native model stayed open after Back");
                 if(id=="titles")
                 {
                     panel.Visible=true;CharacterPageRouter.Present(id);
@@ -573,7 +573,7 @@ public partial class Preview
     }
     private async Task CaptureNpcFixtures(WorldRoot model,ClassicNpcDialogue shell,string prefix,string output,List<object> measurements)
     {
-        var window=(HudWindow)DetailField(model,"NpcDialogWindow.panel")!;
+        var window=(HudWindow)DetailField(model,"NpcDialogWindow.Panel")!;
         async Task Capture(string id)
         {
             await ToSignal(GetTree().CreateTimer(.8),SceneTreeTimer.SignalName.Timeout);

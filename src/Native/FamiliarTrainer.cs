@@ -50,7 +50,7 @@ public sealed partial class FamiliarTrainer : Node
     internal static void Prepare(HudWindow window, WorldRoot world)
     {
         if (window.HasMeta("classic_pet_hatch_controls") || Of(world) != null) return;
-        foreach (string field in new[] { "PetHatch.tabs", "PetHatch.page", "PetHatch.petTransformPage", "PetHatch.nameInput", "PetHatch.btn", "PetHatch.status",
+        foreach (string field in new[] { "PetHatch.tabs", "PetHatch.page", "PetHatch.petTransformPage", "PetHatch.NameInput", "PetHatch.btn", "PetHatch.status",
                      "PetHatch.eggPick", "PetHatch.petTransformPetPick", "PetHatch.petTransformScrollPick" })
             if (Native.Get<Node>(world, field) == null) return;
         if (!Native.Has(world, "PetHatch.inFlight") || !Native.HasMethod(Native.StaticOwner("LibreKO.Features.Windows.PetHatchFeature"), "IsPetEgg")) return;
@@ -75,7 +75,7 @@ public sealed partial class FamiliarTrainer : Node
     private void Build()
     {
         _tabs = Field<ServiceTabs>("PetHatch.tabs"); _tabs.Name = "pet_hatch_tabs";
-        _name = Field<LineEdit>("PetHatch.nameInput"); _name.Name = "pet_hatch_name";
+        _name = Field<LineEdit>("PetHatch.NameInput"); _name.Name = "pet_hatch_name";
         _accept = Field<Button>("PetHatch.btn"); _accept.Name = "pet_hatch_accept";
         var status = Field<Label>("PetHatch.status"); status.Name = "pet_hatch_status";
         foreach (var button in _accept.GetParent().GetChildren().OfType<Button>())
@@ -378,7 +378,7 @@ public sealed partial class FamiliarTrainer : Node
 
     private bool WhisperOwns(Control? focus)
     {
-        if (focus == null || Native.Get<IDictionary>(_world, "ChatRoom.whispers") is not { } whispers) return false;
+        if (focus == null || Native.Get<IDictionary>(_world, "Whispers.Windows") is not { } whispers) return false;
         for (Node? node = focus; node != null; node = node.GetParent())
         {
             if (node is not HudWindow window) continue;

@@ -166,7 +166,7 @@ public partial class Preview
                 Input.ParseInputEvent(new InputEventMouseMotion { Position = to, GlobalPosition = to, Relative = to - from, ButtonMask = MouseButtonMask.Left }); await Frames(2);
                 Input.ParseInputEvent(new InputEventMouseButton { Position = to, GlobalPosition = to, ButtonIndex = MouseButton.Left, Pressed = false }); await Frames();
             }
-            var name = Field<LineEdit>("PetHatch.nameInput");
+            var name = Field<LineEdit>("PetHatch.NameInput");
             await Capture("ready");
             var headerAt = panel.GetGlobalRect().Position + new Vector2(120, 24); var oldPosition = panel.Position; var shift = new Vector2(35, 18);
             Input.ParseInputEvent(new InputEventMouseMotion { Position = headerAt, GlobalPosition = headerAt }); await Frames(2);

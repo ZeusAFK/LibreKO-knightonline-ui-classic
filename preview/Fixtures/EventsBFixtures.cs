@@ -22,7 +22,7 @@ public static partial class PreviewFixtures
             "fishinghall" => ("FishingHallInit", "FishingHall.fishHallPanel", "ToggleFishingHall"),
             _ => ("ForcesInit", "Forces.panel", "ToggleForces"),
         };
-        SetField(world, "PlayerSystem.isGm", sheriff);
+        SetField(world, "PlayerSystem.IsGm", sheriff);
         Call(world, init);
         var window = Detach<HudWindow>(world, panel);
         Call(world, toggle);

@@ -1,21 +1,15 @@
-using System.Reflection;
+using LibreKO.Plugins;
 
 namespace KnightOnlineUiClassic.Native;
 
 public static class NativeEscape
 {
-    private const string OrderField = "escapeOrder";
-    private const string ClosablePanelType = "LibreKO.Features.ClosablePanel";
+    private static PluginUi? _ui;
 
-    public static void CloseBeforeTrailing(WorldRoot world, Func<bool> isOpen, Action close, int trailing)
+    public static void Attach(PluginUi ui) => _ui = ui;
+
+    public static void CloseOnEscape(WorldRoot world, Func<bool> isOpen, Action close)
     {
-        if (Native.Get<Array>(world, OrderField) is not { } order || Native.ClientType(ClosablePanelType) is not { } panelType) return;
-        var entry = Activator.CreateInstance(panelType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { isOpen, close }, null);
-        var grown = Array.CreateInstance(order.GetType().GetElementType()!, order.Length + 1);
-        int at = Math.Max(0, order.Length - trailing);
-        Array.Copy(order, 0, grown, 0, at);
-        grown.SetValue(entry, at);
-        Array.Copy(order, at, grown, at + 1, order.Length - at);
-        Native.Set(world, OrderField, grown);
+        if (_ui?.CloseOnEscape(isOpen, close) is { } entry) NativeHooks.Hold("Escape entry", entry.Dispose, world);
     }
 }

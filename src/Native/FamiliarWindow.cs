@@ -173,7 +173,7 @@ public sealed partial class FamiliarWindow : Node
     internal static void ShowItemTooltip(WorldRoot world, int abs, ItemSlot item)
     {
         Native.Call(world, "ItemTooltip.Show", abs, item, "");
-        if (Native.Get<Control>(world, "ItemTooltip.tipPanel") is not { } tooltip) return;
+        if (Native.Get<Control>(world, "ItemTooltip.TipPanel") is not { } tooltip) return;
         tooltip.MouseFilter = Control.MouseFilterEnum.Ignore;
         foreach (var control in Native.Descendants(tooltip).OfType<Control>()) control.MouseFilter = Control.MouseFilterEnum.Ignore;
     }

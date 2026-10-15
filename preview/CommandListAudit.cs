@@ -45,7 +45,7 @@ public partial class Preview
         var n = frame.Geometry;
         var groups = frame.GroupList; var entries = frame.CommandList!;
         Require(entries == (ItemList)DetailField(world, "CommandList.entries")!, "the lower list is the client's own command list");
-        Require(!((ItemList)DetailField(world, "CommandList.groups")!).IsVisibleInTree(), "the client's group list waits hidden; the Classic groups are shown");
+        Require(!((ItemList)DetailField(world, "CommandList.Groups")!).IsVisibleInTree(), "the client's group list waits hidden; the Classic groups are shown");
 
         // Original UIF geometry.
         var uif = Plugin.Kit.Layout(ClassicCommandListLayout.Uif);
@@ -190,14 +190,14 @@ public partial class Preview
         Move(RowCentre(entries, 1)); await Frames();
         await Capture("command-list-genie");
         var running = new Label { Text = "Genie active \u2022 90 minutes" };
-        DetailSet(world, "Genie.runLabel", running); DetailSet(world, "Genie.points", 90); DetailSet(world, "Genie.deadline", 1.0);
+        DetailSet(world, "Genie.RunLabel", running); DetailSet(world, "Genie.Points", 90); DetailSet(world, "Genie.deadline", 1.0);
         Native.Set(Game.Session.Genie, "GenieRunning", true);
         Move(RowCentre(entries, 2)); await Frames();
         int startRow = frame.ShownRows.ToList().FindIndex(r => r.Id == "GenieStart");
         Require(!Enabled("GenieStart") && Enabled("GenieStop") && entries.GetItemTooltip(startRow) == running.Text, "genie running: Start grey with the client's status line, Stop enabled");
         await Capture("command-list-genie-running");
         Native.Set(Game.Session.Genie, "GenieRunning", false);
-        running.Text = "No time remaining. Spirit of Genie required."; DetailSet(world, "Genie.points", 0); await Frames(2);
+        running.Text = "No time remaining. Spirit of Genie required."; DetailSet(world, "Genie.Points", 0); await Frames(2);
         Require(!Enabled("GenieStart") && !Enabled("GenieStop") && entries.GetItemTooltip(startRow) == running.Text, "genie without time: Start grey with the client's 'No time remaining' line");
         DetailSet(world, "Genie.deadline", 0.0); running.Text = "Genie stopped."; await Frames(2);
 

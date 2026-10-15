@@ -372,8 +372,8 @@ public partial class Preview
             var queue=(DestroyQueue)DetailField(world,"InventoryWindow.invDelQueue")!;
             // The client keeps its queue while the inventory main window is open.
             var inventoryWindow=new HudWindow("inventory","Inventory") {Visible=true};
-            ((Dictionary<string,HudWindow>)DetailField(world,"MainWindows.windows")!)["Inventory"]=inventoryWindow;
-            var nativeCard=(Control)DetailField(world,"InventoryWindow.invDelPanel")!;
+            ((Dictionary<string,HudWindow>)DetailField(world,"MainWindows.Windows")!)["Inventory"]=inventoryWindow;
+            var nativeCard=(Control)DetailField(world,"InventoryWindow.InvDelPanel")!;
             var picks=Enumerable.Range(InventoryConstants.InventoryStart,28).Where(s=>!inv[s].IsEmpty).Take(3).ToArray();
             Require(picks.Length==3 && KnightOnlineUiClassic.Native.NativeInventory.HasDestroyQueue,"The client offers a bulk destroy queue with carried items to queue");
             ClassicInventoryDestroy Prompt()=>actual.GetChildren().OfType<ClassicInventoryDestroy>().Single(p=>!p.IsQueuedForDeletion());
@@ -407,7 +407,7 @@ public partial class Preview
             Require(queue.Running && queue.Count==1,"Each acknowledgement sends the next queued item");
             DetailCall(world,"InventoryWindow.OnItemRemoveResult",true,0);
             Require(!queue.Running && queue.Count==0,"The last acknowledgement ends the queue");
-            ((Dictionary<string,HudWindow>)DetailField(world,"MainWindows.windows")!).Remove("Inventory");inventoryWindow.Free();
+            ((Dictionary<string,HudWindow>)DetailField(world,"MainWindows.Windows")!).Remove("Inventory");inventoryWindow.Free();
         }
         view.Get<BaseButton>("btn_close")!.EmitSignal(BaseButton.SignalName.Pressed);Require(closed,"Original close action is preserved");
         string Hash(string path)=>Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(path)));
@@ -415,7 +415,7 @@ public partial class Preview
             clientHash=Hash(ProjectSettings.GlobalizePath("res://../../LibreKO/Client/.godot/mono/temp/bin/ExportRelease/LibreKO.dll")),captures,seeded,checks},new JsonSerializerOptions {WriteIndented=true}));
         GD.Print("INVENTORY_AUDIT_OK "+prefix+": "+captures.Count+" captures, "+checks.Count+" checks");
         Fx.BeginShutdown(GetTree().Root);shell.Free();
-        ((Control)DetailField(world,"InventoryWindow.invContent")!).Free();world.Free();net.Free();await Frames(20);
+        ((Control)DetailField(world,"InventoryWindow.InvContent")!).Free();world.Free();net.Free();await Frames(20);
         foreach(var release in (List<Action>)typeof(Shutdown).GetField("Releases",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!) release();
         await Frames(10);GC.Collect();GC.WaitForPendingFinalizers();await Frames(10);
     }

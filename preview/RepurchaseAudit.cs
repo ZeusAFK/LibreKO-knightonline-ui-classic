@@ -159,7 +159,7 @@ public partial class Preview
             // Hover: the client's item tooltip.
             Mouse(Name(0).GetGlobalRect().GetCenter()); await Frames();
             Require(world.ItemTooltipVisible, "Hovering a stored item opens the client's item tooltip");
-            var tip = (Control)DetailField(world, "ItemTooltip.tipPanel")!; tip.Position = new Vector2(740, 120);
+            var tip = (Control)DetailField(world, "ItemTooltip.TipPanel")!; tip.Position = new Vector2(740, 120);
             await Capture("item-tooltip");
             Mouse(new Vector2(3, 3)); await Frames();
             Require(!world.ItemTooltipVisible, "Leaving the item hides the tooltip");

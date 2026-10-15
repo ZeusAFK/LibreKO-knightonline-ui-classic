@@ -29,7 +29,7 @@ public static class NativeGenieCommands
     /// <summary>Whether the client exposes the Genie actions these rows run.</summary>
     public static bool Supported(WorldRoot world) =>
         Native.HasMethod(world, "Genie.Toggle") && (Native.HasMethod(world, "Genie.ToggleFromSub") || Native.HasMethod(world, "Genie.ToggleRun"))
-        && Native.Has(world, "Genie.shown") && Native.Has(world, "Genie.requestPending");
+        && Native.Has(world, "Genie.shown") && Native.Has(world, "Genie.RequestPending");
 
     /// <summary>The Genie rows as command list rows (no client <c>CommandEntry</c>: the list runs them through <see cref="Run"/>).</summary>
     public static List<NativeCommandList.Row> Rows(WorldRoot world)
@@ -38,7 +38,7 @@ public static class NativeGenieCommands
         if (!Supported(world)) return rows;
         foreach (string id in Ids)
         {
-            if (id == Spirit && !Native.Has(world, "Genie.panel")) continue;
+            if (id == Spirit && !Native.Has(world, "Genie.Panel")) continue;
             var state = StateOf(world, id);
             rows.Add(new NativeCommandList.Row(id, "", Text(id), state.Tooltip, state.Enabled, null));
         }
@@ -56,7 +56,7 @@ public static class NativeGenieCommands
     public static State StateOf(WorldRoot world, string id)
     {
         bool running = Game.Session.Genie.GenieRunning == true;
-        bool pending = Native.Get<bool>(world, "Genie.requestPending");
+        bool pending = Native.Get<bool>(world, "Genie.RequestPending");
         string status = RunLine(world);
         switch (id)
         {
@@ -65,7 +65,7 @@ public static class NativeGenieCommands
             case Start:
                 if (running || pending) return new State(false, status);
                 // The client knows the remaining time once the server has reported it (the Genie window, a start or a tick).
-                if (Reported(world) && Native.Get<int>(world, "Genie.points") <= 0) return new State(false, NoTimeLine);
+                if (Reported(world) && Native.Get<int>(world, "Genie.Points") <= 0) return new State(false, NoTimeLine);
                 return new State(true, ItemData.Text(StartHintText, "Start Knight Genie"));
             case Stop:
                 return running && !pending ? new State(true, ItemData.Text(StopHintText, "Disable Knight Genie")) : new State(false, status);
@@ -100,9 +100,9 @@ public static class NativeGenieCommands
     /// <summary>The client's status line in the Genie window ("Genie active • 90 minutes", "Genie stopped.", …).</summary>
     private static string RunLine(WorldRoot world)
     {
-        string text = Native.Get<Label>(world, "Genie.runLabel") is { } label && GodotObject.IsInstanceValid(label) ? label.Text : "";
+        string text = Native.Get<Label>(world, "Genie.RunLabel") is { } label && GodotObject.IsInstanceValid(label) ? label.Text : "";
         if (text.Length > 0) return text;
-        return Native.Get<bool>(world, "Genie.requestPending") ? WaitingLine : StoppedLine;
+        return Native.Get<bool>(world, "Genie.RequestPending") ? WaitingLine : StoppedLine;
     }
 
     /// <summary>The client sets its Genie deadline whenever the server reports the remaining time.</summary>
@@ -118,7 +118,7 @@ public static class NativeGenieCommands
     /// <summary>The Genie window's own "Use Spirit of Genie" button (its callback is the client's request).</summary>
     private static Button? SpiritButtonOf(WorldRoot world)
     {
-        if (Native.Get<Control>(world, "Genie.panel") is not { } panel || !GodotObject.IsInstanceValid(panel)) return null;
+        if (Native.Get<Control>(world, "Genie.Panel") is not { } panel || !GodotObject.IsInstanceValid(panel)) return null;
         var buttons = Native.Descendants(panel).OfType<Button>().ToList();
         return buttons.FirstOrDefault(b => b.Text == SpiritButton) ?? buttons.FirstOrDefault(b => b.Name == "genie_spirit");
     }

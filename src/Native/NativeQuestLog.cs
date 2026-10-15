@@ -111,12 +111,12 @@ public static class NativeQuestLog
         void Keep()
         {
             if (!GodotObject.IsInstanceValid(world) || !GodotObject.IsInstanceValid(body) || !window.IsVisibleInTree()) return;
-            int selected = Native.Get<int>(world, "Quest.selected");
+            int selected = Native.Get<int>(world, "Quest.Selected");
             if (selected >= 0) { kept = selected; return; }
             if (kept < 0) return;
             if (Native.Call(world, "Quest.QuestsInView") is List<(int QuestId, int State)> rows && rows.Any(r => r.QuestId == kept))
             {
-                Native.Set(world, "Quest.selected", kept);
+                Native.Set(world, "Quest.Selected", kept);
                 Native.Call(world, "Quest.RefreshDetail");
                 return;
             }
@@ -135,7 +135,7 @@ public static class NativeQuestLog
 
     private static object Signature(WorldRoot world)
     {
-        int questId = Native.Get<int>(world, "Quest.selected");
+        int questId = Native.Get<int>(world, "Quest.Selected");
         int state = questId >= 0 ? Game.Session.QuestBook.StateOf(questId) : 0;
         var selection = Game.Session.QuestBook.RewardSelection;
         object? receipt = null, pending = null;

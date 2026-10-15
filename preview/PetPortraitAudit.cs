@@ -50,7 +50,7 @@ public partial class Preview
         require(forms.Length == 30 && forms.Select(f => f.ModelId).Distinct().Count() == forms.Length,
             "Familiar portrait audit covers every distinct authoritative transform model");
         var flags = BindingFlags.Instance | BindingFlags.NonPublic;
-        var actors = Native.Get<EntityRegistry>(world, "EntitySystem.ents")!;
+        var actors = Native.Get<EntityRegistry>(world, "EntitySystem.Ents")!;
         var actor = actors[1]!; var modelField = actor.GetType().GetField("ModelId")!;
         int originalModel = (int)modelField.GetValue(actor)!;
         bool originalDead = Native.Get<bool>(world, "Avatar.Dead");

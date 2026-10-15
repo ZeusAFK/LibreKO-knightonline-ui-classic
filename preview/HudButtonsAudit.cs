@@ -280,9 +280,9 @@ public partial class Preview
         }
         await Frames(8);
         var detailTitle = (Label)DetailField(world, "Quest.detailTitle")!;
-        Require(DetailsOpen() && !owner.QuestListShown && Get(owner, "_embedded") != null && (int)DetailField(world, "Quest.selected")! == trackedId
+        Require(DetailsOpen() && !owner.QuestListShown && Get(owner, "_embedded") != null && (int)DetailField(world, "Quest.Selected")! == trackedId
             && detailTitle.IsVisibleInTree() && detailTitle.Text == "Animal Blood",
-            $"a tracker click opens Quest Details on its quest (selected {DetailField(world, "Quest.selected")}, title '{detailTitle.Text}')");
+            $"a tracker click opens Quest Details on its quest (selected {DetailField(world, "Quest.Selected")}, title '{detailTitle.Text}')");
         await Shot("tracker-details");
         await PressQuestKey();
         await QuestList("f10-from-tracker-details");
@@ -292,8 +292,8 @@ public partial class Preview
         var natives = new Dictionary<string, Func<bool>>
         {
             ["genie"] = () => (bool)Native.Get<object>(world, "Genie.shown")!,
-            ["events"] = () => ((CanvasItem)Native.Get<object>(world, "Events.window")!).Visible,
-            ["daily_rank"] = () => Native.Get<object>(world, "DailyRankWindow.drWindow") is CanvasItem { Visible: true },
+            ["events"] = () => ((CanvasItem)Native.Get<object>(world, "Events.Window")!).Visible,
+            ["daily_rank"] = () => Native.Get<object>(world, "DailyRankWindow.Window") is CanvasItem { Visible: true },
         };
         foreach (var s in letters.Skip(1))
         {

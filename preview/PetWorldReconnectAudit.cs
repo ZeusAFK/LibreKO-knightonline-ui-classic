@@ -118,7 +118,7 @@ public partial class Preview
                 await Read(stream, GameOpcodes.GS_LOGIN); var login = new Packet(GameOpcodes.GS_LOGIN); login.WriteByte((byte)nation); await Send(stream, login);
                 await Read(stream, GameOpcodes.GS_SELECT_CHARACTER); var select = new Packet(GameOpcodes.GS_SELECT_CHARACTER); select.WriteByte(1); select.WriteShort(32700); select.WriteShort(100); select.WriteShort(100); select.WriteShort(0); await Send(stream, select);
                 await Read(stream, GameOpcodes.GS_GAMESTART); await Send(stream, MyInfoPacket((short)(session == 0 ? 2 : 5)));
-                await Until(() => GetTree().CurrentScene is WorldRoot w && !ReferenceEquals(w, previous) && Field<bool>(w, "worldReady"), "Native World scene builds every facet / session " + session);
+                await Until(() => GetTree().CurrentScene is WorldRoot w && !ReferenceEquals(w, previous) && Field<bool>(w, "WorldReady"), "Native World scene builds every facet / session " + session);
                 var world = (WorldRoot)GetTree().CurrentScene;
                 Require(previous == null || !GodotObject.IsInstanceValid(previous), "Previous World is disposed before reconstruction");
                 var inventory = (Inventory)Game.Session.Self.Inventory;
@@ -128,7 +128,7 @@ public partial class Preview
                 Require(Game.Session.Pet.Pet == null && Game.Session.Pet.Items.ContainsKey(77), "MYINFO restores owned familiar metadata without a stale summoned state");
                 await Send(stream, Summon()); await Until(() => Game.Session.Pet.Pet != null, "Summoned familiar reply accepted after world initialization");
                 DetailCall(world, "Pet.Open"); await Frames();
-                var panel = Field<HudWindow>(world, "Pet.panel");
+                var panel = Field<HudWindow>(world, "Pet.Panel");
                 Require(Descendants(panel).OfType<ClassicPetPanel>().Any() && Field<Label>(world, "Pet.nameLbl").Text == "Kauly", "Full native bridge presents Classic Familiar controls");
                 await Until(() => Field<LoadingScreen?>(world, "loadingLayer") == null, "Native loading screen completes before visual review");
                 GetViewport().PushInput(new InputEventMouseMotion { Position = new Vector2(1190, 10), GlobalPosition = new Vector2(1190, 10) }, true);

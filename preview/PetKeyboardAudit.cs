@@ -28,7 +28,7 @@ public partial class Preview
             await Frames();
         }
         bool ChatActive() => (bool)DetailCall(world, "PetKeyboardChatActive")!;
-        var name = Field<LineEdit>("PetHatch.nameInput"); var panel = Field<HudWindow>("PetHatch.panel");
+        var name = Field<LineEdit>("PetHatch.NameInput"); var panel = Field<HudWindow>("PetHatch.Panel");
         bool NoticeOpen() => PreviewFixtures.PetHatchNotice(world) != null;
         var tabs = Field<ServiceTabs>("PetHatch.tabs");
         var buttons = (List<Button>)typeof(ServiceTabs).GetField("buttons", flags)!.GetValue(tabs)!;

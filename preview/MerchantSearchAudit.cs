@@ -103,7 +103,7 @@ public partial class Preview
             await Click(Find<Button>("view_0")); Require((int)DetailField(world, "Merchant.marketPriceAsked")! == 120010000 && (bool)DetailField(world, "Merchant.marketPriceOpenOnReply")!, "Actual View click retains premium price-history request");
             await Click(Find<Button>("move_0")); Require((string)DetailField(world, "Merchant.searchMoveTo")! == "Buyer", "Actual Move click retains selected seller request");
             await Click(Find<Button>("whisper_0")); Require(WhisperTarget(world) == "Buyer", "Actual Whisper click opens native private message for selected seller");
-            var whispers = (CanvasLayer)DetailField(world, "ChatRoom.whisperLayer")!; foreach (var child in whispers.GetChildren().OfType<Control>()) child.Visible = false;
+            var whispers = (CanvasLayer)DetailField(world, "Whispers.whisperLayer")!; foreach (var child in whispers.GetChildren().OfType<Control>()) child.Visible = false;
             query.GrabFocus(); await KeyInput(Key.Escape); Require(!window.Visible && !(bool)DetailField(world, "Merchant.searchShown")!, "Focused query Escape follows native close callback");
             DetailCall(world, "Merchant.OnSearchOpen"); DetailCall(world, "Merchant.OnSearchLoaded"); await Frames(); Require(window.Visible && model.Count == 0 && !scope.GetPopup().Visible, "Native reopen clears stale rows and popup");
             GetWindow().Size = new Vector2I(800, 600); await Frames(); window.Position = new Vector2(10, 34); await Capture("small-viewport");
@@ -121,7 +121,7 @@ public partial class Preview
 
     /// <summary>The player addressed by the open private-message window whose input has focus.</summary>
     private static string? WhisperTarget(WorldRoot world) =>
-        (DetailField(world, "ChatRoom.whispers") as System.Collections.IDictionary)?.Values.Cast<object>()
+        (DetailField(world, "Whispers.Windows") as System.Collections.IDictionary)?.Values.Cast<object>()
             .Where(chat => Native.Get<LineEdit>(chat, "Input") is { } input && input.HasFocus() && Native.Get<HudWindow>(chat, "Window")!.Visible)
             .Select(chat => Native.Get<string>(chat, "Name")).FirstOrDefault();
 }
