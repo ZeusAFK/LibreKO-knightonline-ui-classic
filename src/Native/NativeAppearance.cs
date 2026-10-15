@@ -288,18 +288,28 @@ public static class NativeAppearance
     }
 
     /// <summary>
-    /// Transfer messages belong to the transfer layer, not the world behind it. Notices are adopted as they enter
-    /// the World (checked once their request is set, before the frame draws) instead of scanning the World's
-    /// children every frame; one scan covers the notices that are already there.
+    /// Transfer messages belong to the transfer layer, not the world behind it. The World's children are checked when
+    /// they change (once per change burst, before the frame draws, when the notice's request is set) instead of every
+    /// frame; one check covers the notices that are already there. The World's child list signal also fires while the
+    /// World is outside the scene tree, as in the preview fixtures.
     /// </summary>
     private static void WatchNotices(World world, CanvasLayer layer)
     {
-        Node.ChildEnteredTreeEventHandler entered = node =>
+        bool queued = false;
+        Action changed = () =>
         {
-            if (node is Notice notice) Callable.From(() => Adopt(notice, layer)).CallDeferred();
+            if (queued) return;
+            queued = true;
+            Callable.From(() => { queued = false; Adopt(world, layer); }).CallDeferred();
         };
-        NativeHooks.Listen("World.ChildEnteredTree(transfer notices)", () => world.ChildEnteredTree += entered,
-            () => { if (GodotObject.IsInstanceValid(world)) world.ChildEnteredTree -= entered; }, world);
+        NativeHooks.Listen("World.ChildOrderChanged(transfer notices)", () => world.ChildOrderChanged += changed,
+            () => { if (GodotObject.IsInstanceValid(world)) world.ChildOrderChanged -= changed; }, world);
+        Adopt(world, layer);
+    }
+
+    private static void Adopt(World world, CanvasLayer layer)
+    {
+        if (!Plugin.Active || !GodotObject.IsInstanceValid(world)) return;
         foreach (var notice in world.GetChildren().OfType<Notice>()) Adopt(notice, layer);
     }
 
