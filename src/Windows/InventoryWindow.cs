@@ -399,18 +399,41 @@ public partial class InventoryWindow : Control
 
     public override void _EnterTree()
     {
-        _game.Inventory.Changed += Refresh;
-        _game.Character.Changed += RefreshTotals;
+        _game.Inventory.Changed += OnInventoryChanged;
+        _game.Character.Changed += OnCharacterChanged;
         _game.BecameAvailable += Refresh;
         _host.Shown += Refresh;
         _host.Hidden += OnHidden;
         Refresh();
     }
 
+    // A closed inventory only notes the client's change events and refreshes when it is shown again.
+    private bool _stale, _totalsStale;
+
+    private void OnInventoryChanged()
+    {
+        if (IsVisibleInTree()) Refresh(); else _stale = true;
+    }
+
+    private void OnCharacterChanged()
+    {
+        if (IsVisibleInTree()) RefreshTotals(); else _totalsStale = true;
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what != NotificationVisibilityChanged || !(_stale || _totalsStale) || !IsVisibleInTree()) return;
+        Callable.From(() =>
+        {
+            if (!Plugin.Active || !IsInstanceValid(this) || !IsVisibleInTree()) return;
+            if (_stale) Refresh(); else if (_totalsStale) RefreshTotals();
+        }).CallDeferred();
+    }
+
     public override void _ExitTree()
     {
-        _game.Inventory.Changed -= Refresh;
-        _game.Character.Changed -= RefreshTotals;
+        _game.Inventory.Changed -= OnInventoryChanged;
+        _game.Character.Changed -= OnCharacterChanged;
         _game.BecameAvailable -= Refresh;
         _host.Shown -= Refresh;
         _host.Hidden -= OnHidden;
@@ -436,6 +459,7 @@ public partial class InventoryWindow : Control
 
     private void Refresh()
     {
+        _stale = false;
         foreach (var cell in _slots) cell.Refresh();
         GhostOtherHand(InventoryConstants.RightHand, InventoryConstants.LeftHand);
         GhostOtherHand(InventoryConstants.LeftHand, InventoryConstants.RightHand);
@@ -453,6 +477,7 @@ public partial class InventoryWindow : Control
 
     private void RefreshTotals()
     {
+        _totalsStale = false;
         var c = _game.Character;
         _view.SetClippedText("text_gold", c.Gold.ToString("n0"));
         _view.SetClippedText("text_weight", c.MaxWeight > 0 ? $"Weight : {c.Weight / 10f:0.0}/{c.MaxWeight / 10f:0.0}" : "");

@@ -160,7 +160,7 @@ public static class NativeAppearance
         NativeIdentity.Rewire(accept, () => TransferPressed(world));
         ReplaceOpen(world, net);
         window.VisibilityChanged += () => { if (!window.Visible) NativeLookEditor.CloseColourPicker(editor); };
-        layer.AddChild(new NativeProcess(() => AdoptNotices(world, layer)) { Name = "transfer_notices" });
+        WatchNotices(world, layer);
         NativeWindows.Sync(window, () => SyncTransfer(world, editor, status));
         window.SetMeta("classic_appearance_controls", 1);
     }
@@ -287,12 +287,27 @@ public static class NativeAppearance
             status.Text = status.Text.Replace(CertificateTypo, CertificateText, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Transfer messages belong to the transfer layer, not the world behind it.</summary>
-    private static void AdoptNotices(World world, CanvasLayer layer)
+    /// <summary>
+    /// Transfer messages belong to the transfer layer, not the world behind it. Notices are adopted as they enter
+    /// the World (checked once their request is set, before the frame draws) instead of scanning the World's
+    /// children every frame; one scan covers the notices that are already there.
+    /// </summary>
+    private static void WatchNotices(World world, CanvasLayer layer)
     {
-        foreach (var notice in world.GetChildren().OfType<Notice>())
-            if (!notice.IsQueuedForDeletion() && Native.Get<DialogRequest>(notice, "_request")?.Title == TransferTitle)
-                notice.Reparent(layer, false);
+        Node.ChildEnteredTreeEventHandler entered = node =>
+        {
+            if (node is Notice notice) Callable.From(() => Adopt(notice, layer)).CallDeferred();
+        };
+        NativeHooks.Listen("World.ChildEnteredTree(transfer notices)", () => world.ChildEnteredTree += entered,
+            () => { if (GodotObject.IsInstanceValid(world)) world.ChildEnteredTree -= entered; }, world);
+        foreach (var notice in world.GetChildren().OfType<Notice>()) Adopt(notice, layer);
+    }
+
+    private static void Adopt(Notice notice, CanvasLayer layer)
+    {
+        if (!Plugin.Active || !GodotObject.IsInstanceValid(notice) || !GodotObject.IsInstanceValid(layer)) return;
+        if (notice.IsQueuedForDeletion() || notice.GetParent() == layer || notice.GetParent() is not World) return;
+        if (Native.Get<DialogRequest>(notice, "_request")?.Title == TransferTitle) notice.Reparent(layer, false);
     }
 
     private static bool NameCommon(LookPreview preview, LookEditor editor, Label status, Button accept)

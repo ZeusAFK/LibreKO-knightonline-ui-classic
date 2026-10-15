@@ -45,6 +45,7 @@ public partial class ClassicSiegePanel : Control
         ClassicPartySkin.Drag(this, bar, speech?.Drag ?? ClassicSiegeLayout.Table.Drag);
         if (speech != null) BuildSpeech(speech);
         else BuildTable(_table!, out _rows);
+        ShownOnly.Gate(this, StyleRows);
     }
 
     private T Find<T>(string name) where T : Control => _controls.OfType<T>().Single(c => c.Name == name);
@@ -289,8 +290,9 @@ public partial class ClassicSiegeScrollRail : Control
         _down.Position = new Vector2(0, Size.Y - _downSize.Y); _down.Size = _downSize;
         _track.Position = new Vector2(0, _upSize.Y); _track.Size = new Vector2(Size.X, Size.Y - _upSize.Y - _downSize.Y);
     }
-    public override void _Ready() => Arrange();
-    public override void _Process(double delta)
+    public override void _Ready() { Arrange(); ShownOnly.Gate(this, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (_track.Size.Y != Size.Y - _upSize.Y - _downSize.Y) Arrange();
         // Keep whole rows at the top of the list; the list height is a whole number of rows.

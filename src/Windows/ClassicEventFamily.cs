@@ -344,6 +344,7 @@ public partial class ClassicFamilyGauge : ProgressBar
         CustomMinimumSize = new Vector2(source.CustomMinimumSize.X, Height);
         SizeFlagsHorizontal = source.SizeFlagsHorizontal; SizeFlagsVertical = SizeFlags.ShrinkCenter;
         ClassicWorldOverlays.ProgressBar(this, urgent: true);
+        ShownOnly.Gate(this, Sync);
     }
 
     public static void Replace(StatBar source)
@@ -372,8 +373,9 @@ public partial class ClassicFamilyToggle : Node
     private readonly Button _button;
     private bool? _down;
     public ClassicFamilyToggle() { _button = null!; }
-    public ClassicFamilyToggle(Button button) { _button = button; }
-    public override void _Process(double delta)
+    public ClassicFamilyToggle(Button button) { _button = button; ShownOnly.Gate(this, button, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (_button == null || !GodotObject.IsInstanceValid(_button)) return;
         if (_button.Text.Length > 0) _button.Text = "";
@@ -403,6 +405,7 @@ public partial class ClassicSlotLook : Node
         Name = "classic_slot_look";
         view.MouseEntered += () => _over = true;
         view.MouseExited += () => _over = false;
+        ShownOnly.Gate(this, view, Apply);
         foreach (var count in view.GetChildren().OfType<Label>().Where(l => l is not UpgradeBadge)) ItemCountStyle.Apply(count, view, Plugin.Kit.Bold);
     }
 

@@ -65,6 +65,9 @@ public partial class ClassicRoulettePanel : ClassicEventPanel
 
     public bool Spinning => _spinning;
 
+    /// <summary>A spin lands (and tells the client it finished) even when the window was closed meanwhile.</summary>
+    protected override bool TicksWhileHidden => true;
+
     private List<Texture2D> Faces()
     {
         var faces = new List<Texture2D>();

@@ -110,8 +110,10 @@ public partial class ClassicNpcOptionPlate : Control
         button.Resized+=()=> { Size=button.Size;QueueRedraw(); };
         button.MouseEntered+=()=> { _hover=true;QueueRedraw(); };
         button.MouseExited+=()=> { _hover=false;QueueRedraw(); };
+        Layout.ShownOnly.Gate(this,Sync);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta)=>Sync();
+    private void Sync()
     {
         if(Size!=_button.Size) { Size=_button.Size;QueueRedraw(); }
         int state=_button.Disabled?3:_button.IsPressed()?1:_hover?2:0;
@@ -151,8 +153,10 @@ public partial class ClassicRewardSelection : Control
         {
             CustomMinimumSize=new Vector2(18,32);SizeFlagsVertical=SizeFlags.Fill;
         }
+        Layout.ShownOnly.Gate(this,Sync);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta)=>Sync();
+    private void Sync()
     {
         bool selected=_row.GetMeta("quest_reward_selected").AsBool();
         if(_row.GetChildren().OfType<Label>().LastOrDefault() is {} count && (count.Text.EndsWith("○") || count.Text.EndsWith("●")))

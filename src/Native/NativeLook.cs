@@ -295,7 +295,10 @@ public static class NativeLookEditor
         Entering(races);
         NameRaces(adapter);
         editor.Changed += () => Refresh(editor);
-        editor.AddChild(new NativeProcess(() => Refresh(editor)) { Name = "look_editor_sync" });
+        var sync = new NativeProcess(() => Refresh(editor)) { Name = "look_editor_sync" };
+        editor.AddChild(sync);
+        // The numbering only shows with the editor; follow it while shown, and once more when it opens.
+        KnightOnlineUiClassic.Layout.ShownOnly.Gate(sync, editor, () => Refresh(editor));
         Refresh(editor);
     }
 

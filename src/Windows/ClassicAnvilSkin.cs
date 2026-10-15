@@ -95,8 +95,21 @@ public partial class ClassicAnvilPanel : Control
         _status.AddThemeColorOverride("font_color",new Color("e4e0d7"));
         AddChild(_scanOverlay);_scanOverlay.Draw+=DrawScan;
         Resized+=()=>Size=CustomMinimumSize;
+        // The window may open after this panel processed in that frame; catch up before it draws.
+        VisibilityChanged+=()=>{if(IsVisibleInTree())Callable.From(()=>{if(Plugin.Active && IsInstanceValid(this) && IsVisibleInTree())Sync(0);}).CallDeferred();};
     }
     public override void _Process(double delta)
+    {
+        if(!IsVisibleInTree())
+        {
+            // Closed: only the upgrade scan's clock keeps running, as it did while the whole sync ran hidden.
+            _scan=Window.HasMeta("anvil_scan_success") && Window.GetMeta("anvil_busy",false).AsBool();
+            if(_scan)_scanTime+=delta;else _scanTime=0;
+            return;
+        }
+        Sync(delta);
+    }
+    private void Sync(double delta)
     {
         bool compound=Window.GetMeta("anvil_compound",false).AsBool();
         if(compound!=_compound){_compound=compound;QueueRedraw();}
@@ -160,6 +173,7 @@ public partial class ClassicAnvilPanel : Control
 public partial class ClassicAnvilCellSkin : Control
 {
     private readonly ItemSlotView _cell;private readonly StyleBox _frame;
-    public ClassicAnvilCellSkin(ItemSlotView cell,StyleBox frame){_cell=cell;_frame=frame;MouseFilter=MouseFilterEnum.Ignore;}
-    public override void _Process(double delta){if(_cell.GetThemeStylebox("panel")!=_frame)_cell.AddThemeStyleboxOverride("panel",_frame);}
+    public ClassicAnvilCellSkin(ItemSlotView cell,StyleBox frame){_cell=cell;_frame=frame;MouseFilter=MouseFilterEnum.Ignore;ShownOnly.Gate(this,Sync);}
+    public override void _Process(double delta)=>Sync();
+    private void Sync(){if(_cell.GetThemeStylebox("panel")!=_frame)_cell.AddThemeStyleboxOverride("panel",_frame);}
 }

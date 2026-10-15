@@ -146,6 +146,7 @@ public partial class ClassicMapPanel : ClassicMapFortunePanel
         Callable.From(() => _total.Size = ClassicMapFortuneLayout.Map.Total.Size).CallDeferred();
         _total.SetMeta(ClassicMapFortuneSkin.ExpectedRect, ClassicMapFortuneLayout.Map.Total);
         MoveChild(CloseButton, -1);
+        ShownOnly.Gate(this, StyleRows);
     }
 
     private static void Column(Label cell, int column)
@@ -355,9 +356,11 @@ public partial class ClassicMapScrollRail : Control
         _track.Position = new Vector2(0, 18); _track.Size = new Vector2(Size.X, Size.Y - 36);
     }
 
-    public override void _Ready() => Arrange();
+    public override void _Ready() { Arrange(); ShownOnly.Gate(this, Sync); }
 
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+
+    private void Sync()
     {
         if (_track.Size.Y != Size.Y - 36) Arrange();
         // The list is a whole number of rows; keep a whole row at its top.

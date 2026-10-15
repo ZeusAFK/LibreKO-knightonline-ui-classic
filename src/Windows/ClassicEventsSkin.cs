@@ -90,7 +90,11 @@ public abstract partial class ClassicEventPanel : Control
             SkinToggle();
         }
         Arrange();
+        if (!TicksWhileHidden) ShownOnly.Gate(this, Sync);
     }
+
+    /// <summary>A panel whose refresh acts on the game (the roulette lands its spin) keeps ticking while hidden.</summary>
+    protected virtual bool TicksWhileHidden => false;
 
     /// <summary>Adds a Classic close button for a window whose client version only minimizes.</summary>
     protected void AddClose(Action close)
@@ -155,7 +159,9 @@ public abstract partial class ClassicEventPanel : Control
         QueueRedraw();
     }
 
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+
+    private void Sync()
     {
         if (MinimizeButton != null && MinimizeButton.Text.Length > 0) MinimizeButton.Text = "";
         if (Window.Minimized != _minimized)
@@ -168,7 +174,7 @@ public abstract partial class ClassicEventPanel : Control
         if (!_minimized) Refresh();
     }
 
-    /// <summary>Mirrors native state into the Classic composition every visible frame.</summary>
+    /// <summary>Mirrors native state into the Classic composition every visible frame (and once more on show).</summary>
     protected virtual void Refresh() { }
 
     // Component helpers ------------------------------------------------------------------------------

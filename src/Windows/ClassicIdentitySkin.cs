@@ -59,6 +59,7 @@ public partial class ClassicIdentityPanel : Control
             case "namechange": Rename(); break;
             case "disguise": Disguise(); break;
         }
+        ShownOnly.Gate(this, Sync);
     }
     private T Native<T>(string name) where T : Control => _native.OfType<T>().Single(c => GodotObject.IsInstanceValid(c) && !c.IsQueuedForDeletion() && c.Name == name);
     private static void Font(Control control, int size = 13, bool bold = false)
@@ -228,7 +229,8 @@ public partial class ClassicIdentityPanel : Control
         if (_hint.Text != hint) _hint.Text = hint;
         if (_title.Text != title) _title.Text = title;
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         SyncRename();
         if (_forms == null || _note == null) return;
@@ -310,6 +312,7 @@ public partial class ClassicIdentityScrollRail : Control
         _track = new ClassicScrollTrack(Bar, source.Children.First(n => n.Type == "trackbar"), 16, false, row);
         AddChild(_up); AddChild(_down); AddChild(_track);
         Resized += Arrange;
+        ShownOnly.Gate(this, Sync);
     }
     private static TextureButton Arrow(LayoutNode source) => new()
     {
@@ -326,7 +329,8 @@ public partial class ClassicIdentityScrollRail : Control
         _track.Position = new Vector2(0, _upSize.Y); _track.Size = new Vector2(Size.X, Size.Y - _upSize.Y - _downSize.Y);
     }
     public override void _Ready() => Arrange();
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (_track.Size.Y != Size.Y - _upSize.Y - _downSize.Y) Arrange();
         double snapped = Math.Round(Bar.Value / _row) * _row;

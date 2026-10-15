@@ -50,6 +50,7 @@ public partial class ClassicCouncilRatePanel : Control
         _down = Find<Button>("taxrate_down"); _up = Find<Button>("taxrate_up");
         Button(_accept, "btn_ok", "OK"); Button(_cancel, "btn_cancel", "Cancel");
         Button(_down, "btn_down", ""); Button(_up, "btn_up", "");
+        ShownOnly.Gate(this, Sync);
     }
     private void Place(Control control, string field)
     {
@@ -71,7 +72,8 @@ public partial class ClassicCouncilRatePanel : Control
         button.AddThemeColorOverride("font_disabled_color", Colors.Black);
         button.SetMeta("council_expected_rect", rect);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         bool pending = Window.GetMeta("council_rate_pending", false).AsBool();
         _accept.Disabled = _down.Disabled = _up.Disabled = pending;

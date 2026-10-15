@@ -61,6 +61,7 @@ public partial class ClassicEquipViewPanel : Control
             label.ClipText = true; label.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         }
         SetProcessUnhandledKeyInput(true);
+        ShownOnly.Gate(this, Sync);
     }
     private void Place(Control c, Rect2 rect)
     {
@@ -88,7 +89,8 @@ public partial class ClassicEquipViewPanel : Control
         labels[1].CustomMinimumSize = new Vector2(114, 23); labels[1].HorizontalAlignment = HorizontalAlignment.Right;
         if (labels[0].Text is "Max HP" or "Max MP") labels[1].AddThemeColorOverride("font_color", semantic);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         foreach (var socket in _sockets) socket.UpdateFrame();
         foreach (var label in GetChildren().OfType<Label>().Where(l => l.Name.ToString() is "inspect_summary" or "inspect_status")) label.TooltipText = label.Text;

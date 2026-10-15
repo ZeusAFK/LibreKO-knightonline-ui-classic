@@ -113,7 +113,11 @@ public partial class FamiliarBarFrames : Node
         ProcessPriority = int.MaxValue;
     }
 
-    public override void _Ready() => Apply();
+    public override void _Ready()
+    {
+        Apply();
+        if (GetParent() is CanvasItem bar) KnightOnlineUiClassic.Layout.ShownOnly.Gate(this, bar, Apply);
+    }
 
     public override void _Process(double delta) => Apply();
 

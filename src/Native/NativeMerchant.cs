@@ -123,7 +123,7 @@ public static class NativeMerchant
             // The market price row is decided after the prompt becomes visible.
             Callable.From(() => SyncAmount(world)).CallDeferred();
         };
-        layer.AddChild(new NativeMerchantSync(() => SyncAmount(world)) { Name = "native_merchant_amount" });
+        layer.AddChild(new NativeMerchantSync(() => SyncAmount(world), layer) { Name = "native_merchant_amount" });
         SyncAmount(world);
     }
 
@@ -313,28 +313,46 @@ public static class NativeMerchant
             foreach (var stall in Stalls(world))
                 if (ReferenceEquals(Native.Get<PanelContainer>(stall.Stall, "Sign"), sign)) Mark(sign, stall.Stall);
         });
-        signs.AddChild(new NativeMerchantSync(() =>
+        bool queued = false;
+        void Signs()
         {
             foreach (var (charId, stall) in Stalls(world).ToArray())
             {
                 if (Native.Get<PanelContainer>(stall, "Sign") is not { } sign || !GodotObject.IsInstanceValid(sign)) continue;
-                if (!sign.HasMeta("merchant_buying")) Mark(sign, stall);
-                if (sign.GetMeta("merchant_buying").AsBool() != Native.Get<bool>(stall, "IsBuying"))
+                if (!sign.HasMeta(BuyingMeta)) Mark(sign, stall);
+                if (sign.GetMeta(BuyingMeta).AsBool() != Native.Get<bool>(stall, "IsBuying"))
                 {
                     Native.Call(typeof(World), "FreeStallSign", stall);
                     Native.Call(world, "RefreshStallSign", charId, stall);
                     continue;
                 }
+                if (_watchedSigns.TryAdd(sign, sign))
+                    sign.VisibilityChanged += () => { if (GodotObject.IsInstanceValid(sign) && sign.IsVisibleInTree()) Shown(); };
+                // A hidden sign draws nothing; its badges follow when the client shows it again.
+                if (!sign.IsVisibleInTree()) continue;
                 foreach (var cell in Native.Get<Array>(stall, "SignCells")?.OfType<Control>() ?? Enumerable.Empty<Control>())
                     NativeCountBadge.Apply(cell);
             }
-        }) { Name = "native_merchant_signs" });
+        }
+        // The client shows and hides signs as they move on screen; restyle the badges before the frame draws.
+        void Shown()
+        {
+            if (queued) return;
+            queued = true;
+            Callable.From(() => { queued = false; if (Plugin.Active && GodotObject.IsInstanceValid(world)) Signs(); }).CallDeferred();
+        }
+        signs.VisibilityChanged += () => { if (signs.IsVisibleInTree()) Shown(); };
+        signs.AddChild(new NativeMerchantSync(Signs) { Name = "native_merchant_signs" });
     }
+
+    private static readonly StringName BuyingMeta = "merchant_buying";
+    private static readonly StringName SignsGroup = "merchant_signs";
+    private static readonly ConditionalWeakTable<Control, Control> _watchedSigns = new();
 
     private static void Mark(PanelContainer sign, object stall)
     {
-        sign.SetMeta("merchant_buying", Native.Get<bool>(stall, "IsBuying"));
-        if (!sign.IsInGroup("merchant_signs")) sign.AddToGroup("merchant_signs");
+        sign.SetMeta(BuyingMeta, Native.Get<bool>(stall, "IsBuying"));
+        if (!sign.IsInGroup(SignsGroup)) sign.AddToGroup(SignsGroup);
     }
 
     private static IEnumerable<(int CharId, object Stall)> Stalls(World world)
@@ -354,17 +372,34 @@ public partial class NativeMerchantDragWatch : Node
     }
 }
 
-/// <summary>Runs a merchant synchronisation every frame ahead of the Classic controls.</summary>
+/// <summary>
+/// Runs a merchant synchronisation every frame ahead of the Classic controls; with a layer, only while that layer
+/// is shown (the layer's own show handler syncs it when it opens).
+/// </summary>
 public partial class NativeMerchantSync : Node
 {
     private readonly Action? _sync;
+    private readonly CanvasLayer? _layer;
 
     public NativeMerchantSync() { }
 
-    public NativeMerchantSync(Action sync)
+    public NativeMerchantSync(Action sync, CanvasLayer? layer = null)
     {
         _sync = sync;
+        _layer = layer;
         ProcessPriority = int.MinValue;
+    }
+
+    public override void _Ready()
+    {
+        if (_layer == null) return;
+        _layer.VisibilityChanged += Follow;
+        Follow();
+    }
+
+    private void Follow()
+    {
+        if (_layer != null && GodotObject.IsInstanceValid(_layer)) SetProcess(_layer.Visible);
     }
 
     public override void _Process(double delta) => _sync?.Invoke();

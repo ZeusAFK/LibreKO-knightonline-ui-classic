@@ -30,7 +30,16 @@ public partial class ClassicRowScroll : Node
         return _gutter?.GetChildCount() > 0 ? _gutter.GetChild(0) as BoxContainer : null;
     }
 
-    public override void _Process(double delta)
+    public override void _Ready()
+    {
+        // The gutter is set up at once, as before; the row keeping then follows the list while it is shown.
+        if (IsInstanceValid(_scroll)) Rows();
+        ShownOnly.Gate(this, _scroll, Sync);
+    }
+
+    public override void _Process(double delta) => Sync();
+
+    private void Sync()
     {
         if (!IsInstanceValid(_scroll)) return;
         var rows = Rows();

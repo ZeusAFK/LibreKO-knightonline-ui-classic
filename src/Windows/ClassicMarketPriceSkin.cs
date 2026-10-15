@@ -72,6 +72,7 @@ public partial class ClassicMarketPricePanel : Control
         status.HorizontalAlignment = HorizontalAlignment.Left; status.AddThemeColorOverride("font_color", ClassicDesign.Heading);
         var cancel = new Button { Name = "market_price_cancel", Text = "Cancel" }; AddChild(cancel); Action(cancel, ClassicMarketPriceLayout.Cancel); cancel.Pressed += Close;
         window.VisibilityChanged += () => { if (!window.Visible) foreach (var option in _options) option.GetPopup().Hide(); };
+        ShownOnly.Gate(this, _slotFrame.UpdateFrame);
     }
     private static void Font(Control control, int size = 13)
     {

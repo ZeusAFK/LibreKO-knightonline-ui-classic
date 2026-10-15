@@ -42,6 +42,7 @@ public partial class ClassicMailPanel : Control
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, ClassicFrame.Close(Size.X), "");
         _close.SetMeta("mail_expected_rect", ClassicFrame.Close(Size.X));
         if (window.Id == "mail") Inbox(); else if (window.Id == "mailread") Read(); else Compose();
+        ShownOnly.Gate(this, Sync);
     }
     private T Find<T>(string name) where T : Control => _native.OfType<T>().Single(c => c.Name == name);
     private static void Font(Control control, bool bold = true, int size = 13)
@@ -244,7 +245,8 @@ public partial class ClassicMailPanel : Control
         if (!Window.IsVisibleInTree() || ev is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) return;
         _close.EmitSignal(BaseButton.SignalName.Pressed); GetViewport().SetInputAsHandled();
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         // Native responses rebuild rows before deferred styling; restore fixed viewports after their minimum sizes settle.
         foreach (var (scroll, rect) in _fixedScrolls) { scroll.CustomMinimumSize = Vector2.Zero; scroll.Size = rect.Size; }

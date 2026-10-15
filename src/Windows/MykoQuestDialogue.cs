@@ -434,6 +434,8 @@ public partial class MykoArtButton : Button
         Art = art; FocusMode = FocusModeEnum.None; TextureFilter = TextureFilterEnum.Nearest; ClipText = true;
         foreach (string state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" })
             AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        // Option and action rows mirror their client buttons in _Process; all of it only matters while shown.
+        ShownOnly.Gate(this, () => _Process(0));
     }
 
     public int ArtState => GetDrawMode() switch
@@ -572,6 +574,7 @@ public partial class MykoQuestCell : Control
         MouseEntered += () => { if (IsInstanceValid(Source)) Source.EmitSignal(Control.SignalName.MouseEntered); };
         MouseExited += () => { if (IsInstanceValid(Source)) Source.EmitSignal(Control.SignalName.MouseExited); };
         Mirror();
+        ShownOnly.Gate(this, Mirror);
     }
 
     public override void _Process(double delta) => Mirror();
@@ -642,6 +645,8 @@ public partial class MykoScrollBar : Control
             Bar.Value += (wheel.ButtonIndex == MouseButton.WheelUp ? -3 : 3) * Step; _scroll.AcceptEvent();
         };
     }
+
+    public override void _Ready() => ShownOnly.Gate(this, () => _Process(0));
 
     public override void _Process(double delta)
     {

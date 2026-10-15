@@ -40,6 +40,7 @@ public partial class ClassicCommunicationPanel : Control
         ClassicMerchantSkin.Button(_close, Plugin.Kit.Layout("co_questtalk_us").Find("btn_close")!, this, ClassicFrame.Close(Size.X), "");
         _close.SetMeta("communication_expected_rect", ClassicFrame.Close(Size.X));
         Messenger();
+        ShownOnly.Gate(this, Sync);
     }
     private T Find<T>(string name) where T : Control => _native.OfType<T>().Single(c => GodotObject.IsInstanceValid(c) && !c.IsQueuedForDeletion() && c.Name == name);
     private static void Font(Control control, bool bold = true, int size = 13)
@@ -138,7 +139,8 @@ public partial class ClassicCommunicationPanel : Control
         if (!Window.IsVisibleInTree() || ev is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) return;
         Close(); GetViewport().SetInputAsHandled();
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         foreach (var (scroll, rect) in _scrolls) { scroll.CustomMinimumSize = Vector2.Zero; scroll.Size = rect.Size; }
     }

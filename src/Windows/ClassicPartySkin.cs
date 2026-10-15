@@ -176,14 +176,15 @@ public partial class ClassicPartyBoard : Control
         _heading = nodes.OfType<Label>().SingleOrDefault(n => n.Name == "seek_heading");
         Resized += () => Size = CustomMinimumSize;
     }
-    public override void _Ready() => Refresh();
+    public override void _Ready() { Refresh(); ShownOnly.Gate(this, Sync); }
     private bool Selected => _selected != null && GodotObject.IsInstanceValid(_selected) && _selected.IsInsideTree();
     /// <summary>Shows one lower panel (recruit or filter) instead of the selected player's details, or the details again.</summary>
     private void Lower(Control? panel)
     {
         _recruit.Visible = panel == _recruit; _filters.Visible = panel == _filters; _details.Visible = panel == null;
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         // The Full Moon Rift board names itself; the normal board keeps the original title.
         string heading = _heading != null && _heading.Visible && _heading.Text.Length > 0 ? _heading.Text : "Party Window";

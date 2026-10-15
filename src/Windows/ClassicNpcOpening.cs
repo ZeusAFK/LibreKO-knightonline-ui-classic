@@ -212,6 +212,7 @@ public partial class ClassicNpcOpeningOption : Button
         Pressed += () => { if (IsInstanceValid(Source) && !Source.Disabled) Source.EmitSignal(BaseButton.SignalName.Pressed); };
         Resized += () => _lastText = null;
         Mirror();
+        ShownOnly.Gate(this, Mirror);
     }
 
     public override void _Process(double delta) => Mirror();

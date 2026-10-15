@@ -97,8 +97,9 @@ public partial class ClassicPetHatchPanel : Control
 public partial class ClassicPetHatchCellSkin : Control
 {
     private readonly ItemSlotView _cell; private readonly StyleBox _frame; private bool _selected;
-    public ClassicPetHatchCellSkin(ItemSlotView cell, StyleBox frame) { _cell = cell; _frame = frame; MouseFilter = MouseFilterEnum.Ignore; }
-    public override void _Process(double delta)
+    public ClassicPetHatchCellSkin(ItemSlotView cell, StyleBox frame) { _cell = cell; _frame = frame; MouseFilter = MouseFilterEnum.Ignore; ShownOnly.Gate(this, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (_cell.GetThemeStylebox("panel") != _frame) _cell.AddThemeStyleboxOverride("panel", _frame);
         bool selected = _cell.Look == SlotLook.Selected; if (selected == _selected) return; _selected = selected; QueueRedraw();

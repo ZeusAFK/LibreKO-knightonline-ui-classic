@@ -266,6 +266,7 @@ public partial class ClassicNpcAction : Button
         Pressed+=()=> { if(IsInstanceValid(Source) && !Source!.Disabled) Source.EmitSignal(BaseButton.SignalName.Pressed); };
         Resized+=()=>_lastText=null;
         UpdateSource();
+        ShownOnly.Gate(this,UpdateSource);
     }
     private void UpdateSource()
     {

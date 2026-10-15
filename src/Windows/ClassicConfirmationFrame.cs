@@ -21,9 +21,11 @@ public partial class ClassicConfirmationFrame : Control
         _title=new Label { Position=new Vector2(48,_top+4),Size=new Vector2(300,36),VerticalAlignment=VerticalAlignment.Center,MouseFilter=MouseFilterEnum.Ignore };
         _title.AddThemeFontOverride("font",Plugin.Kit.Bold);_title.AddThemeFontSizeOverride("font_size",13);
         _title.AddThemeColorOverride("font_color",ClassicReportDesign.Caption);AddChild(_title);
+        ShownOnly.Gate(this,Sync);
     }
     public override void _Ready() { _frame.ApplyDeclaredBounds(); }
-    public override void _Process(double delta)
+    public override void _Process(double delta)=>Sync();
+    private void Sync()
     {
         Position=Vector2.Zero;Size=(Vector2)_dialog.Size;_title.Text=_dialog.Title;_title.Size=new Vector2(Size.X-60,36);
         var surface=_frame.Where(n=>n.Id=="surface").First().Control!;surface.Size=new Vector2(Size.X,Math.Max(1,Size.Y-_top));

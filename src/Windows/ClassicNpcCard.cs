@@ -31,6 +31,7 @@ public partial class ClassicNpcCard : Control
         MouseEntered+=()=> { if(IsInstanceValid(Source)) Source.EmitSignal(Control.SignalName.MouseEntered); };
         MouseExited+=()=> { if(IsInstanceValid(Source)) Source.EmitSignal(Control.SignalName.MouseExited); };
         UpdateSource();
+        ShownOnly.Gate(this,UpdateSource);
     }
     private void Arrange()
     {

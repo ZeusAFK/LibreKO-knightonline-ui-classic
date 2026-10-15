@@ -57,10 +57,40 @@ public partial class CharacterWindow : Control
         CharacterPageRouter.Owner=this;
         Callable.From(CharacterPageRouter.ResumeVisible).CallDeferred();
         _host.Hidden+=ClearEmbedded;
-        _game.Character.Changed += Refresh;
+        _game.Character.Changed += OnCharacterChanged;
         _game.BecameAvailable += Refresh;
         _host.Shown += Refresh;
         Refresh();
+    }
+
+    private bool _stale, _refreshQueued;
+
+    /// <summary>
+    /// The client raises a change per stats, HP, MP, EXP or gold packet. A closed window only notes it and refreshes
+    /// when it opens; an open one refreshes once per frame, before the frame draws.
+    /// </summary>
+    private void OnCharacterChanged()
+    {
+        if (!_game.Available) return;
+        EnsurePanelStyles();
+        if (!IsVisibleInTree()) { _stale = true; return; }
+        QueueRefresh();
+    }
+
+    private void QueueRefresh()
+    {
+        if (_refreshQueued) return;
+        _refreshQueued = true;
+        Callable.From(() =>
+        {
+            _refreshQueued = false;
+            if (Plugin.Active && IsInstanceValid(this) && IsInsideTree()) Refresh();
+        }).CallDeferred();
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationVisibilityChanged && _stale && IsVisibleInTree()) QueueRefresh();
     }
 
     public override void _Ready()
@@ -74,7 +104,7 @@ public partial class CharacterWindow : Control
         CharacterPageRouter.Release(this);
         _host.Hidden-=ClearEmbedded;
         if(CharacterPageRouter.Owner==this) CharacterPageRouter.Owner=null;
-        _game.Character.Changed -= Refresh;
+        _game.Character.Changed -= OnCharacterChanged;
         _game.BecameAvailable -= Refresh;
         _host.Shown -= Refresh;
     }
@@ -82,6 +112,7 @@ public partial class CharacterWindow : Control
     private void Refresh()
     {
         if (!_game.Available) return;
+        _stale = false;
         var c = _game.Character;
         EnsurePanelStyles();
         var panel = _game.Windows.CharacterPanel;

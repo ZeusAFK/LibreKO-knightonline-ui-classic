@@ -85,6 +85,7 @@ public partial class ClassicAuctionPanel : Control
         Find<HBoxContainer>("auction_tabs").CustomMinimumSize = new Vector2(0, 28);
         foreach (var tab in native.OfType<Button>().Where(c => c.HasMeta("auction_tab_selected")))
             tab.AddThemeStyleboxOverride("normal", tab.GetThemeStylebox(tab.GetMeta("auction_tab_selected").AsBool() ? "auction_tab_selected" : "auction_tab_normal"));
+        ShownOnly.Gate(this, Sync);
     }
     private static StyleBoxFlat Box(int inset)
     {
@@ -136,7 +137,8 @@ public partial class ClassicAuctionPanel : Control
         node.ChildEnteredTree += Watch;
     }
     private void Close() => _close.EmitSignal(BaseButton.SignalName.Pressed);
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         _selected.TooltipText = _selected.Text;
         _frames.RemoveAll(f => !IsInstanceValid(f));
