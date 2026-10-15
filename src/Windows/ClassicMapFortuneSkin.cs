@@ -167,22 +167,22 @@ public partial class ClassicMapPanel : ClassicMapFortunePanel
             {
                 // The native total moves below the inset; the empty-list notice stays in the list.
                 if (note.Text.StartsWith(TotalCaption, StringComparison.Ordinal)) { note.Visible = false; total = note.Text; }
-                else if (!note.HasMeta("map_row"))
+                else if (!note.HasMeta(HotNames.MapRow))
                 {
-                    note.SetMeta("map_row", true);
+                    note.SetMeta(HotNames.MapRow, true);
                     Font(note, 13, ClassicDesign.Muted, false);
                     note.HorizontalAlignment = HorizontalAlignment.Center;
                     note.CustomMinimumSize = new Vector2(0, ClassicMapFortuneLayout.Map.List.Size.Y);
                 }
                 continue;
             }
-            if (child is not PanelContainer row || row.HasMeta("map_row")) continue;
-            row.SetMeta("map_row", true);
+            if (child is not PanelContainer row || row.HasMeta(HotNames.MapRow)) continue;
+            row.SetMeta(HotNames.MapRow, true);
             row.MouseFilter = MouseFilterEnum.Pass;
-            row.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+            row.AddThemeStyleboxOverride(HotNames.Panel, new StyleBoxEmpty());
             row.CustomMinimumSize = new Vector2(0, ClassicMapFortuneLayout.Row);
             if (row.GetChildren().OfType<HBoxContainer>().FirstOrDefault() is not { } line) continue;
-            line.AddThemeConstantOverride("separation", 0);
+            line.AddThemeConstantOverride(HotNames.Separation, 0);
             var cells = line.GetChildren().OfType<Label>().ToArray();
             for (int i = 0; i < cells.Length && i < ClassicMapFortuneLayout.Map.Columns.Length; i++)
             {
@@ -373,4 +373,12 @@ public partial class ClassicMapScrollRail : Control
         Down.SelfModulate = Down.Disabled ? new Color(1, 1, 1, .7f) : Colors.White;
         _track.QueueRedraw();
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName MapRow = "map_row";
+    internal static readonly StringName Panel = "panel";
+    internal static readonly StringName Separation = "separation";
 }

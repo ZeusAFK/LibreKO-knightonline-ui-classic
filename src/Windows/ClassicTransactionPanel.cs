@@ -219,7 +219,7 @@ public partial class ClassicVendorPanel : Control
         _close.Disabled = blocked;
         _arrows[0].Disabled = blocked || _pager.Page == 0;
         _arrows[1].Disabled = blocked || _pager.Page >= _pager.Pages - 1;
-        int group = _window.GetMeta("vendor_group", 0).AsInt32();
+        int group = _window.GetMeta(HotNames.VendorGroup, 0).AsInt32();
         if (_lastGroup != group)
         {
             _lastGroup = group;
@@ -330,4 +330,10 @@ internal static class ClassicTradeDrag
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = Control.MouseFilterEnum.Ignore });
         LibreKO.UpgradeBadge.Show(content,itemId); return root;
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName VendorGroup = "vendor_group";
 }

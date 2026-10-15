@@ -670,6 +670,12 @@ public partial class ClassicWhisperAttention : Node
     private void Refresh()
     {
         _bar.TextureNormal=_lit ? _highlight:_normal;
-        _title.AddThemeColorOverride("font_color",new Color(_lit ? "ffff00":"00ffff"));
+        _title.AddThemeColorOverride(HotNames.FontColor,new Color(_lit ? "ffff00":"00ffff"));
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
 }

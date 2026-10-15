@@ -371,6 +371,8 @@ public partial class ClassicNoticeStack : Control
         if (World is { } world && GodotObject.IsInstanceValid(world)) NativePremium.HideClientChips(world, L.Bar.X);
     }
 
+    private Control[]? _stacked;
+
     public override void _Process(double delta)
     {
         if (!GodotObject.IsInstanceValid(_column)) { QueueFree(); return; }
@@ -378,14 +380,18 @@ public partial class ClassicNoticeStack : Control
         if (_syncClock >= 0.25) { _syncClock = 0; Sync(); }
         // Right-aligned at the client's premium chip spot: premium, clan premium, time, the client's notice bars, GM List.
         float right = GetViewportRect().Size.X - L.GroupRight, y = L.GroupTop;
-        foreach (var part in new Control[] { _premium, _clan, _bonus, _time })
+        foreach (var part in _stacked ??= new Control[] { _premium, _clan, _bonus, _time })
         {
             if (!part.Visible) continue;
             SetPlace(part, new Vector2(right - part.Size.X, y));
             y += part.Size.Y + L.BarGap;
         }
         SetPlace(_column, new Vector2(right - _column.Size.X, y));
-        var last = _column.Visible ? _column.GetChildren().OfType<Control>().LastOrDefault(c => c.Visible && !c.IsQueuedForDeletion()) : null;
+        // The last shown notice bar, read by index (no child array per frame).
+        Control? last = null;
+        if (_column.Visible)
+            for (int i = _column.GetChildCount() - 1; i >= 0 && last == null; i--)
+                if (_column.GetChild(i) is Control c && c.Visible && !c.IsQueuedForDeletion()) last = c;
         if (last != null) y = last.GlobalPosition.Y + last.Size.Y + L.BarGap;
         SetPlace(_gm, new Vector2(right - L.Bar.X, y));
         SetPlace(_box, new Vector2(right - _box.Size.X, y + L.Bar.Y + L.ContentGap));

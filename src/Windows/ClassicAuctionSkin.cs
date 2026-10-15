@@ -144,7 +144,7 @@ public partial class ClassicAuctionPanel : Control
         _frames.RemoveAll(f => !IsInstanceValid(f));
         foreach (var frame in _frames)
         {
-            frame.UpdateFrame(); var count = frame.OwnerCell.GetNode<Control>("auction_count_overlay");
+            frame.UpdateFrame(); var count = frame.OwnerCell.GetNode<Control>(HotNames.AuctionCountOverlayPath);
             count.Position = Vector2.Zero; count.Size = frame.OwnerCell.Size;
         }
     }
@@ -153,4 +153,10 @@ public partial class ClassicAuctionPanel : Control
         if (!Window.IsVisibleInTree() || ev is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) return;
         Close(); GetViewport().SetInputAsHandled();
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly NodePath AuctionCountOverlayPath = "auction_count_overlay";
 }

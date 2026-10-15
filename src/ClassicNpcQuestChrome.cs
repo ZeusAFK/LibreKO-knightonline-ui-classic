@@ -158,7 +158,7 @@ public partial class ClassicRewardSelection : Control
     public override void _Process(double delta)=>Sync();
     private void Sync()
     {
-        bool selected=_row.GetMeta("quest_reward_selected").AsBool();
+        bool selected=_row.GetMeta(HotNames.QuestRewardSelected).AsBool();
         if(_row.GetChildren().OfType<Label>().LastOrDefault() is {} count && (count.Text.EndsWith("○") || count.Text.EndsWith("●")))
             count.Text=count.Text[..^1].TrimEnd();
         if(_selected!=selected) { _selected=selected;QueueRedraw(); }
@@ -172,4 +172,10 @@ public partial class ClassicRewardSelection : Control
         if(_selected==true)
             DrawRect(new Rect2(-Position,_row.Size).Grow(-.5f),new Color("e4c174"),false,1);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName QuestRewardSelected = "quest_reward_selected";
 }

@@ -37,8 +37,10 @@ public partial class ClassicItemsPanel : Control
     private static readonly Color CaptionInk = new("e2c68b"), ButtonInk = new("efd9b4"), DisabledInk = new("918576");
     private static readonly Color Separator = new("4a4232");
 
+    private static readonly StringName PageMeta = NativeItems.PageMeta, PickedMeta = "cs_picked", ExpStateMeta = "exp_seal_state", ExpectedRectMeta = ExpectedRect;
+
     public HudWindow Window { get; }
-    private readonly Control[] _native;
+    private readonly ControlIndex _native;
     private readonly ClassicFrame _frame;
     private readonly Label _title;
     private readonly Button _close;
@@ -55,7 +57,7 @@ public partial class ClassicItemsPanel : Control
     public ClassicItemsPanel(HudWindow window, Control body)
     {
         Window = window; Name = "classic_items"; TextureFilter = TextureFilterEnum.Nearest;
-        _native = CharacterDetailsSkin.Tree(body).OfType<Control>().ToArray();
+        _native = new ControlIndex(CharacterDetailsSkin.Tree(body).OfType<Control>().ToArray());
         _cell = InventoryCell();
         var grip = window.Header!.GetChildren().OfType<HBoxContainer>().First();
         _title = grip.GetChildren().OfType<Label>().Last();
@@ -81,7 +83,7 @@ public partial class ClassicItemsPanel : Control
         ShownOnly.Gate(this, Sync);
     }
 
-    private string PageOf() => Window.GetMeta(NativeItems.PageMeta, "").AsString();
+    private string PageOf() => Window.GetMeta(PageMeta, "").AsString();
 
     private void Resize(string page)
     {
@@ -102,8 +104,8 @@ public partial class ClassicItemsPanel : Control
     // Shared Classic pieces --------------------------------------------------------------------
 
     // Native controls the client may free later (keypad keys) are skipped.
-    private T Find<T>(string name) where T : Control => _native.OfType<T>().Single(n => GodotObject.IsInstanceValid(n) && n.Name == name);
-    private T? Maybe<T>(string name) where T : Control => _native.OfType<T>().FirstOrDefault(n => GodotObject.IsInstanceValid(n) && n.Name == name);
+    private T Find<T>(string name) where T : Control => _native.Single<T>(name);
+    private T? Maybe<T>(string name) where T : Control => _native.Maybe<T>(name);
 
     private static void Font(Control control, int size = 12)
     {
@@ -258,14 +260,14 @@ public partial class ClassicItemsPanel : Control
 
     private void SyncExpSeal()
     {
-        int state = Window.GetMeta("exp_seal_state", 0).AsInt32();
+        int state = Window.GetMeta(ExpStateMeta, 0).AsInt32();
         foreach (var (name, on) in new[] { ("exp_seal_on", LibreKO.Domain.ExpSeal.StateOn), ("exp_seal_off", LibreKO.Domain.ExpSeal.StateOff) })
         {
             var button = Find<Button>(name);
             // The native buttons tint the active switch; Classic shows it pressed and keeps the light ink.
             button.Modulate = Colors.White;
-            var wanted = state == on ? button.GetThemeStylebox("pressed") : NormalOf(button);
-            if (button.GetThemeStylebox("normal") != wanted) button.AddThemeStyleboxOverride("normal", wanted);
+            var wanted = state == on ? button.GetThemeStylebox(ThemeNames.Pressed) : NormalOf(button);
+            if (button.GetThemeStylebox(ThemeNames.Normal) != wanted) button.AddThemeStyleboxOverride(ThemeNames.Normal, wanted);
         }
     }
 
@@ -427,7 +429,7 @@ public partial class ClassicItemsPanel : Control
 
     private static void Move(Control control, Rect2 rect)
     {
-        control.Position = rect.Position; control.Size = rect.Size; control.SetMeta(ExpectedRect, rect);
+        control.Position = rect.Position; control.Size = rect.Size; control.SetMeta(ExpectedRectMeta, rect);
     }
 
     /// <summary>The help page's size: its measured content once the texts are laid out.</summary>
@@ -435,7 +437,7 @@ public partial class ClassicItemsPanel : Control
 
     private void SyncCharacterSeal()
     {
-        int picked = Window.GetMeta("cs_picked", -1).AsInt32();
+        int picked = Window.GetMeta(PickedMeta, -1).AsInt32();
         for (int i = 0; Maybe<Button>("cs_slot_" + i) is { } slot; i++)
         {
             bool selected = i == picked;
@@ -445,10 +447,10 @@ public partial class ClassicItemsPanel : Control
             row.SetContentMargin(Side.Left, 8); row.SetContentMargin(Side.Right, 8);
             foreach (string state in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" })
                 slot.AddThemeStyleboxOverride(state, state == "focus" ? new StyleBoxEmpty() : row);
-            slot.AddThemeColorOverride("font_color", selected ? ClassicDesign.FrameTitle : ClassicDarkFrame.Value);
-            slot.AddThemeColorOverride("font_hover_color", ClassicDesign.FrameTitle);
-            slot.AddThemeColorOverride("font_pressed_color", ClassicDesign.FrameTitle);
-            slot.AddThemeColorOverride("font_disabled_color", ClassicDesign.Muted * new Color(1, 1, 1, .8f));
+            slot.AddThemeColorOverride(HotNames.FontColor, selected ? ClassicDesign.FrameTitle : ClassicDarkFrame.Value);
+            slot.AddThemeColorOverride(HotNames.FontHoverColor, ClassicDesign.FrameTitle);
+            slot.AddThemeColorOverride(HotNames.FontPressedColor, ClassicDesign.FrameTitle);
+            slot.AddThemeColorOverride(HotNames.FontDisabledColor, ClassicDesign.Muted * new Color(1, 1, 1, .8f));
         }
     }
 
@@ -491,7 +493,7 @@ public partial class ClassicItemsPanel : Control
     /// <summary>Keeps the Classic composition on the native state; runs every frame while shown.</summary>
     private void Sync()
     {
-        foreach (var cell in _cells) if (cell.GetThemeStylebox("panel") != _cell) cell.AddThemeStyleboxOverride("panel", _cell);
+        foreach (var cell in _cells) if (cell.GetThemeStylebox(ThemeNames.Panel) != _cell) cell.AddThemeStyleboxOverride(ThemeNames.Panel, _cell);
         if (Window.Id is "char_seal" or "char_seal_sheet")
         {
             string page = PageOf();
@@ -520,4 +522,13 @@ public partial class ClassicItemsPanel : Control
             DrawRect(new Rect2(16, y, ClassicItemsLayout.TimedScroll.Position.X - 22, 1), Separator);
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName FontDisabledColor = "font_disabled_color";
+    internal static readonly StringName FontHoverColor = "font_hover_color";
+    internal static readonly StringName FontPressedColor = "font_pressed_color";
 }

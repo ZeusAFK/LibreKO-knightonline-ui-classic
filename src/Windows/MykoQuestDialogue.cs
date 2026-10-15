@@ -498,15 +498,15 @@ public partial class MykoQuestOption : MykoArtButton
         {
             var quest = state.ToLowerInvariant() switch { "in progress" => LibreKO.Network.QuestViewState.InProgress, "ready" => LibreKO.Network.QuestViewState.Claimable,
                 _ => LibreKO.Network.QuestViewState.Completed };
-            State.AddThemeColorOverride("font_color", Disabled ? ClassicNpcOpeningLayout.Disabled : ClassicQuestStatus.Ink(quest));
-            float width = State.GetThemeFont("font").GetStringSize(state, HorizontalAlignment.Left, -1, State.GetThemeFontSize("font_size")).X;
+            State.AddThemeColorOverride(HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : ClassicQuestStatus.Ink(quest));
+            float width = State.GetThemeFont(HotNames.Font).GetStringSize(state, HorizontalAlignment.Left, -1, State.GetThemeFontSize(HotNames.FontSize)).X;
             ClassicNpcLayout.Place(State, new Rect2(Size.X - width - 8, 0, width, Size.Y));
             inset = width + 16;
         }
         Caption.Text = caption;
-        Caption.AddThemeColorOverride("font_color", Disabled ? ClassicNpcOpeningLayout.Disabled : _ink);
+        Caption.AddThemeColorOverride(HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : _ink);
         ClassicNpcLayout.Place(Caption, new Rect2(inset, 0, Math.Max(1, Size.X - 2 * inset), Size.Y));
-        var font = Caption.GetThemeFont("font"); int size = Caption.GetThemeFontSize("font_size");
+        var font = Caption.GetThemeFont(HotNames.Font); int size = Caption.GetThemeFontSize(HotNames.FontSize);
         // The client repeats each caption as its tooltip; a row only needs it when the caption is cut.
         TooltipText = Size.X <= 1 || font.GetStringSize(caption, HorizontalAlignment.Left, -1, size).X <= Caption.Size.X ? "" : caption;
     }
@@ -538,7 +538,7 @@ public partial class MykoQuestAction : MykoArtButton
         if (Source.Text == _text && Source.Disabled == _disabled && Source.TooltipText == _tooltip) return;
         _text = Source.Text; _disabled = Source.Disabled; _tooltip = Source.TooltipText;
         Disabled = Source.Disabled; Caption.Text = Source.Text; TooltipText = Source.TooltipText;
-        Caption.AddThemeColorOverride("font_color", Disabled ? ClassicNpcOpeningLayout.Disabled : _ink);
+        Caption.AddThemeColorOverride(HotNames.FontColor, Disabled ? ClassicNpcOpeningLayout.Disabled : _ink);
     }
 }
 
@@ -583,8 +583,8 @@ public partial class MykoQuestCell : Control
     {
         if (!IsInstanceValid(Source)) return;
         string name = _sourceName?.Text ?? "", value = (_sourceValue?.Text ?? "").TrimEnd('○', '●', ' ');
-        bool selected = Choice && Source.HasMeta("quest_reward_selected") && Source.GetMeta("quest_reward_selected").AsBool();
-        var ink = _sourceValue?.GetThemeColor("font_color") ?? Colors.White;
+        bool selected = Choice && Source.HasMeta(HotNames.QuestRewardSelected) && Source.GetMeta(HotNames.QuestRewardSelected).AsBool();
+        var ink = _sourceValue?.GetThemeColor(HotNames.FontColor) ?? Colors.White;
         bool done = ink.G > ink.R * 1.1f && ink.G > ink.B * 1.1f;
         if (name == _lastName && value == _lastValue && selected == _selected && done == _done) return;
         _lastName = name; _lastValue = value; _done = done;
@@ -592,10 +592,10 @@ public partial class MykoQuestCell : Control
         First.Text = upgrade.Success ? upgrade.Groups[1].Value.Trim() : name;
         // A name one pixel size too long for the cell steps down once before it is cut (the tooltip has it whole).
         int size = UiKit.FontSize(_layout.CellFirst);
-        if (First.GetThemeFont("font").GetStringSize(First.Text, HorizontalAlignment.Left, -1, size).X > First.Size.X) size--;
-        First.AddThemeFontSizeOverride("font_size", size);
+        if (First.GetThemeFont(HotNames.Font).GetStringSize(First.Text, HorizontalAlignment.Left, -1, size).X > First.Size.X) size--;
+        First.AddThemeFontSizeOverride(HotNames.FontSize, size);
         Second.Text = upgrade.Success ? $"+{upgrade.Groups[2].Value} · {value}" : value;
-        Second.AddThemeColorOverride("font_color", done ? ClassicQuestStatus.Ink(LibreKO.Network.QuestViewState.Claimable) : _secondInk);
+        Second.AddThemeColorOverride(HotNames.FontColor, done ? ClassicQuestStatus.Ink(LibreKO.Network.QuestViewState.Claimable) : _secondInk);
         TooltipText = name + (Source.TooltipText.Length > 0 ? "\n" + Source.TooltipText : "");
         if (selected != _selected) { _selected = selected; QueueRedraw(); }
     }
@@ -678,4 +678,13 @@ public partial class MykoScrollBar : Control
             Bar.Value = Step > 0 && value < Bar.MaxValue - Bar.Page ? Math.Round(value / Step) * Step : value; AcceptEvent();
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName Font = "font";
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName FontSize = "font_size";
+    internal static readonly StringName QuestRewardSelected = "quest_reward_selected";
 }

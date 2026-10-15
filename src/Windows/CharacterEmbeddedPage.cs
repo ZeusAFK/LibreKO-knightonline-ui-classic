@@ -193,21 +193,21 @@ public partial class CharacterEmbeddedPage : Control
         if(WindowId=="presets")
             foreach(var control in CharacterDetailsSkin.Tree(_body).OfType<Control>())
             {
-                if(control is Button button && button.GetThemeStylebox("normal") is StyleBoxFlat flat)
+                if(control is Button button && button.GetThemeStylebox(HotNames.Normal) is StyleBoxFlat flat)
                 {
                     bool selected=flat.BorderWidthTop>=2;ClassicReportDesign.StyleButton(button,button.ToggleMode);
                     if(button.ToggleMode) button.SetPressedNoSignal(selected);
                 }
-                if(control.HasMeta("classic_fixed_rect"))
+                if(control.HasMeta(HotNames.ClassicFixedRect))
                 {
-                    var rect=control.GetMeta("classic_fixed_rect").AsRect2();control.CustomMinimumSize=Vector2.Zero;control.Position=rect.Position;control.Size=rect.Size;
+                    var rect=control.GetMeta(HotNames.ClassicFixedRect).AsRect2();control.CustomMinimumSize=Vector2.Zero;control.Position=rect.Position;control.Size=rect.Size;
                 }
             }
         foreach(var control in _moved)
         {
-            if(control.HasMeta("embedded_rect"))
+            if(control.HasMeta(HotNames.EmbeddedRect))
             {
-                var rect=control.GetMeta("embedded_rect").AsRect2();control.Position=rect.Position;
+                var rect=control.GetMeta(HotNames.EmbeddedRect).AsRect2();control.Position=rect.Position;
                 control.CustomMinimumSize=Vector2.Zero;control.Size=rect.Size;
             }
         }
@@ -254,4 +254,12 @@ public partial class TitleRowRule : ClassicReportSurface
     public TitleRowRule(Control row):base(true) { _row=row;ShownOnly.Gate(this,Sync); }
     public override void _Process(double delta)=>Sync();
     private void Sync() { Position=new Vector2(0,_row.Size.Y-2);Size=new Vector2(_row.Size.X,2); }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicFixedRect = "classic_fixed_rect";
+    internal static readonly StringName EmbeddedRect = "embedded_rect";
+    internal static readonly StringName Normal = "normal";
 }

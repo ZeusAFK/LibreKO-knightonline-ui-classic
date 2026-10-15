@@ -454,6 +454,12 @@ public partial class ClassicStoreMykoCard : Control
     {
         var cell = ClassicStoreMykoLayout.CardIconCell;
         if (Plugin.Kit.Local.Texture(_cell.Texture!) is { } texture) DrawTextureRectRegion(texture, cell, new Rect2(_cell.SrcX, _cell.SrcY, _cell.SrcW, _cell.SrcH));
-        if (_card.GetMeta("pus_card_active", false).AsBool()) DrawRect(new Rect2(Vector2.One, Size - 2 * Vector2.One), new Color("cfb575"), false, 1);
+        if (_card.GetMeta(HotNames.PusCardActive, false).AsBool()) DrawRect(new Rect2(Vector2.One, Size - 2 * Vector2.One), new Color("cfb575"), false, 1);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName PusCardActive = "pus_card_active";
 }

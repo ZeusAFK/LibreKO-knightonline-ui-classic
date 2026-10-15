@@ -184,10 +184,10 @@ public static class NativeTrade
         if (!amountShown) state.Gold = false;
 
         if (!tick || panel.IsVisibleInTree()) Mirror(world, panel, state, amountShown);
-        else Native.Get<CanvasLayer>(world, "_exAmountLayer")?.SetMeta("ex_gold", state.Gold);
+        else Native.Get<CanvasLayer>(world, "_exAmountLayer")?.SetMeta(HotNames.ExGold, state.Gold);
 
         bool pending = Native.Get<bool>(world, "_exRequestPending");
-        if (state.Request is { } request && panel.HasMeta("classic_exchange"))
+        if (state.Request is { } request && panel.HasMeta(HotNames.ClassicExchange))
         {
             if (pending && !request.Visible)
             {
@@ -202,16 +202,16 @@ public static class NativeTrade
 
     private static void Mirror(World world, HudWindow panel, State state, bool amountShown)
     {
-        panel.SetMeta("ex_locked", Native.Get<bool>(world, "_exConfirmedByMe"));
-        panel.SetMeta("ex_partner_locked", Native.Get<bool>(world, "_exConfirmedByPartner"));
-        panel.SetMeta("ex_pending", Native.Get<bool>(world, "_exAddInFlight"));
-        panel.SetMeta("ex_modal", amountShown || state.FinalPending);
-        panel.SetMeta("ex_wallet", Net.I.Sheet.Gold);
-        panel.SetMeta("ex_my_gold", Native.Get<int>(world, "_exMyGoldOffer"));
-        panel.SetMeta("ex_other_gold", Native.Get<int>(world, "_exTheirGoldOffer"));
-        panel.SetMeta("ex_partner", Native.Get<string>(world, "_exPartnerName") ?? "Player");
-        panel.SetMeta("ex_self", Net.I.LastEnter.Name ?? "You");
-        Native.Get<CanvasLayer>(world, "_exAmountLayer")?.SetMeta("ex_gold", state.Gold);
+        panel.SetMeta(HotNames.ExLocked, Native.Get<bool>(world, "_exConfirmedByMe"));
+        panel.SetMeta(HotNames.ExPartnerLocked, Native.Get<bool>(world, "_exConfirmedByPartner"));
+        panel.SetMeta(HotNames.ExPending, Native.Get<bool>(world, "_exAddInFlight"));
+        panel.SetMeta(HotNames.ExModal, amountShown || state.FinalPending);
+        panel.SetMeta(HotNames.ExWallet, Net.I.Sheet.Gold);
+        panel.SetMeta(HotNames.ExMyGold, Native.Get<int>(world, "_exMyGoldOffer"));
+        panel.SetMeta(HotNames.ExOtherGold, Native.Get<int>(world, "_exTheirGoldOffer"));
+        panel.SetMeta(HotNames.ExPartner, Native.Get<string>(world, "_exPartnerName") ?? "Player");
+        panel.SetMeta(HotNames.ExSelf, Net.I.LastEnter.Name ?? "You");
+        Native.Get<CanvasLayer>(world, "_exAmountLayer")?.SetMeta(HotNames.ExGold, state.Gold);
 
         if (Native.Get<Label>(world, "_exStatus") is { } status)
         {
@@ -365,4 +365,20 @@ public partial class NativeTradeSync : Node
     {
         if (_world != null && IsInstanceValid(_world)) NativeTrade.Sync(_world, tick: true);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicExchange = "classic_exchange";
+    internal static readonly StringName ExGold = "ex_gold";
+    internal static readonly StringName ExLocked = "ex_locked";
+    internal static readonly StringName ExModal = "ex_modal";
+    internal static readonly StringName ExMyGold = "ex_my_gold";
+    internal static readonly StringName ExOtherGold = "ex_other_gold";
+    internal static readonly StringName ExPartner = "ex_partner";
+    internal static readonly StringName ExPartnerLocked = "ex_partner_locked";
+    internal static readonly StringName ExPending = "ex_pending";
+    internal static readonly StringName ExSelf = "ex_self";
+    internal static readonly StringName ExWallet = "ex_wallet";
 }

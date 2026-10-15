@@ -270,7 +270,7 @@ public static class NativeCape
         if (!_states.TryGetValue(world, out var state) || Net.I is not { } net) return;
         int choice = Native.Get<int>(world, "_capeChoice");
         if (Native.Get<Button>(world, "_capeBuyBtn") is { } buy)
-            buy.Text = state.Window.HasMeta("classic_cape") ? (choice >= 0 ? "Buy" : "Apply") : (choice >= 0 ? "Buy cape" : "Apply dye");
+            buy.Text = state.Window.HasMeta(HotNames.ClassicCape) ? (choice >= 0 ? "Buy" : "Apply") : (choice >= 0 ? "Buy cape" : "Apply dye");
         if (!Native.Get<bool>(world, "_capeShown")) return;
         int previewId = choice >= 0 ? choice : Native.Get<int>(world, "_capeCurrent");
         var (r, g, b) = Dye(world);
@@ -543,4 +543,10 @@ public static class NativeCape
         Dismiss(state);
         Native.Set(world, "_capeChoice", NoCape);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicCape = "classic_cape";
 }

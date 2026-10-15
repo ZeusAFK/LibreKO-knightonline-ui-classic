@@ -50,9 +50,9 @@ public partial class ClassicExchangeAmountPanel : Control
     public Button Confirm=null!,Cancel=null!;
     public override void _Process(double delta) {
         if(IsVisibleInTree()) {
-            string error=Layer.HasMeta("ex_amount_error")?Layer.GetMeta("ex_amount_error").AsString():"";
-            Message.Text=error.Length>0?error:Layer.HasMeta("ex_gold") && Layer.GetMeta("ex_gold").AsBool()?"Please enter the amount of coins.":"Please enter the quantity of the item.";
-            Message.AddThemeColorOverride("font_color",error.Length>0?new Color("ff6a6a"):new Color("c0c0c0"));
+            string error=Layer.HasMeta(HotNames.ExAmountError)?Layer.GetMeta(HotNames.ExAmountError).AsString():"";
+            Message.Text=error.Length>0?error:Layer.HasMeta(HotNames.ExGold) && Layer.GetMeta(HotNames.ExGold).AsBool()?"Please enter the amount of coins.":"Please enter the quantity of the item.";
+            Message.AddThemeColorOverride(HotNames.FontColor,error.Length>0?new Color("ff6a6a"):new Color("c0c0c0"));
             Position=(Shop.GetGlobalRect().GetCenter()-Size/2).Round().Clamp(Vector2.Zero,(GetViewportRect().Size-Size).Max(Vector2.Zero));
         }
     }
@@ -63,4 +63,12 @@ public partial class ClassicExchangeAmountPanel : Control
         else return;
         GetViewport().SetInputAsHandled();
     }
-}
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ExAmountError = "ex_amount_error";
+    internal static readonly StringName ExGold = "ex_gold";
+    internal static readonly StringName FontColor = "font_color";
+}

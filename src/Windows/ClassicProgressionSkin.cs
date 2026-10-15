@@ -282,24 +282,24 @@ public partial class ClassicProgressionPanel : Control
 
     private void SyncAchievements()
     {
-        foreach (var tab in _native.OfType<Button>().Where(b => GodotObject.IsInstanceValid(b) && b.HasMeta("progression_tab")))
+        foreach (var tab in _native.OfType<Button>().Where(b => GodotObject.IsInstanceValid(b) && b.HasMeta(HotNames.ProgressionTab)))
         {
-            bool selected = tab.GetMeta("progression_selected", false).AsBool();
-            int waiting = tab.GetMeta("progression_waiting", 0).AsInt32();
+            bool selected = tab.GetMeta(HotNames.ProgressionSelected, false).AsBool();
+            int waiting = tab.GetMeta(HotNames.ProgressionWaiting, 0).AsInt32();
             // The native refresh replaces the tab plates whenever counts change.
-            if (tab.GetThemeStylebox("normal") is StyleBoxFlat || tab.GetMeta("progression_tab_selected", !selected).AsBool() != selected
-                || tab.GetMeta("progression_tab_waiting", -1).AsInt32() != waiting)
+            if (tab.GetThemeStylebox(HotNames.Normal) is StyleBoxFlat || tab.GetMeta(HotNames.ProgressionTabSelected, !selected).AsBool() != selected
+                || tab.GetMeta(HotNames.ProgressionTabWaiting, -1).AsInt32() != waiting)
             {
                 StyleTab(tab, selected, waiting > 0 ? new Color(ClassicDesign.Karus ? "7a160c" : "ffe094") : null);
-                tab.SetMeta("progression_tab_waiting", waiting);
+                tab.SetMeta(HotNames.ProgressionTabWaiting, waiting);
             }
         }
         if (Find<VBoxContainer>("ach_list") is { } list)
             foreach (var child in list.GetChildren().OfType<Control>())
             {
-                if (child.HasMeta("classic_progression_row")) continue;
-                if (child is Label empty) { Text(empty, 13, ClassicDesign.Muted); empty.SetMeta("classic_progression_row", true); }
-                else if (child is PanelContainer row && row.HasMeta("ach_row")) StyleAchievementRow(row);
+                if (child.HasMeta(HotNames.ClassicProgressionRow)) continue;
+                if (child is Label empty) { Text(empty, 13, ClassicDesign.Muted); empty.SetMeta(HotNames.ClassicProgressionRow, true); }
+                else if (child is PanelContainer row && row.HasMeta(HotNames.AchRow)) StyleAchievementRow(row);
             }
         if (Find<VBoxContainer>("ach_categories") is { } categories)
             foreach (var row in categories.GetChildren().OfType<PanelContainer>()) StyleCategoryRow(row);
@@ -465,7 +465,7 @@ public partial class ClassicProgressionPanel : Control
         foreach (var name in new[] { "attendance_daily", "attendance_bonus" })
             if (Find<GridContainer>(name) is { } grid)
                 foreach (var cell in grid.GetChildren().OfType<VBoxContainer>())
-                    if (!cell.HasMeta("classic_progression_cell") && cell.HasMeta("attendance_state")) StyleAttendanceCell(cell, name == "attendance_bonus");
+                    if (!cell.HasMeta(HotNames.ClassicProgressionCell) && cell.HasMeta(HotNames.AttendanceState)) StyleAttendanceCell(cell, name == "attendance_bonus");
     }
 
     private static void StyleAttendanceCell(VBoxContainer cell, bool bonus)
@@ -575,12 +575,12 @@ public partial class ClassicProgressionPanel : Control
                 if (Find<Label>(row + "_rank") is not { } place) continue;
                 int.TryParse(place.Text, out int at);
                 var ink = at is > 0 and <= 3 ? Gold : ClassicReportDesign.Value;
-                if (place.GetThemeColor("font_color") != ink) place.AddThemeColorOverride("font_color", ink);
+                if (place.GetThemeColor(HotNames.FontColor) != ink) place.AddThemeColorOverride(HotNames.FontColor, ink);
                 foreach (var cell in new[] { "_name", "_clan" })
                     if (Find<Label>(row + cell) is { } label && label.TooltipText != label.Text) label.TooltipText = label.Text;
                 // The player's own row reads in the gold of the selected Character-window entries.
-                if (i == ClassicProgressionLayout.Rank.Rows && Find<Label>(row + "_name") is { } self && self.GetThemeColor("font_color") != Gold)
-                    self.AddThemeColorOverride("font_color", Gold);
+                if (i == ClassicProgressionLayout.Rank.Rows && Find<Label>(row + "_name") is { } self && self.GetThemeColor(HotNames.FontColor) != Gold)
+                    self.AddThemeColorOverride(HotNames.FontColor, Gold);
             }
     }
 
@@ -710,7 +710,7 @@ public partial class ClassicProgressionPanel : Control
             case "genie":
                 // The native status keeps its text; the Classic ink follows whether the reward is waiting.
                 if (Find<Label>("genie_daily_status") is { } status && Find<Button>("genie_claim") is { } claim)
-                    status.AddThemeColorOverride("font_color", claim.Disabled ? ClassicDesign.Muted : Gold);
+                    status.AddThemeColorOverride(HotNames.FontColor, claim.Disabled ? ClassicDesign.Muted : Gold);
                 break;
         }
     }
@@ -723,4 +723,20 @@ public partial class ClassicProgressionMark : Control
     public ClassicProgressionMark(Control owner) { _owner = owner; Name = "claim_mark"; MouseFilter = MouseFilterEnum.Ignore; }
     public override void _Process(double delta) { if (Size != _owner.Size) { Position = Vector2.Zero; Size = _owner.Size; QueueRedraw(); } }
     public override void _Draw() => DrawRect(new Rect2(Vector2.One * 2, Size - Vector2.One * 4), new Color("ffe094"), false, 1);
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName AchRow = "ach_row";
+    internal static readonly StringName AttendanceState = "attendance_state";
+    internal static readonly StringName ClassicProgressionCell = "classic_progression_cell";
+    internal static readonly StringName ClassicProgressionRow = "classic_progression_row";
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName Normal = "normal";
+    internal static readonly StringName ProgressionSelected = "progression_selected";
+    internal static readonly StringName ProgressionTab = "progression_tab";
+    internal static readonly StringName ProgressionTabSelected = "progression_tab_selected";
+    internal static readonly StringName ProgressionTabWaiting = "progression_tab_waiting";
+    internal static readonly StringName ProgressionWaiting = "progression_waiting";
 }

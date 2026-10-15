@@ -25,8 +25,9 @@ public static class ClassicIdentitySkin
 public partial class ClassicIdentityPanel : Control
 {
     public HudWindow Window { get; }
-    private readonly Control[] _native;
+    private readonly ControlIndex _native;
     private readonly LayoutNode _art;
+    private readonly Dictionary<string, LayoutNode> _fields = new();
     private readonly Label _title;
     private ScrollContainer? _forms;
     private ClassicIdentityScrollRail? _formsRail;
@@ -39,7 +40,7 @@ public partial class ClassicIdentityPanel : Control
         Size = CustomMinimumSize = ClassicIdentityLayout.Size(window.Id);
         TextureFilter = TextureFilterEnum.Nearest;
         _art = Plugin.Kit.Layout(ClassicIdentityLayout.Artwork(window.Id));
-        _native = CharacterDetailsSkin.Tree(body).OfType<Control>().ToArray();
+        _native = new ControlIndex(CharacterDetailsSkin.Tree(body).OfType<Control>().ToArray(), live: true);
         var bar = window.Header!.GetChildren().OfType<HBoxContainer>().Single();
         _title = bar.GetChildren().OfType<Label>().Last();
         foreach (var child in window.GetChildren().OfType<Control>()) child.Visible = false;
@@ -61,7 +62,9 @@ public partial class ClassicIdentityPanel : Control
         }
         ShownOnly.Gate(this, Sync);
     }
-    private T Native<T>(string name) where T : Control => _native.OfType<T>().Single(c => GodotObject.IsInstanceValid(c) && !c.IsQueuedForDeletion() && c.Name == name);
+    private T Native<T>(string name) where T : Control => _native.Single<T>(name);
+    /// <summary>An artwork field, found once (a lookup walks the whole layout).</summary>
+    private LayoutNode Field(string id) => _fields.TryGetValue(id, out var node) ? node : _fields[id] = _art.Find(id)!;
     private static void Font(Control control, int size = 13, bool bold = false)
     {
         control.AddThemeFontOverride("font", bold ? Plugin.Kit.Bold : Plugin.Kit.Regular);
@@ -166,7 +169,7 @@ public partial class ClassicIdentityPanel : Control
     private Rect2 Rows(string field, float reserved = 0)
     {
         var list = ClassicIdentityLayout.Field(Window.Id, field);
-        var bar = _art.Find(field)!.Children.First(n => n.Type == "scrollbar");
+        var bar = Field(field).Children.First(n => n.Type == "scrollbar");
         float height = Mathf.Floor((list.Size.Y - reserved) / DisguiseRow) * DisguiseRow;
         return new Rect2(list.Position, new Vector2(bar.X - _art.X - list.Position.X, height));
     }
@@ -237,15 +240,18 @@ public partial class ClassicIdentityPanel : Control
         bool note = _note.Text.Length > 0; _note.Visible = note;
         _note.TooltipText = _note.Text;
         var bounds = Rows("list_monster", note ? 44 : 0);
-        _forms.Size = bounds.Size; _forms.SetMeta("identity_expected_rect", bounds);
+        _forms.Size = bounds.Size; _forms.SetMeta(HotNames.IdentityExpectedRect, bounds);
         if (_formsRail != null)
         {
-            var source = _art.Find("list_monster")!.Children.First(n => n.Type == "scrollbar");
+            var source = Field("list_monster").Children.First(n => n.Type == "scrollbar");
             _formsRail.Size = new Vector2(source.W, source.H - (note ? 44 : 0));
-            _formsRail.SetMeta("identity_expected_rect", new Rect2(_formsRail.Position, _formsRail.Size));
+            _formsRail.SetMeta(HotNames.IdentityExpectedRect, new Rect2(_formsRail.Position, _formsRail.Size));
         }
         var accept = Native<Button>("disguise_accept");
-        accept.Disabled = !Native<VBoxContainer>("disguise_forms").GetChildren().OfType<Button>().Any(b => !b.IsQueuedForDeletion());
+        var forms = Native<VBoxContainer>("disguise_forms");
+        bool any = false;
+        for (int i = 0; i < forms.GetChildCount() && !any; i++) any = forms.GetChild(i) is Button form && !form.IsQueuedForDeletion();
+        accept.Disabled = !any;
     }
     public override void _UnhandledKeyInput(InputEvent ev)
     {
@@ -341,4 +347,10 @@ public partial class ClassicIdentityScrollRail : Control
         _down.SelfModulate = _down.Disabled ? new Color(1, 1, 1, .7f) : Colors.White;
         _track.QueueRedraw();
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName IdentityExpectedRect = "identity_expected_rect";
 }

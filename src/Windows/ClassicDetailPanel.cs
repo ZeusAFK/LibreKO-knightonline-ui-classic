@@ -192,19 +192,19 @@ public partial class ClassicDetailPanel : Control
                 {
                     window.Position=((GetViewportRect().Size-window.Size)/2).Floor();
                     _centerOnOpen=false;Modulate=Colors.White;
-                    SetMeta("classic_open_frames",_openingFrames);
-                    SetMeta("classic_open_ms",Time.GetTicksMsec()-_openingStarted);
+                    SetMeta(HotNames.ClassicOpenFrames,_openingFrames);
+                    SetMeta(HotNames.ClassicOpenMs,Time.GetTicksMsec()-_openingStarted);
                 }
             }
         }
         // Native refreshes can replace tab style boxes after assigning their live values.
         foreach(var button in CharacterDetailsSkin.Tree(_body).OfType<Button>())
-            if(button is not CheckBox && button.GetThemeStylebox("normal") is StyleBoxFlat flat)
+            if(button is not CheckBox && button.GetThemeStylebox(HotNames.Normal) is StyleBoxFlat flat)
             {
                 bool selected=flat.BorderWidthTop>=2;
                 ClassicReportDesign.StyleButton(button,button.ToggleMode);
                 if(button.ToggleMode) button.SetPressedNoSignal(selected);
-                if(button.ToggleMode && selected) button.AddThemeStyleboxOverride("normal",ClassicDesign.ButtonBox("pressed",true));
+                if(button.ToggleMode && selected) button.AddThemeStyleboxOverride(HotNames.Normal,ClassicDesign.ButtonBox("pressed",true));
             }
     }
     private void UpdateNpcPortrait()
@@ -382,4 +382,12 @@ public partial class ClassicDetailPanel : Control
             }
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicOpenFrames = "classic_open_frames";
+    internal static readonly StringName ClassicOpenMs = "classic_open_ms";
+    internal static readonly StringName Normal = "normal";
 }

@@ -101,9 +101,15 @@ public partial class ClassicPetHatchCellSkin : Control
     public override void _Process(double delta) => Sync();
     private void Sync()
     {
-        if (_cell.GetThemeStylebox("panel") != _frame) _cell.AddThemeStyleboxOverride("panel", _frame);
+        if (_cell.GetThemeStylebox(HotNames.Panel) != _frame) _cell.AddThemeStyleboxOverride(HotNames.Panel, _frame);
         bool selected = _cell.Look == SlotLook.Selected; if (selected == _selected) return; _selected = selected; QueueRedraw();
     }
     public override void _Draw()
     { if (_selected) DrawRect(new Rect2(Vector2.One * .5f, Size - Vector2.One), new Color("ead292"), false, 1); }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName Panel = "panel";
 }

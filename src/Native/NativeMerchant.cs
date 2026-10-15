@@ -131,14 +131,14 @@ public static class NativeMerchant
     {
         if (Native.Get<CanvasLayer>(world, "_amountLayer") is not { } layer) return;
         // The Classic prompt moves and hides the price editor itself; the fixed price label is untouched.
-        layer.SetMeta("merchant_price_editable", Native.Get<Control>(world, "_amountPriceFixed")?.Visible == false);
-        layer.SetMeta("merchant_quantity", Native.Get<Control>(world, "_amountCountRow")?.Visible == true);
-        layer.SetMeta("merchant_market_available", Native.Get<Control>(world, "_amountMarketRow")?.Visible == true);
-        layer.SetMeta("merchant_market_open", Native.Get<bool>(world, "_marketPriceShown"));
+        layer.SetMeta(HotNames.MerchantPriceEditable, Native.Get<Control>(world, "_amountPriceFixed")?.Visible == false);
+        layer.SetMeta(HotNames.MerchantQuantity, Native.Get<Control>(world, "_amountCountRow")?.Visible == true);
+        layer.SetMeta(HotNames.MerchantMarketAvailable, Native.Get<Control>(world, "_amountMarketRow")?.Visible == true);
+        layer.SetMeta(HotNames.MerchantMarketOpen, Native.Get<bool>(world, "_marketPriceShown"));
         // Opening or closing price history changes which keys the prompt may use in the same frame.
-        if (Native.Get<HudWindow>(world, "_marketPricePanel") is { } market && !market.HasMeta("native_merchant_market"))
+        if (Native.Get<HudWindow>(world, "_marketPricePanel") is { } market && !market.HasMeta(HotNames.NativeMerchantMarket))
         {
-            market.SetMeta("native_merchant_market", true);
+            market.SetMeta(HotNames.NativeMerchantMarket, true);
             market.VisibilityChanged += () => SyncAmount(world);
         }
     }
@@ -403,4 +403,14 @@ public partial class NativeMerchantSync : Node
     }
 
     public override void _Process(double delta) => _sync?.Invoke();
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName MerchantMarketAvailable = "merchant_market_available";
+    internal static readonly StringName MerchantMarketOpen = "merchant_market_open";
+    internal static readonly StringName MerchantPriceEditable = "merchant_price_editable";
+    internal static readonly StringName MerchantQuantity = "merchant_quantity";
+    internal static readonly StringName NativeMerchantMarket = "native_merchant_market";
 }

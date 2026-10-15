@@ -34,6 +34,12 @@ public partial class ClassicTournamentPanel : ClassicEventPanel
         _values[1].Text = After(_native[1].Text);
         _values[2].Text = NativeEventWindows.Tournament(World).PendingSince != 0 ? "Please wait…" : _native[2].Text;
         bool registered = NativeApi.Get<bool>(World, "_tournamentRegistered");
-        _values[2].AddThemeColorOverride("font_color", NativeEventWindows.Tournament(World).PendingSince != 0 ? Amount : registered ? Ready : Muted);
+        _values[2].AddThemeColorOverride(HotNames.FontColor, NativeEventWindows.Tournament(World).PendingSince != 0 ? Amount : registered ? Ready : Muted);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
 }

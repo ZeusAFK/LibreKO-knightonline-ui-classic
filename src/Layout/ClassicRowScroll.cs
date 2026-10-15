@@ -47,9 +47,9 @@ public partial class ClassicRowScroll : Node
         if (_gutter != null)
         {
             int margin = (bar.Visible ? Mathf.CeilToInt(bar.Size.X) : 0) + _gap;
-            if (_gutter.GetThemeConstant("margin_right") != margin) _gutter.AddThemeConstantOverride("margin_right", margin);
+            if (_gutter.GetThemeConstant(HotNames.MarginRight) != margin) _gutter.AddThemeConstantOverride(HotNames.MarginRight, margin);
         }
-        float gap = rows?.GetThemeConstant("separation") ?? 0;
+        float gap = rows?.GetThemeConstant(HotNames.Separation) ?? 0;
         var first = rows?.GetChildren().OfType<Control>().FirstOrDefault(c => c.Visible && c is not Label && c.Size.Y > 0);
         Pitch = first != null ? first.Size.Y + gap : _fallback;
         float height = Mathf.Max(Pitch - gap, Mathf.Floor((_limit + gap) / Pitch) * Pitch - gap);
@@ -58,4 +58,11 @@ public partial class ClassicRowScroll : Node
         double snapped = Math.Round(bar.Value / Pitch) * Pitch;
         if (!Input.IsMouseButtonPressed(MouseButton.Left) && Math.Abs(bar.Value - snapped) > .01) bar.Value = snapped;
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName MarginRight = "margin_right";
+    internal static readonly StringName Separation = "separation";
 }

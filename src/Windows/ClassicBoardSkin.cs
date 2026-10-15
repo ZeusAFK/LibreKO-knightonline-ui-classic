@@ -268,19 +268,19 @@ public partial class ClassicBoardPanel : Control
         if (Rows == null) return;
         foreach (var child in Rows.GetChildren().OfType<Control>())
         {
-            if (child is Label empty && !empty.HasMeta("board_row"))
+            if (child is Label empty && !empty.HasMeta(HotNames.BoardRow))
             {
                 // The client's empty-list line is centred in the empty table.
-                empty.SetMeta("board_row", true);
+                empty.SetMeta(HotNames.BoardRow, true);
                 Style(empty, true, BodySize, Muted);
                 empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center;
                 empty.CustomMinimumSize = new Vector2(ClassicBoardLayout.RowWidth, _rowsRect.Size.Y);
-                empty.AddThemeConstantOverride("outline_size", 0);
+                empty.AddThemeConstantOverride(HotNames.OutlineSize, 0);
             }
-            if (child is not PanelContainer row || row.HasMeta("board_row") || row.IsQueuedForDeletion()) continue;
-            row.SetMeta("board_row", true);
+            if (child is not PanelContainer row || row.HasMeta(HotNames.BoardRow) || row.IsQueuedForDeletion()) continue;
+            row.SetMeta(HotNames.BoardRow, true);
             row.MouseFilter = MouseFilterEnum.Pass;
-            row.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+            row.AddThemeStyleboxOverride(HotNames.Panel, new StyleBoxEmpty());
             row.CustomMinimumSize = new Vector2(ClassicBoardLayout.RowWidth, ClassicBoardLayout.RowHeight);
             var inner = row.GetChildren().OfType<Control>().FirstOrDefault();
             if (inner == null) continue;
@@ -295,7 +295,7 @@ public partial class ClassicBoardPanel : Control
                 "report" => new[] { labels.ElementAtOrDefault(0), labels.ElementAtOrDefault(1) },
                 _ => labels.Take(3).ToArray(),
             };
-            if (Window.Id == "report" && labels.Length > 2) row.SetMeta("board_detail", labels[2].Text);
+            if (Window.Id == "report" && labels.Length > 2) row.SetMeta(HotNames.BoardDetail, labels[2].Text);
             if (Window.Id == "bounty" && order[2] is { } poster && poster.Text.StartsWith("by ", StringComparison.Ordinal)) poster.Text = poster.Text[3..];
             string me = LibreKO.Network.Net.I?.LastEnter.Name ?? "";
             bool mine = Window.Id == "fishinghall" && me.Length > 0 && order.ElementAtOrDefault(1)?.Text == me;
@@ -315,11 +315,11 @@ public partial class ClassicBoardPanel : Control
                 Style(cell, true, BodySize, color);
                 cell.HorizontalAlignment = column.Align; cell.VerticalAlignment = VerticalAlignment.Center;
                 var inset = new StyleBoxEmpty { ContentMarginLeft = column.Align == HorizontalAlignment.Left ? 3 : 0, ContentMarginRight = column.Align == HorizontalAlignment.Right ? 4 : 0 };
-                cell.AddThemeStyleboxOverride("normal", inset);
+                cell.AddThemeStyleboxOverride(HotNames.Normal, inset);
                 cell.AutowrapMode = TextServer.AutowrapMode.Off; cell.ClipText = true;
                 cell.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
                 cell.TooltipText = cell.Text; cell.MouseFilter = MouseFilterEnum.Pass;
-                cell.SetMeta("board_cell", i);
+                cell.SetMeta(HotNames.BoardCell, i);
             }
             if (Window.Id != "fishinghall")
                 row.GuiInput += ev =>
@@ -368,7 +368,7 @@ public partial class ClassicBoardPanel : Control
             case "report":
                 // The native gate and status colours follow the sheriff state; the gate keeps the Classic palette.
                 bool eligible = !Find<Button>("report_file").Disabled;
-                Find<Label>("report_gate").AddThemeColorOverride("font_color", eligible ? Highlight : Muted);
+                Find<Label>("report_gate").AddThemeColorOverride(HotNames.FontColor, eligible ? Highlight : Muted);
                 _voteYes!.Disabled = RowButton("Vote Yes") is not { Disabled: false };
                 _voteNo!.Disabled = RowButton("Vote No") is not { Disabled: false };
                 var status = Find<Label>("report_status"); status.TooltipText = status.Text;
@@ -389,7 +389,7 @@ public partial class ClassicBoardPanel : Control
                 break;
             case "forces":
                 bool joined = Find<Button>("forces_join").Disabled;
-                Find<Label>("forces_state").AddThemeColorOverride("font_color", joined ? Highlight : Muted);
+                Find<Label>("forces_state").AddThemeColorOverride(HotNames.FontColor, joined ? Highlight : Muted);
                 var points = Find<Label>("forces_points");
                 const string prefix = "Force Points: ";
                 if (points.Text.StartsWith(prefix, StringComparison.Ordinal)) points.Text = points.Text[prefix.Length..];
@@ -607,4 +607,16 @@ public partial class ClassicBoardGauge : Control
             if (dst.Size.X >= 1) DrawTextureRectRegion(Plugin.Kit.Texture(part.Texture!), dst, src);
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName BoardCell = "board_cell";
+    internal static readonly StringName BoardDetail = "board_detail";
+    internal static readonly StringName BoardRow = "board_row";
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName Normal = "normal";
+    internal static readonly StringName OutlineSize = "outline_size";
+    internal static readonly StringName Panel = "panel";
 }

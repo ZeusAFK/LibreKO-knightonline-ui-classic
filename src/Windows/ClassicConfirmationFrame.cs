@@ -28,7 +28,9 @@ public partial class ClassicConfirmationFrame : Control
     private void Sync()
     {
         Position=Vector2.Zero;Size=(Vector2)_dialog.Size;_title.Text=_dialog.Title;_title.Size=new Vector2(Size.X-60,36);
-        var surface=_frame.Where(n=>n.Id=="surface").First().Control!;surface.Size=new Vector2(Size.X,Math.Max(1,Size.Y-_top));
-        var rails=_frame.Where(n=>n.Id=="header_rails").First().Control!;rails.Size=new Vector2(Size.X,42);
+        // The two frame parts are found once; the frame never rebuilds them.
+        _surface??=_frame.Where(n=>n.Id=="surface").First().Control!;_surface.Size=new Vector2(Size.X,Math.Max(1,Size.Y-_top));
+        _rails??=_frame.Where(n=>n.Id=="header_rails").First().Control!;_rails.Size=new Vector2(Size.X,42);
     }
+    private Control? _surface,_rails;
 }

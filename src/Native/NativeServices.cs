@@ -321,15 +321,15 @@ public sealed class NativeRepair
     {
         if (!Classic || Inventory is not { } inventory) return;
         bool shown = Shown, pending = InFlight;
-        inventory.SetMeta("classic_repair_mode", shown);
-        inventory.SetMeta("classic_repair_pending", pending);
-        if (!inventory.HasMeta("classic_repair_take"))
+        inventory.SetMeta(HotNames.ClassicRepairMode, shown);
+        inventory.SetMeta(HotNames.ClassicRepairPending, pending);
+        if (!inventory.HasMeta(HotNames.ClassicRepairTake))
         {
             // Closing the inventory ends the repair mode, as the retail hammer belongs to it.
             inventory.VisibilityChanged += () => { if (!inventory.Visible && Shown) Close(); };
-            inventory.SetMeta("classic_repair_close", Callable.From(Close));
-            inventory.SetMeta("classic_repair_all", Callable.From(RepairAll));
-            inventory.SetMeta("classic_repair_take", Callable.From((int slot) => Take(slot)));
+            inventory.SetMeta(HotNames.ClassicRepairClose, Callable.From(Close));
+            inventory.SetMeta(HotNames.ClassicRepairAll, Callable.From(RepairAll));
+            inventory.SetMeta(HotNames.ClassicRepairTake, Callable.From((int slot) => Take(slot)));
         }
         if (shown == _shown && pending == _pending) return;
         _shown = shown;
@@ -670,4 +670,14 @@ public static class NativeBagCells
         });
         NativeServices.KeepInventoryClosed(window, world);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicRepairAll = "classic_repair_all";
+    internal static readonly StringName ClassicRepairClose = "classic_repair_close";
+    internal static readonly StringName ClassicRepairMode = "classic_repair_mode";
+    internal static readonly StringName ClassicRepairPending = "classic_repair_pending";
+    internal static readonly StringName ClassicRepairTake = "classic_repair_take";
 }

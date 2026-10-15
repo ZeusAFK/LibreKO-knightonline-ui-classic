@@ -43,10 +43,13 @@ public partial class ClassicExchangePanel : Control
     private readonly Control _myGrid=new(), _otherGrid=new();
     private readonly ClassicExchangeCell[] _bagCells;
     private string _shown="";
-    public bool Locked => Window.HasMeta("ex_locked") && Window.GetMeta("ex_locked").AsBool();
-    public bool PartnerLocked => Window.HasMeta("ex_partner_locked") && Window.GetMeta("ex_partner_locked").AsBool();
+    private static readonly StringName LockedMeta="ex_locked",PartnerLockedMeta="ex_partner_locked",PendingMeta="ex_pending",ModalMeta="ex_modal";
+    private static readonly StringName SelfMeta="ex_self",PartnerMeta="ex_partner",MyGoldMeta="ex_my_gold",OtherGoldMeta="ex_other_gold",WalletMeta="ex_wallet";
+    private bool Flag(StringName meta)=>Window.HasMeta(meta) && Window.GetMeta(meta).AsBool();
+    public bool Locked => Flag(LockedMeta);
+    public bool PartnerLocked => Flag(PartnerLockedMeta);
     public bool OfferBlocked => Blocked || PartnerLocked;
-    public bool Blocked => Locked || Window.HasMeta("ex_pending") && Window.GetMeta("ex_pending").AsBool() || Window.HasMeta("ex_modal") && Window.GetMeta("ex_modal").AsBool();
+    public bool Blocked => Locked || Flag(PendingMeta) || Flag(ModalMeta);
     public ClassicExchangePanel(HudWindow window,Control body,Control grip,Button close)
     {
         Window=window; Name="classic_exchange"; CustomMinimumSize=ClassicExchangeLayout.Size; Size=CustomMinimumSize;
@@ -160,7 +163,7 @@ public partial class ClassicExchangePanel : Control
     public override void _Input(InputEvent ev)
     {
         if(IsVisibleInTree() && ev is InputEventKey {Pressed:true} key && key.Keycode is Key.Enter or Key.KpEnter
-            && !(Window.HasMeta("ex_modal") && Window.GetMeta("ex_modal").AsBool()))
+            && !Flag(ModalMeta))
             GetViewport().SetInputAsHandled();
     }
     public override void _Process(double delta)=>Sync();
@@ -168,10 +171,10 @@ public partial class ClassicExchangePanel : Control
     private void Sync()
     {
         if(Shown()!=_shown) Refresh();
-        string Meta(string name,string fallback)=>Window.HasMeta(name)?Window.GetMeta(name).AsString():fallback;
-        string Money(string key)=>Window.HasMeta(key)?Window.GetMeta(key).AsInt64().ToString("n0"):"0";
-        _myName.Text=Meta("ex_self","You");_theirName.Text=Meta("ex_partner","Player");
-        _myGold.Text=Money("ex_my_gold");_theirGold.Text=Money("ex_other_gold");_wallet.Text=Money("ex_wallet");
+        string Meta(StringName name,string fallback)=>Window.HasMeta(name)?Window.GetMeta(name).AsString():fallback;
+        string Money(StringName key)=>Window.HasMeta(key)?Window.GetMeta(key).AsInt64().ToString("n0"):"0";
+        _myName.Text=Meta(SelfMeta,"You");_theirName.Text=Meta(PartnerMeta,"Player");
+        _myGold.Text=Money(MyGoldMeta);_theirGold.Text=Money(OtherGoldMeta);_wallet.Text=Money(WalletMeta);
         _confirm.Disabled=Blocked;_confirm.Text=Locked?"Confirmed":"Trade";
         bool other=PartnerLocked;_otherConfirm.Disabled=other;_otherConfirm.Text=other?"Confirmed":"Trade";
         _gold.Disabled=OfferBlocked;

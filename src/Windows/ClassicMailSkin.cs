@@ -250,8 +250,11 @@ public partial class ClassicMailPanel : Control
     {
         // Native responses rebuild rows before deferred styling; restore fixed viewports after their minimum sizes settle.
         foreach (var (scroll, rect) in _fixedScrolls) { scroll.CustomMinimumSize = Vector2.Zero; scroll.Size = rect.Size; }
-        foreach (var label in _native.OfType<Label>().Where(l => GodotObject.IsInstanceValid(l) && l.Name.ToString() is "mail_status" or "mail_compose_status" or "mail_read_subject" or "mail_read_meta")) label.TooltipText = label.Text;
+        // The labels whose full text shows on hover, found once (reading Node.Name allocates a Godot wrapper).
+        _tipLabels ??= _native.OfType<Label>().Where(l => GodotObject.IsInstanceValid(l) && l.Name.ToString() is "mail_status" or "mail_compose_status" or "mail_read_subject" or "mail_read_meta").ToArray();
+        foreach (var label in _tipLabels) if (GodotObject.IsInstanceValid(label)) label.TooltipText = label.Text;
     }
+    private Label[]? _tipLabels;
     public override void _Draw()
     {
         foreach (var section in _sections) DrawStyleBox(ClassicDesign.SectionBox(0), section);

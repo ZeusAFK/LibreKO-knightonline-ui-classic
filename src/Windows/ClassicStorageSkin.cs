@@ -137,13 +137,13 @@ public partial class ClassicStoragePanel : Control
         var character = Plugin.Kit.Game.Character;
         _wallet.Text = character.Gold.ToString("n0");
         _weight.Text = character.MaxWeight > 0 ? $"Weight : {character.Weight / 10f:0.0}/{character.MaxWeight / 10f:0.0}" : "";
-        _stored.Text = Window.GetMeta("storage_money", 0).AsInt32().ToString("n0");
+        _stored.Text = Window.GetMeta(HotNames.StorageMoney, 0).AsInt32().ToString("n0");
         // Only real results show; the client's resting hints (neutral tone) stay hidden, as the instructions do.
         _status.Visible = _status.Text.Length > 0 && !_status.Text.StartsWith("Right-click")
-            && !(_status is StatusLabel && _status.GetThemeColor("font_color") == UiTheme.TextDim);
+            && !(_status is StatusLabel && _status.GetThemeColor(HotNames.FontColor) == UiTheme.TextDim);
         _status.TooltipText = _status.Text;
-        if (_status is not StatusLabel) _status.AddThemeColorOverride("font_color", new Color("e9b56a"));
-        int page = Window.GetMeta("storage_page", 0).AsInt32(), pages = Window.GetMeta("storage_pages", _vip ? 4 : 8).AsInt32();
+        if (_status is not StatusLabel) _status.AddThemeColorOverride(HotNames.FontColor, new Color("e9b56a"));
+        int page = Window.GetMeta(HotNames.StoragePage, 0).AsInt32(), pages = Window.GetMeta(HotNames.StoragePages, _vip ? 4 : 8).AsInt32();
         _prev.Disabled = page == 0; _next.Disabled = page >= pages - 1;
     }
     public override void _Draw()
@@ -192,7 +192,7 @@ public partial class ClassicStorageCell : Control
     public override void _Process(double delta) => Sync();
     private void Sync()
     {
-        if (_cell.GetThemeStylebox("panel") != _empty) _cell.AddThemeStyleboxOverride("panel", _empty);
+        if (_cell.GetThemeStylebox(HotNames.Panel) != _empty) _cell.AddThemeStyleboxOverride(HotNames.Panel, _empty);
         Size = _cell.Size;
         if (_look != _cell.Look) { _look = _cell.Look; QueueRedraw(); }
     }
@@ -200,4 +200,14 @@ public partial class ClassicStorageCell : Control
     {
         if (_cell.Look == SlotLook.Selected) DrawRect(new Rect2(Vector2.Zero, Size), new Color("e5c16b"), false, 1);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName Panel = "panel";
+    internal static readonly StringName StorageMoney = "storage_money";
+    internal static readonly StringName StoragePage = "storage_page";
+    internal static readonly StringName StoragePages = "storage_pages";
 }

@@ -423,6 +423,6 @@ public partial class ClassicSlotLook : Node
     {
         if (_view == null || !GodotObject.IsInstanceValid(_view)) return;
         var wanted = _over ? _hover : _normal;
-        if (_view.GetThemeStylebox("panel") != wanted) _view.AddThemeStyleboxOverride("panel", wanted);
+        if (_view.GetThemeStylebox(ThemeNames.Panel) != wanted) _view.AddThemeStyleboxOverride(ThemeNames.Panel, wanted);
     }
 }

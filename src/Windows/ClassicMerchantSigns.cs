@@ -9,18 +9,19 @@ public partial class ClassicMerchantSigns : Control
     private NativeHooks.Hook? _watch;
     public override void _EnterTree()=>_watch=NativeHooks.WatchTree("tree.merchant-signs",NodeAdded);
     public override void _ExitTree(){_watch?.Release();_watch=null;}
-    private void NodeAdded(Node node){if(node is PanelContainer sign && sign.IsInGroup("merchant_signs"))Callable.From(()=>{if(Plugin.Active)Style(sign);}).CallDeferred();}
+    private static readonly StringName SignsGroup="merchant_signs",Styled="classic_sign",Buying="merchant_buying";
+    private void NodeAdded(Node node){if(node is PanelContainer sign && sign.IsInGroup(SignsGroup))Callable.From(()=>{if(Plugin.Active)Style(sign);}).CallDeferred();}
     public override void _Process(double delta)
     {
         _elapsed+=delta;if(_elapsed<0.25)return;_elapsed=0;
-        foreach(var node in GetTree().GetNodesInGroup("merchant_signs"))if(node is PanelContainer sign)Style(sign);
+        foreach(var node in GetTree().GetNodesInGroup(SignsGroup))if(node is PanelContainer sign)Style(sign);
     }
     private static void Style(PanelContainer sign)
     {
-        if(!IsInstanceValid(sign) || sign.HasMeta("classic_sign"))return;
+        if(!IsInstanceValid(sign) || sign.HasMeta(Styled))return;
         var grid=sign.GetChildren().OfType<GridContainer>().FirstOrDefault();if(grid==null)return;
-        sign.SetMeta("classic_sign",true);
-        bool buying=sign.HasMeta("merchant_buying") && sign.GetMeta("merchant_buying").AsBool();
+        sign.SetMeta(Styled,true);
+        bool buying=sign.HasMeta(Buying) && sign.GetMeta(Buying).AsBool();
         var image=Plugin.Kit.Layout("co_tradeitemdisplay_us").Images.First();
         // The imported 220-pixel region includes 40 pixels beyond the four-slot border.
         var style=new StyleBoxTexture {Texture=Plugin.Kit.Texture(image.Texture!),RegionRect=new Rect2(image.SrcX,image.SrcY,180,image.SrcH)};

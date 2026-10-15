@@ -109,7 +109,7 @@ public partial class ClassicVendorSlot : Control
     }
     public void UpdateFrame()
     {
-        if (_owner.GetThemeStylebox("panel") != _panel) _owner.AddThemeStyleboxOverride("panel", _panel);
+        if (_owner.GetThemeStylebox(HotNames.Panel) != _panel) _owner.AddThemeStyleboxOverride(HotNames.Panel, _panel);
         Position = Vector2.Zero; Size = _owner.Size;
         if (_look != _owner.Look) { _look = _owner.Look; QueueRedraw(); }
     }
@@ -230,4 +230,10 @@ public partial class ClassicQuantityPanel : Control
         else return;
         GetViewport().SetInputAsHandled();
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName Panel = "panel";
 }

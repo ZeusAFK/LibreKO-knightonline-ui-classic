@@ -69,11 +69,11 @@ public static class NativeParty
 
     private static void Mirror(World world)
     {
-        if (Native.Get<Button>(world, "_seekRegisterBtn") is { } register) register.SetMeta("seeking", Native.Get<bool>(world, "_seeking"));
+        if (Native.Get<Button>(world, "_seekRegisterBtn") is { } register) register.SetMeta(HotNames.Seeking, Native.Get<bool>(world, "_seeking"));
         if (Native.Get<Label>(world, "_seekPageLbl") is { } page && page.Text.StartsWith("Page ") && page.Text.Contains(" / "))
         {
             int pages = Math.Max(1, (Native.Get<int>(world, "_seekTotal") + ListingsPerPage - 1) / ListingsPerPage);
-            page.SetMeta("page_caption", $"{Native.Get<int>(world, "_seekPage") + 1} / {pages}");
+            page.SetMeta(HotNames.PageCaption, $"{Native.Get<int>(world, "_seekPage") + 1} / {pages}");
         }
     }
 
@@ -115,4 +115,11 @@ public static class NativeParty
             }
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName PageCaption = "page_caption";
+    internal static readonly StringName Seeking = "seeking";
 }

@@ -542,13 +542,13 @@ public sealed class NativeAnvil
 
     private void Sync()
     {
-        Window.SetMeta("anvil_busy", Locked);
-        Window.SetMeta("anvil_compound", Compound);
-        if (Awaiting) Window.RemoveMeta("anvil_scan_success");
+        Window.SetMeta(HotNames.AnvilBusy, Locked);
+        Window.SetMeta(HotNames.AnvilCompound, Compound);
+        if (Awaiting) Window.RemoveMeta(HotNames.AnvilScanSuccess);
         else if (Native.Get<object>(_world, "_upgradePendingResult") is UpgradeResult result)
-            Window.SetMeta("anvil_scan_success", result.ResultCode == ResultSucceeded);
-        if (Window.HasMeta("anvil_error") && !Ids.AsSpan().SequenceEqual(_errorSelection)) Window.RemoveMeta("anvil_error");
-        if (Window.HasMeta("embedded_inventory") && Native.Get<Button>(_world, "_upgradeBtn") is { } action && action.Text != "OK")
+            Window.SetMeta(HotNames.AnvilScanSuccess, result.ResultCode == ResultSucceeded);
+        if (Window.HasMeta(HotNames.AnvilError) && !Ids.AsSpan().SequenceEqual(_errorSelection)) Window.RemoveMeta(HotNames.AnvilError);
+        if (Window.HasMeta(HotNames.EmbeddedInventory) && Native.Get<Button>(_world, "_upgradeBtn") is { } action && action.Text != "OK")
             action.Text = "OK";
         RefreshBag();
         foreach (var view in CountedCells()) NativeServices.CountBadge(view);
@@ -573,4 +573,14 @@ public sealed class NativeAnvil
         NativeWindows.Name(Native.Get<ItemSlotView>(_world, "_itemResultSocket"), "anvil_result_item");
         NativeWindows.Name(Native.Get<ItemSlotView>(_world, "_accessoryResultSocket"), "anvil_result_accessory");
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName AnvilBusy = "anvil_busy";
+    internal static readonly StringName AnvilCompound = "anvil_compound";
+    internal static readonly StringName AnvilError = "anvil_error";
+    internal static readonly StringName AnvilScanSuccess = "anvil_scan_success";
+    internal static readonly StringName EmbeddedInventory = "embedded_inventory";
 }

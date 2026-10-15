@@ -75,7 +75,7 @@ public partial class ClassicCouncilRatePanel : Control
     public override void _Process(double delta) => Sync();
     private void Sync()
     {
-        bool pending = Window.GetMeta("council_rate_pending", false).AsBool();
+        bool pending = Window.GetMeta(HotNames.CouncilRatePending, false).AsBool();
         _accept.Disabled = _down.Disabled = _up.Disabled = pending;
         _accept.SelfModulate = _down.SelfModulate = _up.SelfModulate = pending ? new Color(.5f, .5f, .5f) : Colors.White;
     }
@@ -93,4 +93,10 @@ public partial class ClassicCouncilRatePanel : Control
         foreach (var part in _art.Children.Where(n => n.IsImage))
             DrawTextureRectRegion(Plugin.Kit.Texture(part.Texture!), new Rect2(part.Position, part.SizeVec), new Rect2(part.SrcX, part.SrcY, part.SrcW, part.SrcH));
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName CouncilRatePending = "council_rate_pending";
 }

@@ -103,7 +103,7 @@ public partial class ClassicAnvilPanel : Control
         if(!IsVisibleInTree())
         {
             // Closed: only the upgrade scan's clock keeps running, as it did while the whole sync ran hidden.
-            _scan=Window.HasMeta("anvil_scan_success") && Window.GetMeta("anvil_busy",false).AsBool();
+            _scan=Window.HasMeta(HotNames.AnvilScanSuccess) && Window.GetMeta(HotNames.AnvilBusy,false).AsBool();
             if(_scan)_scanTime+=delta;else _scanTime=0;
             return;
         }
@@ -111,18 +111,18 @@ public partial class ClassicAnvilPanel : Control
     }
     private void Sync(double delta)
     {
-        bool compound=Window.GetMeta("anvil_compound",false).AsBool();
+        bool compound=Window.GetMeta(HotNames.AnvilCompound,false).AsBool();
         if(compound!=_compound){_compound=compound;QueueRedraw();}
         _items.Visible=!compound;_accessories.Visible=compound;
-        bool busy=Window.GetMeta("anvil_busy",false).AsBool();
+        bool busy=Window.GetMeta(HotNames.AnvilBusy,false).AsBool();
         _cancel.Disabled=_back.Disabled=busy;
         if(busy!=_busy){_busy=busy;QueueRedraw();}
         _wallet.Text=Plugin.Kit.Game.Character.Gold.ToString("n0");
         var character=Plugin.Kit.Game.Character;
         _weight.Text=character.MaxWeight>0?$"Weight : {character.Weight/10f:0.0}/{character.MaxWeight/10f:0.0}":"";
-        if(Window.HasMeta("anvil_error"))_status.Text=Window.GetMeta("anvil_error").AsString();
+        if(Window.HasMeta(HotNames.AnvilError))_status.Text=Window.GetMeta(HotNames.AnvilError).AsString();
         _status.TooltipText=_status.Text;
-        _scan=Window.HasMeta("anvil_scan_success") && busy;
+        _scan=Window.HasMeta(HotNames.AnvilScanSuccess) && busy;
         _scanOverlay.Visible=_scan;
         if(_scan){_scanTime+=delta;_scanOverlay.QueueRedraw();}else _scanTime=0;
         foreach(var cell in _cells)cell.MouseFilter=busy?MouseFilterEnum.Ignore:MouseFilterEnum.Stop;
@@ -175,5 +175,15 @@ public partial class ClassicAnvilCellSkin : Control
     private readonly ItemSlotView _cell;private readonly StyleBox _frame;
     public ClassicAnvilCellSkin(ItemSlotView cell,StyleBox frame){_cell=cell;_frame=frame;MouseFilter=MouseFilterEnum.Ignore;ShownOnly.Gate(this,Sync);}
     public override void _Process(double delta)=>Sync();
-    private void Sync(){if(_cell.GetThemeStylebox("panel")!=_frame)_cell.AddThemeStyleboxOverride("panel",_frame);}
+    private void Sync(){if(_cell.GetThemeStylebox(HotNames.Panel)!=_frame)_cell.AddThemeStyleboxOverride(HotNames.Panel,_frame);}
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName AnvilBusy = "anvil_busy";
+    internal static readonly StringName AnvilCompound = "anvil_compound";
+    internal static readonly StringName AnvilError = "anvil_error";
+    internal static readonly StringName AnvilScanSuccess = "anvil_scan_success";
+    internal static readonly StringName Panel = "panel";
 }

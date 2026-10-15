@@ -113,7 +113,7 @@ public partial class ClassicCollectionRacePanel : ClassicEventPanel
     protected override void Refresh()
     {
         _winnersRow.Visible = _nativeWinnersRow.Visible;
-        _completing.AddThemeColorOverride("font_color", _completing.Text == "0" ? Ink : Ready);
+        _completing.AddThemeColorOverride(HotNames.FontColor, _completing.Text == "0" ? Ink : Ready);
         _complete.Visible = _nativeComplete.Visible;
         foreach (var section in _sections)
         {
@@ -132,7 +132,7 @@ public partial class ClassicCollectionRacePanel : ClassicEventPanel
         float content = _stack.GetMinimumSize().Y;
         float visible = Math.Min(content, Spec.MaxHeight - Spec.Top - Spec.Bottom);
         if (Math.Abs(_scroll.Size.Y - visible) > .5f) _scroll.Size = new Vector2(Spec.Content.Size.X, visible);
-        _lane.AddThemeConstantOverride("margin_right", content > visible + .5f ? 16 : 0);
+        _lane.AddThemeConstantOverride(HotNames.MarginRight, content > visible + .5f ? 16 : 0);
         SetFullSize(new Vector2(Spec.Width, Mathf.Ceil(Spec.Top + visible + Spec.Bottom)));
         WholeItems(content, visible);
     }
@@ -180,4 +180,11 @@ public partial class ClassicCollectionRacePanel : ClassicEventPanel
             items[i].Modulate = whole ? Colors.White : Colors.Transparent;
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName MarginRight = "margin_right";
 }

@@ -67,12 +67,12 @@ public partial class ClassicInventoryRepair : Control
     public void HideTip() { _slot = -1; _tip.Visible = false; }
     public override void _Process(double delta)
     {
-        bool active = _host.Window.IsVisibleInTree() && _host.Window.GetMeta("classic_repair_mode", false).AsBool();
+        bool active = _host.Window.IsVisibleInTree() && _host.Window.GetMeta(HotNames.ClassicRepairMode, false).AsBool();
         if (active && !_active) _cancelCarry();
         _active = active;
         _header.Visible = active;
         if (!active) { HideTip(); return; }
-        _all.Disabled = _host.Window.GetMeta("classic_repair_pending", false).AsBool() || !Enumerable.Range(0, _game.Inventory.GridStart + _game.Inventory.GridCount)
+        _all.Disabled = _host.Window.GetMeta(HotNames.ClassicRepairPending, false).AsBool() || !Enumerable.Range(0, _game.Inventory.GridStart + _game.Inventory.GridCount)
             .Select(_game.Inventory.At).Any(item => !item.IsEmpty && ItemData.MaxDurabilityOf(item.ItemId) > 1
                 && item.Durability < ItemData.MaxDurabilityOf(item.ItemId) && ItemData.Get(item.ItemId)?.SaleType != ItemData.SaleTypeLowNoRepair);
         if (_slot >= 0) UpdateTip();
@@ -104,4 +104,11 @@ public partial class ClassicInventoryRepair : Control
         var at = new Vector2(right ? pointer.X + PointerGap : pointer.X - size.X, above ? pointer.Y - size.Y : pointer.Y);
         return new Vector2(Mathf.Clamp(at.X, 0, bounds.X - size.X), Mathf.Clamp(at.Y, 0, bounds.Y - size.Y)).Round();
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicRepairMode = "classic_repair_mode";
+    internal static readonly StringName ClassicRepairPending = "classic_repair_pending";
 }

@@ -184,9 +184,9 @@ public sealed class NativeStorage
         int page = Page;
         _pageLabel.Text = $"{page + 1} / {Pages}";
         _pageLabel.TooltipText = "Storage page";
-        Window.SetMeta("storage_page", page);
-        Window.SetMeta("storage_pages", Pages);
-        if (!Vip) Window.SetMeta("storage_money", Native.Get<int>(_world, Kind == StorageKind.Clan ? "_clanWhMoney" : "_whMoney"));
+        Window.SetMeta(HotNames.StoragePage, page);
+        Window.SetMeta(HotNames.StoragePages, Pages);
+        if (!Vip) Window.SetMeta(HotNames.StorageMoney, Native.Get<int>(_world, Kind == StorageKind.Clan ? "_clanWhMoney" : "_whMoney"));
         RouteCompanion();
         bool locked = !VaultOpen;
         for (int i = 0; i < _stored.Length; i++)
@@ -445,4 +445,12 @@ public sealed class NativeStorage
             if (!reopened) prompt.Hide();
         };
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName StorageMoney = "storage_money";
+    internal static readonly StringName StoragePage = "storage_page";
+    internal static readonly StringName StoragePages = "storage_pages";
 }
