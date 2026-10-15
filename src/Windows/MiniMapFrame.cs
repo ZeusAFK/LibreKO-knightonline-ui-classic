@@ -129,15 +129,19 @@ public partial class MapCanvas : Control
     }
 
     private readonly PluginGame _game;
+    private readonly MapArrow _arrow;
     private int _zoom = DefaultZoom;
     private bool _showBlips = true;
-    private float _drawnHeading = float.NaN;
 
     public MapCanvas(PluginGame game)
     {
         _game = game;
         ClipContents = true;
         MouseFilter = MouseFilterEnum.Ignore;
+        // The player arrow draws on its own item over the map, so turning the camera redraws only the arrow.
+        _arrow = new MapArrow(game) { Name = "map_arrow", MouseFilter = MouseFilterEnum.Ignore };
+        AddChild(_arrow);
+        _arrow.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
     }
 
     public void ToggleBlips()
@@ -154,8 +158,39 @@ public partial class MapCanvas : Control
 
     public override void _Process(double delta)
     {
-        if (IsVisibleInTree() && !Mathf.IsEqualApprox(_drawnHeading,_game.Map.HeadingDegrees))
-            QueueRedraw();
+        if (IsVisibleInTree()) _arrow.Follow();
+    }
+
+    /// <summary>
+    /// One filled disc with the geometry <c>RenderingServer.canvas_item_add_circle</c> builds for <c>DrawCircle</c>: 65 rim
+    /// points at i * TAU / 64 and the centre, triangles (centre, i, i + 1), unit radius and white. Each blip draws it
+    /// scaled and moved, tinted with the blip colour, instead of building new GPU buffers per circle per redraw.
+    /// </summary>
+    private static ArrayMesh? _disc;
+    private static ArrayMesh Disc()
+    {
+        if (_disc != null && GodotObject.IsInstanceValid(_disc)) return _disc;
+        const int segments = 64;
+        var points = new Vector2[segments + 2];
+        points[segments + 1] = Vector2.Zero;
+        float step = Mathf.Tau / segments;
+        for (int i = 0; i < segments + 1; i++)
+        {
+            float angle = i * step;
+            points[i] = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+        }
+        var indices = new int[segments * 3];
+        for (int i = 0; i < segments; i++) { indices[i * 3] = segments + 1; indices[i * 3 + 1] = i; indices[i * 3 + 2] = i + 1; }
+        var colors = new Color[points.Length];
+        Array.Fill(colors, Colors.White);
+        var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)Mesh.ArrayType.Max);
+        arrays[(int)Mesh.ArrayType.Vertex] = points;
+        arrays[(int)Mesh.ArrayType.Color] = colors;
+        arrays[(int)Mesh.ArrayType.Index] = indices;
+        _disc = new ArrayMesh();
+        _disc.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+        return _disc;
     }
 
     public override void _Draw()
@@ -176,24 +211,44 @@ public partial class MapCanvas : Control
         var mid = Size * 0.5f;
         if (_markers != null && GodotObject.IsInstanceValid(_markers)) _markers.QueueRedraw();
         else DrawDiamonds(this);
+        ArrayMesh? disc = null;
         foreach (var b in _showBlips ? m.Blips : Array.Empty<MiniMap.Blip>())
         {
             if (b.Diamond) continue;
             var p = mid + new Vector2((b.X - m.X) * pxPerWorld, -(b.Z - m.Z) * pxPerWorld);
             if (p.X < 0 || p.Y < 0 || p.X > Size.X || p.Y > Size.Y) continue;
             if (b.Hollow) DrawArc(p, b.Radius, 0f, Mathf.Tau, 16, b.Color, 1.5f, true);
-            else DrawCircle(p, b.Radius, b.Color);
+            else DrawMesh(disc ??= Disc(), null, new Transform2D(0f, new Vector2(b.Radius, b.Radius), 0f, p), b.Color);
         }
-        _drawnHeading=m.HeadingDegrees;
-        float heading = Mathf.DegToRad(_drawnHeading);
-        var dir = new Vector2(Mathf.Sin(heading), -Mathf.Cos(heading));
-        var side = new Vector2(-dir.Y, dir.X);
-        DrawColoredPolygon(new[]
+    }
+
+    /// <summary>The player arrow, drawn over the map at its centre.</summary>
+    private sealed partial class MapArrow : Control
+    {
+        private readonly PluginGame _game;
+        private float _drawnHeading = float.NaN;
+        public MapArrow() { _game = null!; }
+        public MapArrow(PluginGame game) => _game = game;
+
+        public void Follow()
         {
-            mid + dir * PlayerArrow,
-            mid - dir * PlayerArrow * 0.7f + side * PlayerArrow * 0.6f,
-            mid - dir * PlayerArrow * 0.7f - side * PlayerArrow * 0.6f,
-        }, PlayerColor);
+            if (!Mathf.IsEqualApprox(_drawnHeading, _game.Map.HeadingDegrees)) QueueRedraw();
+        }
+
+        public override void _Draw()
+        {
+            var mid = Size * 0.5f;
+            _drawnHeading = _game.Map.HeadingDegrees;
+            float heading = Mathf.DegToRad(_drawnHeading);
+            var dir = new Vector2(Mathf.Sin(heading), -Mathf.Cos(heading));
+            var side = new Vector2(-dir.Y, dir.X);
+            DrawColoredPolygon(new[]
+            {
+                mid + dir * PlayerArrow,
+                mid - dir * PlayerArrow * 0.7f + side * PlayerArrow * 0.6f,
+                mid - dir * PlayerArrow * 0.7f - side * PlayerArrow * 0.6f,
+            }, PlayerColor);
+        }
     }
 
     /// <summary>
