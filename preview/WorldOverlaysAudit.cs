@@ -36,7 +36,7 @@ public partial class Preview
         T Field<T>(string name) => (T)Native.Get<object>(world, name)!;
         void SetField(string name, object? value) => Native.Set(world, name, value == null ? null : Convert.ChangeType(value, Native.MemberType(world, name)!));
         void Call(string method, params object?[] args) => DetailCall(world, method, args);
-        Call("DeathDialog.BuildDeathDialog"); Call("TownRecall.Build"); Call("Challenge.BuildPrompt"); Call("Party.BuildPanel");
+        Call("DeathDialog.BuildDeathDialog"); Call("TownRecall.Build"); Call("Challenge.BuildPrompt"); Call("PartyInvites.BuildPrompts");
         Call("UpgradeNotice.BuildBanner"); Call("Shout.BuildBanner"); Call("BattleEvent.BuildUi");
         Call("ClanBattle.BuildBanner"); Call("ZoneAbility.BuildChip");
         SetField("BorderDefenseWar.HudLayer", new CanvasLayer { Layer = 95 }); world.AddChild(Field<CanvasLayer>("BorderDefenseWar.HudLayer")); Call("BorderDefenseWar.BuildBdwScoreBanner");
@@ -86,7 +86,7 @@ public partial class Preview
         }
 
         // ---- Native look (before) ---------------------------------------------------------------------
-        var invite = Field<ConfirmationDialog>("Party.inviteAskDialog");
+        var invite = Field<ConfirmationDialog>("PartyInvites.inviteAskDialog");
         var duel = Field<ConfirmationDialog>("Challenge.askDialog");
         var recall = Field<ConfirmationDialog>("TownRecall.dialog");
         var deathLayer = Field<CanvasLayer>("DeathDialog.Layer");
@@ -185,10 +185,10 @@ public partial class Preview
             Require(!dialog.Visible && (decline ? cancelled : confirmed), $"{state}: the native {(decline ? "cancel" : "confirm")} callback runs and the prompt closes");
             if (dialog.Visible) dialog.Hide();
         }
-        SetField("Party.invitePending", true);
+        SetField("PartyInvites.invitePending", true);
         invite.DialogText = "Guardian invites you to a party.\nJoin?"; invite.PopupCentered();
         await Prompt(invite, "party-invite", "Party Invite", false);
-        Require(!Field<bool>("Party.invitePending"), "party invite: Join answers the native invite");
+        Require(!Field<bool>("PartyInvites.invitePending"), "party invite: Join answers the native invite");
         SetField("Challenge.requestPending", true);
         duel.DialogText = "Extraordinarylongname challenges you to a duel.\nAccept and warp to the arena?"; duel.PopupCentered();
         await Prompt(duel, "duel-challenge", "Duel challenge", true);

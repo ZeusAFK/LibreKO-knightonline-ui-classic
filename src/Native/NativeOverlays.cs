@@ -132,7 +132,7 @@ public static class NativeOverlays
         world.SetMeta(Prepared, true);
         PrepareEvents(world);
         Apply(NativeOverlay.Death, Named(world, "DeathDialog.Panel", "death_notice"));
-        foreach (var (field, name) in new[] { ("Party.inviteAskDialog", "party_invite_prompt"), ("Challenge.askDialog", "duel_prompt"), ("TownRecall.dialog", "town_recall_prompt") })
+        foreach (var (field, name) in new[] { ("PartyInvites.inviteAskDialog", "party_invite_prompt"), ("Challenge.askDialog", "duel_prompt"), ("TownRecall.dialog", "town_recall_prompt") })
             Apply(NativeOverlay.Prompt, Named(world, field, name));
         foreach (var (field, name) in new[] { ("UpgradeNotice.label", "upgrade_announcement"), ("Shout.label", "shout_announcement") })
             if (Native.Get<Label>(world, field)?.GetParent()?.GetParent() is PanelContainer panel) Apply(NativeOverlay.Announcement, Named(panel, name));

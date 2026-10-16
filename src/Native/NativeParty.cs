@@ -17,7 +17,7 @@ public static class NativeParty
     private const int MembersPerRecruitment = 8, ListingsPerPage = 10;
 
     /// <summary>The client's invite-by-name prompt (the Classic text prompt when the theme replaces it).</summary>
-    public static void InviteByName(WorldRoot? world) { if (world != null) Native.TryCall(world, "Party.OpenInvitePrompt", out _); }
+    public static void InviteByName(WorldRoot? world) { if (world != null) Native.TryCall(world, "PartyInvites.OpenInvitePrompt", out _); }
 
     /// <summary>The party board through the client's toggle, which also loads its list.</summary>
     public static void ToggleBoard(WorldRoot? world) { if (world != null) Native.TryCall(world, "SeekParty.ToggleSeek", out _); }

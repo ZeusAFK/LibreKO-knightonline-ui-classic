@@ -27,9 +27,8 @@ public partial class Preview
         void Call(string method,params object[] args)=>DetailCall(world,method,args);
         T Field<T>(string name)=>(T)Native.Get<object>(world, name)!;
         void SetField(string name,object? value)=>Native.Set(world, name, value);
-        Call("Party.BuildPanel");
-        Field<CanvasLayer>("Party.layer").Reparent(this);
-        Field<CanvasLayer>("Party.dialogLayer").Reparent(this);
+        Call("PartyInvites.BuildPrompts");
+        Field<CanvasLayer>("PartyInvites.dialogLayer").Reparent(this);
         // The party window is gone upstream: the Classic party list replaces the client's party HUD and is
         // driven by the plugin party API the client's bridge implements.
         SetField("MyId",300);
