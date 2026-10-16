@@ -38,7 +38,7 @@ public static partial class PreviewFixtures
 
     public static CanvasLayer BuildMailClassicUiPreview(WorldRoot world, string view)
     {
-        ItemData.EnsureLoaded(); Call(world, "Mail.BuildWindow"); Call(world, "Mail.BuildComposeWindow");
+        ItemData.EnsureLoaded(); Call(world, "Mail.BuildWindow"); Call(world, "MailCompose.BuildComposeWindow");
         var layer = Field<CanvasLayer>(world, "Mail.Layer");
         PrepareCommunication(layer, world);
         layer.Ready += () => Callable.From(() =>
@@ -64,13 +64,13 @@ public static partial class PreviewFixtures
                 inv[Inventory.GridStart] = new ItemSlot { ItemId = 810418000, Count = 20, Durability = 1 };
                 inv[Inventory.GridStart + 1] = new ItemSlot { ItemId = 379154000, Count = 1, Durability = 1 };
                 inv[Inventory.GridStart + 2] = new ItemSlot { ItemId = 389018000, Count = 5, Durability = 1 };
-                Field<SortedSet<string>>(world, "Mail.Contacts").UnionWith(new[] { "Rikka", "Zeus", "Ariel", "Marduk", "Ranger", "Guardian", "Magician", "LongCharacterName1299", "Warrior" });
-                Game.Session.Self.Sheet.SetGold(100_000); Call(world, "Mail.OpenCompose");
-                Field<LineEdit>(world, "Mail.Recipient").Text = "Rikka"; Field<LineEdit>(world, "Mail.SubjectInput").Text = "Apples for the raid";
-                Field<TextEdit>(world, "Mail.BodyInput").Text = "Here are the apples you asked for. Good hunting!"; Field<MoneyEdit>(world, "Mail.Gold").Value = 25_000;
-                Call(world, "Mail.OnBodyChanged");
-                var picks = Field<List<(int Slot, int Count)>>(world, "Mail.Attachments");
-                picks.Add((Inventory.GridStart, 20)); picks.Add((Inventory.GridStart + 1, 1)); Call(world, "Mail.RenderAttachments");
+                Field<SortedSet<string>>(world, "MailCompose.Contacts").UnionWith(new[] { "Rikka", "Zeus", "Ariel", "Marduk", "Ranger", "Guardian", "Magician", "LongCharacterName1299", "Warrior" });
+                Game.Session.Self.Sheet.SetGold(100_000); Call(world, "MailCompose.OpenCompose");
+                Field<LineEdit>(world, "MailCompose.Recipient").Text = "Rikka"; Field<LineEdit>(world, "MailCompose.SubjectInput").Text = "Apples for the raid";
+                Field<TextEdit>(world, "MailCompose.BodyInput").Text = "Here are the apples you asked for. Good hunting!"; Field<MoneyEdit>(world, "MailCompose.Gold").Value = 25_000;
+                Call(world, "MailCompose.OnBodyChanged");
+                var picks = Field<List<(int Slot, int Count)>>(world, "MailCompose.Attachments");
+                picks.Add((Inventory.GridStart, 20)); picks.Add((Inventory.GridStart + 1, 1)); Call(world, "MailCompose.RenderAttachments");
             }
         }).CallDeferred();
         world.RemoveChild(layer); return layer;

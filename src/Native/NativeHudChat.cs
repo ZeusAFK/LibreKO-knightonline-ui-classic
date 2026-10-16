@@ -79,7 +79,7 @@ public static class NativeHudChat
     {
         var icons = new (NativeHudPart Part, string Button, string? Blink)[]
         {
-            (NativeHudPart.MailIcon, "Mail.IconButton", null),
+            (NativeHudPart.MailIcon, "MailIcon.IconButton", null),
             (NativeHudPart.AchievementsIcon, "AchievementTrophy.Trophy", "AchievementTrophy.badge.Blink"),
             (NativeHudPart.AttendanceIcon, "Attendance.Gift", "Attendance.giftBadge.Blink"),
             (NativeHudPart.PowerUpStoreIcon, "TopIcons.powerUpStoreIcon", null),

@@ -133,10 +133,10 @@ public static class NativeCommunication
         if (Prepared(window, "classic_mail_controls")) return;
         var named = new (string Field, string Name)[]
         {
-            ("Mail.Recipient", "mail_to"), ("Mail.recipientSuggestions", "mail_to_suggest"), ("Mail.SubjectInput", "mail_subject"),
-            ("Mail.bodyRemaining", "mail_body_remaining"), ("Mail.BodyInput", "mail_body"), ("Mail.Gold", "mail_gold"),
-            ("Mail.attachTitle", "mail_attach_title"), ("Mail.AttachmentDrop", "mail_drop_zone"), ("Mail.attachRows", "mail_attach_rows"),
-            ("Mail.sendBtn", "mail_send"), ("Mail.composeStatus", "mail_compose_status"),
+            ("MailCompose.Recipient", "mail_to"), ("MailCompose.recipientSuggestions", "mail_to_suggest"), ("MailCompose.SubjectInput", "mail_subject"),
+            ("MailCompose.bodyRemaining", "mail_body_remaining"), ("MailCompose.BodyInput", "mail_body"), ("MailCompose.Gold", "mail_gold"),
+            ("MailCompose.attachTitle", "mail_attach_title"), ("MailCompose.AttachmentDrop", "mail_drop_zone"), ("MailCompose.attachRows", "mail_attach_rows"),
+            ("MailCompose.sendBtn", "mail_send"), ("MailCompose.composeStatus", "mail_compose_status"),
         };
         var controls = named.Select(n => (Control: Native.Get<Control>(world, n.Field), n.Name)).ToArray();
         if (controls.Any(c => c.Control == null)) return;
@@ -149,7 +149,7 @@ public static class NativeCommunication
         var drop = controls.Single(c => c.Name == "mail_drop_zone").Control!;
         var rows = controls.Single(c => c.Name == "mail_attach_rows").Control!;
         var hint = Native.Get<Label>(drop, "hint");
-        var picks = Native.Get<System.Collections.ICollection>(world, "Mail.Attachments");
+        var picks = Native.Get<System.Collections.ICollection>(world, "MailCompose.Attachments");
         void ClassicHint()
         {
             if (hint != null && picks != null && window.HasMeta("classic_mail")) hint.Visible = picks.Count == 0;
