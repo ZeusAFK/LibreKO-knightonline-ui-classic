@@ -296,9 +296,9 @@ public abstract partial class ClassicEventPanel : Control
     }
 
     public static Texture2D? ItemIcon(int itemId) =>
-        itemId > 0 && (itemId == LibreKO.Domain.QuestData.CoinItemId || LibreKO.Domain.ItemData.Get(itemId) != null) ? LibreKO.Domain.ItemData.Icon(itemId) : null;
+        itemId > 0 && (itemId == LibreKO.Domain.QuestData.CoinItemId || LibreKO.Domain.ItemData.Get(itemId) != null) ? LibreKO.ItemIcons.Get(itemId) : null;
 
-    public static Texture2D? GoldIcon => LibreKO.Domain.ItemData.Icon(LibreKO.Domain.QuestData.CoinItemId);
+    public static Texture2D? GoldIcon => LibreKO.ItemIcons.Get(LibreKO.Domain.QuestData.CoinItemId);
 
     protected static void Scroll(ScrollContainer scroll) => ClassicDarkFrame.Scroll(scroll);
 

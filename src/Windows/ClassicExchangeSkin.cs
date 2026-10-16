@@ -215,7 +215,7 @@ public partial class ClassicExchangeCell : ClassicSlot
     public void Bind(TradeItem? item,int slot,int total=0)
     {
         _item=item;Slot=slot>=0?slot:item?.Slot ?? -1;
-        Source=_=>item is not { } shown?GameItem.Empty(Slot):new GameItem(Slot,shown.ItemId,ItemData.DisplayName(shown.ItemId),total>0?total:shown.Count,shown.Durability,0,0,ItemData.Icon(shown.ItemId));
+        Source=_=>item is not { } shown?GameItem.Empty(Slot):new GameItem(Slot,shown.ItemId,ItemData.DisplayName(shown.ItemId),total>0?total:shown.Count,shown.Durability,0,0,ItemIcons.Get(shown.ItemId));
         Refresh();
     }
     public override Variant _GetDragData(Vector2 atPosition)=>_bag && !_owner.OfferBlocked?base._GetDragData(atPosition):default;

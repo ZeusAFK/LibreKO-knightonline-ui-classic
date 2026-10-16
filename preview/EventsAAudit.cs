@@ -233,7 +233,7 @@ public partial class Preview
             await Click(spin); Raise("RouletteSpinEvent", true, PreviewFixtures.EventsPreviewItem, 0);
             for (ulong until = Time.GetTicksMsec() + 6000; roulette.Spinning && Time.GetTicksMsec() < until;) await Frames(1);
             await Frames(2);
-            Require(center.GetNode<TextureRect>("icon").Texture == ItemData.Icon(PreviewFixtures.EventsPreviewItem)
+            Require(center.GetNode<TextureRect>("icon").Texture == ItemIcons.Get(PreviewFixtures.EventsPreviewItem)
                 && Find<Label>(panel, "roulette_result").Text == $"You won {ItemData.DisplayName(PreviewFixtures.EventsPreviewItem)}!", "Item prize lands with its icon and item name");
             await Capture(window, panel, "roulette", "item-prize");
             await Hover(panel.CloseButton!); Require(panel.CloseButton!.GetDrawMode() == BaseButton.DrawMode.Hover, "Roulette close receives real hover"); await Capture(window, panel, "roulette", "close-hover");

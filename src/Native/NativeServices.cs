@@ -564,7 +564,7 @@ public partial class UpgradeBackpackCell : PanelContainer
 
         var icon = new TextureRect
         {
-            Texture = ItemData.Icon(item.ItemId),
+            Texture = ItemIcons.Get(item.ItemId),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             MouseFilter = MouseFilterEnum.Ignore,
@@ -613,7 +613,7 @@ public partial class UpgradeBackpackCell : PanelContainer
         var preview = new Control { MouseFilter = MouseFilterEnum.Ignore };
         preview.AddChild(new TextureRect
         {
-            Texture = ItemData.Icon(_item.ItemId),
+            Texture = ItemIcons.Get(_item.ItemId),
             Size = Size - new Vector2(IconInset * 2, IconInset * 2),
             Position = new Vector2(IconInset, IconInset) - _grab,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,

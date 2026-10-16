@@ -185,7 +185,7 @@ public static class NativeVendor
             return;
         }
         string currency = Currency(world);
-        Native.Get<QuantityPrompt>(world, "Vendor.TradePrompt")?.Open(ItemData.Icon(itemId), $"Buy {ItemData.DisplayName(itemId)}",
+        Native.Get<QuantityPrompt>(world, "Vendor.TradePrompt")?.Open(ItemIcons.Get(itemId), $"Buy {ItemData.DisplayName(itemId)}",
             $"{price:n0} {currency} each · up to {max:n0}", max, 1, n => ConfirmBuy(world, entry, (int)n, preferred),
             "Buy", n => $"Total {(long)price * n:n0} {currency} · {(long)def.Weight * n / 10f:0.0} wt");
     }
@@ -224,7 +224,7 @@ public static class NativeVendor
             ConfirmSell(world, abs, 1, slot.ItemId);
             return;
         }
-        Native.Get<QuantityPrompt>(world, "Vendor.TradePrompt")?.Open(ItemData.Icon(slot.ItemId), $"Sell {ItemData.DisplayName(slot.ItemId)}",
+        Native.Get<QuantityPrompt>(world, "Vendor.TradePrompt")?.Open(ItemIcons.Get(slot.ItemId), $"Sell {ItemData.DisplayName(slot.ItemId)}",
             $"{unit:n0} gold each · you carry {slot.Count:n0}", slot.Count, slot.Count, n => ConfirmSell(world, abs, (int)n, slot.ItemId),
             "Sell", n => $"Sells for {(long)unit * n:n0} gold");
     }

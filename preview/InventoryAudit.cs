@@ -172,7 +172,7 @@ public partial class Preview
         Require(bags.All(c=>!c.InputEnabled),"Missing bags disable all content cells");
         Require(Enumerable.Range(0,3).All(i=>drawer.Get<BaseButton>("bag_tab_"+i)!.Disabled),"All three absent bag selectors are disabled");
         await Capture("empty-costume");
-        int stack=ItemData.All().Where(i=>i.Countable>0 && i.Slot<100 && ItemData.Icon(i.Id)!=null).OrderByDescending(i=>i.Name.Contains("Apple")).ThenBy(i=>i.Id).First().Id;
+        int stack=ItemData.All().Where(i=>i.Countable>0 && i.Slot<100 && ItemIcons.Get(i.Id)!=null).OrderByDescending(i=>i.Name.Contains("Apple")).ThenBy(i=>i.Id).First().Id;
         int bagItem=ItemFor(25);
         Require(bagItem>0,"Magic bag fixture uses a real slot-25 item");
         for(int b=0;b<3;b++)
@@ -193,7 +193,7 @@ public partial class Preview
         int[] positions={8,1,7,2,4,3,9,0,5};int[] codes={112,107,111,101,105,102,113,110,114};
         var seeded=new List<object>();
         for(int i=0;i<positions.Length;i++) {int id=ItemFor(codes[i]);if(id>0) inv[InventoryConstants.CospreStart+positions[i]]=Item(id);seeded.Add(new{position=positions[i],itemId=id,slotCode=codes[i],available=id>0});}
-        var items=ItemData.All().Where(i=>i.Slot<100 && ItemData.Icon(i.Id)!=null && !string.IsNullOrWhiteSpace(i.Name)).OrderBy(i=>i.Id).DistinctBy(i=>i.Icon).Take(28).ToArray();
+        var items=ItemData.All().Where(i=>i.Slot<100 && ItemIcons.Get(i.Id)!=null && !string.IsNullOrWhiteSpace(i.Name)).OrderBy(i=>i.Id).DistinctBy(i=>i.Icon).Take(28).ToArray();
         for(int i=2;i<28;i++) inv[InventoryConstants.InventoryStart+i]=Item(items[i].Id,items[i].Countable>0?i+1:1);
         Refresh();await Frames();
         foreach(var c in all.Where(c=>InventoryConstants.IsCospreSlot(c.Slot))) Require(c.Current.IsEmpty==c.GetChildren().OfType<TextureRect>().First().Visible,"Costume placeholder visibility matches its real contents "+c.Slot);
@@ -309,7 +309,7 @@ public partial class Preview
         bags[0]._GuiInput(new InputEventMouseButton {ButtonIndex=MouseButton.Right,Pressed=true});await Frames();
         Require(transferPrompt.Visible && amount.Value==1,"Bag-to-inventory transfer asks for the quantity even when the stack count is one");
         await Capture("transfer-from-bag");transferPrompt.Close();
-        bool acceptedQuantity=false;transferPrompt.Open(ItemData.Icon(stack),"Transfer","",100,25,n=>acceptedQuantity=n==25);
+        bool acceptedQuantity=false;transferPrompt.Open(ItemIcons.Get(stack),"Transfer","",100,25,n=>acceptedQuantity=n==25);
         transferPrompt.GetChildren().OfType<ClassicQuantityPanel>().Single()._Input(new InputEventKey {Pressed=true,Keycode=Key.Enter});
         Require(acceptedQuantity && !transferPrompt.Visible,"Enter confirms the selected amount exactly once");
         // Mouse-wheel amounts (ff78eef): a part picked while dragging a stack moves at once, bag to bag and into a magic

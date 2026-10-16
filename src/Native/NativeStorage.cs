@@ -360,7 +360,7 @@ public sealed class NativeStorage
             native();
             return;
         }
-        Amount.Open(ItemData.Icon(slot.ItemId), $"Store {ItemData.DisplayName(slot.ItemId)}", $"You carry {slot.Count:n0}", slot.Count, slot.Count, n =>
+        Amount.Open(ItemIcons.Get(slot.ItemId), $"Store {ItemData.DisplayName(slot.ItemId)}", $"You carry {slot.Count:n0}", slot.Count, slot.Count, n =>
         {
             if (Shown && _inventory[abs].Equals(slot))
                 Native.Call(_world, Field("Warehouse.DepositSlot", "VipWarehouse.DepositSlot", "ClanWarehouse.DepositSlot"), abs, target, (int?)(int)n);
@@ -382,7 +382,7 @@ public sealed class NativeStorage
             Native.Call(_world, method, index, target, amount);
             return;
         }
-        Amount.Open(ItemData.Icon(slot.ItemId), $"Take out {ItemData.DisplayName(slot.ItemId)}", $"Stored {slot.Count:n0}", slot.Count, slot.Count, n =>
+        Amount.Open(ItemIcons.Get(slot.ItemId), $"Take out {ItemData.DisplayName(slot.ItemId)}", $"Stored {slot.Count:n0}", slot.Count, slot.Count, n =>
         {
             if (Shown && _slots[index].Equals(slot)) Native.Call(_world, method, index, target, (int?)(int)n);
         }, "Take out");

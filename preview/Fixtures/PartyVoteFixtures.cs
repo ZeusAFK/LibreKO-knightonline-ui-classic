@@ -44,7 +44,7 @@ public static partial class PreviewFixtures
         foreach (var skill in LibreKO.Domain.SkillData.All.Where(s => s.Duration > 0 && s.Type1 == LibreKO.Domain.MagicType.Buff)
             .OrderBy(s => s.Id).GroupBy(s => s.BuffType).Select(g => g.First()))
         {
-            if (LibreKO.Domain.SkillData.Icon(skill.Id)?.GetImage() is not { } art) continue;
+            if (LibreKO.SkillIcons.Get(skill.Id)?.GetImage() is not { } art) continue;
             if (!seen.Add(Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(art.GetData())))) continue;
             buffs.Add(skill.Id);
             if (buffs.Count == 10) break;

@@ -70,7 +70,7 @@ public partial class Preview
                 Require(c.CountLabel.GetThemeFontSize("font_size") == 11 && c.CountLabel.GetThemeFont("font") == Plugin.Kit.Bold, state + " shared count font " + c.Index);
                 var textures = c.GetChildren().OfType<TextureRect>().ToArray();
                 Require(textures.Last().Texture != null && textures.Last().Visible == c.Item.IsEmpty, state + " correct empty socket artwork visibility " + c.Index);
-                if (!c.Item.IsEmpty) Require(textures.First().Texture != null && ItemData.Icon(c.Item.ItemId).GetInstanceId() != ItemData.Icon(0).GetInstanceId(), state + " real item icon without placeholder " + c.Index);
+                if (!c.Item.IsEmpty) Require(textures.First().Texture != null && ItemIcons.Get(c.Item.ItemId).GetInstanceId() != ItemIcons.Get(0).GetInstanceId(), state + " real item icon without placeholder " + c.Index);
             }
             foreach (var row in Find<VBoxContainer>("inspect_stats").GetChildren().OfType<HBoxContainer>())
                 foreach (var label in row.GetChildren().OfType<Label>())

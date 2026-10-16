@@ -228,7 +228,7 @@ public sealed partial class FamiliarWindow : Node
             bool locked = pet == null || skill == null || !PetSkills.Unlocked(skill.Level, pet.Level);
             var button = _skills[i];
             button.SkillId = skill?.Id ?? 0;
-            button.Icon = skill == null ? null : locked ? SkillData.EnigmaIcon() : SkillData.Icon(skill.Id);
+            button.Icon = skill == null ? null : locked ? SkillIcons.Enigma() : SkillIcons.Get(skill.Id);
             button.Disabled = dead || locked || pet!.Mp < skill!.Msp;
             string tooltip = skill == null ? "" : SkillText.Tooltip(skill);
             button.TooltipText = skill == null ? "" : tooltip + (locked ? $"\nFamiliar level {skill.Level}" : "");

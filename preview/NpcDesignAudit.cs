@@ -414,7 +414,7 @@ public partial class Preview
         var card = new Control { MouseFilter = choice ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore };
         DesignPlace(parent, card, name, x, y, width, height);
         DesignInset(card, variant, "card_border", 0, 0, width, height, selected);
-        DesignPlace(card, new TextureRect { Texture = ItemData.Icon(item), TextureFilter = TextureFilterEnum.Nearest,
+        DesignPlace(card, new TextureRect { Texture = ItemIcons.Get(item), TextureFilter = TextureFilterEnum.Nearest,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore }, "icon", 6, 5, 32, 32);
         int textSize = choice ? 11 : 12;
         DesignText(card, "item_name", text, 43, 5, width - 50, 17, false, null, size: textSize);

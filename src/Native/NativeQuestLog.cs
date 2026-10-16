@@ -220,7 +220,7 @@ public static class NativeQuestLog
         var icon = Native.Descendants(row).OfType<TextureRect>().FirstOrDefault();
         if (icon?.Texture is not { } texture) return null;
         foreach (var (glyph, itemId) in Glyphs)
-            if (UiIcons.Get(glyph) == texture) return ItemData.Icon(itemId);
+            if (UiIcons.Get(glyph) == texture) return ItemIcons.Get(itemId);
         return texture;
     }
 

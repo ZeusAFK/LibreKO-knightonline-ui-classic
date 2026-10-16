@@ -124,7 +124,7 @@ public static partial class PreviewFixtures
             SkillData.EnsureLoaded();
             var setup = Field<GenieSetup>(world, "Genie.Genie");
             // Every other cell of each column takes a class skill with an icon; some support skills also go to the party.
-            var known = SkillData.ForClass(KnightOnlineUiClassic.Plugin.Kit.Nation == 1 ? 105 : 205).Where(s => SkillData.Icon(s.Id) != null).ToList();
+            var known = SkillData.ForClass(KnightOnlineUiClassic.Plugin.Kit.Nation == 1 ? 105 : 205).Where(s => SkillIcons.Get(s.Id) != null).ToList();
             foreach (var kind in new[] { GenieCellKind.Attack, GenieCellKind.Recovery, GenieCellKind.Support })
             {
                 var cells = setup.Cells(kind);

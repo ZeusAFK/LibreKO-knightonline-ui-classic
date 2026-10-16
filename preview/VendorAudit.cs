@@ -84,7 +84,7 @@ public partial class Preview
             reference.SetText("String_PersonTradeEdit_Msg","Please enter the quantity of the item.");
             if(reference.Get("edit_trade") is LineEdit referenceField) referenceField.Text="";
             var referenceIconArea=referenceArt.Find("area_trade_icon")!;
-            reference.AddChild(new TextureRect {Texture=ItemData.Icon(entry.Id),Position=referenceIconArea.Position-new Vector2(referenceArt.X,referenceArt.Y),
+            reference.AddChild(new TextureRect {Texture=ItemIcons.Get(entry.Id),Position=referenceIconArea.Position-new Vector2(referenceArt.X,referenceArt.Y),
                 Size=referenceIconArea.SizeVec,ExpandMode=TextureRect.ExpandModeEnum.IgnoreSize,MouseFilter=Control.MouseFilterEnum.Ignore});
             await Frames(5);GetViewport().GetTexture().GetImage().SavePng(output+"/"+(nation==1?"karus":"human")+"-original-quantity.png");
             System.IO.File.WriteAllText(output+"/"+(nation==1?"karus":"human")+"-original-quantity.json",JsonSerializer.Serialize(new{x=reference.Position.X,y=reference.Position.Y,width=reference.Size.X,height=reference.Size.Y}));

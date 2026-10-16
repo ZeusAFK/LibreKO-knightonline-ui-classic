@@ -321,7 +321,7 @@ public partial class Preview
             var usable = game.Skills.Skills(SkillPage.Basic).Select(s => SkillData.Get(s.Id)!)
                 .First(s => s.Type1 != MagicType.None && s.NeedWeapon == SkillUsable.NeedsNoWeapon && s.Msp <= 100 && s.Sp == 0 && s.UseItem == 0 && s.NeedBuffSkill == 0 && s.Recast > 0);
             var costly = game.Skills.Skills(MasteryPoints.FirstTree).Select(s => SkillData.Get(s.Id)!).First(s => s.Msp > 100 && s.Recast > 0);
-            var nameless = SkillData.All.First(s => s.Type1 != MagicType.None && SkillData.Icon(s.Id) == null && s.Id < SkillPage.UsableItemFirstId);
+            var nameless = SkillData.All.First(s => s.Type1 != MagicType.None && SkillIcons.Get(s.Id) == null && s.Id < SkillPage.UsableItemFirstId);
             bar[0] = usable.Id; bar[1] = costly.Id; bar[2] = usable.Id; bar[3] = potion.Id; bar[4] = nameless.Id; bar[5] = weapon.Id;
             // About half of the recast is still left when the bar is captured (after the 0.3 s settle below).
             Game.Session.Self.SkillCooldowns[usable.Id] = Time.GetTicksMsec() / 1000.0 + usable.RecastSeconds * 0.5 + 0.4;

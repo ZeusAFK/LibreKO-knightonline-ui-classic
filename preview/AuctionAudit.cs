@@ -74,7 +74,7 @@ public partial class Preview
                 else Require(window.GetGlobalRect().Encloses(slot.GetGlobalRect()), state + " item slot remains inside frame " + slot.Name);
                 Require(slot.GetThemeStylebox("panel") is StyleBoxTexture, state + " original slot frame survives native state updates");
                 Require(slot.CountLabel.GetGlobalRect().End == slot.GetGlobalRect().End - new Vector2(2, 2), state + " inventory-identical count insets");
-                if (!slot.Item.IsEmpty) Require(ItemData.Icon(slot.Item.ItemId) != null, state + " actual populated item artwork " + slot.Item.ItemId);
+                if (!slot.Item.IsEmpty) Require(ItemIcons.Get(slot.Item.ItemId) != null, state + " actual populated item artwork " + slot.Item.ItemId);
             }
             foreach (var notice in Notices())
             {

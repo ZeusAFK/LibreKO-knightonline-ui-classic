@@ -174,7 +174,7 @@ public partial class Preview
         Game.Session.Self.Sheet.SeedProgress(61,0,100);Game.Session.Self.Mastery.Seed(new byte[]{0,0,0,0,0,40,20,23,1});Invoke("Rebuild");
         awakening=Show(nation*100000+15802);
         Require(awakening.State==SkillLearnState.Locked && awakening.TooltipText.Contains("Reach level 62"),"Awakening at level 61 is locked until level 62");
-        Require(awakening.GetNode<TextureRect>("icon").Texture==SkillData.EnigmaIcon(),"A locked skill shows the client's enigma icon");
+        Require(awakening.GetNode<TextureRect>("icon").Texture==SkillIcons.Enigma(),"A locked skill shows the client's enigma icon");
         await Capture("master-locked-62");
         Game.Session.Self.Sheet.SeedProgress(83,0,100);Game.Session.Self.Mastery.Seed(seed);
         SetClass(6);
@@ -182,7 +182,7 @@ public partial class Preview
         Require(scream.State==SkillLearnState.Learned && scream.CanAdd && scream.CanDrag,"The active Master 2 skill Scream is placeable");
         var exceed=Show(nation*100000+6815);
         Require(exceed.State==SkillLearnState.Learnable && !exceed.CanAdd && !exceed.CanDrag,"Exceed Break at 10 of 15 Master points is learnable and not placeable");
-        Require(exceed.GetNode<TextureRect>("icon").Texture==SkillData.Icon(exceed.SkillId) && exceed.GetNode<TextureRect>("icon").SelfModulate.R<0.6f,
+        Require(exceed.GetNode<TextureRect>("icon").Texture==SkillIcons.Get(exceed.SkillId) && exceed.GetNode<TextureRect>("icon").SelfModulate.R<0.6f,
             "A learnable skill shows its own icon in the client's shade");
         Require(Label("string_list_"+exceed.Index).GetThemeColor("font_color")==UiTheme.Neutral,"A learnable skill name uses the client's learnable colour");
         Require(exceed.TooltipText.Contains("Spend 5 more points"),"A learnable skill says how many points are missing");
