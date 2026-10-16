@@ -423,7 +423,7 @@ public partial class Preview
                 Native.Set(Game.Session, "Self.Class", classCode);
                 var skill = LibreKO.Domain.SkillData.ForClass(classCode)
                     // Anger Explosion casts only in rage mode (3277df5, SkillUsable.AngerAllows); the fixture has no rage.
-                    .Where(k => k.IsEnemy && k.Range > 0 && (bool)Native.Call(world, "Stats.SkillRequirementMet", k)! && LibreKO.Domain.SkillUsable.AngerAllows(k.Id, Game.Session.Pvp.AngerFull)
+                    .Where(k => k.IsEnemy && k.Range > 0 && Game.Session.Self.SkillLearned(k) && LibreKO.Domain.SkillUsable.AngerAllows(k.Id, Game.Session.Pvp.AngerFull)
                         && (ranged ? LibreKO.Domain.SkillReach.Kind(k.Type1, k.Type2) != LibreKO.Domain.SkillReach.KindMelee && k.Range >= 10
                                    : LibreKO.Domain.SkillReach.Kind(k.Type1, k.Type2) == LibreKO.Domain.SkillReach.KindMelee))
                     .OrderBy(k => k.Range).FirstOrDefault();

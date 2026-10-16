@@ -101,8 +101,8 @@ public static partial class PreviewFixtures
 
     public static CanvasLayer BuildMarketPriceClassicUiPreview(WorldRoot world)
     {
-        ItemData.EnsureLoaded(); SkillData.EnsureLoaded(); Call(world, "ItemTooltip.Build"); Call(world, "Merchant.BuildMarketPricePanel");
-        var layer = Field<CanvasLayer>(world, "Merchant.marketPriceLayer"); PrepareMarket(layer, world);
+        ItemData.EnsureLoaded(); SkillData.EnsureLoaded(); Call(world, "ItemTooltip.Build"); Call(world, "MarketPrice.BuildMarketPricePanel");
+        var layer = Field<CanvasLayer>(world, "MarketPrice.marketPriceLayer"); PrepareMarket(layer, world);
         var amount = new CanvasLayer { Visible = false }; SetField(world, "Merchant.AmountLayer", amount); layer.AddChild(amount);
         Field<CanvasLayer>(world, "ItemTooltip.tipLayer").Reparent(layer, false); TrackTooltip(world);
         world.RemoveChild(layer); return layer;
@@ -110,11 +110,11 @@ public static partial class PreviewFixtures
 
     public static CanvasLayer BuildMerchantSearchClassicUiPreview(WorldRoot world)
     {
-        ItemData.EnsureLoaded(); SkillData.EnsureLoaded(); Call(world, "Merchant.BuildSearchPanel"); Call(world, "Merchant.BuildMarketPricePanel");
-        var layer = Field<CanvasLayer>(world, "Merchant.searchLayer"); PrepareMarket(layer, world);
-        var marketPrice = Field<CanvasLayer>(world, "Merchant.marketPriceLayer"); PrepareMarket(marketPrice, world);
+        ItemData.EnsureLoaded(); SkillData.EnsureLoaded(); Call(world, "MerchantSearch.BuildSearchPanel"); Call(world, "MarketPrice.BuildMarketPricePanel");
+        var layer = Field<CanvasLayer>(world, "MerchantSearch.searchLayer"); PrepareMarket(layer, world);
+        var marketPrice = Field<CanvasLayer>(world, "MarketPrice.marketPriceLayer"); PrepareMarket(marketPrice, world);
         var whispers = new CanvasLayer { Layer = 79 }; SetField(world, "Whispers.whisperLayer", whispers); layer.AddChild(whispers);
-        marketPrice.Reparent(layer, false); Call(world, "Merchant.OnSearchOpen");
+        marketPrice.Reparent(layer, false); Call(world, "MerchantSearch.OnSearchOpen");
         world.RemoveChild(layer); return layer;
     }
 

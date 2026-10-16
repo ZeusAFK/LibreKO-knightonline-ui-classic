@@ -148,7 +148,7 @@ public partial class Preview
             TabbedLog Log() => (TabbedLog)Get(world, "Log.log")!;
             void ClearLog() => Set(world, "Log.log", new TabbedLog(Native.Get<int>(Native.StaticOwner("LibreKO.Features.CombatLog.CombatLogFeature"), "MaxLines")));
             object exitIdle = Get(world, "GameMenu.battleTimer")!;
-            string[] stateFields = { "Avatar.Running", "EntityStatesSystem.sitRequestPending", "Achievement.Shown", "Merchant.MenuShown", "SeekParty.SeekShown", "NationChannels.NationShown", "Merchant.marketPriceShown",
+            string[] stateFields = { "Avatar.Running", "EntityStatesSystem.sitRequestPending", "Achievement.Shown", "Merchant.MenuShown", "SeekParty.SeekShown", "NationChannels.NationShown", "MarketPrice.marketPriceShown",
                 "Session.UserOption.TradeRequestsBlocked", "Session.UserOption.PartyRequestsBlocked", "GameMenu.exitArmed", "VipWarehouse.shown", "Genie.shown", "GameMenu.shown" };
             Dictionary<string, string> State() => stateFields.Select(f => { string path = f; return (Field: f, Owner: PreviewFixtures.Target(world, ref path), Path: path); })
                 .Where(s => Native.Has(s.Owner, s.Path)).ToDictionary(s => s.Field, s => Native.Get<object>(s.Owner, s.Path)?.ToString() ?? "");

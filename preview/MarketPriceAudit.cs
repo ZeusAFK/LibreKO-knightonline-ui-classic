@@ -56,9 +56,9 @@ public partial class Preview
         }
         try
         {
-            await Frames(); DetailCall(world, "Merchant.OpenMarketPrice", 0); window.Position = new Vector2(80, 65); await Frames(); await Capture("empty");
+            await Frames(); DetailCall(world, "MarketPrice.OpenMarketPrice", 0); window.Position = new Vector2(80, 65); await Frames(); await Capture("empty");
             Require(!chart.HasData && status.Visible && query.KeepEditingOnTextSubmit, "Initial selection prompt retains empty chart and repeated query editing");
-            await Click(Find<Button>("market_price_search")); Require(status.Visible && !chart.HasData && (int)DetailField(world, "Merchant.marketPriceAsked")! == 0, "Search without item does not request item zero");
+            await Click(Find<Button>("market_price_search")); Require(status.Visible && !chart.HasData && (int)DetailField(world, "MarketPrice.marketPriceAsked")! == 0, "Search without item does not request item zero");
             var start = window.Position; var grip = Descendants(panel).OfType<Control>().Single(c => c.Name == "party_drag"); var at = grip.GetGlobalRect().Position + new Vector2(120, 12);
             GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at, GlobalPosition = at }, true);
             GetViewport().PushInput(new InputEventMouseMotion { Position = at + new Vector2(12, 7), GlobalPosition = at + new Vector2(12, 7), Relative = new Vector2(12, 7), ButtonMask = MouseButtonMask.Left }, true);
@@ -96,7 +96,7 @@ public partial class Preview
                 Require(level.Selected == 1 && results.GetChildCount() > 0, "Popup keyboard applies actual upgrade filter"); await Capture("filtered");
             }
             var select = Descendants(results.GetChild(0)).OfType<Button>().Single(); await Click(select);
-            int item = (int)DetailField(world, "Merchant.marketPriceItem")!; Require(item > 0 && Find<ItemSlotView>("market_price_item").Item.ItemId == item, "Actual Select retains native item id and selected slot");
+            int item = (int)DetailField(world, "MarketPrice.marketPriceItem")!; Require(item > 0 && Find<ItemSlotView>("market_price_item").Item.ItemId == item, "Actual Select retains native item id and selected slot");
             Require(Find<Label>("market_price_name").TooltipText == ItemData.DisplayName(item), "Selected name retains full tooltip");
             var selectedSlot = Find<ItemSlotView>("market_price_item"); var hover = selectedSlot.GetGlobalRect().GetCenter();
             GetViewport().PushInput(new InputEventMouseMotion { Position = hover, GlobalPosition = hover }, true); await Frames();
@@ -105,10 +105,10 @@ public partial class Preview
             hover = ((Control)results.GetChild(0)).GetGlobalRect().Position + new Vector2(40, 12);
             GetViewport().PushInput(new InputEventMouseMotion { Position = hover, GlobalPosition = hover }, true); await Frames();
             Require(world.ItemTooltipVisible, "Actual result-row hover retains full native item tooltip callback"); DetailCall(world, "ItemTooltip.Hide");
-            await Click(Find<Button>("market_price_search")); Require((int)DetailField(world, "Merchant.marketPriceAsked")! == item, "Actual Search Price invokes native request");
+            await Click(Find<Button>("market_price_search")); Require((int)DetailField(world, "MarketPrice.marketPriceAsked")! == item, "Actual Search Price invokes native request");
             var days = new[] { new MarketPriceDay(750_000_000, 930_000_000, 670_000_000), new MarketPriceDay(690_000_000, 810_000_000, 590_000_000), new MarketPriceDay(720_000_000, 850_000_000, 620_000_000), new MarketPriceDay(780_000_000, 950_000_000, 700_000_000), new MarketPriceDay(760_000_000, 890_000_000, 640_000_000) };
             var reply = new MarketPriceReply(MarketPrice.History, item, days, 12_345, new DateTime(2026, 10, 8, 12, 0, 0, DateTimeKind.Utc));
-            DetailCall(world, "Merchant.OnMarketPrice", reply); await Frames(); Require(chart.HasData && !status.Visible && updated.Text.Contains("2026"), "History preserves five-day chart and local update stamp"); await Capture("history");
+            DetailCall(world, "MarketPrice.OnMarketPrice", reply); await Frames(); Require(chart.HasData && !status.Visible && updated.Text.Contains("2026"), "History preserves five-day chart and local update stamp"); await Capture("history");
             Require(chart.GetThemeDefaultFont() == Plugin.Kit.Bold, "Native chart drawing uses same bold font as labels");
             foreach (var part in new[] { ("MAX", days[0].Max), ("MIN", days[0].Min), ("AVG", days[0].Average - 15_000_000) })
             {
@@ -117,19 +117,19 @@ public partial class Preview
                 var p = chart.GlobalPosition + new Vector2(x, y); GetViewport().PushInput(new InputEventMouseMotion { Position = p, GlobalPosition = p }, true); await Frames();
                 Require(chart.TooltipText.Contains(part.Item1) && chart.TooltipText.Contains("gold"), "Actual chart hover preserves " + part.Item1 + " value");
             }
-            DetailCall(world, "Merchant.OnMarketPrice", reply with { ItemId = item + 1, Trades = 9 }); Require(Find<Label>("market_price_trades").Text == reply.Trades.ToString("n0"), "Reply for another item cannot replace selected history");
-            DetailCall(world, "Merchant.OnMarketPrice", reply with { Result = MarketPrice.TooSoon }); Require(status.Visible && chart.HasData, "Retry retains last chart and shows native status"); await Capture("retry");
-            DetailCall(world, "Merchant.OnMarketPrice", reply with { Result = 99 }); Require(status.Text.Contains("99"), "Error code retained"); await Capture("error");
-            DetailCall(world, "Merchant.OnMarketPrice", reply with { Result = MarketPrice.NoHistory }); Require(!chart.HasData && updated.Text == "" && status.Visible, "No-history clears data and update stamp");
-            string noHistory = status.Text; DetailCall(world, "Merchant.SelectMarketPriceItem", item); await Click(Find<Button>("market_price_search"));
+            DetailCall(world, "MarketPrice.OnMarketPrice", reply with { ItemId = item + 1, Trades = 9 }); Require(Find<Label>("market_price_trades").Text == reply.Trades.ToString("n0"), "Reply for another item cannot replace selected history");
+            DetailCall(world, "MarketPrice.OnMarketPrice", reply with { Result = MarketPrice.TooSoon }); Require(status.Visible && chart.HasData, "Retry retains last chart and shows native status"); await Capture("retry");
+            DetailCall(world, "MarketPrice.OnMarketPrice", reply with { Result = 99 }); Require(status.Text.Contains("99"), "Error code retained"); await Capture("error");
+            DetailCall(world, "MarketPrice.OnMarketPrice", reply with { Result = MarketPrice.NoHistory }); Require(!chart.HasData && updated.Text == "" && status.Visible, "No-history clears data and update stamp");
+            string noHistory = status.Text; DetailCall(world, "MarketPrice.SelectMarketPriceItem", item); await Click(Find<Button>("market_price_search"));
             Require(!chart.HasData && updated.Text == "" && status.Text == noHistory, "Cached no-history never shows zero data or year-one date"); await Capture("no-history");
-            DetailCall(world, "Merchant.RequestMarketPriceWindow", item); Require((bool)DetailField(world, "Merchant.marketPriceOpenOnReply")!, "External request retains open-on-reply");
-            query.GrabFocus(); await KeyInput(Key.Escape); Require(!window.Visible && !(bool)DetailField(world, "Merchant.marketPriceOpenOnReply")!, "Focused query Escape closes and cancels pending opening");
-            DetailCall(world, "Merchant.OnMarketPrice", reply); await Frames(); Require(!window.Visible, "Late history response cannot reopen closed screen");
-            DetailCall(world, "Merchant.OpenMarketPrice", 0); await Frames(); Require(window.Visible && !chart.HasData && (int)DetailField(world, "Merchant.marketPriceItem")! == 0, "Native reopen resets item and history");
+            DetailCall(world, "MarketPrice.RequestMarketPriceWindow", item); Require((bool)DetailField(world, "MarketPrice.marketPriceOpenOnReply")!, "External request retains open-on-reply");
+            query.GrabFocus(); await KeyInput(Key.Escape); Require(!window.Visible && !(bool)DetailField(world, "MarketPrice.marketPriceOpenOnReply")!, "Focused query Escape closes and cancels pending opening");
+            DetailCall(world, "MarketPrice.OnMarketPrice", reply); await Frames(); Require(!window.Visible, "Late history response cannot reopen closed screen");
+            DetailCall(world, "MarketPrice.OpenMarketPrice", 0); await Frames(); Require(window.Visible && !chart.HasData && (int)DetailField(world, "MarketPrice.marketPriceItem")! == 0, "Native reopen resets item and history");
             GetWindow().Size = new Vector2I(900, 630); await Frames(); window.Position = new Vector2(30, 32); await Capture("compact-viewport");
-            await Click(Find<Button>("market_price_cancel")); Require(!window.Visible && !(bool)DetailField(world, "Merchant.marketPriceShown")!, "Actual Cancel follows native close callback");
-            Premium(0); DetailCall(world, "Merchant.OpenMarketPrice", 0); Require(!window.Visible && world.GetChildren().OfType<Notice>().Any(), "Premium gate retains original native notice");
+            await Click(Find<Button>("market_price_cancel")); Require(!window.Visible && !(bool)DetailField(world, "MarketPrice.marketPriceShown")!, "Actual Cancel follows native close callback");
+            Premium(0); DetailCall(world, "MarketPrice.OpenMarketPrice", 0); Require(!window.Visible && world.GetChildren().OfType<Notice>().Any(), "Premium gate retains original native notice");
             foreach (var notice in world.GetChildren().OfType<Notice>()) notice.Free();
         }
         finally { layer.Free(); world.Free(); offline.Free(); }

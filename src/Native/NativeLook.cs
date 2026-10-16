@@ -289,14 +289,21 @@ public static class NativeLookEditor
         colour.GetPopup().AddChild(new LookColourPopupInput(colour.GetPopup()));
 
         // The editor writes 0-based numbers into these; the visible labels show the original 1-based ones.
-        Native.Set(editor, "faceLbl", new Label());
-        Native.Set(editor, "hairLbl", new Label());
+        Native.Set(editor, "faceLbl", StandIn(editor));
+        Native.Set(editor, "hairLbl", StandIn(editor));
         races.ChildEnteredTree += node => RaceAdded(adapter, node);
         Entering(races);
         NameRaces(adapter);
         editor.Changed += () => Refresh(editor);
         editor.AddChild(new NativeProcess(() => Refresh(editor)) { Name = "look_editor_sync" });
         Refresh(editor);
+    }
+
+    private static Label StandIn(Node editor)
+    {
+        var label = new Label { Visible = false };
+        editor.AddChild(label);
+        return label;
     }
 
     /// <summary>Refreshes the Classic numbering and colour availability after the editor changed.</summary>

@@ -21,7 +21,7 @@ public partial class Preview
         Game.Session.Self.Sheet.SeedWealth(1_180_000,0);ItemData.EnsureLoaded();
         var world=PreviewFixtures.Prepared(new WorldRoot());DetailCall(world,"InventoryWindow.BuildPanel");
         var inventory=(Control)DetailField(world,"InventoryWindow.InvContent")!;inventory.Visible=false;world.AddChild(inventory);
-        foreach(string method in new[]{"BuildKingWindows","Siege.BuildWindows","SpecialAuctionWindow.BuildPanel","BuildItemCombinePanel","BuildCombineRecipeBook","Merchant.BuildMarketPricePanel","Fortune.Build","DisguiseInit","Bifrost.BuildUi","BuildInZoneLeaveUi"})DetailCall(world,method);
+        foreach(string method in new[]{"BuildKingWindows","Siege.BuildWindows","SpecialAuctionWindow.BuildPanel","BuildItemCombinePanel","BuildCombineRecipeBook","MarketPrice.BuildMarketPricePanel","Fortune.Build","DisguiseInit","Bifrost.BuildUi","BuildInZoneLeaveUi"})DetailCall(world,method);
         var windows=Descendants(world).OfType<HudWindow>().ToArray();
         foreach(var layer in world.GetChildren().OfType<CanvasLayer>().ToArray())layer.Reparent(this);
         var screenshots=new List<object>();var checks=new List<string>();

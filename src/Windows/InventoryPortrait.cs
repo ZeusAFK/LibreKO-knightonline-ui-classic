@@ -51,7 +51,8 @@ public partial class InventoryPortrait : SubViewportContainer
             for(int x=0;x<Math.Min(cut,mask.GetWidth());x++) mask.SetPixel(x,y,Colors.Transparent);
         }
         Material=new ShaderMaterial {Shader=new Shader {Code="shader_type canvas_item; uniform sampler2D portrait_mask : filter_nearest, repeat_disable; void fragment(){ COLOR=texture(TEXTURE,UV)*COLOR; COLOR.a*=texture(portrait_mask,UV).a; }"}};
-        ((ShaderMaterial)Material).SetShaderParameter("portrait_mask",ImageTexture.CreateFromImage(mask));
+        using var maskTexture=ImageTexture.CreateFromImage(mask);
+        ((ShaderMaterial)Material).SetShaderParameter("portrait_mask",maskTexture);
     }
     public override void _ExitTree() { if(Plugin.Active) Plugin.Kit.Game.Inventory.Changed-=Refresh; }
     private void Refresh()

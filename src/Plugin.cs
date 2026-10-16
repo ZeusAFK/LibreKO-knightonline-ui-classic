@@ -116,8 +116,11 @@ public sealed class Plugin : IPlugin
         FreeOutsideWorld();
         NpcPortraitCache.Clear();
         ClassicStraightArt.Clear();
+        ClassicChatRoomSkin.ClearKnobs();
+        Layout.MykoQuestLayout.Clear();
         CharacterPageRouter.Reset();
         Layout.ClassicNpcLayout.Reset();
+        Kit.Release();
         _context = null;
         Kit = null!;
     }

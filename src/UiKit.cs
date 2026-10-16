@@ -76,6 +76,7 @@ public sealed class UiKit
     public Texture2D? Texture(string png) => Context.Assets.Texture($"{TextureDir}/{png}");
     private LocalAssets? _local;
     public LocalAssets Local => _local ??= new LocalAssets(Context.Assets.Root);
+    internal void Release() { _local?.Release(); _local = null; }
     public float Metric(string name,float fallback) => _metrics.TryGetValue(name,out var value) && float.IsFinite(value) ? value : fallback;
 
     public Font ChatFont => ThemeDB.FallbackFont;

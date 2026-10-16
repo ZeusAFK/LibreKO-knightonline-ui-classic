@@ -73,14 +73,14 @@ public static class NativeMerchant
                 Cells(world, "Merchant.shopBagCells");
                 break;
             case "wishlist":
-                Cells(world, "Merchant.wishCells");
+                Cells(world, "MerchantBuy.wishCells");
                 break;
             case "wishfind":
                 window.VisibilityChanged += () => { if (!window.Visible) Native.Call(world, "Merchant.CloseAmountPrompt"); };
                 break;
             case "wantedstall":
-                Cells(world, "Merchant.wantedCells", null, (bag, wanted) => SellToWanted(world, bag, wanted));
-                Cells(world, "Merchant.wantedBagCells", bag => SellToFirstOrder(world, bag));
+                Cells(world, "MerchantBuy.wantedCells", null, (bag, wanted) => SellToWanted(world, bag, wanted));
+                Cells(world, "MerchantBuy.wantedBagCells", bag => SellToFirstOrder(world, bag));
                 break;
         }
         NativeWindows.Sync(window, () =>
@@ -99,7 +99,7 @@ public static class NativeMerchant
         PrepareAmount(world);
         BuildAdvert(world, state);
         WatchSigns(world);
-        Native.Get<CanvasLayer>(world, "Merchant.mctLayer")?.AddChild(new NativeMerchantDragWatch { Name = "native_merchant_drags" });
+        Native.Get<CanvasLayer>(world, "Merchant.ServiceLayer")?.AddChild(new NativeMerchantDragWatch { Name = "native_merchant_drags" });
     }
 
     /// <summary>Names the amount prompt for the Classic prompt skin and validates its quantity and price.</summary>
@@ -134,9 +134,9 @@ public static class NativeMerchant
         layer.SetMeta("merchant_price_editable", Native.Get<Control>(world, "Merchant.amountPriceFixed")?.Visible == false);
         layer.SetMeta("merchant_quantity", Native.Get<Control>(world, "Merchant.amountCountRow")?.Visible == true);
         layer.SetMeta("merchant_market_available", Native.Get<Control>(world, "Merchant.amountMarketRow")?.Visible == true);
-        layer.SetMeta("merchant_market_open", Native.Get<bool>(world, "Merchant.marketPriceShown"));
+        layer.SetMeta("merchant_market_open", Native.Get<bool>(world, "MarketPrice.marketPriceShown"));
         // Opening or closing price history changes which keys the prompt may use in the same frame.
-        if (Native.Get<HudWindow>(world, "Merchant.MarketPricePanel") is { } market && !market.HasMeta("native_merchant_market"))
+        if (Native.Get<HudWindow>(world, "MarketPrice.MarketPricePanel") is { } market && !market.HasMeta("native_merchant_market"))
         {
             market.SetMeta("native_merchant_market", true);
             market.VisibilityChanged += () => SyncAmount(world);
@@ -240,13 +240,13 @@ public static class NativeMerchant
         var accept = Native.Get<Delegate>(world, "Merchant.amountAccept");
         Native.Call(world, "SellToWanted", gridIndex, wantedSlot);
         if (layer == null || !layer.Visible || ReferenceEquals(accept, Native.Get<Delegate>(world, "Merchant.amountAccept"))) return;
-        var wanted = Native.Get<MerchantStallItem[]>(world, "Merchant.wantedItems");
+        var wanted = Native.Get<MerchantStallItem[]>(world, "MerchantBuy.wantedItems");
         if (wanted == null || wantedSlot < 0 || wantedSlot >= wanted.Length || wanted[wantedSlot].Price < 1) return;
         int capacity = (CoinMax - Game.Session.Self.Sheet.Gold) / wanted[wantedSlot].Price;
         if (capacity < 1)
         {
             Native.Call(world, "Merchant.CloseAmountPrompt");
-            Native.Call(world, "Merchant.SetWantedStatus", "You cannot carry any more gold.", true);
+            Native.Call(world, "MerchantBuy.SetWantedStatus", "You cannot carry any more gold.", true);
             return;
         }
         if (Native.Get<SpinBox>(world, "Merchant.amountCount") is { } count)
@@ -258,7 +258,7 @@ public static class NativeMerchant
 
     private static void SellToFirstOrder(WorldRoot world, int gridIndex)
     {
-        if (Game.Session.Self.Inventory is not { } inv || Native.Get<MerchantStallItem[]>(world, "Merchant.wantedItems") is not { } wanted) return;
+        if (Game.Session.Self.Inventory is not { } inv || Native.Get<MerchantStallItem[]>(world, "MerchantBuy.wantedItems") is not { } wanted) return;
         int abs = Inventory.GridStart + gridIndex;
         if (abs >= inv.Length) return;
         int order = Array.FindIndex(wanted, item => !item.IsEmpty && item.ItemId == inv[abs].ItemId);
@@ -306,7 +306,7 @@ public static class NativeMerchant
     /// <summary>Marks stall signs as selling or buying and rebuilds a sign when the stall switches.</summary>
     private static void WatchSigns(WorldRoot world)
     {
-        if (Native.Get<Control>(world, "Merchant.stallSignLayer") is not { } signs) return;
+        if (Native.Get<Control>(world, "MerchantStalls.stallSignLayer") is not { } signs) return;
         NativeWindows.OnDescendantAdded(signs, node =>
         {
             if (node is not PanelContainer sign || sign.GetParent() != signs) return;
@@ -321,8 +321,8 @@ public static class NativeMerchant
                 if (!sign.HasMeta("merchant_buying")) Mark(sign, stall);
                 if (sign.GetMeta("merchant_buying").AsBool() != Native.Get<bool>(stall, "IsBuying"))
                 {
-                    Native.Call(Native.StaticOwner("LibreKO.Features.Windows.MerchantFeature"), "FreeStallSign", stall);
-                    Native.Call(world, "Merchant.RefreshStallSign", charId, stall);
+                    Native.Call(Native.StaticOwner("LibreKO.Features.Windows.MerchantStallsFeature"), "FreeStallSign", stall);
+                    Native.Call(world, "MerchantStalls.RefreshStallSign", charId, stall);
                     continue;
                 }
                 foreach (var cell in Native.Get<Array>(stall, "SignCells")?.OfType<Control>() ?? Enumerable.Empty<Control>())
@@ -339,7 +339,7 @@ public static class NativeMerchant
 
     private static IEnumerable<(int CharId, object Stall)> Stalls(WorldRoot world)
     {
-        if (Native.Get<IDictionary>(world, "Merchant.Stalls") is not { } stalls) yield break;
+        if (Native.Get<IDictionary>(world, "MerchantStalls.Stalls") is not { } stalls) yield break;
         foreach (DictionaryEntry entry in stalls)
             if (entry.Value != null) yield return ((int)entry.Key, entry.Value);
     }

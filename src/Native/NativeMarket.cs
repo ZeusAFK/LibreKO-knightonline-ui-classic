@@ -54,13 +54,13 @@ public static class NativeMarket
     private static void PrepareMarketPrice(HudWindow window, WorldRoot world)
     {
         if (window.HasMeta("classic_market_price_controls")) return;
-        var slot = Native.Get<ItemSlotView>(world, "Merchant.marketPriceSlot");
-        var name = Native.Get<Label>(world, "Merchant.marketPriceName");
-        var trades = Native.Get<Label>(world, "Merchant.marketPriceTrades");
-        var chart = Native.Get<PriceChart>(world, "Merchant.marketPriceChart");
-        var updated = Native.Get<Label>(world, "Merchant.marketPriceUpdated");
-        var status = Native.Get<Label>(world, "Merchant.marketPriceStatus");
-        var search = Native.Get<ItemSearchPanel>(world, "Merchant.MarketPriceSearch");
+        var slot = Native.Get<ItemSlotView>(world, "MarketPrice.marketPriceSlot");
+        var name = Native.Get<Label>(world, "MarketPrice.marketPriceName");
+        var trades = Native.Get<Label>(world, "MarketPrice.marketPriceTrades");
+        var chart = Native.Get<PriceChart>(world, "MarketPrice.marketPriceChart");
+        var updated = Native.Get<Label>(world, "MarketPrice.marketPriceUpdated");
+        var status = Native.Get<Label>(world, "MarketPrice.marketPriceStatus");
+        var search = Native.Get<ItemSearchPanel>(world, "MarketPrice.MarketPriceSearch");
         if (slot == null || name == null || trades == null || chart == null || updated == null || status == null || search == null) return;
         var find = name.GetParent().GetChildren().OfType<Button>().FirstOrDefault();
         var caption = trades.GetParent().GetChildren().OfType<Label>().FirstOrDefault(l => l != trades);
@@ -70,16 +70,16 @@ public static class NativeMarket
             new[] { "market_price_item", "market_price_name", "market_price_search", "market_price_trades_caption", "market_price_trades", "market_price_chart", "market_price_updated", "market_price_latest", "market_price_status" }))
             return;
         if (NativeChartBackground.Supported(chart)) chart.AddChild(new NativeChartBackground(chart));
-        int noHistoryId = Native.Get<int>(Native.StaticOwner("LibreKO.Features.Windows.MerchantFeature"), "MarketPriceNoHistoryText");
+        int noHistoryId = Native.Get<int>(Native.StaticOwner("LibreKO.Features.Windows.MarketPriceFeature"), "MarketPriceNoHistoryText");
         NativeWindows.Sync(window, () =>
         {
             name.TooltipText = name.Text;
             // A cached "no history" reply is drawn as an empty five-day history; show it as no history instead.
-            int item = Native.Get<int>(world, "Merchant.marketPriceItem");
-            if (item == 0 || updated.Text.Length == 0 || Native.Get<IDictionary>(world, "Merchant.marketPriceCache") is not { } cache) return;
+            int item = Native.Get<int>(world, "MarketPrice.marketPriceItem");
+            if (item == 0 || updated.Text.Length == 0 || Native.Get<IDictionary>(world, "MarketPrice.marketPriceCache") is not { } cache) return;
             if (cache[item] is not MarketPriceReply { Result: MarketPrice.NoHistory }) return;
-            Native.Call(world, "Merchant.ClearMarketPriceChart");
-            Native.Call(world, "Merchant.SetMarketPriceStatus", ItemData.Text(noHistoryId, "There is no trade history for this item"));
+            Native.Call(world, "MarketPrice.ClearMarketPriceChart");
+            Native.Call(world, "MarketPrice.SetMarketPriceStatus", ItemData.Text(noHistoryId, "There is no trade history for this item"));
         });
         window.SetMeta("classic_market_price_controls", 1);
     }
@@ -110,12 +110,12 @@ public static class NativeMarket
     private static void PrepareMerchantSearch(HudWindow window, WorldRoot world)
     {
         if (window.HasMeta("classic_merchant_search_controls")) return;
-        var edit = Native.Get<LineEdit>(world, "Merchant.searchEdit");
-        var scope = Native.Get<OptionButton>(world, "Merchant.searchScope");
-        var status = Native.Get<Label>(world, "Merchant.searchStatus");
-        var pages = Native.Get<HBoxContainer>(world, "Merchant.searchPages");
-        var lines = Native.Get<IList>(world, "Merchant.searchLines");
-        var model = Native.Get<MerchantSearch>(world, "Merchant.search");
+        var edit = Native.Get<LineEdit>(world, "MerchantSearch.searchEdit");
+        var scope = Native.Get<OptionButton>(world, "MerchantSearch.searchScope");
+        var status = Native.Get<Label>(world, "MerchantSearch.searchStatus");
+        var pages = Native.Get<HBoxContainer>(world, "MerchantSearch.searchPages");
+        var lines = Native.Get<IList>(world, "MerchantSearch.searchLines");
+        var model = Native.Get<MerchantSearch>(world, "MerchantSearch.search");
         if (edit == null || scope == null || status == null || pages == null || lines == null || model == null) return;
         var body = window.Body;
         var top = edit.GetParent();
@@ -158,7 +158,7 @@ public static class NativeMarket
                 if (Native.Get<Control>(lines[i]!, "Name") is { } label) label.TooltipText = tooltip;
                 if (Native.Get<Control>(lines[i]!, "Icon") is { } icon) icon.TooltipText = tooltip;
             }
-            if (visible.Count == 0 && status.Text.Length == 0 && !Native.Get<bool>(world, "Merchant.searchLoading")) status.Text = NoMatchingItems;
+            if (visible.Count == 0 && status.Text.Length == 0 && !Native.Get<bool>(world, "MerchantSearch.searchLoading")) status.Text = NoMatchingItems;
         });
         window.SetMeta("classic_merchant_search_controls", 1);
     }

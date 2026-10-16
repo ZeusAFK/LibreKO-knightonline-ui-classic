@@ -21,7 +21,7 @@ public partial class Preview
         const BindingFlags flags=BindingFlags.Instance|BindingFlags.NonPublic;
         var screens=new List<object>();var checks=new List<string>();
         async Task Frames(){for(int i=0;i<12;i++)await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);}
-        foreach(var spec in new[]{("gender","BuildGenderChange","GenderChangeWindow.shown"),("nation","BuildNationTransfer","NationTransfer.transferShown"),("search","BuildMerchantSearch","Merchant.searchShown")})
+        foreach(var spec in new[]{("gender","BuildGenderChange","GenderChangeWindow.shown"),("nation","BuildNationTransfer","NationTransfer.transferShown"),("search","BuildMerchantSearch","MerchantSearch.searchShown")})
         {
             var world=PreviewFixtures.Prepared(new WorldRoot());
             var panel=(Control)Native.Call(PreviewFixtures.ClientPreview(world), spec.Item2)!;
