@@ -123,7 +123,7 @@ public partial class Preview
         // ---- Loot box (client look first) -----------------------------------------------------------------
         var lootLayer = Field<CanvasLayer>("Loot.layer"); var lootPanel = Field<PanelContainer>("Loot.Panel");
         var lootCells = Field<ItemSlotView[]>("Loot.cells");
-        var entries = new List<LootEntry> { new(Net.GoldItemId, 1520), new(plain, 1), new(stackable, 25), new(longest, 1) };
+        var entries = new List<LootEntry> { new(LootWire.GoldItemId, 1520), new(plain, 1), new(stackable, 25), new(longest, 1) };
         if (graded > 0) entries.Add(new(graded, 1));
         void ShowLoot()
         {
@@ -181,7 +181,7 @@ public partial class Preview
         await OpenLoot(plain, "loot menu outside");
         await Click(new Vector2(40, 40));
         Require(OpenMenu() == null && !filter.Always.Contains(plain) && !filter.Never.Contains(plain), "loot menu: a click outside closes without a rule");
-        await Click(Cell(Net.GoldItemId).GetGlobalRect().GetCenter(), MouseButton.Right);
+        await Click(Cell(LootWire.GoldItemId).GetGlobalRect().GetCenter(), MouseButton.Right);
         Require(OpenMenu() == null, "loot menu: coins have no rule menu, as in the client");
         var longMenu = await OpenLoot(longest, "loot menu long name");
         var longTitle = (Label?)OpenMenu()?.FindChild("loot_menu_name", true, false);

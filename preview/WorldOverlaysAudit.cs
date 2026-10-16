@@ -130,7 +130,7 @@ public partial class Preview
         await Shot("native-death"); Call("DeathDialog.Hide");
         ShowBanners(); await Frames(); PlaceBanners();
         await Shot("native-banners"); HideBanners();
-        var gold = new LootEntry(Net.GoldItemId, 1520);
+        var gold = new LootEntry(LootWire.GoldItemId, 1520);
         // The client places the box at its 3D anchor; the audit shows the contents as the client's refresh does.
         void ShowLoot(List<LootEntry> entries)
         {

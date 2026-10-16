@@ -96,7 +96,7 @@ public partial class Preview
         void Reply(bool accepted)
         {
             var p = new Packet(GameOpcodes.GS_ITEM_MOVE); p.WriteByte(1); p.WriteByte(accepted ? (byte)1 : (byte)0); p.ResetOffset();
-            typeof(Net).GetMethod("HandleItemMove", flags)!.Invoke(net, new object[] { p });
+            PreviewPackets.Receive(p);
         }
         void SummonSheet(NativeSlot[] items, int index = 1)
         {
@@ -106,7 +106,7 @@ public partial class Preview
             foreach (int value in new[] { sheet.MaxHp, sheet.Hp, sheet.MaxMp, sheet.Mp, sheet.Satisfaction, sheet.Attack, sheet.Defence }) p.WriteShort((short)value);
             foreach (int resist in sheet.Resists) p.WriteByte((byte)resist);
             foreach (var item in items) { p.WriteInt(item.ItemId); p.WriteShort(item.Durability); p.WriteShort(item.Count); p.WriteByte(item.Flag); p.WriteShort(0); p.WriteInt(0); p.WriteInt(0); }
-            p.ResetOffset(); typeof(Net).GetMethod("HandlePet", flags)!.Invoke(net, new object[] { p });
+            p.ResetOffset(); PreviewPackets.Receive(p);
         }
         void CheckSlot(int bag, int petSlot, NativeSlot expectedBag, NativeSlot expectedPet, string state)
         {
@@ -150,7 +150,7 @@ public partial class Preview
                 var source = cells.Single(c => c.Slot == bag); var target = Find<ItemSlotView>("pet_item_" + i);
                 await Drag(source, target); await Request(ItemMove.InventoryToPet, id, i, i);
                 require(inventory[bag].Equals(item) && Game.Session.Pet.Pet!.Items[i].IsEmpty && Game.Session.Self.LastEnter.Inventory[bag].Equals(item), "Familiar equipment remains unchanged until the native acknowledgement / " + kinds[i]);
-                var truncated = new Packet(GameOpcodes.GS_ITEM_MOVE); truncated.WriteByte(1); truncated.ResetOffset(); typeof(Net).GetMethod("HandleItemMove", flags)!.Invoke(net, new object[] { truncated });
+                var truncated = new Packet(GameOpcodes.GS_ITEM_MOVE); truncated.WriteByte(1); truncated.ResetOffset(); PreviewPackets.Receive(truncated);
                 require(Field<bool>("InventoryWindow.moveInFlight"), "Truncated familiar equipment acknowledgement keeps the operation pending / " + kinds[i]);
                 Reply(false); await Frames(); CheckSlot(bag, i, item, default, "refused-equip-" + kinds[i]);
                 if (i == 0) await Capture("refused");
@@ -192,7 +192,7 @@ public partial class Preview
             await AuditPetFood(world, net, panel, actual, stream, timeout.Token, nation, output, require);
             await Click(Find<ItemSlotView>("pet_item_1"), MouseButton.Right); await Request(ItemMove.PetToInventory, attackId, 1, 0);
             var gone = new Packet(GameOpcodes.GS_PET); gone.WriteByte(1); gone.WriteByte(5); gone.WriteByte((byte)PetSheet.ModeDied); gone.WriteShort(1); gone.WriteInt(99); gone.ResetOffset();
-            typeof(Net).GetMethod("HandlePet", flags)!.Invoke(net, new object[] { gone }); Reply(true); await Frames();
+            PreviewPackets.Receive(gone); Reply(true); await Frames();
             require(inventory[Inventory.GridStart].IsEmpty && Game.Session.Self.LastEnter.Inventory[Inventory.GridStart].IsEmpty && Game.Session.Pet.Pet == null,
                 "Accepted familiar removal after dismissal is not half applied and does not resurrect the familiar");
             require(!Field<bool>("InventoryWindow.moveInFlight"), "Dismissed familiar equipment acknowledgement releases the native inventory lock");

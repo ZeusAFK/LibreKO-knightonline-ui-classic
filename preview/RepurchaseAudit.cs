@@ -89,8 +89,8 @@ public partial class Preview
             Drain();
             DetailCall(world, "Repurchase.Open", npc);
             var open = await Requests();
-            Require(open.Count == 1 && open[0][2] == RepurchaseReply.Open, "Kaishan's buy-back flag opens the list with the client's request (op 1)");
-            DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseList(RepurchaseReply.Open, rows));
+            Require(open.Count == 1 && (RepurchaseSubOpcode)open[0][2] == RepurchaseSubOpcode.Open, "Kaishan's buy-back flag opens the list with the client's request (op 1)");
+            DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseList(RepurchaseSubOpcode.Open, rows));
             var window = layer.GetChildren().OfType<HudWindow>().Single(w => w.Id == "repurchase");
             Require(window.Visible, "The list reply shows the client's window");
             NativeRepurchase.Prepare(window, world);
@@ -180,7 +180,7 @@ public partial class Preview
             await Click(Buy(0));
             ask = Confirmation(); RequestOf(ask!).Confirm(); await Frames();
             var buy = await Requests();
-            Require(buy.Count == 1 && buy[0][2] == RepurchaseReply.Buy && buy[0][3] == rows[0].Row && BinaryPrimitives.ReadInt32LittleEndian(buy[0].AsSpan(4)) == rows[0].ItemId
+            Require(buy.Count == 1 && (RepurchaseSubOpcode)buy[0][2] == RepurchaseSubOpcode.Buy && buy[0][3] == rows[0].Row && BinaryPrimitives.ReadInt32LittleEndian(buy[0].AsSpan(4)) == rows[0].ItemId
                 && BinaryPrimitives.ReadInt32LittleEndian(buy[0].AsSpan(8)) == npc, "OK sends the client's buy-back request for the row, item and NPC");
             // An expired row: the client's notice, no request.
             await Click(Buy(2));
@@ -192,21 +192,21 @@ public partial class Preview
             DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseBought(rows[0].ItemId)); await Frames();
             var done = Confirmation();
             Require(done != null && RequestOf(done).Message == SystemText(16654, "You have obtained an item from the re-purchase."), "A completed buy-back shows the client's notice");
-            Require((await Requests()).Any(r => r[2] == RepurchaseReply.Refresh), "A completed buy-back refreshes the list");
+            Require((await Requests()).Any(r => (RepurchaseSubOpcode)r[2] == RepurchaseSubOpcode.Refresh), "A completed buy-back refreshes the list");
             RequestOf(done!).Dismiss(); await Frames();
-            DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseBought(rows[1].ItemId, RepurchaseReply.NoCoins)); await Frames();
+            DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseBought(rows[1].ItemId, RepurchaseError.NoCoins)); await Frames();
             var refused = Confirmation();
             Require(refused != null && RequestOf(refused).Message == SystemText(1702, "You don't have enough gold."), "A refused buy-back shows the client's refusal");
             RequestOf(refused!).Dismiss(); Drain();
 
             // Refresh: the client's request; a shorter list hides the scroll bar.
             await Click(Find<Button>("rb_refresh"));
-            Require((await Requests()).Count(r => r[2] == RepurchaseReply.Refresh) == 1, "Refresh sends the client's refresh request");
-            DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseList(RepurchaseReply.Refresh, rows.Skip(6).ToList())); await Frames();
+            Require((await Requests()).Count(r => (RepurchaseSubOpcode)r[2] == RepurchaseSubOpcode.Refresh) == 1, "Refresh sends the client's refresh request");
+            DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseList(RepurchaseSubOpcode.Refresh, rows.Skip(6).ToList())); await Frames();
             rows = rows.Skip(6).ToList();
             Require(!scroll.Visible, "Seven stored items need no scroll bar");
             Inks("short"); await Capture("short");
-            DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseList(RepurchaseReply.Refresh, new List<RepurchaseRow>())); await Frames();
+            DetailCall(world, "Repurchase.On", PreviewFixtures.RepurchaseList(RepurchaseSubOpcode.Refresh, new List<RepurchaseRow>())); await Frames();
             rows = new List<RepurchaseRow>();
             var empty = Find<Label>("rb_empty");
             Require(empty.Visible && Enumerable.Range(0, Spec.Rows).All(r => !Name(r).Visible && !Buy(r).Visible), "An empty list shows only the client's empty line");
@@ -217,7 +217,7 @@ public partial class Preview
             // Close: the client's close request.
             Drain();
             await Click(Descendants(panel!).OfType<Button>().Single(b => b.TooltipText == "Close"));
-            Require(!window.Visible && (await Requests()).Count(r => r[2] == RepurchaseReply.Close) == 1, "Close hides the window and sends the client's close request");
+            Require(!window.Visible && (await Requests()).Count(r => (RepurchaseSubOpcode)r[2] == RepurchaseSubOpcode.Close) == 1, "Close hides the window and sends the client's close request");
         }
         finally
         {

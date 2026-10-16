@@ -220,7 +220,7 @@ public partial class Preview
             var sealedItem = inventory[Inventory.GridStart]; sealedItem.Flag = (byte)ItemFlag.Sealed;
             inventory.ApplySlotUpdate(Inventory.GridStart, sealedItem); DetailCall(world, "RebuildPetPicks");
             Require(stage.Item.IsEmpty && !stage._CanDropData(Vector2.Zero, new Godot.Collections.Dictionary { ["invFrom"] = Inventory.GridStart }), "Sealed item cannot be staged");
-            DetailCall(world, "PetHatch.OnFailed", Net.PetHatchNameTakenCode); await Capture("long-refusal");
+            DetailCall(world, "PetHatch.OnFailed", PetWire.NameTakenCode); await Capture("long-refusal");
             sealedItem.Flag = 0; inventory.ApplySlotUpdate(Inventory.GridStart, sealedItem);
             if (transform) inventory.ApplySlotUpdate(Inventory.GridStart + 27, new LibreKO.Domain.ItemSlot { ItemId = 700019001, Count = 1, Durability = 1 });
             DetailCall(world, "RebuildPetPicks"); DetailCall(world, "SelectPetHatchItem", Inventory.GridStart);

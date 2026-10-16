@@ -43,7 +43,7 @@ public partial class Preview
             foreach (bool pressed in new[] { true, false }) GetViewport().PushInput(new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = pressed }, true);
             await Frames();
         }
-        void Receive(Packet p) { p.ResetOffset(); typeof(Net).GetMethod("HandlePet", flags)!.Invoke(net, new object[] { p }); }
+        void Receive(Packet p) { p.ResetOffset(); PreviewPackets.Receive(p); }
         Packet Food(byte success, int slot, int id, short count = 0, short increase = 0)
         {
             var p = new Packet(GameOpcodes.GS_PET); p.WriteByte(1); p.WriteByte(16); p.WriteByte(success); p.WriteByte((byte)slot); p.WriteInt(id);

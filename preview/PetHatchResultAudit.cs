@@ -102,7 +102,7 @@ public partial class Preview
                 }
                 void Receive(Packet packet)
                 {
-                    packet.ResetOffset(); typeof(Net).GetMethod("HandleItemUpgrade", flags)!.Invoke(net, new object[] { packet });
+                    packet.ResetOffset(); PreviewPackets.Receive(packet);
                 }
                 Packet Refused()
                 {

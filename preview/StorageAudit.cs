@@ -253,7 +253,7 @@ public partial class Preview
         Require(vipCells[5]._CanDropData(Vector2.Zero, vipDrag), "VIP accepts a move into an empty slot");
         vipCells[5]._DropData(Vector2.Zero, vipDrag);
         Require((bool)DetailField(world, "VipWarehouse.inFlight")! && !vip[0].IsEmpty, "VIP rearrangement waits for the server");
-        DetailCall(world, "VipWarehouse.OnResult", Net.VipWhMoveSub, Net.VipSuccess);
+        DetailCall(world, "VipWarehouse.OnResult", (byte)VipWarehouseSubOpcode.Store, (byte)VipWarehouseResult.Succeeded);
         Require(vip[0].IsEmpty && vip[5].ItemId == weapon, "VIP rearrangement commits only after acknowledgement");
         await Capture(1, "vip-rearranged");
         RightClick(Descendants(panels[1]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_0"));
@@ -261,14 +261,14 @@ public partial class Preview
         Require(vipAmount == DetailField(world, "VipWarehouse.amountPrompt") && vipAmount.Visible && Descendants(vipAmount).OfType<MoneyEdit>().Single().Value == 74,
             "VIP storage asks quantity in the client's prompt rather than moving the entire stack");
         await Capture(1, "vip-quantity"); Descendants(vipAmount).OfType<MoneyEdit>().Single().Value = 10; vipAmount.Confirm();
-        DetailCall(world, "VipWarehouse.OnResult", Net.VipWhInputSub, Net.VipSuccess);
+        DetailCall(world, "VipWarehouse.OnResult", (byte)VipWarehouseSubOpcode.Input, (byte)VipWarehouseResult.Succeeded);
         Require(inventory[Inventory.GridStart].Count == 64 && vip[1].Count == 75, "VIP partial deposit preserves the remainder and merges");
         storages[1].TurnPage(3); storages[1].TurnPage(1);
         Require(storages[1].Page == 3 && storages[1].Pages == 4, "Classic VIP pages show all 48 slots and clamp at the last page");
         await Capture(1, "vip-last-page");
         Require(vipCells[11].Item.ItemId == warehouse[2].ItemId, "The last VIP page shows slot 48");
         storages[1].TurnPage(-3);
-        DetailCall(world, "VipWarehouse.ShowPinDialog", Net.VipWhSetPinSub, "Choose a new 4-digit PIN:"); await Capture(1, "vip-pin");
+        DetailCall(world, "VipWarehouse.ShowPinDialog", (byte)VipWarehouseSubOpcode.SetPassword, "Choose a new 4-digit PIN:"); await Capture(1, "vip-pin");
         pin.Input.Text = "12ab"; pin.ConfirmButton.EmitSignal(Button.SignalName.Pressed);
         Require(pin.Visible && pin.Message.Text == ((Label)DetailField(world, "VipWarehouse.pinPrompt")!).Text && pin.Message.Text.Contains("4 digits"),
             "PIN rejects non-digits without sending and shows the client's reprompt"); await Capture(1, "vip-invalid-pin"); pin.Hide();
@@ -282,7 +282,7 @@ public partial class Preview
             var vipStatusLabel = (StatusLabel)DetailField(world, "VipWarehouse.Status")!;
             vipBag[Inventory.GridStart + 3]._DropData(Vector2.Zero, Picked(vipCells[1], 5));
             Require(!vipAmount.Visible && (bool)DetailField(world, "VipWarehouse.inFlight")! && PendingCount("VipWarehouse.pending") == 5, "VIP: a part picked with the mouse wheel is taken out at once");
-            DetailCall(world, "VipWarehouse.OnResult", Net.VipWhOutputSub, Net.VipFail); vipStatusLabel.ResetStatus();
+            DetailCall(world, "VipWarehouse.OnResult", (byte)VipWarehouseSubOpcode.Output, (byte)VipWarehouseResult.Failed); vipStatusLabel.ResetStatus();
             vipCells[1]._DropData(Vector2.Zero, Picked(vipBag[Inventory.GridStart], 64));
             Require(vipAmount.Visible && Descendants(vipAmount).OfType<MoneyEdit>().Single().Value == 64 && !(bool)DetailField(world, "VipWarehouse.inFlight")!, "VIP: a whole stack dragged in asks the count");
             vipAmount.Close();

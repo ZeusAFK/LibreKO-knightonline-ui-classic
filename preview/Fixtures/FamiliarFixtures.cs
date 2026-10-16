@@ -69,7 +69,7 @@ public static partial class PreviewFixtures
             Satisfaction = 7240, Attack = 51, Defence = 110, Mode = PetSheet.ModeAttack };
         for (int i = 0; i < sheet.Resists.Length; i++) sheet.Resists[i] = 20 + i * 5;
         sheet.Items[0] = new ItemSlot { ItemId = PreviewAutomaticLooting, Count = 1, Durability = 1 };
-        Native.Call(Net.I, "SeedPreviewPet", sheet); Call(world, "Pet.Open");
+        Native.Set(Game.Session.Pet, "Pet", sheet); Call(world, "Pet.Open");
         if (!observeInventory) world.RemoveChild(layer);
         return layer;
     }

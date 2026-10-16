@@ -46,7 +46,7 @@ public partial class Preview
         var seedSheet = Game.Session.Pet.Pet!;
         void Seed()
         {
-            seedSheet.Items[1] = default; typeof(Net).GetMethod("SeedPreviewPet", flags)!.Invoke(net, new object[] { seedSheet });
+            seedSheet.Items[1] = default; Native.Set(Game.Session.Pet, "Pet", seedSheet);
             inventory.ApplySlotUpdate(Inventory.GridStart, record); Game.Session.Self.SetInventorySlot(Inventory.GridStart, record);
             DetailCall(world, "ShowPetSheet", seedSheet); DetailCall(world, "InventoryWindow.RefreshUI");
         }

@@ -41,21 +41,21 @@ public static partial class PreviewFixtures
     }
 
     /// <summary>A buy-back list reply (open or refresh) as the server sends it.</summary>
-    public static RepurchaseReply RepurchaseList(byte op, IReadOnlyList<RepurchaseRow> rows)
+    public static RepurchaseReply RepurchaseList(RepurchaseSubOpcode op, IReadOnlyList<RepurchaseRow> rows)
     {
         var p = new Packet(GameOpcodes.GS_ITEM_TRADE);
-        p.WriteByte(op); p.WriteByte(RepurchaseReply.Succeeded); p.WriteByte((byte)rows.Count);
+        p.WriteByte((byte)op); p.WriteByte((byte)RepurchaseResult.Succeeded); p.WriteByte((byte)rows.Count);
         foreach (var row in rows) { p.WriteByte(row.Row); p.WriteInt(row.ItemId); p.WriteInt(row.Price); p.WriteUInt(row.DeletesAt); }
         return RepurchaseReply.Read(p);
     }
 
     /// <summary>A buy-back purchase reply: success puts the item at a bag position, a refusal carries its error.</summary>
-    public static RepurchaseReply RepurchaseBought(int itemId, short error = 0)
+    public static RepurchaseReply RepurchaseBought(int itemId, RepurchaseError error = (RepurchaseError)0)
     {
         var p = new Packet(GameOpcodes.GS_ITEM_TRADE);
-        p.WriteByte(RepurchaseReply.Buy); p.WriteByte(error == 0 ? RepurchaseReply.Succeeded : (byte)0); p.WriteByte(0);
-        if (error == 0) { p.WriteByte(3); p.WriteInt(itemId); p.WriteByte(0); }
-        else { p.WriteInt(itemId); p.WriteShort(error); }
+        p.WriteByte((byte)RepurchaseSubOpcode.Buy); p.WriteByte(error == (RepurchaseError)0 ? (byte)RepurchaseResult.Succeeded : (byte)0); p.WriteByte(0);
+        if (error == (RepurchaseError)0) { p.WriteByte(3); p.WriteInt(itemId); p.WriteByte(0); }
+        else { p.WriteInt(itemId); p.WriteShort((short)error); }
         return RepurchaseReply.Read(p);
     }
 }

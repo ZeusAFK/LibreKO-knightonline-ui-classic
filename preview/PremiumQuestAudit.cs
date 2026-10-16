@@ -34,7 +34,6 @@ public partial class Preview
         Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation == 1 ? 105 : 205, Race = nation == 1 ? 1 : 11,
             Name = "Quest Preview", Gear = new int[8], Inventory = new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal] });
         ItemData.EnsureLoaded();
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
         string prefix = nation == 1 ? "karus" : "human";
         var checks = new List<string>(); var screens = new List<object>();
         void Require(bool valid, string message) { if (!valid) throw new Exception("PREMIUM_QUEST_AUDIT: " + message); checks.Add(message); }
@@ -358,7 +357,7 @@ public partial class Preview
         var bonuses = new[] { new PremiumBonus(PremiumBonusKind.Experience, 10), new PremiumBonus(PremiumBonusKind.Drops, 5), new PremiumBonus(PremiumBonusKind.RepairDiscount, 50), new PremiumBonus(PremiumBonusKind.FreeReset, 0) };
         async Task<Rect2> Status(int status, int type, int hours)
         {
-            typeof(Net).GetMethod("SeedPreviewPremium", flags)!.Invoke(net, new object?[] { status, type, hours, bonuses });
+            Native.Call(Game.Session.Premium, "Apply", status, type, hours, bonuses);
             DetailCall(premiumWorld, "Premium.OnStatus", status, type, hours);
             chip.Position = new Vector2(500, 60); chip.Size = Vector2.Zero; chip.ResetSize(); await Frames();
             return chip.GetGlobalRect();

@@ -16,7 +16,7 @@ public partial class Preview
         GetWindow().ContentScaleMode = Window.ContentScaleModeEnum.Disabled; GetWindow().Size = new Vector2I(1000, 700); GetViewport().GuiEmbedSubwindows = true;
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1000, 700), MouseFilter = MouseFilterEnum.Ignore });
         var offline = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, offline);
-        void Premium(int value) => typeof(Net).GetMethod("SeedPreviewPremium", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(offline, new object?[] { value, value, 720, null });
+        void Premium(int value) => Native.Call(Game.Session.Premium, "Apply", value, value, 720, System.Array.Empty<LibreKO.Domain.PremiumBonus>());
         Premium(1); var checks = new List<string>(); var screens = new List<object>();
         void Require(bool value, string text) { if (!value) throw new Exception("MARKET_PRICE_AUDIT: " + text); checks.Add(text); }
         async Task Frames(int count = 8) { for (int i = 0; i < count; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }

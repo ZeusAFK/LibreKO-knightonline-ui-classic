@@ -34,7 +34,7 @@ public partial class Preview
             void Receive(Packet packet)
             {
                 packet.ResetOffset();
-                typeof(Net).GetMethod("HandleItemUpgrade", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { packet });
+                PreviewPackets.Receive(packet);
             }
             Packet Refused(byte sub, byte code)
             {
