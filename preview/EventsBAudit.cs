@@ -239,7 +239,7 @@ public partial class Preview
             Require(status.Text == "Voting yes…", "Vote Yes presses the row's native vote");
             await Click(Named<Button>(panel, "report_vote_no"));
             Require(status.Text == "Voting no…", "Vote No presses the row's native vote");
-            DetailCall(open.World, "Report.OnResult", LibreKO.Network.Requests.ReportRequests.ReportVoteNoSub, false); await Frames();
+            DetailCall(open.World, "Report.OnResult", (byte)ReportSubOpcode.VoteNo, false); await Frames();
             Require(status.Text.StartsWith("Vote rejected") && Ink(status) == new Color("ff6a6a"), "Rejected vote keeps the native warning colour");
             await Capture(open.Window, panel, "vote-rejected");
             var next = Named<Button>(panel, "report_next"); var prev = Named<Button>(panel, "report_prev");
@@ -263,7 +263,7 @@ public partial class Preview
             await Click(file);
             Require(status.Text == "Filing report…", "Submit files through the native handler");
             await Capture(open.Window, panel, "filing");
-            DetailCall(open.World, "Report.OnResult", LibreKO.Network.Requests.ReportRequests.ReportFileSub, true); await Frames();
+            DetailCall(open.World, "Report.OnResult", (byte)ReportSubOpcode.File, true); await Frames();
             Require(status.Text == "Report filed." && Named<LineEdit>(panel, "report_target").Text == "", "Filed report clears the native form");
             DetailCall(open.World, "FillReports", 1, 0, false); await Frames();
             Require(Descendants(panel.Rows!).OfType<Label>().Any(l => l.Text == "No open reports." && l.IsVisibleInTree()) && next.Disabled && prev.Disabled, "Empty report list shows the native empty line");

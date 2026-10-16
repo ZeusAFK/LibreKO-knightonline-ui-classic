@@ -87,7 +87,7 @@ public static partial class PreviewFixtures
     {
         Call(world, "Siege.BuildWarWindow");
         bool held = view == "held";
-        Call(world, "Siege.ShowStatus", new SiegeWarStatus(held ? (byte)2 : SiegeWarStatus.Unheld, 1, 0, 0, held ? 845 : 0, 2_400,
+        Call(world, "Siege.ShowStatus", new SiegeWarStatus(held ? (SiegeWarState)2 : SiegeWarState.Unheld, 1, 0, 0, held ? 845 : 0, 2_400,
             held ? "TheVeryLongClanNameOfAll" : ""));
         return Detached(Field<HudWindow>(world, "Siege.WarPanel"));
     }

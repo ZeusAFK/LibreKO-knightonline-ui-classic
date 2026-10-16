@@ -664,7 +664,7 @@ public partial class Preview
         {
             ClassicSocialSkin.Register(PluginHost.Ui);
             int own = nation == 1 ? Nations.Karus : Nations.ElMorad, other = own == Nations.Karus ? Nations.ElMorad : Nations.Karus;
-            void Handle(string handler, Packet packet) => typeof(Net).GetMethod(handler, Flags)!.Invoke(offline, new object[] { packet });
+            void Handle(Packet packet) => PreviewPackets.Receive(packet);
             string Pending() => (((string, bool, int, int))Native.Get<object>(Game.Session.NationChat, "PendingRoom")!).Item1;
 
             var world = PreviewFixtures.Prepared(new WorldRoot());
@@ -725,8 +725,8 @@ public partial class Preview
             // The server's enter reply opens the room window; members and a line follow.
             DetailCall(world, "ChatReactions.Build"); DetailCall(world, "Whispers.Build"); DetailCall(world, "NationChannels.Build"); DetailCall(world, "ChatRoom.Build");
             var entered = new Packet(GameOpcodes.GS_NATION_CHAT);
-            entered.WriteByte(NationChatReplies.NationRooms); entered.WriteByte(NationChatReplies.PrivateEnter); entered.WriteByte(0); entered.WriteUShort((ushort)open.Id);
-            Handle("HandleNationChat", entered); await Frames(4);
+            entered.WriteByte(NationChatWire.NationRooms); entered.WriteByte((byte)NationChatSubOpcode.PrivateEnter); entered.WriteByte(0); entered.WriteUShort((ushort)open.Id);
+            Handle(entered); await Frames(4);
             var roomWindow = (HudWindow)DetailField(world, "ChatRoom.RoomWindow")!;
             Require(Game.Session.NationChat.NationChat.InPrivate && Game.Session.NationChat.NationChat.RoomId == open.Id && roomWindow.Visible, "nations: the enter reply opens the other nation's room");
             DetailCall(world, "Preview.DetachPreviewControl", roomWindow);
@@ -737,16 +737,16 @@ public partial class Preview
             Require(roomWindow.HasMeta(NativeChatRoom.ControlsMeta) && ClassicChatRoomFrame.Of(roomWindow) != null, "nations: the room window is in the Classic frame");
             var people = new[] { (9101, "Valka"), (9102, "Orrin"), (9103, "Sefa"), (9006, "Tester10") };
             var roster = new Packet(GameOpcodes.GS_NATION_CHAT);
-            roster.WriteByte(NationChatReplies.NationRooms); roster.WriteByte(NationChatReplies.Members); roster.WriteByte(0);
+            roster.WriteByte(NationChatWire.NationRooms); roster.WriteByte((byte)NationChatSubOpcode.Members); roster.WriteByte(0);
             roster.WriteUShort((ushort)open.Id); roster.WriteString(open.Name); roster.WriteInt(9101); roster.WriteUShort((ushort)open.MaxMembers); roster.WriteUShort((ushort)people.Length);
             foreach (var (id, name) in people) { roster.WriteInt(id); roster.WriteString(name); }
-            Handle("HandleNationChat", roster);
+            Handle(roster);
             int chatLines = 0, roomLines = 0;
             Action<ChatLine> chatLine = _ => chatLines++; Action<RoomChatLine> roomLine = _ => roomLines++;
             Game.Session.Chat.ChatEvent += chatLine; Game.Session.NationChat.RoomChatEvent += roomLine;
             var said = new Packet(GameOpcodes.GS_CHAT);
-            said.WriteByte(ChatType.ChatRoom); said.WriteByte(Net.RoomChatMessage); said.WriteInt(9101); said.WriteString("Valka"); said.WriteString("Welcome to both nations"); said.WriteUShort(21);
-            Handle("HandleChat", said); await Frames(8);
+            said.WriteByte(ChatType.ChatRoom); said.WriteByte((byte)RoomChatKind.Message); said.WriteInt(9101); said.WriteString("Valka"); said.WriteString("Welcome to both nations"); said.WriteUShort(21);
+            Handle(said); await Frames(8);
             Game.Session.Chat.ChatEvent -= chatLine; Game.Session.NationChat.RoomChatEvent -= roomLine;
             Require(roomLines == 1 && chatLines == 0, "nations: a room line goes to the room window only, never to the chat (room " + roomLines + ", chat " + chatLines + ")");
             var posts = Named<VBoxContainer>(frame, "room_log").GetChildren().Where(n => !n.IsQueuedForDeletion()).ToArray();

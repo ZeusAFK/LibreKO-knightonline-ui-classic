@@ -155,7 +155,7 @@ public partial class Preview
             var update = new Packet(GameOpcodes.GS_KNIGHTS_PROCESS); update.WriteByte(0x24); update.WriteShort((short)Game.Session.Clan.MyClan.ClanId);
             update.WriteByte((byte)Game.Session.Clan.MyClan.Flag); update.WriteShort((short)(int)DetailField(world, "CapeWindow.choice")!);
             update.WriteByte(0); update.WriteByte(0); update.WriteByte(0); update.WriteByte(0);
-            typeof(Net).GetMethod("HandleKnights", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { update });
+            PreviewPackets.Receive(update);
             Require(Game.Session.Self.LastEnter.CapeId == (int)DetailField(world, "CapeWindow.choice")!, "The server's clan update records the purchased cape as worn");
             Reply(-7); Require(!Busy() && !NetBusy(), "Duplicate idle response cannot alter completed operation");
             await Click(Find<Button>("cape_buy")); await KeyInput(Key.Enter); net.Disconnect(expected: true); Require(!window.Visible && !Busy() && !NetBusy(), "Disconnect closes service and clears pending request");

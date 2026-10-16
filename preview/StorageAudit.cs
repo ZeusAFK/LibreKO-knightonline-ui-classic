@@ -304,7 +304,7 @@ public partial class Preview
         await Capture(2, "clan-member-refused");
         RightClick(Descendants(panels[2]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_1"));
         Require((bool)DetailField(world, "ClanWarehouse.inFlight")!, "Clan members may store items (the client's clan-bank rights)");
-        DetailCall(world, "ClanWarehouse.OnResult", Net.ClanWhInputSub, Net.ClanWhFailed);
+        DetailCall(world, "ClanWarehouse.OnResult", (byte)WarehouseSubOpcode.Input, (byte)ClanWarehouseResult.Failed);
         Require(!inventory[Inventory.GridStart + 1].IsEmpty, "A refused clan deposit keeps the carried item");
         Native.Set(Game.Session.Clan, "MyClan", new MyClanInfo { InClan = true, Fame = ClanRanks.Chief });
         DetailCall(world, "ClanWarehouse.Refresh");
@@ -312,7 +312,7 @@ public partial class Preview
         RightClick(Descendants(panels[2]).OfType<ItemSlotView>().Single(c => c.Name == "storage_cell_1"));
         var clanAmount = storages[2].Amount!;
         Require(clanAmount == DetailField(world, "ClanWarehouse.amountPrompt") && clanAmount.Visible, "Clan officers can select a withdrawal quantity"); await Capture(2, "clan-quantity");
-        Descendants(clanAmount).OfType<MoneyEdit>().Single().Value = 5; clanAmount.Confirm(); DetailCall(world, "ClanWarehouse.OnResult", Net.ClanWhOutputSub, Net.ClanWhSucceeded);
+        Descendants(clanAmount).OfType<MoneyEdit>().Single().Value = 5; clanAmount.Confirm(); DetailCall(world, "ClanWarehouse.OnResult", (byte)WarehouseSubOpcode.Output, (byte)ClanWarehouseResult.Succeeded);
         Require(inventory[Inventory.GridStart].Count == 69 && clan[1].Count == 60, "Clan partial withdrawal merges into the carried stack");
         Require(!clanStatus.Text.StartsWith("Only the chief"), "A valid clan transfer replaces an obsolete permission warning");
         var clanCells = Descendants(panels[2]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_cell_")).ToDictionary(c => c.Index);
@@ -320,7 +320,7 @@ public partial class Preview
             var clanBag = Descendants(panels[2]).OfType<ItemSlotView>().Where(c => c.Name.ToString().StartsWith("storage_bag_")).ToDictionary(c => c.Index);
             clanCells[1]._DropData(Vector2.Zero, Picked(clanBag[Inventory.GridStart], 3));
             Require(!clanAmount.Visible && (bool)DetailField(world, "ClanWarehouse.inFlight")! && PendingCount("ClanWarehouse.pending") == 3, "Clan bank: a part picked with the mouse wheel is stored at once");
-            DetailCall(world, "ClanWarehouse.OnResult", Net.ClanWhInputSub, Net.ClanWhFailed);
+            DetailCall(world, "ClanWarehouse.OnResult", (byte)WarehouseSubOpcode.Input, (byte)ClanWarehouseResult.Failed);
             clanBag[Inventory.GridStart + 3]._DropData(Vector2.Zero, Picked(clanCells[1], 60));
             Require(clanAmount.Visible && Descendants(clanAmount).OfType<MoneyEdit>().Single().Value == 60 && !(bool)DetailField(world, "ClanWarehouse.inFlight")!, "Clan bank: a whole stack dragged out asks the count");
             clanAmount.Close();
@@ -329,7 +329,7 @@ public partial class Preview
         }
         Variant clanDrag = clanCells[0].DragOut!(clanCells[0]);
         Require(clanCells[5]._CanDropData(Vector2.Zero, clanDrag), "Clan officers may rearrange the clan bank");
-        clanCells[5]._DropData(Vector2.Zero, clanDrag); DetailCall(world, "ClanWarehouse.OnResult", Net.ClanWhMoveSub, Net.ClanWhSucceeded);
+        clanCells[5]._DropData(Vector2.Zero, clanDrag); DetailCall(world, "ClanWarehouse.OnResult", (byte)WarehouseSubOpcode.Move, (byte)ClanWarehouseResult.Succeeded);
         Require(clan[0].IsEmpty && clan[5].ItemId == weapon, "Clan rearrangement preserves the item");
         await Capture(2, "clan-rearranged");
         clanDeposit.EmitSignal(Button.SignalName.Pressed);
