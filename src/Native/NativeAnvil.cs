@@ -104,7 +104,6 @@ public sealed class NativeAnvil
         Choice = BuildChoice();
         InstallCompanion();
         ReplaceOpenHandler();
-        var net = Net.I;
         NativeHooks.Listen("Net.ItemMoveResultEvent", () => Game.Session.Items.ItemMoveResultEvent += OnItemMoveResult,
             () => Game.Session.Items.ItemMoveResultEvent -= OnItemMoveResult, world);
         window.VisibilityChanged += () =>

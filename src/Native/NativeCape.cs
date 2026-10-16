@@ -59,7 +59,7 @@ public static class NativeCape
 
     public static void Prepare(HudWindow window, WorldRoot world)
     {
-        if (!NativeIdentity.Begin(window, "native_cape") || Net.I is not { } net) return;
+        if (!NativeIdentity.Begin(window, "native_cape") || Game.Connection is not { } net) return;
         var sliders = new[] { "CapeWindow.redSlider", "CapeWindow.greenSlider", "CapeWindow.blueSlider" }.Select(f => Native.Get<HSlider>(world, f)).ToArray();
         var values = new[] { "CapeWindow.rVal", "CapeWindow.gVal", "CapeWindow.bVal" }.Select(f => Native.Get<Label>(world, f)).ToArray();
         var ticket = Native.Get<CheckBox>(world, "CapeWindow.ticket");
@@ -196,7 +196,7 @@ public static class NativeCape
 
     private static void Opened(WorldRoot world, State state)
     {
-        if (Net.I is not { } net) return;
+        if (Game.Connection is not { } net) return;
         var worn = Game.Session.Self.LastEnter;
         Native.Get<CheckBox>(world, "CapeWindow.ticket")!.SetPressedNoSignal(false);
         var gear = Native.Call(world, "EntityLooksSystem.SelfGear") as int[] ?? Array.Empty<int>();
@@ -267,7 +267,7 @@ public static class NativeCape
 
     private static void RefreshPreview(WorldRoot world)
     {
-        if (!_states.TryGetValue(world, out var state) || Net.I is not { } net) return;
+        if (!_states.TryGetValue(world, out var state) || Game.Connection is not { } net) return;
         int choice = Native.Get<int>(world, "CapeWindow.choice");
         if (Native.Get<Button>(world, "CapeWindow.buyBtn") is { } buy)
             buy.Text = state.Window.HasMeta("classic_cape") ? (choice >= 0 ? "Buy" : "Apply") : (choice >= 0 ? "Buy cape" : "Apply dye");
@@ -473,7 +473,7 @@ public static class NativeCape
     private static void Submit(WorldRoot world, int revision, CapeSubOpcode op, int capeId, byte r, byte g, byte b)
     {
         if (!_states.TryGetValue(world, out var state) || revision != state.Revision || !Native.Get<bool>(world, "CapeWindow.shown")
-            || Native.Get<bool>(world, "CapeWindow.requestInFlight") || state.Notice == null || Net.I is not { } net) return;
+            || Native.Get<bool>(world, "CapeWindow.requestInFlight") || state.Notice == null || Game.Connection is not { } net) return;
         state.Notice = null;
         if (!CanApply(world)) { Gate(world); return; }
         Native.Set(world, "CapeWindow.requestInFlight", true);

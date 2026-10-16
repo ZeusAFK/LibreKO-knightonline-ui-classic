@@ -133,7 +133,6 @@ public static class NativeTrade
             NativeVendor.Rewire(gold, () => OpenGold(world));
 
         // The original request message replaces the desktop dialog in the same call that opened it.
-        var net = Net.I;
         Action<int> request = _ => Sync(world);
         NativeHooks.Listen("Net.ExchangeRequestEvent", () => Game.Session.Exchange.ExchangeRequestEvent += request, () => Game.Session.Exchange.ExchangeRequestEvent -= request, world);
         // A changed offer withdraws a pending final approval in the same reply that changed it.

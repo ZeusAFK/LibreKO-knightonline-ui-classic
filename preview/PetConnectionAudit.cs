@@ -139,7 +139,7 @@ public partial class Preview
                 Seed(); Stage(); await DrainRequests(replacement.GetStream(), 3);
                 await SendReply(replacement.GetStream());
                 typeof(Net).GetField("connectedFired", flags)!.SetValue(net, true);
-                net.AutoReconnect = false; replacement.Close();
+                net.Reconnect.AutoReconnect = false; replacement.Close();
                 for (int i = 0; i < 120 && net.Connected; i++) await Frames(1);
                 Require(!net.Connected, "Peer shutdown reaches the native connection-loss path");
                 // The client dispatches frames that arrived before the loss, then resets the session.

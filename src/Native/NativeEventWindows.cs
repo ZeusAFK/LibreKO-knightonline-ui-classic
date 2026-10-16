@@ -100,7 +100,7 @@ public static class NativeEventWindows
             & NativeWindows.Name(icon, "lottery_req_icon") & NativeWindows.Name(icon?.GetParent(), "lottery_req_slot")
             & NativeWindows.Name(cost, "lottery_cost") & NativeWindows.Name(cost?.GetParent(), "lottery_cost_box")
             & NativeWindows.Name(buy, "lottery_buy");
-        if (!named || buy == null || Net.I is not { } net) return false;
+        if (!named || buy == null || Game.Connection is not { } net) return false;
         var view = Lottery(world);
         // The client repaints Buy on every lottery update; the lock only covers the reply to this press.
         buy.Pressed += () => { view.PendingSince = Time.GetTicksMsec(); buy.Disabled = true; };
@@ -137,7 +137,7 @@ public static class NativeEventWindows
         var result = Native.Get<Label>(world, "Roulette.resultLabel");
         bool named = Name(world, "Roulette.coinsLabel", "roulette_coins") & NativeWindows.Name(result, "roulette_result")
             & NativeWindows.Name(spin, "roulette_spin");
-        if (!named || spin == null || result == null || Net.I is not { } net) return false;
+        if (!named || spin == null || result == null || Game.Connection is not { } net) return false;
         var view = Roulette(world);
         NativeIdentity.Rewire(spin, () =>
         {
@@ -187,7 +187,7 @@ public static class NativeEventWindows
         bool named = Name(world, "Tournament.roundLbl", "tournament_round") & Name(world, "Tournament.countLbl", "tournament_count")
             & Name(world, "Tournament.stateLbl", "tournament_state")
             & NativeWindows.Name(register, "tournament_register") & NativeWindows.Name(unregister, "tournament_unregister");
-        if (!named || register == null || unregister == null || Net.I is not { } net) return false;
+        if (!named || register == null || unregister == null || Game.Connection is not { } net) return false;
         var view = Tournament(world);
         // Both buttons wait for the server's status; the client repaints them when it arrives.
         void Lock() { view.PendingSince = Time.GetTicksMsec(); register.Disabled = unregister.Disabled = true; }

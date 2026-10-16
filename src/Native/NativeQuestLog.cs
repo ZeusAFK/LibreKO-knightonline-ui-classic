@@ -18,7 +18,7 @@ public static class NativeQuestLog
     private const int RewardSeparation = 5, CaptionSize = 13, HintSize = 12;
 
     private static readonly Dictionary<int, QuestReceipt> _receipts = new();
-    private static Net? _listening;
+    private static IGameConnection? _listening;
     private static NativeHooks.Hook? _receiptHook;
     private static WeakReference<WorldRoot>? _receiptWorld;
 
@@ -30,7 +30,7 @@ public static class NativeQuestLog
     private static void ListenForReceipts(WorldRoot world)
     {
         _receiptWorld = new WeakReference<WorldRoot>(world);
-        if (Net.I is not { } net || ReferenceEquals(net, _listening) && _receiptHook is { Active: true }) return;
+        if (Game.Connection is not { } net || ReferenceEquals(net, _listening) && _receiptHook is { Active: true }) return;
         _receiptHook?.Release();
         _listening = net;
         _receipts.Clear();

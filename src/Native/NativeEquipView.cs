@@ -47,7 +47,7 @@ public static class NativeEquipView
 
     public static void Prepare(HudWindow window, WorldRoot world)
     {
-        if (!NativeIdentity.Begin(window, "native_equipview") || Net.I is not { } net) return;
+        if (!NativeIdentity.Begin(window, "native_equipview") || Game.Connection is not { } net) return;
         var root = window.Body;
         var state = new State { Window = window };
         foreach (var child in root.GetChildren().OfType<Control>()) child.Visible = false;

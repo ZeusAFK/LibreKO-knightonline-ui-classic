@@ -65,7 +65,7 @@ public static class NativeVendor
         NativeGoldLog.Attach(world);
         NativeWindows.Sync(window, () => Sync(window, world));
         // Runs after the client opened the shop, so the packed pages are in place before the first frame.
-        if (Net.I is { } net)
+        if (Game.Connection is { } net)
         {
             Action<int> opened = _ => Sync(window, world);
             NativeHooks.Listen("Net.TradeNpcEvent", () => Game.Session.Vendor.TradeNpcEvent += opened, () => Game.Session.Vendor.TradeNpcEvent -= opened, world);

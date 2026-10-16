@@ -57,8 +57,7 @@ public static class NativeParty
             Callable.From(() => { queued = false; if (GodotObject.IsInstanceValid(world)) Listed(world); }).CallDeferred();
         };
         NativeWindows.Sync(window, () => Mirror(world));
-        if (Net.I == null) return;
-        var net = Net.I;
+        if (Game.Connection == null) return;
         var weakWorld = new WeakReference<WorldRoot>(world);
         Action<int, int, List<PartyBbsEntry>> handler = (page, total, entries) =>
         {

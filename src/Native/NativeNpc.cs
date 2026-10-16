@@ -92,9 +92,8 @@ public static class NativeNpc
     /// <summary>Follows quest views for one world so each NPC quest view gets its state caption.</summary>
     public static void Prepare(HudWindow window, WorldRoot world)
     {
-        if (Net.I == null || _subscribed.TryGetValue(world, out _)) return;
+        if (Game.Connection == null || _subscribed.TryGetValue(world, out _)) return;
         var weakWorld = new WeakReference<WorldRoot>(world);
-        var net = Net.I;
         Action<QuestView> handler = view =>
         {
             if (!weakWorld.TryGetTarget(out var w) || !GodotObject.IsInstanceValid(w)) return;

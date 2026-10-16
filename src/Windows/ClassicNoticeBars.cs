@@ -150,7 +150,7 @@ public static class ClassicNoticeBars
     public static string? TextOf(string key)
     {
         if (key == GmKey) return NativeGmList.Names.Count == 0 ? L.NoGms : string.Join("\n", NativeGmList.Names);
-        if (Net.I is not { } net) return null;
+        if (Game.Connection is not { } net) return null;
         foreach (var entry in Game.Session.Zone.EventTitles.Entries)
             if (KeyOf(entry.Title) == key) return entry.Message.Length > 0 ? entry.Message : entry.Title;
         return null;
@@ -195,7 +195,7 @@ public partial class ClassicNoticeStack : Control
         _column = column;
         World = AncestorWorld(column);
         ClockText = () => NativePremium.Clock(World);
-        ClanSource = () => NativePremium.ClanOf(World, Net.I);
+        ClanSource = () => NativePremium.ClanOf(World, Game.Connection);
         BonusSource = () => Game.Session.Clan.ClanOnlineCount;
         MouseFilter = MouseFilterEnum.Ignore;
         TextureFilter = TextureFilterEnum.Nearest;
@@ -263,7 +263,7 @@ public partial class ClassicNoticeStack : Control
         _track = new Rect2(thumbNode.X - trackbar.X, 0, thumbNode.W, trackbar.H);
         AddChild(_box);
         NativeGmList.Changed += Refresh;
-        if (Net.I is { } net)
+        if (Game.Connection is { } net)
             NativeHooks.Listen("Net.EventTitlesChangedEvent (notice group)", () => Game.Session.Zone.EventTitlesChangedEvent += Refresh, () => Game.Session.Zone.EventTitlesChangedEvent -= Refresh, this);
         NativeGmList.Attach(this);
         Sync();
@@ -305,7 +305,7 @@ public partial class ClassicNoticeStack : Control
     {
         ClassicNoticeBars.ClanKey => NativePremium.ClanDetails(ClanSource()),
         ClassicNoticeBars.BonusKey => Bonus() is { Shown: true } bonus ? bonus.Tooltip : null,
-        ClassicNoticeBars.PremiumKey => NativePremium.Details(NativePremium.Current(Net.I)),
+        ClassicNoticeBars.PremiumKey => NativePremium.Details(NativePremium.Current(Game.Connection)),
         _ => ClassicNoticeBars.TextOf(key),
     };
 
@@ -348,7 +348,7 @@ public partial class ClassicNoticeStack : Control
     /// <summary>Premium, clan and bonus captions, the clock, and the client's own chips and clock kept hidden.</summary>
     public void Sync()
     {
-        var account = NativePremium.Current(Net.I);
+        var account = NativePremium.Current(Game.Connection);
         _premium.SetCaption(account.Name, account.Active);
         _premium.TooltipText = account.Active ? account.Name + " (click for the time left and benefits)" : "No Premium";
         var clan = ClanSource();

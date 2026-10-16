@@ -299,7 +299,6 @@ public sealed class NativeRepair
                 repair.Sync();
             }).CallDeferred();
         };
-        var net = Net.I;
         NativeHooks.Listen("Net.ItemRepairResultEvent", () => Game.Session.Repair.ItemRepairResultEvent += repair.OnResult,
             () => Game.Session.Repair.ItemRepairResultEvent -= repair.OnResult, world);
         // The catalogue stays hidden while repairing, so state is followed from outside the window.

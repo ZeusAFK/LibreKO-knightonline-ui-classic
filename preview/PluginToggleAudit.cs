@@ -382,7 +382,7 @@ public partial class Preview
 
         using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        Game.Session.PreGame.LoginResultEvent += (ok, _) => { if (ok) net.SelectChar("ToggleTester"); };
+        Game.Session.PreGame.LoginResultEvent += (ok, _) => { if (ok) Game.Requests.PreGame.SelectCharacter("ToggleTester"); };
         Game.Session.PreGame.EnterWorldEvent += _ => GetTree().ChangeSceneToFile("res://scenes/World.tscn");
         GetTree().CurrentScene = null;
         RenderingServer.SetDefaultClearColor(new Color("34362b"));
@@ -430,7 +430,7 @@ public partial class Preview
         finally
         {
             GetViewport().Disable3D = false;
-            net.AutoReconnect = false; net.Disconnect(expected: true); peer?.Close();
+            net.Reconnect.AutoReconnect = false; net.Disconnect(expected: true); peer?.Close();
             if (GetTree().CurrentScene is WorldRoot current) { GetTree().CurrentScene = null; current.QueueFree(); await Frames(); }
             GetTree().CurrentScene = this; net.Free(); loginNet.Free(); typeof(Net).GetProperty("I")!.SetValue(null, original);
             typeof(LoginNet).GetProperty("I")!.SetValue(null, originalLogin);

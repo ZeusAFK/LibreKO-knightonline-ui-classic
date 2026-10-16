@@ -20,7 +20,7 @@ public static class NativeNpcOpening
 
     public static void Prepare(HudWindow window, WorldRoot world)
     {
-        if (Net.I is not { } net) return;
+        if (Game.Connection is not { } net) return;
         var weakWorld = new WeakReference<WorldRoot>(world);
         // The client may subscribe before or after the plugin; mark once its menu is built.
         void Mark(string kind)

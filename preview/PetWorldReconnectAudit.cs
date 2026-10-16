@@ -102,7 +102,7 @@ public partial class Preview
         }
         using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        Game.Session.PreGame.LoginResultEvent += (ok, _) => { if (ok) net.SelectChar("FamiliarTester"); };
+        Game.Session.PreGame.LoginResultEvent += (ok, _) => { if (ok) Game.Requests.PreGame.SelectCharacter("FamiliarTester"); };
         Game.Session.PreGame.EnterWorldEvent += _ => GetTree().ChangeSceneToFile("res://scenes/World.tscn");
         // Keep the audit runner alive when the native reconnect path replaces CurrentScene.
         GetTree().CurrentScene = null;
@@ -138,15 +138,15 @@ public partial class Preview
                 {
                     Require(Game.Requests.Pet.Hatch(13016, 600001000, 4, "Kauly"), "Pre-disconnect trainer request enters native pending state");
                     previous = world; peer.Close();
-                    await Until(() => net.ReconnectState != Net.ReconnectPhase.Idle, "Native transport loss starts automatic reconnect");
+                    await Until(() => net.Reconnect.State != ReconnectPhase.Idle, "Native transport loss starts automatic reconnect");
                     Require(Game.Session.Pet.Pet == null && Game.Session.Pet.Items.Count == 0, "Disconnect clears the old familiar session before relogin");
                 }
             }
-            Require(net.ReconnectState == Net.ReconnectPhase.Idle && net.ReconnectAttempt == 1, "Native relogin, selection, MYINFO and scene reconstruction complete on one reconnect");
+            Require(net.Reconnect.State == ReconnectPhase.Idle && net.Reconnect.Attempt == 1, "Native relogin, selection, MYINFO and scene reconstruction complete on one reconnect");
         }
         finally
         {
-            net.AutoReconnect = false; net.Disconnect(expected: true);
+            net.Reconnect.AutoReconnect = false; net.Disconnect(expected: true);
             if (GetTree().CurrentScene is WorldRoot world) { GetTree().CurrentScene = null; world.QueueFree(); await Frames(); }
             GetTree().CurrentScene = this; net.Free(); loginNet.Free(); typeof(Net).GetProperty("I")!.SetValue(null, original);
             typeof(LoginNet).GetProperty("I")!.SetValue(null, originalLogin);

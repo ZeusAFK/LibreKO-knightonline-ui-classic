@@ -87,7 +87,7 @@ public static class NativeAppearance
         LookFraming.Attach(preview, () => editor.Race);
         void Opened()
         {
-            if (Net.I is not { } net) return;
+            if (Game.Connection is not { } net) return;
             name.Text = Game.Session.Self.LastEnter.Name;
             identity.Text = StarterStats.RaceName(Game.Session.Self.LastEnter.Race);
         }
@@ -139,7 +139,7 @@ public static class NativeAppearance
         var list = Native.Get<VBoxContainer>(world, "NationTransfer.transferList");
         var layer = Native.Get<CanvasLayer>(world, "NationTransfer.transferLayer");
         if (preview == null || editor == null || status == null || accept == null || header == null || list == null
-            || layer == null || list.GetParent() is not Control column || Net.I is not { } net) return;
+            || layer == null || list.GetParent() is not Control column || Game.Connection is not { } net) return;
         if (!NameCommon(preview, editor, status, accept)) return;
         header.Name = "transfer_header";
         NativeWindows.Name(column.GetChildren().OfType<Label>().FirstOrDefault(), "transfer_characters_heading");
@@ -166,7 +166,7 @@ public static class NativeAppearance
     }
 
     /// <summary>Opens the account only while no transfer is shown, pending or completed.</summary>
-    private static void ReplaceOpen(WorldRoot world, Net net)
+    private static void ReplaceOpen(WorldRoot world, IGameConnection net)
     {
         Action<IReadOnlyList<NationTransferCandidate>> open = candidates => OpenTransfer(world, candidates);
         var feature = Native.Get<object>(world, "NationTransfer");

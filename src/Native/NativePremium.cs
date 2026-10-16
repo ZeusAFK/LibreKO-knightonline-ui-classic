@@ -18,7 +18,7 @@ public static class NativePremium
 
     public readonly record struct Clan(bool InClan, bool Active, long EndsAt);
 
-    public static Account Current(Net? net)
+    public static Account Current(IGameConnection? net)
     {
         if (net == null || Game.Session.Premium.PremiumAccountStatus == 0 || Game.Session.Premium.PremiumHours <= 0) return new(false, "No Premium", 0, Array.Empty<PremiumBonus>());
         string name = Game.Session.Premium.PremiumAccountStatus == PcRoomStatus ? "PC Room" : PremiumName(Game.Session.Premium.PremiumType);
@@ -57,7 +57,7 @@ public static class NativePremium
         return rem > 0 ? $"{days}d {rem}h" : $"{days}d";
     }
 
-    public static Clan ClanOf(WorldRoot? world, Net? net) =>
+    public static Clan ClanOf(WorldRoot? world, IGameConnection? net) =>
         new(world != null && Native.Get<bool>(world, "ClanPremium.inClan"), Game.Session.ClanPremium.ClanPremiumActive, Game.Session.ClanPremium.ClanPremiumEndsAt);
 
     /// <summary>
@@ -67,7 +67,7 @@ public static class NativePremium
     /// </summary>
     public readonly record struct ClanBonus(bool Shown, int Online, string Marks, string Tooltip);
 
-    public static ClanBonus BonusOf(Net? net, int? online = null)
+    public static ClanBonus BonusOf(IGameConnection? net, int? online = null)
     {
         int count = online ?? Game.Session.Clan.ClanOnlineCount;
         bool shown = count != ClanSession.NoClanBonus && Game.Session.Clan.MyClan.InClan;

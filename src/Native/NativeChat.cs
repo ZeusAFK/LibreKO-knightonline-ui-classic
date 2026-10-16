@@ -56,7 +56,7 @@ public static class NativeChat
     {
         if (!ChatReplaced || ChatOf(world) is not { } chat) return;
         Native.Set(chat, "StatusNotice", (Action<string>)(message => Info(chat, message)));
-        if (Net.I is not { } net) return;
+        if (Game.Connection is not { } net) return;
         Action<ChatLine> recolour = line => RecolourBubble(chat, line);
         NativeHooks.Listen("Net.ChatEvent", () => Game.Session.Chat.ChatEvent += recolour, () => Game.Session.Chat.ChatEvent -= recolour, world);
     }
@@ -187,7 +187,7 @@ public static class NativeChat
             Native.Set(world, "ChatHost.nearbyFirstPoll", true);
         }
         ulong now = Time.GetTicksMsec();
-        if (now >= state.NextPoll && Net.I is { } net)
+        if (now >= state.NextPoll && Game.Connection is { } net)
         {
             Game.Requests.NearbyPlayers.Request(Native.Get<bool>(world, "ChatHost.nearbyFirstPoll"));
             Native.Set(world, "ChatHost.nearbyFirstPoll", false);
@@ -466,7 +466,7 @@ public partial class NativeWhisperInput : Node
 
     public override void _Input(InputEvent ev)
     {
-        if (_world == null || !Native.Get<bool>(_world, "WorldReady") || Net.I is not { } net || net.ReconnectBlocking) return;
+        if (_world == null || !Native.Get<bool>(_world, "WorldReady") || Game.Connection is not { } net || net.Reconnect.Blocking) return;
         if (ev is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } press)
         {
             NativeWhispers.FocusAt(_world, press.Position);

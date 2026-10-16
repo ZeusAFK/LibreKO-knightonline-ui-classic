@@ -103,7 +103,7 @@ public partial class Preview
         var sent = new ConcurrentQueue<string>();
         using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        Game.Session.PreGame.LoginResultEvent += (ok, _) => { if (ok) net.SelectChar("GenieTester"); };
+        Game.Session.PreGame.LoginResultEvent += (ok, _) => { if (ok) Game.Requests.PreGame.SelectCharacter("GenieTester"); };
         Game.Session.PreGame.EnterWorldEvent += _ => GetTree().ChangeSceneToFile("res://scenes/World.tscn");
         GetTree().CurrentScene = null;
         using var stop = new CancellationTokenSource();
@@ -488,7 +488,7 @@ public partial class Preview
         {
             stop.Cancel();
             NativeGenieQuick.Minimised = false; NativeGenieQuick.Closed = false;
-            net.AutoReconnect = false; net.Disconnect(expected: true);
+            net.Reconnect.AutoReconnect = false; net.Disconnect(expected: true);
             if (GetTree().CurrentScene is WorldRoot world) { GetTree().CurrentScene = null; world.QueueFree(); await Frames(); }
             GetTree().CurrentScene = this; net.Free(); loginNet.Free(); typeof(Net).GetProperty("I")!.SetValue(null, original);
             typeof(LoginNet).GetProperty("I")!.SetValue(null, originalLogin);

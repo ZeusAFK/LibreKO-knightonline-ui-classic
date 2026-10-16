@@ -28,7 +28,7 @@ public sealed partial class FamiliarWindow : Node
     private List<int> _skillIds = new();
     private int _page;
     private int _class = -1;
-    private Net? _net;
+    private IGameConnection? _net;
 
     private FamiliarWindow(WorldRoot world, HudWindow window, ItemSlotView[] bag)
     {
@@ -124,14 +124,14 @@ public sealed partial class FamiliarWindow : Node
         _previous.Pressed += () => { _page = Math.Max(0, _page - 1); Refresh(); };
         _next.Pressed += () => { _page++; Refresh(); };
         paging.AddChild(_previous); paging.AddChild(_skillPage); paging.AddChild(_next);
-        Observe(Net.I);
+        Observe(Game.Connection);
         Refresh();
     }
 
     public override void _ExitTree() => Observe(null);
 
     /// <summary>Follows the familiar sheet notifications of the active network session.</summary>
-    private void Observe(Net? net)
+    private void Observe(IGameConnection? net)
     {
         if (_net == net && _observing is { Active: true }) return;
         _observing?.Release();
@@ -189,7 +189,7 @@ public sealed partial class FamiliarWindow : Node
     private void Tick()
     {
         if (!IsInstanceValid(_world) || !_world.CanProcess()) return;
-        if (_net != Net.I) Observe(Net.I);
+        if (_net != Game.Connection) Observe(Game.Connection);
         RefreshPortrait();
         RefreshCooldowns(Now());
     }

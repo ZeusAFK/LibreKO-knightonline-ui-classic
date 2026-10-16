@@ -33,7 +33,7 @@ public sealed partial class FamiliarTrainer : Node
     private LineEdit _name = null!;
     private Button _accept = null!;
     private Label _description = null!;
-    private Net? _net;
+    private IGameConnection? _net;
     private int _revision;
     private bool _wasVisible;
 
@@ -121,7 +121,7 @@ public sealed partial class FamiliarTrainer : Node
         _window.VisibilityChanged += OnVisibilityChanged;
         _wasVisible = _window.Visible;
         for (int stage = 0; stage < _selected.Length; stage++) _selected[stage] = Native.Get<int>(_world, SlotFields[stage]);
-        Observe(Net.I);
+        Observe(Game.Connection);
         Rebuild(); Refresh();
     }
 
@@ -157,7 +157,7 @@ public sealed partial class FamiliarTrainer : Node
 
     public override void _ExitTree() { Observe(null); Dismiss(); }
 
-    private void Observe(Net? net)
+    private void Observe(IGameConnection? net)
     {
         if (_net == net && _observing is { Active: true }) return;
         _observing?.Release();
@@ -200,7 +200,7 @@ public sealed partial class FamiliarTrainer : Node
     private void Tick()
     {
         if (!IsInstanceValid(_world)) return;
-        if (_net != Net.I) Observe(Net.I);
+        if (_net != Game.Connection) Observe(Game.Connection);
         Rebuild(); Refresh();
     }
 
@@ -341,7 +341,7 @@ public sealed partial class FamiliarTrainer : Node
         Refresh();
     }
 
-    private static bool Send(Func<bool> send) => Net.I.Connected && send();
+    private static bool Send(Func<bool> send) => Game.Connection.Connected && send();
 
     private static bool SendTransform(int npc, ItemSlot familiar, int petSlot, int materialItemId, int materialSlot) =>
         Send(() => Game.Requests.Pet.Transform(npc, familiar.ItemId, petSlot, (int)familiar.UniqueId, materialItemId, materialSlot));

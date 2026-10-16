@@ -35,7 +35,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     private CharacterPanelBridge(WorldRoot world)
     {
         _world = new(world);
-        if (Net.I is { } net)
+        if (Game.Connection is { } net)
             NativeHooks.Listen("Net.ClanDonationListEvent", () => Game.Session.Clan.ClanDonationListEvent += OnDonations,
                 () => Game.Session.Clan.ClanDonationListEvent -= OnDonations, world);
     }
