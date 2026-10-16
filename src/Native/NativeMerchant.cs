@@ -201,7 +201,7 @@ public static class NativeMerchant
         }
         state.AdvertAccepted = false;
         if (state.Advert != null) state.Advert.Visible = false;
-        Native.Call(world, "ConfirmSellStall");
+        Native.Call(world, "Merchant.ConfirmSellStall");
     }
 
     /// <summary>Lists a bag item in the listing slot it was dropped on, or the first free one.</summary>
@@ -238,7 +238,7 @@ public static class NativeMerchant
     {
         var layer = Native.Get<CanvasLayer>(world, "Merchant.AmountLayer");
         var accept = Native.Get<Delegate>(world, "Merchant.amountAccept");
-        Native.Call(world, "SellToWanted", gridIndex, wantedSlot);
+        Native.Call(world, "MerchantBuy.SellToWanted", gridIndex, wantedSlot);
         if (layer == null || !layer.Visible || ReferenceEquals(accept, Native.Get<Delegate>(world, "Merchant.amountAccept"))) return;
         var wanted = Native.Get<MerchantStallItem[]>(world, "MerchantBuy.wantedItems");
         if (wanted == null || wantedSlot < 0 || wantedSlot >= wanted.Length || wanted[wantedSlot].Price < 1) return;

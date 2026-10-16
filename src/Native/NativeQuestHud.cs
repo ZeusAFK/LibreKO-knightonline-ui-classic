@@ -61,15 +61,15 @@ public static class NativeQuestHud
     /// <summary>The tracker panel with its row column, header, count and fold button named for the skin.</summary>
     public static void PrepareTracker(WorldRoot world)
     {
-        if (Native.Get<PanelContainer>(world, "Quest.TrackerPanel") is not { } panel || !GodotObject.IsInstanceValid(panel) || panel.HasMeta(Prepared)) return;
-        if (Native.Get<VBoxContainer>(world, "Quest.trackerBox") is not { } rows) return;
+        if (Native.Get<PanelContainer>(world, "QuestTracker.TrackerPanel") is not { } panel || !GodotObject.IsInstanceValid(panel) || panel.HasMeta(Prepared)) return;
+        if (Native.Get<VBoxContainer>(world, "QuestTracker.trackerBox") is not { } rows) return;
         panel.SetMeta(Prepared, true);
         panel.Name = TrackerName;
         rows.Name = TrackerRows;
         // The header exists on desktop only; the touch tracker has plain rows.
-        if (Native.Get<PanelContainer>(world, "Quest.trackerHeader") is { } header) header.Name = TrackerHeader;
-        if (Native.Get<Button>(world, "Quest.trackerFold") is { } fold) fold.Name = TrackerFold;
-        if (Native.Get<Label>(world, "Quest.trackerCount") is { } count) count.Name = TrackerCount;
+        if (Native.Get<PanelContainer>(world, "QuestTracker.trackerHeader") is { } header) header.Name = TrackerHeader;
+        if (Native.Get<Button>(world, "QuestTracker.trackerFold") is { } fold) fold.Name = TrackerFold;
+        if (Native.Get<Label>(world, "QuestTracker.trackerCount") is { } count) count.Name = TrackerCount;
         Apply(NativeQuestHudPart.Tracker, panel);
     }
 

@@ -23,7 +23,7 @@ public partial class Preview
         }
         double Now() => Time.GetTicksMsec() / 1000d;
         var sheet = Game.Session.Pet.Pet!; int oldLevel = sheet.Level, oldMp = sheet.Mp, oldMaxMp = sheet.MaxMp;
-        var cooldowns = Field<Dictionary<int, double>>("Hotbar.PetSkillReadyAt");
+        var cooldowns = Field<Dictionary<int, double>>("PetSkillBar.PetSkillReadyAt");
         var connection = (KoConn)typeof(Net).GetField("conn", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(net)!;
         var skillIds = PetSkills.BarSkills(SkillData.All.Select(s => (s.Id, s.Tree)), sheet.Class);
         int unlockedLevel = Math.Max(oldLevel, skillIds.Max(id => SkillData.Get(id)!.Level));
@@ -92,30 +92,30 @@ public partial class Preview
         require(!SkillButton(instant.Id).Disabled && SkillButton(instant.Id).CooldownFraction == 0, "Native tick clears the expired cooldown without requiring a vitals reply");
         await capture("skill-cooldown-expired");
         SetField("Avatar.Dead", true); DetailCall(world, "Pet.RefreshUI");
-        DetailCall(world, "Hotbar.UsePetSkill", instant.Id); await Frames();
+        DetailCall(world, "PetSkillBar.UsePetSkill", instant.Id); await Frames();
         require(!stream.DataAvailable, "Dead owner cannot submit a familiar skill through either entry point");
         SetField("Avatar.Dead", false); sheet.Mp = 0; DetailCall(world, "Pet.RefreshUI");
         var manaSkill = skillIds.Select(SkillData.Get).OfType<SkillData.Skill>().First(s => s.Msp > 0);
-        DetailCall(world, "Hotbar.UsePetSkill", manaSkill.Id); await Frames();
+        DetailCall(world, "PetSkillBar.UsePetSkill", manaSkill.Id); await Frames();
         require(!stream.DataAvailable && (!cooldowns.ContainsKey(manaSkill.Id) || cooldowns[manaSkill.Id] <= Now()), "Insufficient familiar MP does not start a new skill cooldown");
         sheet.Mp = availableMana; SetField("Selection.SelectedId", -1);
         var hostile = skillIds.Select(SkillData.Get).OfType<SkillData.Skill>().First(s => s.Moral != PetSkills.OwnerMoral);
-        cooldowns.Clear(); DetailCall(world, "Hotbar.UsePetSkill", hostile.Id); await Frames();
+        cooldowns.Clear(); DetailCall(world, "PetSkillBar.UsePetSkill", hostile.Id); await Frames();
         require(!stream.DataAvailable && cooldowns.Count == 0, "Missing hostile target cannot start a familiar cast");
         SetField("Selection.SelectedId", 2); DetailCall(world, "Pet.RefreshUI");
 
         var cast = skillIds.Select(SkillData.Get).OfType<SkillData.Skill>().First(s => s.CastSeconds > 0);
         await SelectPageFor(cast.Id); await Click(SkillButton(cast.Id)); await ReadSkillPacket(cast.Id, PetSkills.StageCasting);
-        int generation = Field<int>("Hotbar.petSkillGeneration");
-        require((bool)DetailCall(world, "Hotbar.CanFinishPetSkill", sheet.Index, 1, generation)!, "Started cast retains its original familiar identity");
+        int generation = Field<int>("PetSkillBar.petSkillGeneration");
+        require((bool)DetailCall(world, "PetSkillBar.CanFinishPetSkill", sheet.Index, 1, generation)!, "Started cast retains its original familiar identity");
         sheet.Index++;
-        require(!(bool)DetailCall(world, "Hotbar.CanFinishPetSkill", sheet.Index - 1, 1, generation)!, "Replacement familiar cannot finish the previous cast");
+        require(!(bool)DetailCall(world, "PetSkillBar.CanFinishPetSkill", sheet.Index - 1, 1, generation)!, "Replacement familiar cannot finish the previous cast");
         sheet.Index--; SetField("Avatar.Dead", true);
-        require(!(bool)DetailCall(world, "Hotbar.CanFinishPetSkill", sheet.Index, 1, generation)!, "Owner death invalidates a pending familiar cast");
+        require(!(bool)DetailCall(world, "PetSkillBar.CanFinishPetSkill", sheet.Index, 1, generation)!, "Owner death invalidates a pending familiar cast");
         SetField("Avatar.Dead", false);
-        require(!(bool)DetailCall(world, "Hotbar.CanFinishPetSkill", sheet.Index, 999, generation)!, "Replacement NPC identity invalidates a pending familiar cast");
-        DetailCall(world, "Hotbar.HidePetBar");
-        require(!(bool)DetailCall(world, "Hotbar.CanFinishPetSkill", sheet.Index, 1, generation)!, "Dismissal invalidates the original familiar cast generation");
+        require(!(bool)DetailCall(world, "PetSkillBar.CanFinishPetSkill", sheet.Index, 999, generation)!, "Replacement NPC identity invalidates a pending familiar cast");
+        DetailCall(world, "PetSkillBar.HidePetBar");
+        require(!(bool)DetailCall(world, "PetSkillBar.CanFinishPetSkill", sheet.Index, 1, generation)!, "Dismissal invalidates the original familiar cast generation");
         double until = Now() + cast.CastSeconds + .2;
         while (Now() < until) await Frames(1);
         require(!stream.DataAvailable, "Actual cast timer does not send a delayed effect after dismissal");
@@ -142,7 +142,7 @@ public partial class Preview
         require(Now() >= retrySince + cast.CastSeconds && !stream.DataAvailable,
             "Retry completes once and the refused cast timer cannot complete or consume the newer cast");
         connection.Close(); cooldowns.Clear(); DetailCall(world, "Pet.RefreshUI");
-        DetailCall(world, "Hotbar.UsePetSkill", instant.Id);
+        DetailCall(world, "PetSkillBar.UsePetSkill", instant.Id);
         require(cooldowns.Count == 0 && !Game.Requests.Pet.Skill(PetSkills.StageEffecting, instant.Id, 1, 2, 0, 0, 0), "Disconnected familiar requests cannot leave an artificial cooldown");
         sheet.Level = oldLevel; sheet.Mp = oldMp; sheet.MaxMp = oldMaxMp; SetField("Avatar.Dead", false);
         if (Find<Label>("pet_skill_page").Text == "2/2") await Click(Find<Button>("pet_skill_previous"));

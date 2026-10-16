@@ -404,7 +404,7 @@ public partial class Preview
             // on the client's Chaos skill page, which keeps the client's own dimming under the Classic family skin.
             async Task CheckChaosBlink()
             {
-                var dimField = Native.ClientType("LibreKO.Features.Hud.HotbarFeature+HotSlotCell")?.GetField("DimColor", AnyMember);
+                var dimField = Native.ClientType("LibreKO.Features.Hud.HotSlotCell")?.GetField("DimColor", AnyMember);
                 Require(Native.Has(world, "Hotbar.ChaosBattleLocked") && Native.HasMethod(world, "Hotbar.SkillItemHeld") && dimField != null,
                     "The client has the Chaos battle lock, the held-item test and the skill bar's dim colour");
                 var dimColour = (Color)dimField!.GetValue(null)!;
@@ -466,7 +466,7 @@ public partial class Preview
                 string castingFailed = LibreKO.Domain.GameText.System(Native.Get<int>(Native.StaticOwner("LibreKO.Features.Core.BuffSystem"), "TextCastingFailed"), "Casting failed");
                 int Refusals() => log.Lines(LogTab.System).Count(line => line.Contains(castingFailed));
                 int refusalsBefore = Refusals();
-                var pending = (System.Collections.ICollection)Field("CombatSystem.PendingCasts").GetValue(world)!;
+                var pending = (System.Collections.ICollection)Field("SkillCastSystem.PendingCasts").GetValue(world)!;
                 record.Cast = true;
                 record.Activated.Clear();
                 for (int i = 0; i < onBar.Count; i++) Click(i);
@@ -487,15 +487,15 @@ public partial class Preview
                 await Frames(4);
                 page.Position = new Vector2(16, 30);
                 await Frames(2);
-                int pages = (int)Native.Get<object>(world, "Hotbar.ChaosSkillPages")!;
-                List<TextureRect> Icons() => ((System.Collections.IEnumerable)Field("Hotbar.chaosSkillIcons").GetValue(world)!).Cast<TextureRect>().ToList();
+                int pages = (int)Native.Get<object>(world, "ChaosSkillWindow.ChaosSkillPages")!;
+                List<TextureRect> Icons() => ((System.Collections.IEnumerable)Field("ChaosSkillWindow.chaosSkillIcons").GetValue(world)!).Cast<TextureRect>().ToList();
                 SkillData.Skill IconSkill(TextureRect icon) => (SkillData.Skill)icon.GetType().GetProperty("Skill")!.GetValue(icon)!;
                 Rect2I PageRegion() { var box = page.GetGlobalRect(); return new Rect2I((int)box.Position.X - 2, (int)box.Position.Y - 2, (int)box.Size.X + 4, (int)box.Size.Y + 4); }
                 async Task ShowPage(int index)
                 {
-                    Native.Call(world, "Hotbar.FlipChaosSkillPage", -pages);
-                    if (index > 0) Native.Call(world, "Hotbar.FlipChaosSkillPage", index);
-                    Native.Call(world, "Hotbar.ChaosSkillPageTick");
+                    Native.Call(world, "ChaosSkillWindow.FlipChaosSkillPage", -pages);
+                    if (index > 0) Native.Call(world, "ChaosSkillWindow.FlipChaosSkillPage", index);
+                    Native.Call(world, "ChaosSkillWindow.ChaosSkillPageTick");
                     await Frames(3);
                 }
                 // Every icon on every page: visible inside the Classic frame and tinted exactly as the client asks.
@@ -520,7 +520,7 @@ public partial class Preview
                     }
                     Require(seen == chaosTree.Count, state + ": the Chaos page lists every Chaos skill (" + seen + " of " + chaosTree.Count + ")");
                 }
-                int cubePage = chaosTree.IndexOf(cubes[0]) / Native.Get<int>(Native.StaticOwner("LibreKO.Features.Hud.HotbarFeature"), "ChaosSkillsPerPage");
+                int cubePage = chaosTree.IndexOf(cubes[0]) / Native.Get<int>(Native.StaticOwner("LibreKO.Features.Hud.ChaosSkillWindowFeature"), "ChaosSkillsPerPage");
                 await CheckPage(_ => true, "While blinking");
                 await ShowPage(0);
                 await Capture("chaos-page-blink", PageRegion());

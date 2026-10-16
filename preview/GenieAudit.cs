@@ -175,7 +175,7 @@ public partial class Preview
             }
 
             // ---- Part 1: the quick panel ---------------------------------------------------------------------------
-            var panel = (PanelContainer)Get(world, "Genie.Sub")!;
+            var panel = (PanelContainer)Get(world, "GenieSub.Sub")!;
             await Server(6, 87);
             await Until(() => panel.IsVisibleInTree(), "the client shows the quick panel once the server reports Genie time");
             await Until(() => panel.HasMeta("classic_overlay") && panel.FindChild(ClassicGenieQuick.Minimise, true, false) != null, "the Classic quick panel skin applies to the client's _genieSub");
@@ -322,8 +322,8 @@ public partial class Preview
             int Count(List<string> list, string op) => list.Count(o => o == op);
             const string RelayAttack = "GS_GENIE_SYSTEM:2:3", RelayMove = "GS_GENIE_SYSTEM:2:1", RelayMagic = "GS_GENIE_SYSTEM:2:4";
             int Selected() => (int)Get(world, "Selection.SelectedId")!;
-            bool Auto() => Get(world, "CombatSystem.AutoAttack") is true;
-            int AutoTarget() => (int)Get(world, "CombatSystem.AutoTargetId")!;
+            bool Auto() => Get(world, "BasicAttackSystem.AutoAttack") is true;
+            int AutoTarget() => (int)Get(world, "BasicAttackSystem.AutoTargetId")!;
             void Finding(string scenario, List<string> requests, bool ok, string note)
             {
                 findings.Add(new { scenario, ok, note, attacks = Count(requests, RelayAttack), moves = Count(requests, RelayMove), magic = Count(requests, RelayMagic),
@@ -333,7 +333,7 @@ public partial class Preview
             }
             object Ent(int id) => ents[id]!;
             object? EntField(int id, string name) => Ent(id).GetType().GetField(name)?.GetValue(Ent(id)) ?? Ent(id).GetType().GetProperty(name)?.GetValue(Ent(id));
-            float BasicReach(int id) => (float)Native.Call(world, "CombatSystem.BasicAttackRange", Ent(id))!;
+            float BasicReach(int id) => (float)Native.Call(world, "BasicAttackSystem.BasicAttackRange", Ent(id))!;
             float Distance(int id)
             {
                 var a = ((Node3D)EntField(id, "Body")!).GlobalPosition; var b = ((Node3D)Get(world, "Avatar.Body")!).GlobalPosition;
@@ -391,7 +391,7 @@ public partial class Preview
 
             // 6. Out of the Genie's range from its start point: ignored.
             var range = (SpinBox)Get(world, "Genie.range")!;
-            Call(world, "CombatSystem.StopAutoAttack");
+            Call(world, "BasicAttackSystem.StopAutoAttack");
             int outside = await Spawn((float)range.Value + 10f);
             var ignored = await Watch(3);
             bool rangeOk = Count(ignored, RelayAttack) == 0 && Selected() != outside;
@@ -429,14 +429,14 @@ public partial class Preview
                     .OrderBy(k => k.Range).FirstOrDefault();
                 if (skill == null) { checks.Add($"{label}: class {classCode} has no learned {(ranged ? "ranged" : "melee")} attack skill; skipped"); Native.Set(Game.Session, "Self.Class", ownClass); return; }
                 Array.Clear(Setup().Attack); Setup().Attack[0] = skill.Id; DetailCall(world, "Genie.RefreshSlots");
-                Call(world, "CombatSystem.StopAutoAttack");
+                Call(world, "BasicAttackSystem.StopAutoAttack");
                 int probe = await Spawn(1.0f);
                 float reach = BasicReach(probe);
                 await Despawn(probe);
-                Call(world, "CombatSystem.StopAutoAttack");
+                Call(world, "BasicAttackSystem.StopAutoAttack");
                 float distance = ranged ? Math.Min(skill.Range, 8f) : reach + 1.2f;
                 int mob = await Spawn(distance);
-                bool inSkill = (bool)Native.Call(world, "CombatSystem.InSkillRange", (object)mob, skill)!;
+                bool inSkill = (bool)Native.Call(world, "SkillCastSystem.InSkillRange", (object)mob, skill)!;
                 Require(inSkill && distance > reach, $"{label}: the monster stands inside {skill.Name}'s reach and outside the basic reach ({distance:0.0} m, basic {reach:0.0})");
                 int mana = vitals.Mp;
                 if (blocker == "cooldown") cooldowns[skill.Id] = Time.GetTicksMsec() / 1000.0 + 600;
@@ -452,14 +452,14 @@ public partial class Preview
                 cooldowns.Remove(skill.Id);
                 if (blocker != "cooldown") typeof(LibreKO.Domain.Vitals).GetProperty("Mp")!.SetValue(vitals, mana);
                 var ready = await Watch(5);
-                bool gear = (bool)Native.Call(world, "CombatSystem.CanCastWithGear", skill, false)!;
+                bool gear = (bool)Native.Call(world, "SkillCastSystem.CanCastWithGear", skill, false)!;
                 bool readyOk = Count(ready, RelayAttack) + Count(ready, RelayMagic) > 0 && (!gear || Count(ready, RelayMagic) > 0);
                 Finding($"{label}: {skill.Name} ready again (castable with this gear: {gear})", ready, readyOk, "the skill is cast again when castable, the swings go on otherwise");
                 string readyText = $"{label}: once {skill.Name} is ready the Genie casts it (when the gear allows it) or keeps swinging ({Count(ready, RelayMagic)} magic, {Count(ready, RelayAttack)} attacks, castable {gear})";
                 if (approachFixed) Require(readyOk, readyText);
                 else checks.Add((readyOk ? "" : "KNOWN CORE DEFECT (no GenieApproach in this client): ") + readyText);
                 Setup().Attack[0] = 0; DetailCall(world, "Genie.RefreshSlots");
-                Call(world, "CombatSystem.StopAutoAttack");
+                Call(world, "BasicAttackSystem.StopAutoAttack");
                 await Despawn(mob);
                 Native.Set(Game.Session, "Self.Class", ownClass);
             }

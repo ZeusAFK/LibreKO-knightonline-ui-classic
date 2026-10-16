@@ -184,13 +184,15 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
     private static void QuestRows(WorldRoot w, List<GamePanelRow> rows)
     {
         var selfName = Game.Session.Self.LastEnter.Name ?? "";
-        var views = Game.Session.QuestBook.Views;
-        var tracked = Game.Session.QuestBook.Tracked;
+        var book = Game.Session.QuestBook;
+        var views = book.Views;
+        var tracked = book.Tracked;
+        var questInfo = Native.StaticOwner("LibreKO.Features.Windows.QuestInfo");
         foreach (var (id, state) in Call(w, "Quest.QuestsInView") as List<(int QuestId, int State)> ?? new())
         {
-            var facts = (QuestData.Facts)Call(w, "Quest.QuestFacts", id)!;
-            var title = (string)Call(w, "Quest.Name", id, selfName)!;
-            var status = (string)Native.Call(Native.StaticOwner("LibreKO.Features.Windows.QuestFeature"), "StateName", state)!;
+            var facts = (QuestData.Facts)Native.Call(questInfo, "Facts", book, id)!;
+            var title = (string)Native.Call(questInfo, "Name", book, id, selfName)!;
+            var status = (string)Native.Call(questInfo, "StateName", state)!;
             var shortState = state switch { QuestStateActive => "Active", QuestStateCompleted => "Done", QuestStateReadyToTurnIn => "Ready", QuestStateOpen => "Open", _ => "Open" };
             var reset = "";
             views.TryGetValue(id, out var view);
@@ -201,7 +203,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
             bool claim = view != null ? view.CanClaim && view.Options.Length == 0 : state == QuestStateReadyToTurnIn;
             bool isTracked = tracked.Contains(id);
             rows.Add(new(id.ToString(), new[] { title, shortState, "—" },
-                $"{title}\n{facts.Kind} · Lv {facts.Level} · {status}\n{Call(w, "Quest.Journal", id, selfName)}{reset}" + (isTracked ? "\nTracked" : ""),
+                $"{title}\n{facts.Kind} · Lv {facts.Level} · {status}\n{Native.Call(questInfo, "Journal", book, id, selfName)}{reset}" + (isTracked ? "\nTracked" : ""),
                 state == QuestStateReadyToTurnIn ? new Color("fff080") : Colors.White, true, active, abandon, claim, isTracked));
         }
     }
@@ -228,7 +230,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
         switch (action)
         {
             case "titles": Call(w, "Achievement.ToggleTitlePicker"); return;
-            case "presets": Call(w, "Stats.TogglePreset"); return;
+            case "presets": Call(w, "SkillPreset.TogglePreset"); return;
             case "clan_management": OpenClanDetails(w); return;
             case "clan_contribution":
                 if (Clan.InClan) { Call(w, "Clan.ShowTab", Enum.ToObject(Native.ClientType("LibreKO.Features.Social.ClanFeature+Tab")!, ClanPointsTab)); OpenClanDetails(w); }

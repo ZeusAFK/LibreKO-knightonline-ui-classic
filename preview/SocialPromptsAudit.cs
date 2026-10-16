@@ -125,7 +125,7 @@ public partial class Preview
             var log = Native.Get<VBoxContainer>(thread, "log")!;
             var timeline = Game.Session.RoomMedia.DirectTimeline("Rikka");
             var posts = NativeWhispers.Posts(thread);
-            int self = (int)DetailField(world, "myId")!;
+            int self = (int)DetailField(world, "MyId")!;
             Require(posts.Count == timeline.Posts.Count(p => p.Kind != LibreKO.Domain.RoomPostKind.Notice) && posts.Keys.All(r => r.GetParent() == log),
                 "whisper: every post keeps the thread's own row in its log (" + posts.Count + ")");
             Require(log.GetChildren().All(r => r.HasMeta(ClassicWhisperThread.RowMeta)), "whisper: every row of the thread is restyled Classic");

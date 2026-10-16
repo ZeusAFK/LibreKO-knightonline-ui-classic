@@ -28,7 +28,7 @@ public static class NativeGenieCommands
 
     /// <summary>Whether the client exposes the Genie actions these rows run.</summary>
     public static bool Supported(WorldRoot world) =>
-        Native.HasMethod(world, "Genie.Toggle") && (Native.HasMethod(world, "Genie.ToggleFromSub") || Native.HasMethod(world, "Genie.ToggleRun"))
+        Native.HasMethod(world, "Genie.Toggle") && (Native.HasMethod(world, "GenieSub.ToggleFromSub") || Native.HasMethod(world, "Genie.ToggleRun"))
         && Native.Has(world, "Genie.shown") && Native.Has(world, "Genie.RequestPending");
 
     /// <summary>The Genie rows as command list rows (no client <c>CommandEntry</c>: the list runs them through <see cref="Run"/>).</summary>
@@ -86,7 +86,7 @@ public static class NativeGenieCommands
                 if (!Native.Get<bool>(world, "Genie.shown")) Native.Call(world, "Genie.Toggle");
                 return true;
             case Start or Stop:
-                if (Native.HasMethod(world, "Genie.ToggleFromSub")) Native.Call(world, "Genie.ToggleFromSub");
+                if (Native.HasMethod(world, "GenieSub.ToggleFromSub")) Native.Call(world, "GenieSub.ToggleFromSub");
                 else Native.Call(world, "Genie.ToggleRun");
                 return true;
             case Spirit:
@@ -110,7 +110,7 @@ public static class NativeGenieCommands
 
     private static int SpiritCount(WorldRoot world)
     {
-        if (!Native.TryGet(Native.StaticOwner("LibreKO.Features.Hud.GenieFeature"), "SpiritOfItem", out int item)) return 0;
+        if (!Native.TryGet(Native.StaticOwner("LibreKO.Features.Hud.GenieTownFeature"), "SpiritOfItem", out int item)) return 0;
         try { return Game.Session.Self.Inventory.CountInBackpack(item); }
         catch (Exception) { return 0; }
     }

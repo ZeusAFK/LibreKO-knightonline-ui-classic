@@ -265,7 +265,7 @@ public static class NativeQuestLog
     {
         NativeWindows.Sync(window, () =>
         {
-            if (Native.Get<Label>(world, "Stats.presetStatPointsLbl") is not { } label) return;
+            if (Native.Get<Label>(world, "SkillPreset.presetStatPointsLbl") is not { } label) return;
             var plan = Regex.Match(label.Text, @"^Planned (\d+) of (\d+) stat point\(s\)$");
             if (!plan.Success) return;
             int spent = int.Parse(plan.Groups[1].Value), total = int.Parse(plan.Groups[2].Value);

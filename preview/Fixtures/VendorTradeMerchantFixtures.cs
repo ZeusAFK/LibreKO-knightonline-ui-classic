@@ -20,12 +20,10 @@ public static partial class PreviewFixtures
 
     public static void CloseExchangeFinal(WorldRoot world) => NativeTrade.CloseFinal(world);
 
-    /// <summary>The fork's two-argument offer; the client now also checks the item the amount was chosen for.</summary>
     public static void OfferSlotAmount(WorldRoot world, int absSlot, int count)
     {
         var inventory = Game.Session.Self.Inventory;
-        if (!Native.TryCall(world, "OfferSlotAmount", out _, absSlot, inventory[absSlot].ItemId, count))
-            Native.Call(world, "OfferSlotAmount", absSlot, count);
+        Native.Call(world, "Exchange.OfferSlotAmount", absSlot, inventory[absSlot].ItemId, count);
     }
 
     public static void ConfirmSellStall(WorldRoot world) => NativeMerchant.ConfirmSellStall(world);

@@ -10,19 +10,19 @@ public partial class Preview
 {
     private async Task CapturePresetStates(WorldRoot model,CharacterEmbeddedPage page,string output,string prefix,int nation)
     {
-        var plans=(PresetPlan[])DetailField(model,"Stats.presetPlans")!;
-        var labels=(Label[])DetailField(model,"Stats.presetStatLbls")!;
-        var minus=(Button[])DetailField(model,"Stats.presetStatMinusBtns")!;
-        var plus=(Button[])DetailField(model,"Stats.presetStatPlusBtns")!;
+        var plans=(PresetPlan[])DetailField(model,"SkillPreset.presetPlans")!;
+        var labels=(Label[])DetailField(model,"SkillPreset.presetStatLbls")!;
+        var minus=(Button[])DetailField(model,"SkillPreset.presetStatMinusBtns")!;
+        var plus=(Button[])DetailField(model,"SkillPreset.presetStatPlusBtns")!;
         var records=new List<object>();
         async Task Capture(string suffix,int cls,int[] allocation,int pool=302)
         {
             Native.Set(Game.Session, "Self.Class", cls);
-            Native.Set(model, "Stats.presetSlot", 0);
+            Native.Set(model, "SkillPreset.presetSlot", 0);
             plans[0].SetStats(allocation);
             var basis=StarterStats.BaseForClass(cls);
             Game.Session.Self.Sheet.SeedStats(basis.Str,basis.Sta,basis.Dex,basis.Int,basis.Mag,pool);
-            DetailCall(model,"Stats.RefreshPresetUI");
+            DetailCall(model,"SkillPreset.RefreshPresetUI");
             for(int frame=0;frame<4;frame++) await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
             if(!plans[0].TryStatValues(cls,pool,out var totals,out int remaining)) throw new Exception("Invalid preset fixture");
             for(int i=0;i<5;i++)
@@ -46,10 +46,10 @@ public partial class Preview
         await Capture("cap-priest",classPrefix+12,[205,0,0,0,0]);
         await Capture("pool-empty",classPrefix+6,[190,112,0,0,0]);
         await Capture("saved-plan",classPrefix+6,[185,55,12,0,0]);
-        DetailCall(model,"Stats.SelectPresetSlot",1);
+        DetailCall(model,"SkillPreset.SelectPresetSlot",1);
         for(int frame=0;frame<4;frame++) await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
         var warrior=StarterStats.BaseForClass(classPrefix+6);
-        if((int)DetailField(model,"Stats.presetSlot")! !=1 || labels.Where((l,i)=>l.Text!=warrior.StatAtRow(i).ToString()).Any()) throw new Exception("Switching to an empty preset slot lost its class base");
+        if((int)DetailField(model,"SkillPreset.presetSlot")! !=1 || labels.Where((l,i)=>l.Text!=warrior.StatAtRow(i).ToString()).Any()) throw new Exception("Switching to an empty preset slot lost its class base");
         if(!plans[0].Stats.SequenceEqual(new[]{185,55,12,0,0})) throw new Exception("Switching slots changed the saved allocation");
         using(var image=GetViewport().GetTexture().GetImage()) image.SavePng(System.IO.Path.Combine(output,prefix+"-presets-slot-2.png"));
         System.IO.File.WriteAllText(System.IO.Path.Combine(output,prefix+"-preset-verification.json"),JsonSerializer.Serialize(new {

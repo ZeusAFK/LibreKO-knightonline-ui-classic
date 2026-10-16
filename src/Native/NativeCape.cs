@@ -172,7 +172,7 @@ public static class NativeCape
     public static void Toggle(WorldRoot world)
     {
         if (!Native.Get<bool>(world, "CapeWindow.shown") && Native.Get<bool>(world, "CapeWindow.requestInFlight")) return;
-        Native.Call(world, "ToggleCape");
+        Native.Call(world, "CapeWindow.Toggle");
     }
 
     private static void VisibilityChanged(WorldRoot world, State state)

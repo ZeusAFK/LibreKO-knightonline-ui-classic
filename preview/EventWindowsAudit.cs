@@ -391,15 +391,15 @@ public partial class Preview
             var (world, window) = await Open("Preview.BuildChaosSkillPage");
             // Read only: the family restyle leaves the client's dimming (Modulate) on the Chaos skill icons. Cube skills
             // stay dimmed until their item is in the bag, and every skill while the character blinks in the dungeon.
-            var dim = Native.ClientType("LibreKO.Features.Hud.HotbarFeature+HotSlotCell")?.GetField("DimColor")?.GetValue(null) is Color color ? color : new Color(.5f, .5f, .5f);
+            var dim = Native.ClientType("LibreKO.Features.Hud.HotSlotCell")?.GetField("DimColor")?.GetValue(null) is Color color ? color : new Color(.5f, .5f, .5f);
             TextureRect[] icons = Array.Empty<TextureRect>();
             int pages = 0, cubes = 0;
             for (int page = 0; page < 3; page++)
             {
                 pages++;
-                if (page > 0) { DetailCall(world, "Hotbar.FlipChaosSkillPage", 1); await Frames(2); }
+                if (page > 0) { DetailCall(world, "ChaosSkillWindow.FlipChaosSkillPage", 1); await Frames(2); }
                 icons = Descendants(window.Body).OfType<TextureRect>().Where(t => t.GetType().Name == "ChaosSkillIcon" && !t.IsQueuedForDeletion()).ToArray();
-                DetailCall(world, "Hotbar.ChaosSkillPageTick"); await Frames(2);
+                DetailCall(world, "ChaosSkillWindow.ChaosSkillPageTick"); await Frames(2);
                 Require(icons.Length > 0 && icons.All(i => i.Modulate == ((bool)DetailCall(world, "Hotbar.SkillItemHeld", Native.Get<object>(i, "Skill"))! ? Colors.White : dim)),
                     $"chaos_skill page {page + 1}: the client's item dimming stays on the Classic page ({icons.Count(i => i.Modulate == dim)} of {icons.Length} dimmed)");
                 cubes += icons.Count(i => i.Modulate == dim);
@@ -408,7 +408,7 @@ public partial class Preview
             }
             checks.Add($"chaos_skill: {cubes} item skill(s) dimmed without their item, {pages} page(s) checked");
             Native.Set(Game.Session.Progress, "SelfAbnormal", RespawnBlink.Blinking);
-            DetailCall(world, "Hotbar.ChaosSkillPageTick"); await Frames(2);
+            DetailCall(world, "ChaosSkillWindow.ChaosSkillPageTick"); await Frames(2);
             Require(icons.All(i => i.Modulate == dim), "chaos_skill: every skill dimmed while blinking in the dungeon");
             await Capture(window, "page-blink");
             Native.Set(Game.Session.Progress, "SelfAbnormal", 0);

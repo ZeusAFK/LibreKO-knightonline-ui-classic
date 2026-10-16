@@ -208,7 +208,7 @@ public static class NativeProgression
         var party = Native.Get<CheckBox[]>(world, "Genie.genieParty");
         var start = Native.Get<Button>(world, "Genie.start");
         var monsters = Native.Get<ItemList>(world, "Genie.monsterList");
-        var scrolls = Native.Get<Button[]>(world, "Genie.scrollButtons");
+        var scrolls = Native.Get<Button[]>(world, "GenieScrolls.scrollButtons");
         if (slots == null || modes == null || party == null || start == null || monsters == null || scrolls == null
             || slots.Any(s => s == null) || party.Any(p => p == null)) return false;
         if (slots[0].GetParent()?.GetParent() is not VBoxContainer firstColumn || firstColumn.GetParent() is not HBoxContainer columns
@@ -233,9 +233,9 @@ public static class NativeProgression
         }
         NameSpin(Native.Get<SpinBox>(world, "Genie.recoverySpin"), "genie_recovery");
         // Potion options: title, HP check, HP potion, HP threshold, MP …, Familiar potion check, potion, threshold.
-        Named(Native.Get<Button>(world, "Genie.hpSelect"), "genie_hp_item");
-        Named(Native.Get<Button>(world, "Genie.mpSelect"), "genie_mp_item");
-        Named(Native.Get<Button>(world, "Genie.petSelect"), "genie_pet_item");
+        Named(Native.Get<Button>(world, "GeniePotions.hpSelect"), "genie_hp_item");
+        Named(Native.Get<Button>(world, "GeniePotions.mpSelect"), "genie_mp_item");
+        Named(Native.Get<Button>(world, "GeniePotions.petSelect"), "genie_pet_item");
         Named(Native.Get<CheckButton>(world, "Genie.petPotion"), "genie_pet_potion");
         NameSpin(Native.Get<SpinBox>(world, "Genie.hpThreshold"), "genie_hp");
         NameSpin(Native.Get<SpinBox>(world, "Genie.mpThreshold"), "genie_mp");
@@ -259,11 +259,11 @@ public static class NativeProgression
         Named(Native.Get<CheckButton>(world, "Genie.autoParty"), "genie_auto_party");
         var code = Native.Get<LineEdit>(world, "Genie.ptCode");
         Named(code, "genie_ptcode");
-        Named(Native.Get<CheckButton>(world, "Genie.autoScrolls"), "genie_auto_scrolls");
+        Named(Native.Get<CheckButton>(world, "GenieScrolls.autoScrolls"), "genie_auto_scrolls");
         for (int i = 0; i < scrolls.Length; i++) Named(scrolls[i], "genie_scroll_" + i);
-        Named(Native.Get<Label>(world, "Genie.scrollStatus"), "genie_scroll_status");
-        NameSpin(Native.Get<SpinBox>(world, "Genie.hammerThreshold"), "genie_hammer_threshold");
-        Named(Native.Get<Label>(world, "Genie.hammerStatus"), "genie_hammer_status");
+        Named(Native.Get<Label>(world, "GenieScrolls.scrollStatus"), "genie_scroll_status");
+        NameSpin(Native.Get<SpinBox>(world, "GenieHammer.hammerThreshold"), "genie_hammer_threshold");
+        Named(Native.Get<Label>(world, "GenieHammer.hammerStatus"), "genie_hammer_status");
         Named(Native.Get<Label>(world, "Genie.tipLabel"), "genie_tip");
         Named(Native.Get<Label>(world, "Genie.status"), "genie_daily_status");
         Named(Native.Get<Button>(world, "Genie.claimBtn"), "genie_claim");
@@ -272,8 +272,8 @@ public static class NativeProgression
         void Before(Node? field, string name) { int at = field is Control c ? items.IndexOf(c) : -1; if (at > 0) Named(items[at - 1] as Label, name); }
         Before(Native.Get<SpinBox>(world, "Genie.range")?.GetParent(), "genie_settings_title");
         Before(code, "genie_ptcode_title");
-        Before(Native.Get<CheckButton>(world, "Genie.autoScrolls"), "genie_scrolls_title");
-        Before(Native.Get<SpinBox>(world, "Genie.hammerThreshold")?.GetParent(), "genie_hammer_title");
+        Before(Native.Get<CheckButton>(world, "GenieScrolls.autoScrolls"), "genie_scrolls_title");
+        Before(Native.Get<SpinBox>(world, "GenieHammer.hammerThreshold")?.GetParent(), "genie_hammer_title");
         Before(Native.Get<Label>(world, "Genie.tipLabel"), "genie_daily_title");
         int hints = code is Control edit ? items.IndexOf(edit) : -1;
         string[] hintNames = { "genie_ptcode_hint", "genie_leader_hint" };
@@ -290,7 +290,7 @@ public static class NativeProgression
         Named(Native.Get<CheckButton>(world, "Genie.huntInPlace"), "genie_hunt_in_place");
         Named(Native.Get<CheckButton>(world, "Genie.hideRange"), "genie_hide_range");
         Named(Native.Get<CheckButton>(world, "Genie.cureCurse"), "genie_cure_curse");
-        if (Native.Get<IDictionary>(world, "Genie.other") is { } others)
+        if (Native.Get<IDictionary>(world, "GenieTown.other") is { } others)
         {
             int row = 0;
             foreach (DictionaryEntry other in others)
@@ -304,8 +304,8 @@ public static class NativeProgression
                 }
         }
         Named(Native.Get<PopupMenu>(world, "Genie.SkillPicker"), "genie_skill_picker");
-        Named(Native.Get<PopupMenu>(world, "Genie.PotionPicker"), "genie_potion_picker");
-        Named(Native.Get<PopupMenu>(world, "Genie.scrollPicker"), "genie_scroll_picker");
+        Named(Native.Get<PopupMenu>(world, "GeniePotions.PotionPicker"), "genie_potion_picker");
+        Named(Native.Get<PopupMenu>(world, "GenieScrolls.scrollPicker"), "genie_scroll_picker");
         // The pickers live on the genie layer; hand them to the skin through the window.
         int picker = 0;
         foreach (var menu in GeniePickers(world)) window.SetMeta("genie_picker_" + picker++, menu);
@@ -334,7 +334,7 @@ public static class NativeProgression
     /// <summary>The native genie popups, which live on the genie layer rather than in the window.</summary>
     public static IEnumerable<PopupMenu> GeniePickers(WorldRoot world)
     {
-        foreach (var field in new[] { "Genie.SkillPicker", "Genie.PotionPicker", "Genie.scrollPicker" })
+        foreach (var field in new[] { "Genie.SkillPicker", "GeniePotions.PotionPicker", "GenieScrolls.scrollPicker" })
             if (Native.Get<PopupMenu>(world, field) is { } menu) yield return menu;
     }
 }

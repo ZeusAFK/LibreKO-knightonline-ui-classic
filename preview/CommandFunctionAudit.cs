@@ -339,7 +339,7 @@ public partial class Preview
                 Expect("Genie running", false, true, false, startTip: runLine.Text, stopTip: stopHint);
                 // Reopened, the window opens beside the Genie quick panel that the Genie shows while it has time.
                 DetailCall(world, "CommandList.Toggle"); await Frames(2); DetailCall(world, "CommandList.Toggle"); await Frames(6); await ShowGenie();
-                var quick = (Control)Get(world, "Genie.Sub")!;
+                var quick = (Control)Get(world, "GenieSub.Sub")!;
                 Require(quick.IsVisibleInTree() && !quick.GetGlobalRect().Intersects(window.GetGlobalRect()), $"the command list opens beside the Genie quick panel {quick.GetGlobalRect()} / {window.GetGlobalRect()}");
                 GetViewport().PushInput(new InputEventMouseMotion { Position = new Vector2(5, 5), GlobalPosition = new Vector2(5, 5) }, true); await Frames(2);
                 GetViewport().GetTexture().GetImage().SavePng(output + "/" + prefix + "-command-genie-running.png");
@@ -367,7 +367,7 @@ public partial class Preview
                 await Frames(2);
 
                 // Open position: the right edge, vertically centred, beside the Classic HUD, at several screen sizes.
-                Set(world, "Genie.Points", 0); DetailCall(world, "Genie.RefreshSub"); await Frames(2);
+                Set(world, "Genie.Points", 0); DetailCall(world, "GenieSub.RefreshSub"); await Frames(2);
                 foreach (var size in new[] { new Vector2I(1200, 850), new Vector2I(1024, 768), new Vector2I(1280, 720), new Vector2I(1600, 900), new Vector2I(1920, 1080) })
                 {
                     if (window.Visible) DetailCall(world, "CommandList.Toggle");

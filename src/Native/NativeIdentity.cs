@@ -141,7 +141,7 @@ public static class NativeIdentity
     public static void StepNationTaxRate(WorldRoot world, int delta)
     {
         if (Native.Get<bool>(world, "King.nationTaxRateBusy")) return;
-        Native.Call(world, "StepNationTaxRate", delta);
+        Native.Call(world, "King.StepNationTaxRate", delta);
     }
 
     internal static bool Begin(HudWindow window, string marker)

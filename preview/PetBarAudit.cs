@@ -58,7 +58,7 @@ public partial class Preview
         var defaultAt = (Vector2)DetailCall(world, "PetBarDefaultPosition")!;
         require(bar.Position == defaultAt, "Classic familiar default position uses its actual compact bounds");
         bar.Position = new Vector2(208, 580);
-        var skillIds = Field<List<int>>("Hotbar.PetBarSkills");
+        var skillIds = Field<List<int>>("PetSkillBar.PetBarSkills");
         require(cells.Select(SkillId).SequenceEqual(skillIds.Take(8)), "Familiar HUD first page retains native table order");
         await Capture("first-page");
         await Click(page);
@@ -66,13 +66,13 @@ public partial class Preview
         await Capture("second-page");
         await Click(page); require(page.Text == "1", "Actual HUD page cycle returns to its first page");
         var sheet = Game.Session.Pet.Pet!; int oldLevel = sheet.Level, oldMp = sheet.Mp;
-        sheet.Level = 1; DetailCall(world, "Hotbar.RefreshPetBar"); await Capture("level-locked");
+        sheet.Level = 1; DetailCall(world, "PetSkillBar.RefreshPetBar"); await Capture("level-locked");
         require(cells.Where(c => SkillId(c) != 0).All(c => c.TooltipText.Contains("Familiar level") || SkillData.Get(SkillId(c))!.Level <= 1), "HUD locked tooltips retain actual required familiar levels");
         sheet.Level = Math.Max(oldLevel, skillIds.Max(id => SkillData.Get(id)!.Level));
-        sheet.Mp = 0; DetailCall(world, "Hotbar.RefreshPetBar"); await Capture("no-mana");
+        sheet.Mp = 0; DetailCall(world, "PetSkillBar.RefreshPetBar"); await Capture("no-mana");
         require(cells.Where(c => SkillId(c) != 0 && SkillData.Get(SkillId(c))!.Msp > 0).All(c => c.GetNode<TextureRect>("pet_bar_slot_overlay/pet_bar_icon").Modulate.R < .5f), "Native insufficient MP dims the shared Classic skill icons");
-        sheet.Mp = Math.Max(oldMp, skillIds.Max(id => SkillData.Get(id)!.Msp)); DetailCall(world, "Hotbar.RefreshPetBar");
-        var cooldowns = Field<Dictionary<int, double>>("Hotbar.PetSkillReadyAt"); cooldowns.Clear();
+        sheet.Mp = Math.Max(oldMp, skillIds.Max(id => SkillData.Get(id)!.Msp)); DetailCall(world, "PetSkillBar.RefreshPetBar");
+        var cooldowns = Field<Dictionary<int, double>>("PetSkillBar.PetSkillReadyAt"); cooldowns.Clear();
         var instant = cells.First(c => SkillId(c) != 0 && SkillData.Get(SkillId(c)) is { CastSeconds: 0, RecastSeconds: > 0 });
         int instantId = SkillId(instant);
         var connection = (KoConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
@@ -127,7 +127,7 @@ public partial class Preview
             await Frames(); require(bar.Visible && !stream.DataAvailable, "Escape does not dismiss a summoned familiar or activate a HUD skill");
         }
         finally { connection.Close(); }
-        sheet.Level = oldLevel; sheet.Mp = oldMp; cooldowns.Clear(); DetailCall(world, "Hotbar.RefreshPetBar");
+        sheet.Level = oldLevel; sheet.Mp = oldMp; cooldowns.Clear(); DetailCall(world, "PetSkillBar.RefreshPetBar");
         var grip = Find<Control>("pet_bar_grip"); var before = bar.Position; var from = grip.GetGlobalRect().GetCenter(); var shift = new Vector2(-31, -19);
         Input.ParseInputEvent(new InputEventMouseMotion { Position = from, GlobalPosition = from }); await Frames(2);
         Input.ParseInputEvent(new InputEventMouseButton { Position = from, GlobalPosition = from, ButtonIndex = MouseButton.Left, Pressed = true }); await Frames(2);
@@ -135,8 +135,8 @@ public partial class Preview
         Input.ParseInputEvent(new InputEventMouseButton { Position = from + shift, GlobalPosition = from + shift, ButtonIndex = MouseButton.Left, Pressed = false }); await Frames();
         require(bar.Position == before + shift && !GetViewport().GuiIsDragging(), "Original ornament moves the native familiar bar without dragging a skill icon");
         bar.Position = new Vector2(208, 580); await Capture("dragged");
-        DetailCall(world, "Hotbar.HidePetBar"); require(!bar.Visible, "Dismissal hides the Classic familiar HUD");
-        DetailCall(world, "Hotbar.OnPetBarSummoned", sheet); require(bar.Visible && page.Text == "1", "Summoning restores the Classic HUD with native first-page identity");
+        DetailCall(world, "PetSkillBar.HidePetBar"); require(!bar.Visible, "Dismissal hides the Classic familiar HUD");
+        DetailCall(world, "PetSkillBar.OnPetBarSummoned", sheet); require(bar.Visible && page.Text == "1", "Summoning restores the Classic HUD with native first-page identity");
         await AuditPetBarPlacement(world, layer, bar, require, Capture);
         layer.Free();
         File.WriteAllText(output + "/" + (nation == 1 ? "karus" : "human") + "-pet-bar.json", JsonSerializer.Serialize(new { screens }, new JsonSerializerOptions { WriteIndented = true }));

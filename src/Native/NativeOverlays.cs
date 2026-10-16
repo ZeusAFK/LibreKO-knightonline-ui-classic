@@ -88,7 +88,7 @@ public static class NativeOverlays
         ("SoccerSystem.soccerBoard", NativeOverlay.Score, "soccer_score"),
         ("Chaos.NestTimerPanel", NativeOverlay.Toast, "event_timer"),
         ("KnightRoyaleWindow.RoyaleBoard", NativeOverlay.Board, "royale_board"),
-        ("Genie.Sub", NativeOverlay.GenieQuick, "genie_quick"),
+        ("GenieSub.Sub", NativeOverlay.GenieQuick, "genie_quick"),
         ("EventTitlesWindow.TitleColumn", NativeOverlay.Titles, "event_titles"),
         ("GatherSystem.gatherChip", NativeOverlay.Chip, "gather_chip"),
         ("KnightRoyaleWindow.areaBanner", NativeOverlay.Announcement, "area_banner"),

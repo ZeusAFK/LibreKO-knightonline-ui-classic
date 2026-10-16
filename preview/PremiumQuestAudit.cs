@@ -253,7 +253,7 @@ public partial class Preview
         tracked.Clear();
         var layerTracker = new CanvasLayer { Layer = 65 }; AddChild(layerTracker);
         layerTracker.AddChild(tracker);
-        DetailCall(trackerWorld, "Quest.RefreshTracker");
+        DetailCall(trackerWorld, "QuestTracker.RefreshTracker");
         tracker.Position = new Vector2(600, 40); tracker.ResetSize(); await Frames();
         Save(tracker.GetGlobalRect(), "tracker-native");
         NativeQuestHud.PrepareTracker(trackerWorld);
@@ -309,17 +309,17 @@ public partial class Preview
         Require(firstQuest == 60, "Clicking a quest name selects it in the client's journal (" + firstQuest + ")");
         await Move(Vector2.Zero);
         await Click(pageArrows[1]);
-        Require((int)DetailField(trackerWorld, "Quest.trackerPage")! == 1, "Next arrow turns the client's tracker page");
+        Require((int)DetailField(trackerWorld, "QuestTracker.trackerPage")! == 1, "Next arrow turns the client's tracker page");
         trackerRect = await ShowTracker();
         CheckTracker("page-2");
         pager = rowsBox.GetChildren().OfType<HBoxContainer>().Single(h => h.GetChildren().OfType<Button>().Count() == 2);
         Require(pager.GetChildren().OfType<Button>().Last().Disabled && pager.GetChildren().OfType<Label>().Single().Text == "2/2", "Next is disabled on the last page");
         Save(trackerRect, "tracker-page-2");
         await Click(pager.GetChildren().OfType<Button>().First());
-        Require((int)DetailField(trackerWorld, "Quest.trackerPage")! == 0, "Previous arrow returns to the first page");
+        Require((int)DetailField(trackerWorld, "QuestTracker.trackerPage")! == 0, "Previous arrow returns to the first page");
         bool wasFolded = Config.QuestTrackerCollapsed;
         if (wasFolded) Config.SetQuestTrackerCollapsed(false);
-        DetailCall(trackerWorld, "Quest.RefreshTracker");
+        DetailCall(trackerWorld, "QuestTracker.RefreshTracker");
         var unfoldedRect = await ShowTracker();
         var foldButton = (Button)rowsBox.FindChild(NativeQuestHud.TrackerFold, true, false)!;
         // Fold and unfold as the player does: no audit resize, the skin must fit the frame itself.
@@ -341,11 +341,11 @@ public partial class Preview
         Save(restoredRect, "tracker-unfolded");
         Config.SetQuestTrackerCollapsed(wasFolded);
         tracked.Add(900);
-        DetailCall(trackerWorld, "Quest.RefreshTracker");
+        DetailCall(trackerWorld, "QuestTracker.RefreshTracker");
         trackerRect = await ShowTracker();
         CheckTracker("single-long");
         Save(trackerRect, "tracker-single-long");
-        tracked.Clear(); quests.Clear(); DetailCall(trackerWorld, "Quest.RefreshTracker"); await Frames();
+        tracked.Clear(); quests.Clear(); DetailCall(trackerWorld, "QuestTracker.RefreshTracker"); await Frames();
         Require(!tracker.Visible, "Without active quests the client hides the tracker");
         layerTracker.QueueFree();
 

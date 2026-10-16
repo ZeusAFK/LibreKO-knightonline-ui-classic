@@ -84,9 +84,9 @@ public static class NativeEquipView
     /// <summary>Starts an inspection unless one is outstanding; the client sends the request.</summary>
     public static void Request(WorldRoot world, string name)
     {
-        if (!_states.TryGetValue(world, out var state)) { Native.Call(world, "RequestEquipmentView", name); return; }
+        if (!_states.TryGetValue(world, out var state)) { Native.Call(world, "EquipView.RequestEquipmentView", name); return; }
         if (state.InFlight || string.IsNullOrWhiteSpace(name)) return;
-        Native.Call(world, "RequestEquipmentView", name);
+        Native.Call(world, "EquipView.RequestEquipmentView", name);
         Begin(world, state, name);
     }
 

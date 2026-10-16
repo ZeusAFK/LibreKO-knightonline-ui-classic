@@ -341,8 +341,8 @@ public partial class Preview
             if (view == "configured")
             {
                 Named<Button>(panel, "genie_scroll_0").EmitSignal(BaseButton.SignalName.Pressed); await Frames(3);
-                Require(((PopupMenu)DetailField(world, "Genie.scrollPicker")!).Visible, "Scroll cell opens the native scroll picker");
-                ((PopupMenu)DetailField(world, "Genie.scrollPicker")!).Hide();
+                Require(((PopupMenu)DetailField(world, "GenieScrolls.scrollPicker")!).Visible, "Scroll cell opens the native scroll picker");
+                ((PopupMenu)DetailField(world, "GenieScrolls.scrollPicker")!).Hide();
             }
             var othersTab = Named<Button>(panel, "genie_tab_others");
             othersTab.EmitSignal(BaseButton.SignalName.Pressed); await Frames();

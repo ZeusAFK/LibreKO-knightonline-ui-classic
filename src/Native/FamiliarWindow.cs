@@ -181,7 +181,7 @@ public sealed partial class FamiliarWindow : Node
     private void Use(int index)
     {
         int skill = _page * PetSkills.SlotsPerPage + index;
-        if (!SelfDead && skill < _skillIds.Count) Native.Call(_world, "Hotbar.UsePetSkill", _skillIds[skill]);
+        if (!SelfDead && skill < _skillIds.Count) Native.Call(_world, "PetSkillBar.UsePetSkill", _skillIds[skill]);
         RefreshCooldowns(Now());
     }
 
@@ -245,7 +245,7 @@ public sealed partial class FamiliarWindow : Node
         {
             if (button == null) continue;
             var skill = SkillData.Get(button.SkillId);
-            float cooldown = button.SkillId == 0 ? 0 : Native.Call(_world, "Hotbar.PetCooldown", button.SkillId, now) is float value ? value : 0;
+            float cooldown = button.SkillId == 0 ? 0 : Native.Call(_world, "PetSkillBar.PetCooldown", button.SkillId, now) is float value ? value : 0;
             button.SetCooldown(cooldown);
             button.Disabled = dead || pet == null || skill == null
                 || !PetSkills.Unlocked(skill.Level, pet.Level) || pet.Mp < skill.Msp || cooldown > 0;
@@ -255,7 +255,7 @@ public sealed partial class FamiliarWindow : Node
     /// <summary>Publishes the summoned familiar's appearance; the model is built only when the cache needs it.</summary>
     public void RefreshPortrait()
     {
-        if (Native.Call(_world, "Hotbar.MyPetEntity") is not { } actor) { _portrait.SetAppearance(null); return; }
+        if (Native.Call(_world, "PetSkillBar.MyPetEntity") is not { } actor) { _portrait.SetAppearance(null); return; }
         int modelId = Native.Get<int>(actor, "ModelId");
         string appearance = "familiar:" + modelId;
         if (_portrait.Appearance?.AppearanceKey == appearance) return;

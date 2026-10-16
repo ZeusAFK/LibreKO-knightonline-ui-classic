@@ -94,14 +94,14 @@ public partial class Preview
             character.Visible=CharacterPageRouter.Supports(id);
             if(id=="presets")
             {
-                DetailCall(model,"Stats.BuildPresetSlotBar",body);DetailCall(model,"Stats.BuildPresetStatBlock",body);DetailCall(model,"Stats.BuildPresetSkillBlock",body);
-                var plans=(PresetPlan[])DetailField(model,"Stats.presetPlans")!;
+                DetailCall(model,"SkillPreset.BuildPresetSlotBar",body);DetailCall(model,"SkillPreset.BuildPresetStatBlock",body);DetailCall(model,"SkillPreset.BuildPresetSkillBlock",body);
+                var plans=(PresetPlan[])DetailField(model,"SkillPreset.presetPlans")!;
                 for(int i=0;i<plans.Length;i++) plans[i]=new PresetPlan();
                 plans[0].SetStats([185,55,12,0,0]);plans[0].SetTrees([60,0,0,10]);
                 Native.Set(Game.Session, "Self.Class", nation==1?106:206);
                 Game.Session.Self.Sheet.SeedStats(250,120,72,50,50,50);Game.Session.Self.Sheet.SeedProgress(83,0,100);
                 Game.Session.Self.Mastery.ResetTrees(148);
-                DetailCall(model,"Stats.RefreshPresetUI");
+                DetailCall(model,"SkillPreset.RefreshPresetUI");
             }
             else if(id=="titles")
             {
@@ -173,10 +173,10 @@ public partial class Preview
             }
             else if(id=="quest_target")
             {
-                DetailCall(model,"Quest.EnsureTargetWindow");var built=(HudWindow)DetailField(model,"Quest.TargetWindow")!;
+                DetailCall(model,"QuestTarget.EnsureTargetWindow");var built=(HudWindow)DetailField(model,"QuestTarget.TargetWindow")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
-                ((VBoxContainer)DetailField(model,"Quest.targetText")!).AddChild(new Label { Text="Bandicoot\nLook near the fields outside Moradon.",AutowrapMode=TextServer.AutowrapMode.WordSmart });
-                ((Label)DetailField(model,"Quest.targetCaption")!).Text="Moradon";
+                ((VBoxContainer)DetailField(model,"QuestTarget.targetText")!).AddChild(new Label { Text="Bandicoot\nLook near the fields outside Moradon.",AutowrapMode=TextServer.AutowrapMode.WordSmart });
+                ((Label)DetailField(model,"QuestTarget.targetCaption")!).Text="Moradon";
             }
             else if(id=="userinfo")
             {
@@ -189,9 +189,9 @@ public partial class Preview
             else if(id=="quest_receipt")
             {
                 QuestReceived(model,new QuestReceipt(62,new[]{new QuestReceiptEntry(900001000,25000),new QuestReceiptEntry(900000000,10000)}));
-                var built=(HudWindow)DetailField(model,"Quest.ReceiptWindow")!;
+                var built=(HudWindow)DetailField(model,"QuestReceipt.ReceiptWindow")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
-                Native.Set(model, "Quest.ReceiptWindow", panel);
+                Native.Set(model, "QuestReceipt.ReceiptWindow", panel);
             }
             else if(id=="npc_dialog")
             {
@@ -208,8 +208,8 @@ public partial class Preview
             var originalActions=Descendants(body).OfType<BaseButton>().Select(b=>b.GetInstanceId()).ToHashSet();
             if(id is "titles" or "presets")
             {
-                string field=id=="titles"?"Achievement.titlePanel":"Stats.presetPanel";
-                string shown=id=="titles"?"Achievement.TitleShown":"Stats.presetShown";
+                string field=id=="titles"?"Achievement.titlePanel":"SkillPreset.presetPanel";
+                string shown=id=="titles"?"Achievement.TitleShown":"SkillPreset.presetShown";
                 string close=id=="titles"?"CloseTitlePicker":"ClosePreset";
                 Native.Set(model, field, panel);
                 Native.Set(model, shown, true);
@@ -424,7 +424,7 @@ public partial class Preview
                 routed.Back?.Invoke();
                 if(routed.Visible || closed!=1) throw new Exception("Embedded Back did not close its native lifecycle");
                 if(id is "titles" or "presets")
-                    if((bool)DetailField(model,id=="titles"?"Achievement.TitleShown":"Stats.presetShown")!) throw new Exception("Native model stayed open after Back");
+                    if((bool)DetailField(model,id=="titles"?"Achievement.TitleShown":"SkillPreset.presetShown")!) throw new Exception("Native model stayed open after Back");
                 if(id=="titles")
                 {
                     panel.Visible=true;CharacterPageRouter.Present(id);
@@ -526,7 +526,7 @@ public partial class Preview
     }
     private static Control QuestRewardRows(WorldRoot model) => (Control)((Node)DetailField(model,"Quest.detailBody")!).FindChild(NativeQuestLog.RewardBoxName,true,false)!;
     private static QuestRewardSelection<QuestTransfer> QuestRewardChoices(WorldRoot model) => (QuestRewardSelection<QuestTransfer>)DetailField(model,"Session.QuestBook.RewardSelection")!;
-    private static void QuestReceived(WorldRoot model,QuestReceipt receipt) { NativeQuestLog.Record(receipt);DetailCall(model,"Quest.OnReceipt",receipt); }
+    private static void QuestReceived(WorldRoot model,QuestReceipt receipt) { NativeQuestLog.Record(receipt);DetailCall(model,"QuestReceipt.OnReceipt",receipt); }
     private static IEnumerable<Node> Ancestry(Node? node) { for(;node!=null;node=node.GetParent()) yield return node; }
     /// <summary>A user card reply as the server sends it: a clan member with rank marks, or a clanless character.</summary>
     private static UserInfoReply UserInfoFixture(int nation,bool full) => full

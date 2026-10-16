@@ -157,7 +157,7 @@ public static class NativeRebirth
         if (add) pick.Add(row); else pick.Remove(row);
         Native.Call(world, "Rebirth.SetStatus", "", false);
         state.Warning = null;
-        Native.Call(world, "RefreshRebirthUI");
+        Native.Call(world, "Rebirth.RefreshUI");
         Refresh(world);
     }
 
@@ -194,7 +194,7 @@ public static class NativeRebirth
         // The picks stayed frozen while the confirmation was open; the client sends them and handles a refused send.
         if (Sheet(world) is { } sheet && !Unavailable(world, sheet)
             && Native.Get<RebirthPick>(world, "Rebirth.pick") is { } pick && pick.Payload().SequenceEqual(picks))
-            Native.Call(world, "OnRebirthPressed");
+            Native.Call(world, "Rebirth.OnPressed");
         state.Warning = null;
         Refresh(world);
     }

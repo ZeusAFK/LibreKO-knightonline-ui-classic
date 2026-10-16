@@ -51,7 +51,7 @@ public static partial class PreviewFixtures
         Native.Call(Game.Session.Self, "SeedPreviewEnter", enter);
         var ents = Field<EntityRegistry>(world, "EntitySystem.Ents");
         ents[1] = Entity(new() { ["Id"] = 1, ["Name"] = "Kauly", ["IsNpc"] = true, ["NpcType"] = NpcTypes.Pet, ["ModelId"] = 25500, ["Level"] = 12 });
-        SetField(world, "myId", 42); SetField(world, "Selection.SelectedId", 2);
+        SetField(world, "Avatar.CharId", 42); SetField(world, "Selection.SelectedId", 2);
         ents[2] = Entity(new() { ["Id"] = 2, ["Name"] = "Gavolt", ["IsNpc"] = true, ["IsMonster"] = true, ["Attackable"] = true, ["Level"] = 10 });
         if (observeInventory)
         {
@@ -92,8 +92,8 @@ public static partial class PreviewFixtures
     public static void PetSkillObserveDispose(WorldRoot world)
     {
         if (PetSkillObservers.Remove(world, out var handler)) Game.Session.Combat.MagicEvent -= (Action<int, int, int, int, short[]>)handler;
-        SetField(world, "Hotbar.petSkillGeneration", Field<int>(world, "Hotbar.petSkillGeneration") + 1);
-        Field<IDictionary>(world, "Hotbar.petSkillCasts").Clear();
+        SetField(world, "PetSkillBar.petSkillGeneration", Field<int>(world, "PetSkillBar.petSkillGeneration") + 1);
+        Field<IDictionary>(world, "PetSkillBar.petSkillCasts").Clear();
     }
 
     public static void DisposePetEquipmentUiPreview(WorldRoot world)
@@ -152,8 +152,8 @@ public static partial class PreviewFixtures
     public static CanvasLayer BuildPetBarClassicUiPreview(WorldRoot world)
     {
         var layer = new CanvasLayer { Layer = 64 };
-        SetField(world, "Hotbar.PetBarLayer", layer);
-        Call(world, "Hotbar.BuildPetBar"); Call(world, "Hotbar.OnPetBarSummoned", Game.Session.Pet.Pet!);
+        SetField(world, "PetSkillBar.PetBarLayer", layer);
+        Call(world, "PetSkillBar.BuildPetBar"); Call(world, "PetSkillBar.OnPetBarSummoned", Game.Session.Pet.Pet!);
         return layer;
     }
 
@@ -169,7 +169,7 @@ public static partial class PreviewFixtures
     /// <summary>The bar's effective default position, including a familiar bar extender's placement.</summary>
     public static Vector2 PetBarDefaultPosition(WorldRoot world)
     {
-        var bar = Field<PanelContainer>(world, "Hotbar.PetBar");
+        var bar = Field<PanelContainer>(world, "PetSkillBar.PetBar");
         var layout = bar.GetChildren().OfType<HudLayout>().Single();
         return Native.Get<Func<Vector2>>(layout, "defaultPosition")!();
     }
@@ -182,13 +182,13 @@ public static partial class PreviewFixtures
 
     public static void ShowPetSheet(WorldRoot world, PetSheet? sheet)
     {
-        Call(world, "ShowPetSheet", sheet);
+        Call(world, "Pet.ShowSheet", sheet);
         FamiliarWindow.Of(world)?.Refresh(sheet);
     }
 
     public static void PetBarTick(WorldRoot world, double now)
     {
-        Call(world, "PetBarTick", now);
+        Call(world, "PetSkillBar.PetBarTick", now);
         if (Field<bool>(world, "Pet.shown") && FamiliarWindow.Of(world) is { } window) { window.RefreshPortrait(); window.RefreshCooldowns(now); }
     }
 
@@ -196,7 +196,7 @@ public static partial class PreviewFixtures
 
     public static void RebuildPetPicks(WorldRoot world)
     {
-        Call(world, "RebuildPetPicks");
+        Call(world, "PetHatch.RebuildPetPicks");
         if (FamiliarTrainer.Of(world) is { } trainer) { trainer.Rebuild(); trainer.Refresh(); }
     }
 

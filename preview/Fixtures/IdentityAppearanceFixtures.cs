@@ -103,7 +103,7 @@ public static partial class PreviewFixtures
     /// <summary>A reply reaches the client's handler and then the plugin's, as the network event does.</summary>
     public static void OnEquipmentView(WorldRoot world, EquipmentViewResult result, EquipmentView view)
     {
-        Call(world, "OnEquipmentView", result, view);
+        Call(world, "EquipView.OnEquipmentView", result, view);
         NativeEquipView.Received(world, result, view);
     }
 
@@ -209,7 +209,7 @@ public static partial class PreviewFixtures
 
     public static void RefreshRebirthUI(WorldRoot world)
     {
-        Native.Call(world, "RefreshRebirthUI");
+        Native.Call(world, "Rebirth.RefreshUI");
         NativeRebirth.Refresh(world);
     }
 
@@ -225,7 +225,7 @@ public static partial class PreviewFixtures
         me.Class = nation == 1 ? 112 : 206; me.Hair = 0x5A3820;
         Seed(world, me);
         Native.Call(Game.Session.Clan, "SeedPreview", Native.Call(Native.StaticOwner("LibreKO.WorldPreview"), "PreviewClan", true, ClanTypes.Royal1));
-        Call(world, "CapeWindow.Build"); Call(world, "ToggleCape");
+        Call(world, "CapeWindow.Build"); Call(world, "CapeWindow.Toggle");
         var layer = Detach<CanvasLayer>(world, "CapeWindow.layer");
         NativeCape.Prepare(Field<HudWindow>(world, "CapeWindow.Panel"), world);
         return layer;
@@ -239,7 +239,7 @@ public static partial class PreviewFixtures
 
     public static void UpdateCapeGate(WorldRoot world)
     {
-        Native.Call(world, "UpdateCapeGate");
+        Native.Call(world, "CapeWindow.UpdateGate");
         NativeCape.Gate(world);
     }
 }

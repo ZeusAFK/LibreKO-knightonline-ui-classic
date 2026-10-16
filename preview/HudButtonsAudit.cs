@@ -255,10 +255,10 @@ public partial class Preview
 
         // The tracker (like NPC quest flows) still opens the journal on its quest: Quest Details of that quest.
         const int trackedId = 127;
-        DetailCall(world, "Quest.OnLog", new List<QuestEntry> { new(trackedId, 1) });
-        DetailCall(world, "Quest.OnStrings", new List<QuestStrings> { new(trackedId, "Animal Blood", "You have promised [Moradon Merchant] Clark to bring him Animal Blood.") });
+        DetailCall(world, "OnQuestLog", new List<QuestEntry> { new(trackedId, 1) });
+        DetailCall(world, "OnQuestStrings", new List<QuestStrings> { new(trackedId, "Animal Blood", "You have promised [Moradon Merchant] Clark to bring him Animal Blood.") });
         var objectives = new QuestObjectives(trackedId, false, [new QuestKillGroup(10, [1], "Shadow Seeker")]);
-        DetailCall(world, "Quest.OnObjectives", objectives);
+        DetailCall(world, "OnQuestObjectives", objectives);
         DetailCall(world, "OnQuestView", new QuestView(trackedId, 14435, 21, false, false, false, false, QuestViewState.InProgress, 0, "Animal Blood",
             "You have promised [Moradon Merchant] Clark to bring him Animal Blood.", "", objectives, [4], [], []));
         await Frames(8);

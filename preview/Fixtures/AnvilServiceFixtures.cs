@@ -14,7 +14,7 @@ public static partial class PreviewFixtures
     /// </summary>
     public static Control BuildUpgradeUiPreview(WorldRoot world)
     {
-        var panel = (HudWindow)Native.Call(world, "BuildUpgradeUiPreview")!;
+        var panel = (HudWindow)Call(world, "Preview.BuildUpgrade")!;
         var anvil = NativeAnvil.Prepare(panel, world)!;
         Native.Call(world, "Upgrade.OnResult", new UpgradeResult(2, 2, 1, new[] { new UpgradeSlotResult(PreviewUpgradedResult, 0) }));
         anvil.RefreshBag();

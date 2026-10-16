@@ -157,7 +157,7 @@ public static class NativeCommandList
             foreach (var hud in Native.Descendants(layer).OfType<NationHud>())
                 foreach (var part in hud.GetChildren().OfType<Control>())
                     if (part.IsVisibleInTree()) rects.Add(part.GetGlobalRect());
-        if (Native.Get<Control>(world, "Genie.Sub") is { } genie && GodotObject.IsInstanceValid(genie) && genie.IsVisibleInTree()) rects.Add(genie.GetGlobalRect());
+        if (Native.Get<Control>(world, "GenieSub.Sub") is { } genie && GodotObject.IsInstanceValid(genie) && genie.IsVisibleInTree()) rects.Add(genie.GetGlobalRect());
         try { if (Native.TryCall(world, "DockHudRects", out var dock) && dock is IEnumerable<Rect2> client) rects.AddRange(client); }
         catch (Exception) { }
         return rects.Where(r => r.HasArea()).ToList();

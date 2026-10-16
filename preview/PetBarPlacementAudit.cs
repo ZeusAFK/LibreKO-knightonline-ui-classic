@@ -34,7 +34,7 @@ public partial class Preview
         require(bar.Position.X == main.GlobalPosition.X && bar.GetGlobalRect().End.Y + 6 == main.GlobalPosition.Y
             && !bar.GetGlobalRect().Intersects(main.GetGlobalRect()), "Familiar bar aligns above the actual horizontal main hotbar with a 6 px gap");
         await capture("horizontal-main-bar");
-        var saved = bar.Position; DetailCall(world, "Hotbar.HidePetBar"); DetailCall(world, "Hotbar.OnPetBarSummoned", Game.Session.Pet.Pet!); await Frames();
+        var saved = bar.Position; DetailCall(world, "PetSkillBar.HidePetBar"); DetailCall(world, "PetSkillBar.OnPetBarSummoned", Game.Session.Pet.Pet!); await Frames();
         require(bar.Position == saved, "Resummoning preserves the familiar HUD position beside the main hotbar");
         main.Position = new Vector2(88, 8); ApplyDefault(); await Frames();
         require(bar.GetGlobalRect().Position.Y == main.GetGlobalRect().End.Y + 6 && !bar.GetGlobalRect().Intersects(main.GetGlobalRect()),

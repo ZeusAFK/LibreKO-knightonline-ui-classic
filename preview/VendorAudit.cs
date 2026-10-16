@@ -109,7 +109,7 @@ public partial class Preview
         void ApplyGold(int total)
         {
             var change=new GoldChange(total,total-Game.Session.Self.Sheet.Gold,false);Game.Session.Self.Sheet.SetGold(total);
-            NativeGoldLog.Changed(world,change);DetailCall(world,"Stats.OnGoldChange",change);RaiseNew();
+            NativeGoldLog.Changed(world,change);DetailCall(world,"Progression.OnGoldChange",change);RaiseNew();
             DetailCall(world,"Vendor.OnGold",change);
         }
         // Shop trades are logged once, by the client's own shop line (the plugin only applies the balance).

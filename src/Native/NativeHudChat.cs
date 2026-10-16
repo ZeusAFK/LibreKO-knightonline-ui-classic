@@ -248,14 +248,14 @@ public static class NativeHudChat
         if (SkillData.IsSkill(id))
         {
             if (!ZoneSkillTrees.Allowed(zone, skill.Tree, skill.Id)) return false;
-            if (Native.Call(world, "CombatSystem.SelfTransformModel") is int form && !SkillData.IsGranted(skill.Tree, form)) return false;
+            if (Native.Call(world, "SkillCastSystem.SelfTransformModel") is int form && !SkillData.IsGranted(skill.Tree, form)) return false;
         }
         return Native.Call(world, "Hotbar.Usable", skill, Time.GetTicksMsec() / 1000.0) is bool usable ? usable : null;
     }
 
     public static bool Running => World is not { } world || Native.Get<bool>(world, "Avatar.Running");
     public static bool Sitting => World is { } world && Native.Get<bool>(world, "Avatar.Sitting");
-    public static bool AutoAttacking => World is { } world && Native.Get<bool>(world, "CombatSystem.AutoAttack");
+    public static bool AutoAttacking => World is { } world && Native.Get<bool>(world, "BasicAttackSystem.AutoAttack");
     // 3277df5 exposes these through IGameCommands (Run(KeyAction) runs the client's own key action handler,
     // ShowExitMenu opens the game menu); the camera half turn has no key action and stays reflected.
     public static void ToggleRun() { if (World != null) Plugin.Kit.Game.Commands.Run(KeyAction.ToggleRun); }

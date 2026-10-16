@@ -135,12 +135,12 @@ public partial class Preview
         async Task ServerReply()
         {
             answers++;
-            DetailCall(model, "Quest.OnLog", quests.Select(q => new QuestEntry(q.Id, 1)).ToList());
+            DetailCall(model, "OnQuestLog", quests.Select(q => new QuestEntry(q.Id, 1)).ToList());
             await Reloading(2);
-            DetailCall(model, "Quest.OnStrings", quests.Select(q => new QuestStrings(q.Id, q.Title, q.Journal)).ToList());
-            foreach (var q in quests) DetailCall(model, "Quest.OnObjectives", new QuestObjectives(q.Id, false, [new QuestKillGroup(q.Need, [1], q.Monster)]));
+            DetailCall(model, "OnQuestStrings", quests.Select(q => new QuestStrings(q.Id, q.Title, q.Journal)).ToList());
+            foreach (var q in quests) DetailCall(model, "OnQuestObjectives", new QuestObjectives(q.Id, false, [new QuestKillGroup(q.Need, [1], q.Monster)]));
             await Reloading(2);
-            foreach (var q in quests) DetailCall(model, "Quest.OnKillCounts", q.Id, new ushort[] { q.Have });
+            foreach (var q in quests) DetailCall(model, "OnQuestKillCounts", q.Id, new ushort[] { q.Have });
             await Reloading(2);
             foreach (var q in quests) DetailCall(model, "OnQuestView", View(q));
             // The client refreshes its open journal one deferred call after a view; the audit World is not in the tree.
