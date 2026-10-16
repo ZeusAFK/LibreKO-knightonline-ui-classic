@@ -38,8 +38,8 @@ public static partial class PreviewFixtures
                 var ids = AchievementIds(tab);
                 for (int i = 0; i < ids.Count; i++)
                 {
-                    int state = i % 5 == 0 ? Net.AchievementStateAchieved : i % 5 == 1 ? Net.AchievementStateClaimed : 0;
-                    entries.Add(new AchievementEntry { Id = ids[i], State = state, Progress = state != 0 ? 10 : i % 10, Target = 10 });
+                    var state = i % 5 == 0 ? AchievementState.Achieved : i % 5 == 1 ? AchievementState.Claimed : AchievementState.InProgress;
+                    entries.Add(new AchievementEntry { Id = ids[i], State = state, Progress = state != AchievementState.InProgress ? 10 : i % 10, Target = 10 });
                 }
             }
             Native.Call(Game.Session.Achievement, "ApplyList", entries);
@@ -60,10 +60,10 @@ public static partial class PreviewFixtures
         ItemData.EnsureLoaded();
         Call(world, "Attendance.Build");
         Native.Call(Game.Session.Attendance, "NoteAutoOpened");
-        int total = Net.AttendanceDailySlots + Net.AttendanceBonusSlots;
+        int total = AttendanceWire.DailySlots + AttendanceWire.BonusSlots;
         var slots = new int[total]; var states = new byte[total];
-        int attended = view switch { "empty" => 0, "complete" => Net.AttendanceDailySlots, _ => 12 };
-        for (int i = 0; i < Net.AttendanceDailySlots; i++)
+        int attended = view switch { "empty" => 0, "complete" => AttendanceWire.DailySlots, _ => 12 };
+        for (int i = 0; i < AttendanceWire.DailySlots; i++)
         {
             slots[i] = i + 1;
             states[i] = i < attended - 1 ? AttendanceSlotState.Claimed
@@ -71,15 +71,15 @@ public static partial class PreviewFixtures
                 : i == attended ? AttendanceSlotState.ClaimableExtra : (byte)0;
             if (view == "empty") states[i] = i == 0 ? AttendanceSlotState.Claimable : (byte)0;
         }
-        for (int i = 0; i < Net.AttendanceBonusSlots; i++)
+        for (int i = 0; i < AttendanceWire.BonusSlots; i++)
         {
-            int index = Net.AttendanceDailySlots + i;
-            slots[index] = Net.AttendanceBonusFirstSlot + i;
+            int index = AttendanceWire.DailySlots + i;
+            slots[index] = AttendanceWire.BonusFirstSlot + i;
             states[index] = view == "complete" ? AttendanceSlotState.Claimed : i == 0 && view != "empty" ? AttendanceSlotState.Claimable : (byte)0;
         }
         Call(world, "Attendance.OnBoard", slots, states);
         Call(world, "Attendance.Open");
-        if (view == "failed") Call(world, "Attendance.OnFailed", Net.EventBoardAttendanceClaim, Net.AttendanceClaimInventoryFull);
+        if (view == "failed") Call(world, "Attendance.OnFailed", EventBoardSubOpcode.AttendanceClaim, EventBoardResult.InventoryFull);
         return DetachWindow(world, "Attendance.layer", "Attendance.Panel");
     }
 

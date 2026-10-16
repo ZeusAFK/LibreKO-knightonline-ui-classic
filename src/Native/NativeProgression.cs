@@ -150,7 +150,7 @@ public static class NativeProgression
             }
         }
         Mirror(daily, 0);
-        Mirror(bonus, Net.AttendanceDailySlots);
+        Mirror(bonus, AttendanceWire.DailySlots);
     }
 
     /// <summary>Ladder cells of a <c>LadderRow</c>, in column order.</summary>

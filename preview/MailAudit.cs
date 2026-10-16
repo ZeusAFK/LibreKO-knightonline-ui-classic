@@ -42,16 +42,16 @@ public sealed class MailAudit : IDisposable
         Game.Requests.Mail.ClaimAttachment(42,1);
         byte[] claim=new byte[13];using var timeout=new CancellationTokenSource(4000);
         await _peer.GetStream().ReadExactlyAsync(claim,timeout.Token);
-        if(!claim.SequenceEqual(new byte[]{0xaa,0x55,7,0,(byte)GameOpcodes.GS_MAIL,LibreKO.Network.Requests.MailRequests.MailSubClaimAttachment,42,0,0,0,1}.Concat(new byte[]{0x55,0xaa})))
+        if(!claim.SequenceEqual(new byte[]{0xaa,0x55,7,0,(byte)GameOpcodes.GS_MAIL,(byte)MailSubOpcode.ClaimAttachment,42,0,0,0,1}.Concat(new byte[]{0x55,0xaa})))
             throw new Exception("Single attachment claim wire format changed");
     }
-    private void Handle(Packet packet) => typeof(Net).GetMethod("HandleMail",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(_net,new object[]{packet});
+    private static void Handle(Packet packet) => PreviewPackets.Receive(packet);
     private void AuditAttachmentWireFormat()
     {
         List<MailEntry>? parsed=null;
         void Receive(List<MailEntry> rows)=>parsed=rows;
         Game.Session.Mail.MailListEvent+=Receive;
-        var packet=new Packet(GameOpcodes.GS_MAIL);packet.WriteByte(Net.MailSubList);packet.WriteUShort(2);
+        var packet=new Packet(GameOpcodes.GS_MAIL);packet.WriteByte((byte)MailSubOpcode.List);packet.WriteUShort(2);
         for(int id=1;id<=2;id++)
         {
             packet.WriteInt(id);packet.WriteSByteString("Guardian");packet.WriteSByteString("Mail "+id);
@@ -65,18 +65,18 @@ public sealed class MailAudit : IDisposable
     }
     public void SetCount(ushort count)
     {
-        var packet=new Packet(GameOpcodes.GS_MAIL);packet.WriteByte(Net.MailSubUnread);packet.WriteUShort(count);Handle(packet);
+        var packet=new Packet(GameOpcodes.GS_MAIL);packet.WriteByte((byte)MailSubOpcode.Unread);packet.WriteUShort(count);Handle(packet);
         if(Windows.NotificationCount("mail")!=count) throw new Exception("Native window bridge has a stale mail count");
     }
     public async Task Read(int id,bool ok,ushort remaining)
     {
-        var packet=new Packet(GameOpcodes.GS_MAIL);packet.WriteByte(Net.MailSubRead);packet.WriteByte(ok?(byte)1:(byte)0);packet.WriteInt(id);packet.WriteSByteString(ok?"Read successfully.":"");Handle(packet);
+        var packet=new Packet(GameOpcodes.GS_MAIL);packet.WriteByte((byte)MailSubOpcode.Read);packet.WriteByte(ok?(byte)1:(byte)0);packet.WriteInt(id);packet.WriteSByteString(ok?"Read successfully.":"");Handle(packet);
         var stream=_peer!.GetStream();
         if(ok)
         {
             byte[] request=new byte[8];using var timeout=new CancellationTokenSource(4000);
             await stream.ReadExactlyAsync(request,timeout.Token);
-            if(!request.SequenceEqual(new byte[]{0xaa,0x55,2,0,(byte)GameOpcodes.GS_MAIL,Net.MailSubUnread,0x55,0xaa}))
+            if(!request.SequenceEqual(new byte[]{0xaa,0x55,2,0,(byte)GameOpcodes.GS_MAIL,(byte)MailSubOpcode.Unread,0x55,0xaa}))
                 throw new Exception("Reading mail did not request the authoritative unread count");
             RefreshRequests++;SetCount(remaining);
             if(!_mails.Single(m=>m.Id==id).Read) throw new Exception("A successful late mail read did not update the cached row");

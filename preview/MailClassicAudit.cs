@@ -99,7 +99,7 @@ public partial class Preview
             else
             {
                 var to = (LineEdit)DetailField(world, "MailCompose.Recipient")!; var subject = (LineEdit)DetailField(world, "MailCompose.SubjectInput")!; var body = (TextEdit)DetailField(world, "MailCompose.BodyInput")!;
-                Require(((Label)DetailField(world, "MailCompose.bodyRemaining")!).Text == (Net.MailBodyMax - body.Text.Length).ToString(), "Initial draft remaining count matches its native body text");
+                Require(((Label)DetailField(world, "MailCompose.bodyRemaining")!).Text == (MailWire.BodyMax - body.Text.Length).ToString(), "Initial draft remaining count matches its native body text");
                 to.EmitSignal(LineEdit.SignalName.TextSubmitted, to.Text); Require(subject.HasFocus(), "Recipient Enter moves to subject");
                 subject.EmitSignal(LineEdit.SignalName.TextSubmitted, subject.Text); Require(body.HasFocus(), "Subject Enter moves to message without sending");
                 Require(!((Button)DetailField(world, "MailCompose.sendBtn")!).Disabled, "Entering message does not submit mail");
@@ -109,8 +109,8 @@ public partial class Preview
                 Require(suggestions.GetChildren().Count == 8, "Recipient suggestions retain native eight-contact cap");
                 suggestions.GetChildren().OfType<Button>().First().EmitSignal(BaseButton.SignalName.Pressed); await Frames();
                 Require(!suggestions.Visible && subject.HasFocus(), "Choosing a contact fills recipient and advances focus");
-                body.Text = new string('a', Net.MailBodyMax + 20); DetailCall(world, "MailCompose.OnBodyChanged");
-                Require(body.Text.Length == Net.MailBodyMax && ((Label)DetailField(world, "MailCompose.bodyRemaining")!).Text == "0", "Message limit and remaining count stay authoritative");
+                body.Text = new string('a', MailWire.BodyMax + 20); DetailCall(world, "MailCompose.OnBodyChanged");
+                Require(body.Text.Length == MailWire.BodyMax && ((Label)DetailField(world, "MailCompose.bodyRemaining")!).Text == "0", "Message limit and remaining count stay authoritative");
                 body.Text = "A short letter."; DetailCall(world, "MailCompose.OnBodyChanged");
                 var picks = (List<(int Slot, int Count)>)DetailField(world, "MailCompose.Attachments")!;
                 var rows = (VBoxContainer)DetailField(world, "MailCompose.attachRows")!;
@@ -132,7 +132,7 @@ public partial class Preview
                 inv[Inventory.GridStart + 3] = new ItemSlot { ItemId = 379154000, Count = 1, Durability = 1 };
                 var fourth = new Godot.Collections.Dictionary { { "invFrom", Inventory.GridStart + 3 } };
                 Require(drop._CanDropData(Vector2.Zero, fourth), "Fourth native attachment is available"); drop._DropData(Vector2.Zero, fourth); await Frames();
-                Require(picks.Count == Net.MailItemAttachmentsMax && !drop._CanDropData(Vector2.Zero, new Godot.Collections.Dictionary { { "invFrom", Inventory.GridStart + 4 } }), "Full composer enforces native four-item capacity");
+                Require(picks.Count == MailWire.ItemAttachmentsMax && !drop._CanDropData(Vector2.Zero, new Godot.Collections.Dictionary { { "invFrom", Inventory.GridStart + 4 } }), "Full composer enforces native four-item capacity");
                 Require(!Descendants(drop).OfType<ScrollContainer>().Single().GetVScrollBar().Visible, "All four outgoing attachment rows fit without scrolling");
                 await Capture(window, "full-attachments");
                 Descendants(rows.GetChildren().OfType<Control>().Last()).OfType<Button>().Single().EmitSignal(BaseButton.SignalName.Pressed); await Frames();

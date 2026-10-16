@@ -158,7 +158,7 @@ public partial class Preview
             await Frames();
             var daily = Named<GridContainer>(panel, "attendance_daily");
             var bonus = Named<GridContainer>(panel, "attendance_bonus");
-            Require(daily.GetChildren().OfType<VBoxContainer>().Count() == Net.AttendanceDailySlots && bonus.GetChildren().OfType<VBoxContainer>().Count() == Net.AttendanceBonusSlots, view + " every daily and cumulative reward");
+            Require(daily.GetChildren().OfType<VBoxContainer>().Count() == AttendanceWire.DailySlots && bonus.GetChildren().OfType<VBoxContainer>().Count() == AttendanceWire.BonusSlots, view + " every daily and cumulative reward");
             await Frames(2);
             foreach (var grid in new[] { daily, bonus })
                 foreach (var socket in Descendants(grid).OfType<Button>().Where(b => b.Name == "attendance_socket"))
