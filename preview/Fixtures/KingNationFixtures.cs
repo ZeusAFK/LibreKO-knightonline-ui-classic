@@ -19,7 +19,7 @@ public static partial class PreviewFixtures
         var window = (HudWindow)Call(world, "Preview.BuildKing", view)!;
         var me = Game.Session.Self.LastEnter; me.Nation = nation; Seed(world, me);
         if (view is "nation-tax" or "nation-tax-citizen")
-            Call(world, "King.OnTreasury", new KingTreasury(view == "nation-tax" ? NationTreasury.KingView : NationTreasury.CitizenView,
+            Call(world, "KingTreasury.OnTreasury", new KingTreasury(view == "nation-tax" ? NationTreasury.KingView : NationTreasury.CitizenView,
                 view == "nation-tax" ? KingPreviewTribute : 0, KingPreviewTreasury));
         // The client's preview helper frees the window's drag behaviour; restore a non-persisting one so
         // the audit can exercise native dragging through the Classic grip.
@@ -34,7 +34,7 @@ public static partial class PreviewFixtures
     {
         var names = new[] { "Rikka", "Zeus", "Morgana", "Hermes", "Valkyrie", "Sylph", "Ardream", "Krowaz", "Talon", "Longnamedcandidate" };
         var clans = new[] { "Valhalla", "Olympus", "Avalon", "", "Shieldmaidens", "Windwalkers", "Ardream Guard", "Krowaz Legion", "Talons", "Averylongclannamehere" };
-        Call(world, "King.OnCandidates", new KingCandidates(KingElection.Success,
+        Call(world, "KingElection.OnCandidates", new KingCandidates(KingElection.Success,
             names.Select((name, i) => new KingCandidate(i + 1, name, clans[i])).ToList()));
     }
 }

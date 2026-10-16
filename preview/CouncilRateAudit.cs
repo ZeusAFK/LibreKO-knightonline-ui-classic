@@ -74,7 +74,7 @@ public partial class Preview
             if (mode == "nation")
             {
                 panel._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.Enter }); await Frames();
-                Require((bool)DetailField(world, "King.nationTaxRateBusy")!, "Nation rate Enter starts the actual pending request");
+                Require((bool)DetailField(world, "KingTreasury.nationTaxRateBusy")!, "Nation rate Enter starts the actual pending request");
                 Require(up.Disabled && down.Disabled && controls.OfType<Button>().Single(c => c.Name == "taxrate_accept").Disabled,
                     "Pending tariff freezes the submitted value and duplicate confirmations");
                 Require(up.SelfModulate.R == .5f && down.SelfModulate.R == .5f, "Pending arrow artwork is visibly disabled");

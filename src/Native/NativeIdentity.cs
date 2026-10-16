@@ -123,7 +123,7 @@ public static class NativeIdentity
         bool nation = window.Id == "nationtaxrate";
         var body = window.Body;
         var prompt = nation ? body.GetChildren().OfType<Label>().FirstOrDefault() : Native.Get<Label>(world, "Siege.taxRatePrompt");
-        var value = Native.Get<Label>(world, nation ? "King.nationTaxRateValue" : "Siege.taxRateValue");
+        var value = Native.Get<Label>(world, nation ? "KingTreasury.nationTaxRateValue" : "Siege.taxRateValue");
         var arrows = value?.GetParent()?.GetParent();
         var footer = body.GetChildren().OfType<HBoxContainer>().LastOrDefault(row => row != arrows);
         var steps = arrows?.GetChildren().OfType<Button>().ToArray() ?? Array.Empty<Button>();
@@ -134,14 +134,14 @@ public static class NativeIdentity
         actions[0].Name = "taxrate_accept"; actions[1].Name = "taxrate_cancel";
         window.SetMeta("classic_council_controls", 1);
         window.SetMeta("council_rate_pending", false);
-        if (nation) NativeWindows.Sync(window, () => window.SetMeta("council_rate_pending", Native.Get<bool>(world, "King.nationTaxRateBusy")));
+        if (nation) NativeWindows.Sync(window, () => window.SetMeta("council_rate_pending", Native.Get<bool>(world, "KingTreasury.nationTaxRateBusy")));
     }
 
     /// <summary>Changes the nation tax rate unless a tariff request is pending.</summary>
     public static void StepNationTaxRate(WorldRoot world, int delta)
     {
-        if (Native.Get<bool>(world, "King.nationTaxRateBusy")) return;
-        Native.Call(world, "King.StepNationTaxRate", delta);
+        if (Native.Get<bool>(world, "KingTreasury.nationTaxRateBusy")) return;
+        Native.Call(world, "KingTreasury.StepNationTaxRate", delta);
     }
 
     internal static bool Begin(HudWindow window, string marker)

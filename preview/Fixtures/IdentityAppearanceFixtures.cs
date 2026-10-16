@@ -25,9 +25,9 @@ public static partial class PreviewFixtures
         ItemData.EnsureLoaded();
         if (view == "nation")
         {
-            var king = new CanvasLayer(); world.AddChild(king); SetField(world, "King.layer", king);
-            Call(world, "King.BuildNationTaxRate"); Call(world, "King.OnTariffRead", new KingTariff(KingElection.Success, 3));
-            var nation = Detach<HudWindow>(world, "King.NationTaxRatePanel");
+            var king = new CanvasLayer(); world.AddChild(king); SetField(world, "KingTreasury.layer", king);
+            Call(world, "KingTreasury.BuildNationTaxRate"); Call(world, "KingTreasury.OnTariffRead", new KingTariff(KingElection.Success, 3));
+            var nation = Detach<HudWindow>(world, "KingTreasury.NationTaxRatePanel");
             NativeIdentity.Prepare(nation, world);
             return nation;
         }

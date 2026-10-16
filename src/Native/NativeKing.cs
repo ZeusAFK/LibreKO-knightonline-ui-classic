@@ -63,22 +63,22 @@ public static class NativeKing
 
     private static bool Election(HudWindow window, WorldRoot world)
     {
-        var options = Native.Get<Button[]>(world, "King.options");
+        var options = Native.Get<Button[]>(world, "KingElection.options");
         if (options == null || options.Length != ElectionRows) return false;
         for (int i = 0; i < options.Length; i++) options[i].Name = "king_option_" + i;
-        bool named = NativeWindows.Name(Native.Get<Label>(world, "King.speechUpper"), "king_speech_upper")
-            & NativeWindows.Name(Native.Get<Label>(world, "King.speechLower"), "king_speech_lower")
-            & NativeWindows.Name(Native.Get<ScrollContainer>(world, "King.senatorsBox"), "king_senators")
-            & NativeWindows.Name(Native.Get<Label>(world, "King.senatorsLabel"), "king_senators_text");
-        Pending(window, world, "King.busy", "King.boxOpen");
+        bool named = NativeWindows.Name(Native.Get<Label>(world, "KingElection.speechUpper"), "king_speech_upper")
+            & NativeWindows.Name(Native.Get<Label>(world, "KingElection.speechLower"), "king_speech_lower")
+            & NativeWindows.Name(Native.Get<ScrollContainer>(world, "KingElection.senatorsBox"), "king_senators")
+            & NativeWindows.Name(Native.Get<Label>(world, "KingElection.senatorsLabel"), "king_senators_text");
+        Pending(window, world, "KingElection.busy", "KingElection.boxOpen");
         return named;
     }
 
     private static bool Nominate(HudWindow window, WorldRoot world)
     {
-        var text = Native.Get<Label>(world, "King.nominateText");
+        var text = Native.Get<Label>(world, "KingElection.nominateText");
         var note = text?.GetParent()?.GetChildren().OfType<Label>().FirstOrDefault(l => l != text);
-        var edit = Native.Get<LineEdit>(world, "King.NomineeEdit");
+        var edit = Native.Get<LineEdit>(world, "KingElection.NomineeEdit");
         var caption = edit?.GetParent()?.GetChildren().OfType<Label>().FirstOrDefault();
         return NativeWindows.Name(text, "king_nominate_text") & NativeWindows.Name(note, "king_nominate_note")
             & NativeWindows.Name(caption, "king_nominate_caption") & NativeWindows.Name(edit, "king_nominee")
@@ -87,16 +87,16 @@ public static class NativeKing
 
     private static bool Plan(HudWindow window, WorldRoot world)
     {
-        bool named = NativeWindows.Name(Native.Get<TextEdit>(world, "King.PlanEdit"), "king_plan_text")
-            & NativeWindows.Name(Native.Get<Label>(world, "King.planCount"), "king_plan_count")
+        bool named = NativeWindows.Name(Native.Get<TextEdit>(world, "KingElection.PlanEdit"), "king_plan_text")
+            & NativeWindows.Name(Native.Get<Label>(world, "KingElection.planCount"), "king_plan_count")
             & NameAll(Footer(window), "king_plan_accept", "king_plan_cancel");
-        Pending(window, world, "King.planBusy");
+        Pending(window, world, "KingElection.planBusy");
         return named;
     }
 
     private static bool Vote(HudWindow window, WorldRoot world)
     {
-        var rows = Native.Get<Array>(world, "King.voteRows");
+        var rows = Native.Get<Array>(world, "KingElection.voteRows");
         if (rows == null || rows.Length != CandidateRows) return false;
         bool named = true;
         for (int i = 0; i < rows.Length; i++)
@@ -120,27 +120,27 @@ public static class NativeKing
                 panel.SetMeta("king_candidate_clan", Native.Get<object>(row, "Candidate") is KingCandidate candidate ? candidate.Clan : "");
             }
         });
-        Pending(window, world, "King.voteBusy");
+        Pending(window, world, "KingElection.voteBusy");
         return named;
     }
 
     private static bool Ballot(HudWindow window, WorldRoot world) =>
-        NativeWindows.Name(Native.Get<Label>(world, "King.ballotText"), "king_ballot_text")
+        NativeWindows.Name(Native.Get<Label>(world, "KingElection.ballotText"), "king_ballot_text")
         & NameAll(Footer(window), "king_ballot_favour", "king_ballot_against", "king_ballot_cancel");
 
     private static bool Treasury(HudWindow window, WorldRoot world)
     {
-        var options = Native.Get<VBoxContainer>(world, "King.nationTaxOptions");
+        var options = Native.Get<VBoxContainer>(world, "KingTreasury.nationTaxOptions");
         var buttons = options?.GetChildren().OfType<Button>().ToArray() ?? Array.Empty<Button>();
-        bool named = NativeWindows.Name(Native.Get<Label>(world, "King.nationTaxNotice"), "nation_tax_heading")
-            & NativeWindows.Name(Native.Get<Label>(world, "King.nationTaxNotice2"), "nation_tax_notice")
+        bool named = NativeWindows.Name(Native.Get<Label>(world, "KingTreasury.nationTaxNotice"), "nation_tax_heading")
+            & NativeWindows.Name(Native.Get<Label>(world, "KingTreasury.nationTaxNotice2"), "nation_tax_notice")
             & NativeWindows.Name(options, "nation_tax_options")
             & NameAll(buttons, "nation_tax_treasury", "nation_tax_rate", "nation_tax_fund", "nation_tax_item", "nation_tax_intro");
-        Pending(window, world, "King.nationTaxBusy", "King.boxOpen");
+        Pending(window, world, "KingTreasury.nationTaxBusy", "KingTreasury.boxOpen");
         return named;
     }
 
     private static bool Intro(HudWindow window, WorldRoot world) =>
-        NativeWindows.Name(Native.Get<TextEdit>(world, "King.nationIntroEdit"), "nation_intro_text")
+        NativeWindows.Name(Native.Get<TextEdit>(world, "KingTreasury.nationIntroEdit"), "nation_intro_text")
         & NameAll(Footer(window), "nation_intro_revision", "nation_intro_accept");
 }
