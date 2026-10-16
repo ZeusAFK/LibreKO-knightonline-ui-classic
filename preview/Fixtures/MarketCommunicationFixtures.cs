@@ -118,6 +118,12 @@ public static partial class PreviewFixtures
         world.RemoveChild(layer); return layer;
     }
 
+    public static void OnStorePurchase(WorldRoot world, PowerUpStoreResult result, int knightCash)
+    {
+        if (knightCash >= 0) Game.Session.Self.Sheet.SetKnightCash(knightCash);
+        Call(world, "ShoppingMall.OnPurchase", result, knightCash);
+    }
+
     public static CanvasLayer BuildPowerUpStoreClassicUiPreview(WorldRoot world, string variant)
     {
         Call(world, "ItemTooltip.Build");

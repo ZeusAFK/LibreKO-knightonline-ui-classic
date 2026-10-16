@@ -300,16 +300,16 @@ public sealed class NativeServiceWindows : IGameWindows
 
     private static readonly Dictionary<string, (string Shown, string Toggle, string? Close)> Services = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["mail"] = ("Mail.shown", "ToggleMail", null),
+        ["mail"] = ("Mail.shown", "Mail.Toggle", null),
         ["achievements"] = ("Achievement.Shown", "Achievement.ToggleAchievements", null),
-        ["attendance"] = ("Attendance.shown", "ToggleAttendance", null),
-        ["shoppingmall"] = ("ShoppingMall.shown", "ToggleShoppingMall", null),
-        ["zonemap"] = ("Map.fullShown", "ToggleFullMap", null),
+        ["attendance"] = ("Attendance.shown", "Attendance.Toggle", null),
+        ["shoppingmall"] = ("ShoppingMall.shown", "ShoppingMall.Toggle", null),
+        ["zonemap"] = ("Map.fullShown", "Map.ToggleFull", null),
         ["genie"] = ("Genie.shown", "Genie.Toggle", "Genie.Close"),
         // Shown by the window itself. The events toggle asks for the schedule; the daily rank one builds the window
         // on first use and records the day as viewed, as the client's top-right icons did.
-        ["events"] = ("Events.Window", "ToggleEvents", null),
-        ["daily_rank"] = ("DailyRankWindow.Window", "OnDailyRankIcon", null),
+        ["events"] = ("Events.Window", "Events.Toggle", null),
+        ["daily_rank"] = ("DailyRankWindow.Window", "DailyRankWindow.OnIcon", null),
         // The party window is gone; the taskbar's party button opens the party board, which loads its list on open.
         ["seek_party"] = ("SeekParty.SeekShown", "SeekParty.ToggleSeek", null),
     };

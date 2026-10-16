@@ -167,18 +167,18 @@ public static class NativeMarket
 
     private static readonly (string Field, string Name)[] StoreControls =
     {
-        ("ShoppingMall.categoryList", "category_list"), ("ShoppingMall.gridTitle", "grid_title"), ("ShoppingMall.cashValue", "cash"),
-        ("ShoppingMall.searchInput", "query"), ("ShoppingMall.sortPick", "sort"), ("ShoppingMall.gridScroll", "grid_scroll"), ("ShoppingMall.grid", "grid"), ("ShoppingMall.gridEmpty", "grid_empty"),
-        ("ShoppingMall.cartTitle", "cart_title"), ("ShoppingMall.clearCart", "clear_cart"), ("ShoppingMall.cartScroll", "cart_scroll"),
-        ("ShoppingMall.cartLines", "cart_lines"), ("ShoppingMall.cartEmpty", "cart_empty"), ("ShoppingMall.giftButton", "gift"),
-        ("ShoppingMall.giftBanner", "gift_banner"), ("ShoppingMall.giftName", "gift_name"), ("ShoppingMall.giftInfo", "gift_info"),
-        ("ShoppingMall.totalRow", "total"), ("ShoppingMall.shortfall", "shortfall"), ("ShoppingMall.checkout", "checkout"), ("ShoppingMall.cartStatus", "cart_status"),
-        ("ShoppingMall.overlay", "overlay"), ("ShoppingMall.detailsBox", "details"), ("ShoppingMall.detailsIcon", "details_icon"),
-        ("ShoppingMall.detailsName", "details_name"), ("ShoppingMall.detailsCategory", "details_category"), ("ShoppingMall.detailsDescription", "details_description"),
-        ("ShoppingMall.detailsPrice", "details_price"), ("ShoppingMall.detailsAdd", "details_add"), ("ShoppingMall.detailsBuy", "details_buy"), ("ShoppingMall.detailsStatus", "details_status"),
-        ("ShoppingMall.giftBox", "gift_box"), ("ShoppingMall.giftSearch", "gift_query"), ("ShoppingMall.giftPickPane", "gift_pick"),
-        ("ShoppingMall.giftListTitle", "gift_list_title"), ("ShoppingMall.giftList", "gift_list"), ("ShoppingMall.giftCard", "gift_card"),
-        ("ShoppingMall.giftCardName", "recipient_name"), ("ShoppingMall.giftCardInfo", "recipient_info"), ("ShoppingMall.giftCardWarning", "recipient_warning"), ("ShoppingMall.giftStatus", "gift_status"),
+        ("ShoppingMall.CatalogView.categoryList", "category_list"), ("ShoppingMall.CatalogView.gridTitle", "grid_title"), ("ShoppingMall.CatalogView.cashValue", "cash"),
+        ("ShoppingMall.CatalogView.searchInput", "query"), ("ShoppingMall.CatalogView.sortPick", "sort"), ("ShoppingMall.CatalogView.gridScroll", "grid_scroll"), ("ShoppingMall.CatalogView.grid", "grid"), ("ShoppingMall.CatalogView.gridEmpty", "grid_empty"),
+        ("ShoppingMall.CartView.cartTitle", "cart_title"), ("ShoppingMall.CartView.clearCart", "clear_cart"), ("ShoppingMall.CartView.cartScroll", "cart_scroll"),
+        ("ShoppingMall.CartView.cartLines", "cart_lines"), ("ShoppingMall.CartView.cartEmpty", "cart_empty"), ("ShoppingMall.CartView.giftButton", "gift"),
+        ("ShoppingMall.CartView.giftBanner", "gift_banner"), ("ShoppingMall.CartView.giftName", "gift_name"), ("ShoppingMall.CartView.giftInfo", "gift_info"),
+        ("ShoppingMall.CartView.totalRow", "total"), ("ShoppingMall.CartView.shortfall", "shortfall"), ("ShoppingMall.CartView.checkout", "checkout"), ("ShoppingMall.CartView.cartStatus", "cart_status"),
+        ("ShoppingMall.overlay", "overlay"), ("ShoppingMall.DetailsView.detailsBox", "details"), ("ShoppingMall.DetailsView.detailsIcon", "details_icon"),
+        ("ShoppingMall.DetailsView.detailsName", "details_name"), ("ShoppingMall.DetailsView.detailsCategory", "details_category"), ("ShoppingMall.DetailsView.detailsDescription", "details_description"),
+        ("ShoppingMall.DetailsView.detailsPrice", "details_price"), ("ShoppingMall.DetailsView.detailsAdd", "details_add"), ("ShoppingMall.DetailsView.detailsBuy", "details_buy"), ("ShoppingMall.DetailsView.detailsStatus", "details_status"),
+        ("PowerUpStoreGift.giftBox", "gift_box"), ("PowerUpStoreGift.giftSearch", "gift_query"), ("PowerUpStoreGift.giftPickPane", "gift_pick"),
+        ("PowerUpStoreGift.giftListTitle", "gift_list_title"), ("PowerUpStoreGift.giftList", "gift_list"), ("PowerUpStoreGift.giftCard", "gift_card"),
+        ("PowerUpStoreGift.giftCardName", "recipient_name"), ("PowerUpStoreGift.giftCardInfo", "recipient_info"), ("PowerUpStoreGift.giftCardWarning", "recipient_warning"), ("PowerUpStoreGift.giftStatus", "gift_status"),
     };
 
     private static void PrepareStore(HudWindow window, WorldRoot world)
@@ -186,15 +186,15 @@ public static class NativeMarket
         if (window.HasMeta("classic_store_controls")) return;
         var controls = StoreControls.Select(c => Native.Get<Node>(world, c.Field)).ToArray();
         var columns = window.Body.GetChildren().OfType<HBoxContainer>().FirstOrDefault()?.GetChildren().OfType<Control>().ToArray();
-        var tools = Native.Get<Node>(world, "ShoppingMall.sortPick")?.GetParent() is BoxContainer row ? Reorientable(row) : null;
+        var tools = Native.Get<Node>(world, "ShoppingMall.CatalogView.sortPick")?.GetParent() is BoxContainer row ? Reorientable(row) : null;
         if (columns is not { Length: 3 } || tools == null) return;
         if (!NameAll(controls.Append(window.Body).Append(columns[0]).Append(columns[2]).Append(tools).ToArray(),
             StoreControls.Select(c => c.Name).Append("body").Append("categories").Append("cart").Append("tools").Select(n => "pus_" + n).ToArray()))
             return;
-        var categories = Native.Get<VBoxContainer>(world, "ShoppingMall.categoryList")!;
-        var grid = Native.Get<GridContainer>(world, "ShoppingMall.grid")!;
-        var cartLines = Native.Get<VBoxContainer>(world, "ShoppingMall.cartLines")!;
-        var giftList = Native.Get<VBoxContainer>(world, "ShoppingMall.giftList")!;
+        var categories = Native.Get<VBoxContainer>(world, "ShoppingMall.CatalogView.categoryList")!;
+        var grid = Native.Get<GridContainer>(world, "ShoppingMall.CatalogView.grid")!;
+        var cartLines = Native.Get<VBoxContainer>(world, "ShoppingMall.CartView.cartLines")!;
+        var giftList = Native.Get<VBoxContainer>(world, "PowerUpStoreGift.giftList")!;
         NativeWindows.OnDescendantAdded(categories, node => DescribeCategory(world, categories, node));
         NativeWindows.OnDescendantAdded(grid, node => DescribeCard(world, grid, node));
         NativeWindows.OnDescendantAdded(cartLines, node => DescribeCartLine(world, cartLines, node));
@@ -226,7 +226,7 @@ public static class NativeMarket
     }
 
     /// <summary>True while a native purchase waits for the server.</summary>
-    public static bool StorePending(HudWindow window) => StoreWorld(window) is { } world && Convert.ToInt32(Native.Get<object>(world, "ShoppingMall.pending")) != 0;
+    public static bool StorePending(HudWindow window) => StoreWorld(window) is { } world && Convert.ToInt32(Native.Get<object>(world, "ShoppingMall.Model.Pending")) != 0;
 
     private static WorldRoot? StoreWorld(HudWindow window) => window.HasMeta("classic_store_world") ? window.GetMeta("classic_store_world").AsGodotObject() as WorldRoot : null;
 
@@ -247,9 +247,9 @@ public static class NativeMarket
     private static void DescribeCategory(WorldRoot world, VBoxContainer list, Node node)
     {
         if (node is not Button button || button.GetParent() != list) return;
-        var categories = Native.Get<IList>(world, "ShoppingMall.categories");
-        var catalogue = Native.Get<IList>(world, "ShoppingMall.Catalog");
-        var search = Native.Get<LineEdit>(world, "ShoppingMall.searchInput");
+        var categories = Native.Get<IList>(world, "ShoppingMall.Model.Categories");
+        var catalogue = Native.Get<IList>(world, "ShoppingMall.Model.Catalog");
+        var search = Native.Get<LineEdit>(world, "ShoppingMall.CatalogView.searchInput");
         if (categories == null || catalogue == null || search == null) return;
         var ids = new List<int>();
         if (catalogue.Cast<PowerUpStoreEntry>().Any(e => e.Featured)) ids.Add(PowerUpStoreCatalog.FeaturedCategory);
@@ -257,12 +257,12 @@ public static class NativeMarket
         int index = button.GetIndex();
         if (index >= ids.Count) return;
         button.Name = "pus_category_" + ids[index];
-        button.SetMeta("pus_category_selected", ids[index] == Native.Get<int>(world, "ShoppingMall.Category") && search.Text.Trim().Length == 0);
+        button.SetMeta("pus_category_selected", ids[index] == Native.Get<int>(world, "ShoppingMall.CatalogView.Category") && search.Text.Trim().Length == 0);
     }
 
     private static PowerUpStoreEntry? CardEntry(WorldRoot world, Control card)
     {
-        if (Native.Get<IDictionary>(world, "ShoppingMall.cards") is not { } cards) return null;
+        if (Native.Get<IDictionary>(world, "ShoppingMall.CatalogView.cards") is not { } cards) return null;
         foreach (var view in cards.Values)
             if (Native.Get<Control>(view!, "Card") == card) return Native.Get<PowerUpStoreEntry>(view!, "Entry");
         return null;
@@ -289,8 +289,8 @@ public static class NativeMarket
     {
         if (!card.HasMeta("pus_card_id") || !card.IsInsideTree()) return;
         int id = card.GetMeta("pus_card_id").AsInt32();
-        int inCart = Native.Get<PowerUpStoreCart>(world, "ShoppingMall.Cart")?.Lines.FirstOrDefault(l => l.Entry.Id == id)?.Count ?? 0;
-        bool active = inCart > 0 || Native.Get<int>(world, "ShoppingMall.hoveredCard") == id && Convert.ToInt32(Native.Get<object>(world, "ShoppingMall.modal")) == 0;
+        int inCart = Native.Get<PowerUpStoreCart>(world, "ShoppingMall.Model.Cart")?.Lines.FirstOrDefault(l => l.Entry.Id == id)?.Count ?? 0;
+        bool active = inCart > 0 || Native.Get<int>(world, "ShoppingMall.CatalogView.hoveredCard") == id && Convert.ToInt32(Native.Get<object>(world, "ShoppingMall.modal")) == 0;
         card.SetMeta("pus_card_active", active);
         string key = "pus_card_" + (card.GetMeta("pus_card_featured").AsBool() ? "featured_" : "") + (active ? "active" : "normal");
         if (!card.HasThemeStylebox(key)) return;
@@ -301,7 +301,7 @@ public static class NativeMarket
     private static void DescribeCartLine(WorldRoot world, VBoxContainer lines, Node node)
     {
         if (node is not Control row || row.GetParent() != lines) return;
-        var cart = Native.Get<PowerUpStoreCart>(world, "ShoppingMall.Cart")?.Lines.ToArray();
+        var cart = Native.Get<PowerUpStoreCart>(world, "ShoppingMall.Model.Cart")?.Lines.ToArray();
         int index = row.GetIndex();
         if (cart != null && index < cart.Length) row.Name = "pus_cart_line_" + cart[index].Entry.Id;
     }
@@ -320,11 +320,11 @@ public static class NativeMarket
         if (!Native.Get<bool>(world, "ShoppingMall.shown") || !window.IsInsideTree()) return wasCompact;
         bool compact = PowerUpStoreLayout.WindowSize(window.GetViewportRect().Size, Platform.TouchUi).X < CompactStoreWidth;
         if (compact == wasCompact) return compact;
-        int categoryWidth = Native.Get<int>(Native.StaticOwner("LibreKO.Features.Windows.ShoppingMallFeature"), "CategoryWidth"), cartWidth = Native.Get<int>(Native.StaticOwner("LibreKO.Features.Windows.ShoppingMallFeature"), "CartWidth");
-        int margin = Native.Get<int>(Native.StaticOwner("LibreKO.Features.Windows.ShoppingMallFeature"), "WellMargin");
+        int categoryWidth = Native.Get<int>(Native.StaticOwner("LibreKO.Features.Windows.PowerUpStoreCatalogView"), "CategoryWidth"), cartWidth = Native.Get<int>(Native.StaticOwner("LibreKO.Features.Windows.PowerUpStoreCartView"), "CartWidth");
+        int margin = Native.Get<int>(Native.StaticOwner("LibreKO.Features.Windows.PowerUpStoreCartView"), "WellMargin");
         categories.CustomMinimumSize = new Vector2(compact ? CompactCategoryWidth : categoryWidth, 0);
         cart.CustomMinimumSize = new Vector2(compact ? CompactCartWidth : cartWidth, 0);
-        foreach (var field in new[] { "ShoppingMall.cartEmpty", "ShoppingMall.shortfall", "ShoppingMall.cartStatus" })
+        foreach (var field in new[] { "ShoppingMall.CartView.cartEmpty", "ShoppingMall.CartView.shortfall", "ShoppingMall.CartView.cartStatus" })
             if (Native.Get<Control>(world, field) is { } label) label.CustomMinimumSize = new Vector2((compact ? CompactCartWidth : cartWidth) - 2 * margin, 0);
         // The Classic store moves the search row into its own header, where it always has room for one line.
         tools.Vertical = compact && !tools.HasMeta("pus_header_row");
