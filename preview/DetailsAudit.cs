@@ -163,13 +163,13 @@ public partial class Preview
             }
             else if(id=="clanpoint")
             {
-                try { DetailCall(model,"Clan.PointsInit"); } catch(TargetInvocationException e) when(e.InnerException is NullReferenceException) { }
-                var built=(HudWindow)DetailField(model,"Clan.PointsPanel")!;
+                try { DetailCall(model,"ClanPoints.Build"); } catch(TargetInvocationException e) when(e.InnerException is NullReferenceException) { }
+                var built=(HudWindow)DetailField(model,"ClanPoints.PointsPanel")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
-                ((Label)DetailField(model,"Clan.pointsMineLbl")!).Text="2,025,525,525";
-                ((Label)DetailField(model,"Clan.pointsFundLbl")!).Text="125,000 (12 points)";
-                ((CheckBox)DetailField(model,"Clan.pointsAuto")!).ButtonPressed=true;
-                ((Label)DetailField(model,"Clan.pointsStatus")!).Text="Only accredited Knights can save Contribution.";
+                ((Label)DetailField(model,"ClanPoints.pointsMineLbl")!).Text="2,025,525,525";
+                ((Label)DetailField(model,"ClanPoints.pointsFundLbl")!).Text="125,000 (12 points)";
+                ((CheckBox)DetailField(model,"ClanPoints.pointsAuto")!).ButtonPressed=true;
+                ((Label)DetailField(model,"ClanPoints.pointsStatus")!).Text="Only accredited Knights can save Contribution.";
             }
             else if(id=="quest_target")
             {
@@ -404,16 +404,16 @@ public partial class Preview
                 DetailCall(model,"Clan.OnAllianceList","Prepare for the next war.",new List<AllianceClanEntry> { new AllianceClanEntry { Id=1,Name="canCLAN",InAlliance=true,Officers=new List<AllianceOfficer> { new() { Fame=ClanRanks.Chief,Name="Canbo" } } },new AllianceClanEntry { Id=2,Name="Guardians",InAlliance=true,Officers=new List<AllianceOfficer> { new() { Fame=ClanRanks.Chief,Name="Guardian" } } } });
                 await ToSignal(GetTree().CreateTimer(.3),SceneTreeTimer.SignalName.Timeout);await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
                 GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(output,prefix+"-clan-confederacy.png"));
-                try { DetailCall(model,"Clan.PointsInit"); } catch(TargetInvocationException e) when(e.InnerException is NullReferenceException) { }
-                var donation=(HudWindow)DetailField(model,"Clan.PointsPanel")!;
+                try { DetailCall(model,"ClanPoints.Build"); } catch(TargetInvocationException e) when(e.InnerException is NullReferenceException) { }
+                var donation=(HudWindow)DetailField(model,"ClanPoints.PointsPanel")!;
                 if(donation.GetParent()!=null) donation.Reparent(this);else AddChild(donation);
                 var nested=CharacterDetailsSkin.Apply(donation.Body) as CharacterEmbeddedPage ?? throw new Exception("Donation subpage was not composed");
-                Native.Set(model, "Clan.PointsShown", true);
+                Native.Set(model, "ClanPoints.PointsShown", true);
                 donation.Visible=true;CharacterPageRouter.Present("clanpoint");
                 await ToSignal(GetTree().CreateTimer(.1),SceneTreeTimer.SignalName.Timeout);
                 if(composed.Visible || !nested.Visible) throw new Exception("Nested donation did not replace management content");
                 nested.Back?.Invoke();
-                if(!composed.Visible || nested.Visible || (bool)DetailField(model,"Clan.PointsShown")!) throw new Exception("Nested Back did not restore management and close the native model");
+                if(!composed.Visible || nested.Visible || (bool)DetailField(model,"ClanPoints.PointsShown")!) throw new Exception("Nested Back did not restore management and close the native model");
                 GD.Print("NESTED_DONATION_BACK_OK");
                 nested.QueueFree();donation.QueueFree();
             }

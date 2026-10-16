@@ -43,12 +43,13 @@ public static partial class PreviewFixtures
                 return Detached(Field<HudWindow>(world, "ClanBoard.cjWindow"));
             case "wish-requests":
                 Call(world, "ClanBoard.Build");
-                Call(world, "ClanBoard.OnWishRequests", new List<WishRequest>
+                Call(world, "WishBoard.Build");
+                Call(world, "WishBoard.OnWishRequests", new List<WishRequest>
                 {
                     new(10, "Alpha", "Wolves", 2, 2, 0, "Join us for the Lunar War tonight."),
                     new(12, "Cassandra", "NightWatch", 1, 2, 0, "Royal clan, castle siege every week."),
                 });
-                return Detached(Field<HudWindow>(world, "ClanBoard.wrWindow"));
+                return Detached(Field<HudWindow>(world, "WishBoard.wrWindow"));
             case "clanhandover": return (HudWindow)Call(world, "Preview.BuildClanHandover")!;
             case "command-list": return (HudWindow)Call(world, "Preview.BuildCommandList", 0)!;
         }

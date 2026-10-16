@@ -235,7 +235,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
             case "clan_contribution":
                 if (Clan.InClan) { Call(w, "Clan.ShowTab", Enum.ToObject(Native.ClientType("LibreKO.Features.Social.ClanFeature+Tab")!, ClanPointsTab)); OpenClanDetails(w); }
                 return;
-            case "clan_donate": if (Clan.InClan) Call(w, "Clan.TogglePoints"); return;
+            case "clan_donate": if (Clan.InClan) Call(w, "ClanPoints.Toggle"); return;
             case "clan_leave": if (Clan.InClan) Call(w, "Clan.OnLeave"); return;
             case "clan_invite":
                 if (Clan.CanInvite && SelectedPlayer(w) is { } invited) Game.Requests.Clan.Invite(invited);
