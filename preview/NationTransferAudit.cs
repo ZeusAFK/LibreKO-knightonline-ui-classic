@@ -54,7 +54,7 @@ public partial class Preview
             viewport.PushInput(new InputEventMouseButton { Position = p, GlobalPosition = p, ButtonIndex = MouseButton.Left, Pressed = true }, true);
             viewport.PushInput(new InputEventMouseButton { Position = p, GlobalPosition = p, ButtonIndex = MouseButton.Left, Pressed = false }, true); await Frames();
         }
-        void Dispatch(Packet packet) => typeof(Net).GetMethod("HandleNationTransfer", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(net, new object[] { packet });
+        void Dispatch(Packet packet) => PreviewPackets.Receive(packet);
         Packet CandidatePacket(IReadOnlyList<NationTransferCandidate> list)
         {
             var p = new Packet(GameOpcodes.GS_NATION_TRANSFER); p.WriteByte(2); p.WriteByte(1); p.WriteByte((byte)list.Count);

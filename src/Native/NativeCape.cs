@@ -443,10 +443,10 @@ public static class NativeCape
             return;
         }
         if (!CanApply(world)) { Gate(world); return; }
-        byte op = Native.Get<CheckBox>(world, "CapeWindow.ticket")!.ButtonPressed ? Net.CapeOpTicket : Net.CapeOpBuy;
+        var op = Native.Get<CheckBox>(world, "CapeWindow.ticket")!.ButtonPressed ? CapeSubOpcode.TicketPurchase : CapeSubOpcode.NormalPurchase;
         int revision = ++state.Revision;
         var layer = Native.Get<Node>(world, "CapeWindow.layer") ?? world;
-        state.Notice = Notice.Confirm(layer, ConfirmText(world, capeId, op == Net.CapeOpTicket), "Buy", "Cancel",
+        state.Notice = Notice.Confirm(layer, ConfirmText(world, capeId, op == CapeSubOpcode.TicketPurchase), "Buy", "Cancel",
             () => Submit(world, revision, op, capeId, (byte)r, (byte)g, (byte)b), () => Cancel(world, revision), title: Title);
         Gate(world);
     }
@@ -470,7 +470,7 @@ public static class NativeCape
         return string.Join('\n', text.Split('\n').Select(line => line.Trim()));
     }
 
-    private static void Submit(WorldRoot world, int revision, byte op, int capeId, byte r, byte g, byte b)
+    private static void Submit(WorldRoot world, int revision, CapeSubOpcode op, int capeId, byte r, byte g, byte b)
     {
         if (!_states.TryGetValue(world, out var state) || revision != state.Revision || !Native.Get<bool>(world, "CapeWindow.shown")
             || Native.Get<bool>(world, "CapeWindow.requestInFlight") || state.Notice == null || Net.I is not { } net) return;
@@ -481,7 +481,7 @@ public static class NativeCape
         Native.Call(world, "CapeWindow.SetStatus", "Requesting…", false);
         Gate(world);
         // The fix branch's sender reports a refused send; upstream's returns nothing and always sends.
-        if (!Game.Requests.Cape.Buy(op, capeId, r, g, b))
+        if (!Game.Requests.Cape.Buy((byte)op, capeId, r, g, b))
             Native.Call(world, "CapeWindow.OnResult", false, -1, 0, 0, 0, 0);
     }
 

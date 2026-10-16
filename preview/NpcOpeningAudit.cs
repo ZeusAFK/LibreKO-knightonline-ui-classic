@@ -341,7 +341,7 @@ public partial class Preview
 
             int Kind() => NativeServices.RedistributionKind(world);
             var first = await States(name, name, frame, rows, layout, Kind);
-            Require(Kind() == Net.ResetKindStat && menu.Visible, "change: 'Redistribute stat points' asks the client for the stat reset price");
+            Require((ResetKind)Kind() == ResetKind.Stat && menu.Visible, "change: 'Redistribute stat points' asks the client for the stat reset price");
             await Frames(3);
             // The client's pending price query disables both choices; the leave row stays available.
             Pointer(first.GetGlobalRect().GetCenter()); await Frames(3);
@@ -354,10 +354,10 @@ public partial class Preview
                     && Count(disabled, rows[2].GetGlobalRect(), ink.Color) >= 12, "change: while the price is pending both choices are grey (also under the pointer), Walk away stays yellow");
             }
             await Click(rows[1].GetGlobalRect().GetCenter());
-            Require(Kind() == Net.ResetKindStat, "change: a disabled row does not reach the client");
+            Require((ResetKind)Kind() == ResetKind.Stat, "change: a disabled row does not reach the client");
             DetailCall(world, "ResetConfirm.CancelReset"); await Frames(3);
             await Click(rows[1].GetGlobalRect().GetCenter());
-            Require(Kind() == Net.ResetKindSkill, "change: 'Redistribute mastery points' asks the client for the mastery reset price");
+            Require((ResetKind)Kind() == ResetKind.Skill, "change: 'Redistribute mastery points' asks the client for the mastery reset price");
             DetailCall(world, "ResetConfirm.CancelReset"); await Frames(3);
             await Click(rows[2].GetGlobalRect().GetCenter());
             Require(!(bool)DetailField(world, "ClassChange.shown")! && !menu.Visible, "change: Walk away closes the client's redistribution menu");

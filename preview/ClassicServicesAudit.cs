@@ -210,14 +210,14 @@ public partial class Preview
         var redistribution = (HudWindow)DetailField(redistributionWorld, "ClassChange.Panel")!; redistribution.Reparent(this); NativeServices.Prepare(redistribution, redistributionWorld); ClassicServiceSkin.Apply(redistribution.Body);
         await Capture(redistribution, "redistribute-menu");
         Descendants(redistribution).OfType<Button>().Single(b => b.Text == "Redistribute stat points").EmitSignal(BaseButton.SignalName.Pressed);
-        Require(NativeServices.RedistributionKind(redistributionWorld) == Net.ResetKindStat, "Original redistribution menu queries the stat reset price before confirming");
+        Require((ResetKind)NativeServices.RedistributionKind(redistributionWorld) == ResetKind.Stat, "Original redistribution menu queries the stat reset price before confirming");
         Descendants(redistribution).OfType<Button>().Single(b => b.Text == "Redistribute mastery points").EmitSignal(BaseButton.SignalName.Pressed);
-        Require(NativeServices.RedistributionKind(redistributionWorld) == Net.ResetKindStat, "A pending reset price cannot be reassigned by a second menu click");
+        Require((ResetKind)NativeServices.RedistributionKind(redistributionWorld) == ResetKind.Stat, "A pending reset price cannot be reassigned by a second menu click");
         await Frames();
         Require(Descendants(redistribution).OfType<Button>().Where(b => b.Text.StartsWith("Redistribute ")).All(b => b.Disabled), "Redistribution choices are disabled while the server price or reset is pending");
         DetailCall(redistributionWorld, "ResetConfirm.CancelReset"); await Frames();
         Descendants(redistribution).OfType<Button>().Single(b => b.Text == "Redistribute mastery points").EmitSignal(BaseButton.SignalName.Pressed);
-        Require(NativeServices.RedistributionKind(redistributionWorld) == Net.ResetKindSkill, "Original redistribution menu queries the mastery reset price before confirming");
+        Require((ResetKind)NativeServices.RedistributionKind(redistributionWorld) == ResetKind.Skill, "Original redistribution menu queries the mastery reset price before confirming");
         Dispose(redistributionWorld, redistribution); await Frames();
         var (repairWorld, repair) = await Build("Preview.BuildRepair");
         var audio = new LibreKO.Audio(); AddChild(audio);

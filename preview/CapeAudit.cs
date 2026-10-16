@@ -52,7 +52,7 @@ public partial class Preview
             var packet = new Packet(GameOpcodes.GS_CAPE); packet.WriteShort(result);
             if (success) { packet.WriteShort(clan ?? (short)Game.Session.Clan.MyClan.ClanId); packet.WriteShort(0); packet.WriteShort((short)(int)DetailField(world, "CapeWindow.choice")!); packet.WriteInt(0); }
             if (trailing) packet.WriteByte(0);
-            typeof(Net).GetMethod("HandleCape", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { packet });
+            PreviewPackets.Receive(packet);
         }
         async Task Capture(string state)
         {

@@ -128,12 +128,12 @@ public partial class Preview
         var refusal = new Packet(GameOpcodes.GS_MAGIC_PROCESS);
         refusal.WriteByte(MagicSub.Fail); refusal.WriteInt(cast.Id); refusal.WriteInt(999); refusal.WriteInt(0);
         for (int i = 0; i < 7; i++) refusal.WriteInt(0);
-        typeof(Net).GetMethod("HandleMagicProcess", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { refusal });
+        PreviewPackets.Receive(refusal);
         require(cooldowns.ContainsKey(cast.Id), "Unrelated NPC refusal cannot clear the familiar cooldown");
         refusal = new Packet(GameOpcodes.GS_MAGIC_PROCESS);
         refusal.WriteByte(MagicSub.Fail); refusal.WriteInt(cast.Id); refusal.WriteInt(1); refusal.WriteInt(0);
         for (int i = 0; i < 7; i++) refusal.WriteInt(0);
-        typeof(Net).GetMethod("HandleMagicProcess", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, new object[] { refusal }); await Frames();
+        PreviewPackets.Receive(refusal); await Frames();
         require(!cooldowns.ContainsKey(cast.Id) && !SkillButton(cast.Id).Disabled && SkillButton(cast.Id).CooldownFraction == 0,
             "Decoded native server refusal cancels the familiar cast and releases its cooldown");
         double retrySince = Now();

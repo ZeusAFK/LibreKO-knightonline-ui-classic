@@ -157,21 +157,21 @@ public partial class Preview
             DetailCall(world, "GenderChangeWindow.OnChanged"); Require(!window.Visible && !Busy(), "Closed late success clears pending without reopening");
             await CaptureNotice("changed", ItemData.Text(GenderChange.ChangedText, "Change current character"));
             Open(); DetailCall(world, "GenderChangeWindow.OnChanged"); Require(window.Visible && TakeNotice() == null, "Unsolicited duplicate success cannot close a new editor");
-            foreach (int result in new[] { (int)Net.GenderChangeNoItem, (int)Net.GenderChangeFailed })
+            foreach (int result in new[] { (int)GenderChangeResult.NoItem, (int)GenderChangeResult.Failed })
             {
                 await Click(accept); await Click(accept); DetailCall(world, "GenderChangeWindow.OnRefused", result);
                 Require(!Busy() && !Armed() && !window.Visible, "Refusal closes the service with the client's notice " + result);
-                await CaptureNotice(result == Net.GenderChangeNoItem ? "missing-scroll" : "refused",
-                    result == Net.GenderChangeNoItem ? ItemData.Text(GenderChange.NoItemText, "It does not have items.") : ItemData.Text(GenderChange.FailedText, "Gender change failed."));
+                await CaptureNotice((GenderChangeResult)result == GenderChangeResult.NoItem ? "missing-scroll" : "refused",
+                    (GenderChangeResult)result == GenderChangeResult.NoItem ? ItemData.Text(GenderChange.NoItemText, "It does not have items.") : ItemData.Text(GenderChange.FailedText, "Gender change failed."));
                 Open(); Require(window.Visible && !accept.Disabled && !colour.Disabled, "Reopening after a refusal starts unlocked " + result);
             }
             await Click(accept); await Click(accept); await Click(Find<Button>("look_cancel"));
             Require(!window.Visible && Busy(), "Pending Cancel closes without clearing the sent operation");
-            DetailCall(world, "GenderChangeWindow.OnRefused", (int)Net.GenderChangeNoItem);
+            DetailCall(world, "GenderChangeWindow.OnRefused", (int)GenderChangeResult.NoItem);
             Require(!window.Visible && !Busy(), "Closed refusal clears pending and keeps the service closed");
             var closedNotice = TakeNotice(); Require(closedNotice != null, "Closed refusal still explains itself with the client's notice"); closedNotice!.Free();
             Open(); var restoredColour = editor.Hair;
-            DetailCall(world, "GenderChangeWindow.OnRefused", (int)Net.GenderChangeFailed);
+            DetailCall(world, "GenderChangeWindow.OnRefused", (int)GenderChangeResult.Failed);
             Require(!Busy() && editor.Hair == restoredColour && Find<Label>("look_status").Text == "", "Unsolicited refusal cannot change a reopened idle service");
             var availableClass = Game.Session.Self.LastEnter.Class;
             DetailCall(world, "GenderChangeWindow.Close"); Load(nation * 100 + 15);

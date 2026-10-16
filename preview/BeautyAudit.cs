@@ -48,7 +48,7 @@ public partial class Preview
         void Reply(byte result)
         {
             var packet = new Packet(GameOpcodes.GS_CHANGE_HAIR); packet.WriteByte(result);
-            typeof(Net).GetMethod("HandleChangeHair", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(net, new object[] { packet });
+            PreviewPackets.Receive(packet);
         }
         // The client parents its notices to the world; the audit shows them above the preview.
         Notice? TakeNotice()
@@ -218,16 +218,16 @@ public partial class Preview
                 "Pending edits, palette, repeated click and keypad Enter cannot replace the submitted look");
             Require(!Game.Requests.ChangeHair.Change(0, 1, 0x543210), "Network independently refuses a second outstanding beauty request");
             Reply(99); Require(Busy() && NetBusy(), "Unknown result does not complete a pending request");
-            Reply(Net.ChangeHairResultFail); notice = TakeNotice();
+            Reply((byte)ChangeHairResult.Failed); notice = TakeNotice();
             Require(notice != null && !Busy() && !NetBusy() && window.Visible && !accept.Disabled && editor.Hair == hair, "Refusal unlocks the same pick and keeps the shop open");
             await CaptureNotice("refused", notice!, ItemData.Text(18903, "Feature modification failed.")); Dismiss(notice!);
             await Click(accept); notice = TakeNotice(); Request(notice!).Confirm(); notice!.Free();
-            Reply(Net.ChangeHairResultOk); notice = TakeNotice();
+            Reply((byte)ChangeHairResult.Succeeded); notice = TakeNotice();
             Require(notice != null && !window.Visible && !Busy() && !NetBusy() && Game.Session.Self.LastEnter.Face == face && Game.Session.Self.LastEnter.Hair == hair, "Success closes the shop and updates the network snapshot");
             Require((int)DetailField(world, "Session.Self.Face")! == face && (int)DetailField(world, "Session.Self.Hair")! == hair, "Success updates live world appearance");
             await CaptureNotice("applied", notice!, ItemData.Text(18902, "Feature modification succeeded.")); Dismiss(notice!);
             Open(); Require(editor.Hair == hair && editor.Face == face, "Reopen loads the newly applied appearance");
-            Reply(Net.ChangeHairResultOk); Require(window.Visible && !Busy() && TakeNotice() == null, "Idle duplicate responses cannot alter or close a reopened editor");
+            Reply((byte)ChangeHairResult.Succeeded); Require(window.Visible && !Busy() && TakeNotice() == null, "Idle duplicate responses cannot alter or close a reopened editor");
             await Click(accept); notice = TakeNotice(); Request(notice!).Confirm(); notice!.Free();
             net.Disconnect(expected: true); notice = TakeNotice();
             Require(!Busy() && !NetBusy() && window.Visible && notice != null, "Disconnect clears the pending request without applying a look"); Dismiss(notice!);
