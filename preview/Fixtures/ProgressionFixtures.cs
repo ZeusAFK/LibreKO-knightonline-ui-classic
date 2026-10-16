@@ -27,6 +27,7 @@ public static partial class PreviewFixtures
     public static HudWindow BuildAchievementsUiPreview(WorldRoot world, string view)
     {
         ItemData.EnsureLoaded();
+        Native.Call(Game.Session.Achievement, "Clear");
         Call(world, "Achievement.Build");
         Call(world, "Achievement.ToggleAchievements");
         var entries = new List<AchievementEntry>();
@@ -41,9 +42,9 @@ public static partial class PreviewFixtures
                     entries.Add(new AchievementEntry { Id = ids[i], State = state, Progress = state != 0 ? 10 : i % 10, Target = 10 });
                 }
             }
-            Call(world, "Achievement.OnList", entries);
+            Native.Call(Game.Session.Achievement, "ApplyList", entries);
             var recent = entries.Where(e => e.Claimed || e.Claimable).Take(3).Select(e => e.Id).ToArray();
-            Call(world, "Achievement.OnSummary", new AchievementSummary
+            Native.Call(Game.Session.Achievement, "ApplySummary", new AchievementSummary
             {
                 PlayMinutes = 9_754, MonstersDefeated = 48_211, PlayersDefeated = 1_337, Deaths = 212, Points = 2_450,
                 RecentlyAchieved = recent, AchievedPerTab = new int[AchievementData.Tabs.Length],

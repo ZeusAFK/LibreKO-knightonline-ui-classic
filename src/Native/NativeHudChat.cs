@@ -80,8 +80,8 @@ public static class NativeHudChat
         var icons = new (NativeHudPart Part, string Button, string? Blink)[]
         {
             (NativeHudPart.MailIcon, "Mail.IconButton", null),
-            (NativeHudPart.AchievementsIcon, "Achievement.Trophy", "Achievement.trophyBlink"),
-            (NativeHudPart.AttendanceIcon, "Attendance.Gift", "Attendance.giftBlink"),
+            (NativeHudPart.AchievementsIcon, "AchievementTrophy.Trophy", "AchievementTrophy.badge.Blink"),
+            (NativeHudPart.AttendanceIcon, "Attendance.Gift", "Attendance.giftBadge.Blink"),
             (NativeHudPart.PowerUpStoreIcon, "TopIcons.powerUpStoreIcon", null),
             // The status bar's G, E and R open these; E and R flash for the alert and the new-day blink.
             (NativeHudPart.GenieIcon, TopIconPrefix + "Genie", null),

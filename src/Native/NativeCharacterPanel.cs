@@ -229,7 +229,7 @@ public sealed class CharacterPanelBridge : IGameCharacterPanel
         var friends = Native.Get<List<FriendEntry>>(w, "Friends.friends") ?? new();
         switch (action)
         {
-            case "titles": Call(w, "Achievement.ToggleTitlePicker"); return;
+            case "titles": Call(w, "TitlePicker.Toggle"); return;
             case "presets": Call(w, "SkillPreset.TogglePreset"); return;
             case "clan_management": OpenClanDetails(w); return;
             case "clan_contribution":

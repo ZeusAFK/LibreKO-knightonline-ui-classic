@@ -105,12 +105,12 @@ public partial class Preview
             }
             else if(id=="titles")
             {
-                DetailCall(model,"Achievement.BuildTitlePicker");var built=(HudWindow)DetailField(model,"Achievement.titlePanel")!;
+                DetailCall(model,"TitlePicker.BuildPanel");var built=(HudWindow)DetailField(model,"TitlePicker.panel")!;
                 foreach(var control in built.Body.GetChildren().OfType<Control>().ToArray()) control.Reparent(body);
-                ((Label)DetailField(model,"Achievement.titleHint")!).Text="Every earned title bonus already counts. Choose the name shown above your character.";
-                var list=(VBoxContainer)DetailField(model,"Achievement.titleList")!;
+                ((Label)DetailField(model,"TitlePicker.hint")!).Text="Every earned title bonus already counts. Choose the name shown above your character.";
+                var list=(VBoxContainer)DetailField(model,"TitlePicker.rows")!;
                 foreach(var entry in new[]{(0,"No title",""),(1,"Street Smart","Defense +10"),(2,"Protector of El Morad","HP +150, Resistance +5"),(3,"Champion of the Border Defense War","Attack +3%, National points +5%")})
-                    list.AddChild((Control)DetailCall(model,"Achievement.BuildTitleRow",entry.Item1,entry.Item2,entry.Item3)!);
+                    list.AddChild((Control)DetailCall(model,"TitlePicker.BuildRow",entry.Item1,entry.Item2,entry.Item3)!);
             }
             else if(id=="quests")
             {
@@ -208,8 +208,8 @@ public partial class Preview
             var originalActions=Descendants(body).OfType<BaseButton>().Select(b=>b.GetInstanceId()).ToHashSet();
             if(id is "titles" or "presets")
             {
-                string field=id=="titles"?"Achievement.titlePanel":"SkillPreset.presetPanel";
-                string shown=id=="titles"?"Achievement.TitleShown":"SkillPreset.presetShown";
+                string field=id=="titles"?"TitlePicker.panel":"SkillPreset.presetPanel";
+                string shown=id=="titles"?"TitlePicker.Shown":"SkillPreset.presetShown";
                 string close=id=="titles"?"CloseTitlePicker":"ClosePreset";
                 Native.Set(model, field, panel);
                 Native.Set(model, shown, true);
@@ -243,7 +243,7 @@ public partial class Preview
                 }
                 finally { connField.SetValue(offline,connection);_windowData.LiveCharacterPanel=null; }
             }
-            if(id=="titles") ((Label)DetailField(model,"Achievement.titleHint")!).Text="3 earned. Every claimed title's bonus already counts — this only picks the name shown above your character.";
+            if(id=="titles") ((Label)DetailField(model,"TitlePicker.hint")!).Text="3 earned. Every claimed title's bonus already counts — this only picks the name shown above your character.";
             if(id=="character_clan_details") ((Label)DetailField(model,"Clan.noticeLbl")!).Text=string.Join(" ",Enumerable.Repeat("Prepare for the next war. Meet at Moradon.",5));
             panel.Position=new Vector2(40,40);
             await ToSignal(GetTree().CreateTimer(.5),SceneTreeTimer.SignalName.Timeout);
@@ -424,7 +424,7 @@ public partial class Preview
                 routed.Back?.Invoke();
                 if(routed.Visible || closed!=1) throw new Exception("Embedded Back did not close its native lifecycle");
                 if(id is "titles" or "presets")
-                    if((bool)DetailField(model,id=="titles"?"Achievement.TitleShown":"SkillPreset.presetShown")!) throw new Exception("Native model stayed open after Back");
+                    if((bool)DetailField(model,id=="titles"?"TitlePicker.Shown":"SkillPreset.presetShown")!) throw new Exception("Native model stayed open after Back");
                 if(id=="titles")
                 {
                     panel.Visible=true;CharacterPageRouter.Present(id);
