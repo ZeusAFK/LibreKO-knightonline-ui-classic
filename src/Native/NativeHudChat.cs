@@ -46,7 +46,7 @@ public static class NativeHudChat
     {
         if (Native.Get<object>(game, "windows") is not { } proxy || Native.Get<IGameWindows>(proxy, "Source") is not { } source) return;
         if (source is NativeServiceWindows wrapped) source = wrapped.Inner;
-        if (!Native.Has(source, "world") || Native.Get<WorldRoot>(source, "world") is not { } world) return;
+        if (CurrentWorld() is not { } world) return;
         _world = new WeakReference<WorldRoot>(world);
         var wrapper = new NativeServiceWindows(source, world);
         if (Native.Set(proxy, "Source", wrapper))
@@ -66,6 +66,14 @@ public static class NativeHudChat
     }
 
     internal static void Reset() => _world = null;
+
+    /// <summary>The world the client is running: the current scene, or a live WorldRoot elsewhere in the tree (previews).</summary>
+    private static WorldRoot? CurrentWorld()
+    {
+        if (Engine.GetMainLoop() is not SceneTree tree) return null;
+        if (tree.CurrentScene is WorldRoot current && !current.IsQueuedForDeletion()) return current;
+        return tree.Root.FindChildren("*", "", true, false).OfType<WorldRoot>().FirstOrDefault(w => !w.IsQueuedForDeletion());
+    }
 
     private static void HideIcons(WorldRoot world, bool retry = true)
     {

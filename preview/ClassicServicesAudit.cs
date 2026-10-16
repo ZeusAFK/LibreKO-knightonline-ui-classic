@@ -238,9 +238,9 @@ public partial class Preview
         Game.Session.Self.Sheet.SetMaxWeight(17_100);
         var inventory = InventoryOf(repairWorld); inventory.EnsureLength(InventoryConstants.InventoryTotal);
         inventory[InventoryConstants.RightHand] = inventory[Inventory.GridStart];
-        var bridge = Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { repairWorld }, null)!;
+        var bridge = Native.Call(repairWorld, "CreatePluginAdapters")!;
         var attach = typeof(PluginGame).GetMethod("Attach", flags)!;
-        attach.Invoke(game, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
+        Native.Call(bridge, "AttachTo", game);
         var inventoryShell = new HudWindow("inventory", "Inventory") { Visible = false };
         inventoryShell.Body.AddChild((Control)DetailField(repairWorld, "InventoryWindow.InvContent")!);
         foreach (var child in inventoryShell.GetChildren().OfType<Control>()) child.Visible = false;

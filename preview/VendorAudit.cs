@@ -33,8 +33,8 @@ public partial class Preview
         inventory.EnsureLength(InventoryConstants.InventoryTotal);
         inventory[Inventory.GridStart]=new NativeSlot { ItemId=entry.Id,Count=63,Durability=ItemData.MaxDurabilityOf(entry.Id) };
         DetailCall(world,"InventoryWindow.BuildPanel");DetailCall(world,"NpcDialogWindow.BuildNpcDialog");DetailCall(world,"Vendor.BuildPanel");
-        var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
-        var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
+        var bridge=Native.Call(world, "CreatePluginAdapters")!;
+        var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;Native.Call(bridge, "AttachTo", game);
         var invLayer=(CanvasLayer)DetailField(world,"InventoryWindow.invLayer")!;invLayer.Reparent(this);
         var invWindow=new HudWindow("inventory","Inventory",new Vector2(520,48)) { Visible=false };
         invLayer.AddChild(invWindow);invWindow.Body.AddChild((Control)DetailField(world,"InventoryWindow.InvContent")!);

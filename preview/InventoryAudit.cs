@@ -34,9 +34,9 @@ public partial class Preview
         var inv=(Inventory)Game.Session.Self.Inventory;
         inv.EnsureLength(InventoryConstants.InventoryTotal);
         DetailCall(world,"InventoryWindow.BuildPanel");
-        var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
+        var bridge=Native.Call(world, "CreatePluginAdapters")!;
         var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;
-        attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
+        Native.Call(bridge, "AttachTo", game);
         NativeGame.Source=new ClientGame();
         ((CanvasLayer)DetailField(world,"ItemTooltip.tipLayer")!).Reparent(this);
         var shell=new Control {Position=new Vector2(300,42)};AddChild(shell);

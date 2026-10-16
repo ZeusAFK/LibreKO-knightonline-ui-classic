@@ -29,9 +29,9 @@ public partial class Preview
         {
             GetWindow().Size=state=="pus-compact"?new Vector2I(800,600):new Vector2I(1280,800);
             var world=PreviewFixtures.Prepared(new WorldRoot());
-            var bridge=(IGameWindows)Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
+            var bridge=Native.Call(world, "CreatePluginAdapters")!;var gameWindows=Native.Get<IGameWindows>(bridge, "Windows")!;
             var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;
-            attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
+            Native.Call(bridge, "AttachTo", game);
             Node surface=state.StartsWith("pus-")
                 ? (Node)Native.Call(world, "Preview.BuildPowerUpStore", state)!
                 : (Node)Native.Call(world, state=="mail-store"?"BuildMailStoreUiPreview":"BuildMailReadManyUiPreview")!;
@@ -49,7 +49,7 @@ public partial class Preview
             foreach(var window in windows.Where(w=>w.Visible))window.Position=((GetViewportRect().Size-window.Size)/2).Round();
             await Frames();
             foreach(var window in windows.Where(w=>w.Visible))Require(GetViewportRect().Grow(.1f).Encloses(window.GetGlobalRect()),state+" window fits viewport: "+window.GetGlobalRect());
-            if(state.StartsWith("pus-"))Require(bridge.IsOpen("shoppingmall"),"PUS bridge retains shoppingmall identifier: "+state);
+            if(state.StartsWith("pus-"))Require(gameWindows.IsOpen("shoppingmall"),"PUS bridge retains shoppingmall identifier: "+state);
             string file=(nation==1?"karus":"human")+"-"+state+".png";
             GetViewport().GetTexture().GetImage().SavePng(output+"/"+file);screens.Add(new{state,file});
             surface.Free();world.Free();await Frames();

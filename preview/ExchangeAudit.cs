@@ -62,9 +62,9 @@ public partial class Preview
 
         Seed();DetailCall(world,"InventoryWindow.BuildPanel");var orphan=(Control)DetailField(world,"InventoryWindow.InvContent")!;orphan.Visible=false;world.AddChild(orphan);DetailCall(world,"NpcDialogWindow.BuildNpcDialog");DetailCall(world,"Exchange.BuildPanel");
 
-        var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
+        var bridge=Native.Call(world, "CreatePluginAdapters")!;
 
-        var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
+        var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;Native.Call(bridge, "AttachTo", game);
 
         // A trade request closes the vendor and the warehouse first; their quantity prompts exist in a running world.
         foreach(string closer in new[]{"Vendor.TradePrompt","Warehouse.AmountPrompt"}){var quantity=new QuantityPrompt(76);world.AddChild(quantity);Native.Set(world, closer, quantity);}

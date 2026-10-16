@@ -33,9 +33,9 @@ public partial class Preview
         var classField=new PreviewFixtures.ClientMember("Session.Self.Class");
         var zoneField=typeof(WorldRoot).GetProperty("ZoneId",BindingFlags.Instance|BindingFlags.NonPublic)!;
         classField.SetValue(world,nation*100+6);
-        var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
+        var bridge=Native.Call(world, "CreatePluginAdapters")!;
         var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;
-        attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
+        Native.Call(bridge, "AttachTo", game);
         var shell=new Control();AddChild(shell);
         bool closed=false;
         var host=(WindowHost)Create(typeof(WindowHost),"skills","Skills",shell,(Action)(()=>closed=true));

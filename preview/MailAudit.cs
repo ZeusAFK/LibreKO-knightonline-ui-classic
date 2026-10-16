@@ -23,7 +23,7 @@ public sealed class MailAudit : IDisposable
     {
         _connection=(KoConn)typeof(Net).GetField("conn",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(_net)!;
         typeof(Net).GetProperty("I")!.SetValue(null,_net);
-        Windows=(IGameWindows)Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{_world},null)!;
+        Windows=Native.Get<IGameWindows>(Native.Call(_world, "CreatePluginAdapters")!, "Windows")!;
         var list=new VBoxContainer();var unread=new CheckButton();_world.AddChild(list);_world.AddChild(unread);
         Field(_world,"Mail.list",list);Field(_world,"Mail.unreadOnlyToggle",unread);Field(_world,"Mail.mails",_mails);
         Field(_world,"Mail.selectedId",999);

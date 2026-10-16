@@ -34,9 +34,9 @@ public partial class Preview
         DetailCall(world, "InventoryWindow.BuildPanel");
         var orphan = (Control)DetailField(world, "InventoryWindow.InvContent")!; orphan.Visible = false; world.AddChild(orphan);
         DetailCall(world, "Warehouse.BuildPanel"); DetailCall(world, "VipWarehouse.BuildPanel"); DetailCall(world, "ClanWarehouse.BuildPanel");
-        var bridge = Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { world }, null)!;
+        var bridge = Native.Call(world, "CreatePluginAdapters")!;
         var attach = typeof(PluginGame).GetMethod("Attach", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        attach.Invoke(game, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
+        Native.Call(bridge, "AttachTo", game);
         foreach (string field in new[] { "Warehouse.layer", "VipWarehouse.layer", "ClanWarehouse.layer", "ItemTooltip.tipLayer", "Warehouse.AmountPrompt" })
             ((Node)DetailField(world, field)!).Reparent(this);
         var windows = new[] { "Warehouse.Panel", "VipWarehouse.Panel", "ClanWarehouse.Panel" }.Select(f => (HudWindow)DetailField(world, f)!).ToArray();

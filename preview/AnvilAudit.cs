@@ -27,8 +27,8 @@ public partial class Preview
         var sheet=Game.Session.Self.Sheet;
         sheet.GetType().GetMethod("SetMaxWeight")!.Invoke(sheet,new object[]{17100});
         var tips=(CanvasLayer)DetailField(world,"ItemTooltip.tipLayer")!;tips.Reparent(this);
-        var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
-        var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
+        var bridge=Native.Call(world, "CreatePluginAdapters")!;
+        var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;Native.Call(bridge, "AttachTo", game);
         var shell=ClassicAnvilSkin.Apply(window.Body)!;
         PluginHost.Ui.ReplaceDialogs(request=>new ClassicAnvilNotice(request));
         var choice=NativeAnvil.Of(world)!.Choice;choice.Reparent(this);ClassicAnvilChoice.Apply(choice.Body);

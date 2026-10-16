@@ -43,9 +43,9 @@ public partial class Preview
 
         Seed();DetailCall(world,"InventoryWindow.BuildPanel");var orphan=(Control)DetailField(world,"InventoryWindow.InvContent")!;orphan.Visible=false;world.AddChild(orphan);DetailCall(world,"NpcDialogWindow.BuildNpcDialog");DetailCall(world,"Merchant.BuildPanels");DetailCall(world,"Merchant.BuildBuyPanels");
 
-        var bridge=Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{world},null)!;
+        var bridge=Native.Call(world, "CreatePluginAdapters")!;
 
-        var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;attach.Invoke(game,Enumerable.Repeat(bridge,attach.GetParameters().Length).ToArray());
+        var attach=typeof(PluginGame).GetMethod("Attach",BindingFlags.Instance|BindingFlags.NonPublic)!;Native.Call(bridge, "AttachTo", game);
 
 
         foreach(var window in Descendants((CanvasLayer)DetailField(world,"Merchant.mctLayer")!).OfType<HudWindow>())NativeMerchant.Prepare(window,world);

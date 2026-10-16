@@ -279,7 +279,7 @@ public static class NativeCape
         if (Native.Get<Node3D>(world, "Avatar.Visual") is not { } self) return;
         // DressCape is an instance method since fa3cfc3 (it reads the zone: no capes in the Chaos dungeon);
         // calling it on the world binds both shapes.
-        Native.Call(world, "CapeWindow.Dress", self, previewId, r, g, b, false, race, true);
+        Native.Call(world, "EntityLooksSystem.Dress", self, previewId, r, g, b, false, race, true);
         Native.Set(world, "CapeWindow.previewing", true);
     }
 

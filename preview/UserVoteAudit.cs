@@ -57,7 +57,7 @@ public partial class Preview
         typeof(Net).GetProperty("PingMs")!.SetValue(net, 42);
         foreach (var (id, ping, permille) in new[] { (301, 84, 625), (302, 172, 310), (303, 290, 880) })
             Game.Session.Party.SeedMemberPreview(id, ping, permille, Array.Empty<int>());
-        DetailCall(world, "PluginBridge.SocialInit");
+        var social=Native.Get<object>(Native.Call(world,"CreatePluginAdapters")!,"Social")!;Native.Call(PluginHost.Game,"AttachSocial",social,social,social);Native.Call(PluginHost.Game,"AttachWarp",social);
         DetailCall(world, "UserVoteWindow.Build");
         PreviewFixtures.Adopt<CanvasLayer>(world, "UserVoteWindow.layer", this);
         var vote = Plugin.Kit.Game.UserVote;

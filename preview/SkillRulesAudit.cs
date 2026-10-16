@@ -94,13 +94,13 @@ public partial class Preview
         Field("Session.Self.Class").SetValue(world, nation * 100 + 6);
         ((Inventory)Game.Session.Self.Inventory).EnsureLength(InventoryConstants.InventoryTotal);
         var bar = (int[])Field("Hotbar.Slots").GetValue(world)!;
-        var bridge = Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!, AnyMember, null, new object[] { world }, null)!;
+        var bridge = Native.Call(world, "CreatePluginAdapters")!;
         var attach = typeof(PluginGame).GetMethod("Attach", AnyMember)!;
-        attach.Invoke(game, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
-        var genieBridge = Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGenieBridge")!, AnyMember, null, new object[] { world }, null)!;
+        Native.Call(bridge, "AttachTo", game);
+        var genieBridge = Native.Call(world, "CreatePluginGenie")!;
         typeof(PluginGame).GetMethod("AttachGenie", AnyMember)!.Invoke(game, new[] { genieBridge });
         var recorder = DispatchProxy.Create<IGameHotbar, RecordingHotbar>();
-        ((RecordingHotbar)(object)recorder).Inner = bridge;
+        ((RecordingHotbar)(object)recorder).Inner = Native.Get<IGameHotbar>(bridge, "Hotbar")!;
         var hotbarProxy = typeof(PluginGame).GetField("hotbar", AnyMember)!.GetValue(game)!;
         hotbarProxy.GetType().GetField("Source")!.SetValue(hotbarProxy, recorder);
         var record = (RecordingHotbar)(object)recorder;

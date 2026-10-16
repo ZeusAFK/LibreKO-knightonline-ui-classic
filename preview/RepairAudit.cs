@@ -62,9 +62,9 @@ public partial class Preview
         // Durability states: right hand exhausted (0), carried weapon worn, top used, boots intact, helmet not repairable.
         inventory[InventoryConstants.RightHand] = inventory[Inventory.GridStart];
         inventory.SetDurability(InventoryConstants.RightHand, 0);
-        var bridge = Activator.CreateInstance(Native.ClientType("LibreKO.Features.PluginBridge.PluginGameBridge")!, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { world }, null)!;
+        var bridge = Native.Call(world, "CreatePluginAdapters")!;
         var attach = typeof(PluginGame).GetMethod("Attach", flags)!;
-        attach.Invoke(game, Enumerable.Repeat(bridge, attach.GetParameters().Length).ToArray());
+        Native.Call(bridge, "AttachTo", game);
         var shell = new HudWindow("inventory", "Inventory") { Visible = false };
         shell.Body.AddChild((Control)DetailField(world, "InventoryWindow.InvContent")!);
         foreach (var child in shell.GetChildren().OfType<Control>()) child.Visible = false;
