@@ -46,7 +46,7 @@ public partial class Preview
         T Get<T>(string field) => (T)Native.Get<object>(world, field)!;
         double Now() => Time.GetTicksMsec() / 1000.0;
         Set("MyId", 300);
-        Set("ZoneId", UserVote.JuraidZone);
+        Set("ZoneId", TempleZones.JuraidMountain);
         Game.Session.Party.SeedPreview(
             new PartyMember(301, 1, "Rikka", 4210, 3900, 83, nation * 100 + 8, 1820, 1500),
             new PartyMember(300, 1, "Canbo", 5120, 5120, 81, nation * 100 + 6, 1400, 1210),

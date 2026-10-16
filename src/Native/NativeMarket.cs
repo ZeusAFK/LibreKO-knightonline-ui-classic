@@ -176,7 +176,7 @@ public static class NativeMarket
         ("ShoppingMall.overlay", "overlay"), ("ShoppingMall.DetailsView.detailsBox", "details"), ("ShoppingMall.DetailsView.detailsIcon", "details_icon"),
         ("ShoppingMall.DetailsView.detailsName", "details_name"), ("ShoppingMall.DetailsView.detailsCategory", "details_category"), ("ShoppingMall.DetailsView.detailsDescription", "details_description"),
         ("ShoppingMall.DetailsView.detailsPrice", "details_price"), ("ShoppingMall.DetailsView.detailsAdd", "details_add"), ("ShoppingMall.DetailsView.detailsBuy", "details_buy"), ("ShoppingMall.DetailsView.detailsStatus", "details_status"),
-        ("PowerUpStoreGift.giftBox", "gift_box"), ("PowerUpStoreGift.giftSearch", "gift_query"), ("PowerUpStoreGift.giftPickPane", "gift_pick"),
+        ("PowerUpStoreGift.giftBox", "gift_box"), ("PowerUpStoreGift.GiftSearch", "gift_query"), ("PowerUpStoreGift.giftPickPane", "gift_pick"),
         ("PowerUpStoreGift.giftListTitle", "gift_list_title"), ("PowerUpStoreGift.giftList", "gift_list"), ("PowerUpStoreGift.giftCard", "gift_card"),
         ("PowerUpStoreGift.giftCardName", "recipient_name"), ("PowerUpStoreGift.giftCardInfo", "recipient_info"), ("PowerUpStoreGift.giftCardWarning", "recipient_warning"), ("PowerUpStoreGift.giftStatus", "gift_status"),
     };

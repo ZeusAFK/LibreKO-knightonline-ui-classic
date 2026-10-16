@@ -38,7 +38,7 @@ public static class NativeEvents
     }
 
     private static int Zone(WorldRoot world) => Convert.ToInt32(Native.Get<object>(world, "ZoneId") ?? 0);
-    private static bool InEvent(WorldRoot world) => Native.Call(Native.StaticOwner("LibreKO.Features.Windows.BifrostFeature"), "IsTempleEventZone", Zone(world)) is true;
+    private static bool InEvent(WorldRoot world) => LibreKO.Domain.TempleZones.IsTempleEventZone(Zone(world));
 
     private static void Ask(WorldRoot world)
     {
