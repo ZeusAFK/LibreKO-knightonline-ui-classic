@@ -64,7 +64,7 @@ public partial class Preview
                 string file = (nation == 1 ? "karus" : "human") + "-" + service + "-reply-" + state + ".png";
                 GetViewport().GetTexture().GetImage().SavePng(output + "/" + file); screens.Add(new { service, state, file });
             }
-            var connection = (KoConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
+            var connection = (GameConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
             using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
             using var timeout = new CancellationTokenSource(30000);
             try

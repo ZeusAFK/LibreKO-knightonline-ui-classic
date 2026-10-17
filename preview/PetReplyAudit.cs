@@ -11,7 +11,7 @@ public partial class Preview
     private async Task AuditPetIncubationReplies(Action<bool, string> require)
     {
         var net = new Net();
-        var connection = (KoConn)typeof(Net).GetField("conn", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(net)!;
+        var connection = (GameConn)typeof(Net).GetField("conn", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(net)!;
         using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         using var timeout = new CancellationTokenSource(30000);
         try

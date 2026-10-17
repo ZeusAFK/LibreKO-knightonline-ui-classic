@@ -24,7 +24,7 @@ public partial class Preview
         double Now() => Time.GetTicksMsec() / 1000d;
         var sheet = Game.Session.Pet.Pet!; int oldLevel = sheet.Level, oldMp = sheet.Mp, oldMaxMp = sheet.MaxMp;
         var cooldowns = Field<Dictionary<int, double>>("PetSkillBar.PetSkillReadyAt");
-        var connection = (KoConn)typeof(Net).GetField("conn", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(net)!;
+        var connection = (GameConn)typeof(Net).GetField("conn", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(net)!;
         var skillIds = PetSkills.BarSkills(SkillData.All.Select(s => (s.Id, s.Tree)), sheet.Class);
         int unlockedLevel = Math.Max(oldLevel, skillIds.Max(id => SkillData.Get(id)!.Level));
         int availableMana = Math.Max(oldMaxMp, skillIds.Max(id => SkillData.Get(id)!.Msp));

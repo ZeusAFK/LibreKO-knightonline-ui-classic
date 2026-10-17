@@ -75,7 +75,7 @@ public partial class Preview
         var cooldowns = Field<Dictionary<int, double>>("PetSkillBar.PetSkillReadyAt"); cooldowns.Clear();
         var instant = cells.First(c => SkillId(c) != 0 && SkillData.Get(SkillId(c)) is { CastSeconds: 0, RecastSeconds: > 0 });
         int instantId = SkillId(instant);
-        var connection = (KoConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
+        var connection = (GameConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
         using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         using var timeout = new CancellationTokenSource(30000);
         connection.Connect("127.0.0.1", ((IPEndPoint)listener.LocalEndpoint).Port);

@@ -288,10 +288,10 @@ public partial class Preview
             int nextMob = 30001;
             var ents = (EntityRegistry)Get(world, "EntitySystem.Ents")!;
             var monsters = (HashSet<string>)Get(world, "Genie.Monsters")!;
-            Vector2 Self() => new((float)Get(world, "Avatar.KoX")!, (float)Get(world, "Avatar.KoZ")!);
+            Vector2 Self() => new((float)Get(world, "Avatar.MapX")!, (float)Get(world, "Avatar.MapZ")!);
             Packet NpcIn(int id, short npcId, Vector2 at)
             {
-                float y = (float)Get(world, "Avatar.KoY")!;
+                float y = (float)Get(world, "Avatar.MapY")!;
                 var p = new Packet(GameOpcodes.GS_NPC_INOUT); p.WriteByte(1); p.WriteInt(id); p.WriteShort(npcId); p.WriteByte(1); p.WriteShort((short)model);
                 p.WriteInt(0); p.WriteByte(0); p.WriteInt(0); p.WriteShort(100); p.WriteInt(0); p.WriteInt(0); p.WriteByte(0); p.WriteByte(10);
                 p.WriteShort((short)Math.Round(at.X * 10)); p.WriteShort((short)Math.Round(at.Y * 10)); p.WriteShort((short)Math.Round(y * 10));
@@ -307,7 +307,7 @@ public partial class Preview
             }
             async Task MoveMob(int id, Vector2 to)
             {
-                float y = (float)Get(world, "Avatar.KoY")!;
+                float y = (float)Get(world, "Avatar.MapY")!;
                 var p = new Packet(GameOpcodes.GS_NPC_MOVE); p.WriteByte(1); p.WriteInt(id);
                 p.WriteShort((short)Math.Round(to.X * 10)); p.WriteShort((short)Math.Round(to.Y * 10)); p.WriteShort((short)Math.Round(y * 10)); p.WriteUShort(20);
                 await Send(stream, p);

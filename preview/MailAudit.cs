@@ -11,7 +11,7 @@ public sealed class MailAudit : IDisposable
 {
     private readonly Net _net=new();
     private readonly WorldRoot _world=new();
-    private readonly KoConn _connection;
+    private readonly GameConn _connection;
     private readonly TcpListener _listener=new(IPAddress.Loopback,0);
     private TcpClient? _peer;
     private readonly Net? _previous=Net.I;
@@ -21,7 +21,7 @@ public sealed class MailAudit : IDisposable
     private static void Field(WorldRoot world,string name,object value) => Native.Set(world, name, value);
     public MailAudit()
     {
-        _connection=(KoConn)typeof(Net).GetField("conn",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(_net)!;
+        _connection=(GameConn)typeof(Net).GetField("conn",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(_net)!;
         typeof(Net).GetProperty("I")!.SetValue(null,_net);
         Windows=Native.Get<IGameWindows>(Native.Call(_world, "CreatePluginAdapters")!, "Windows")!;
         var list=new VBoxContainer();var unread=new CheckButton();_world.AddChild(list);_world.AddChild(unread);

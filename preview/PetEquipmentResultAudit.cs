@@ -116,7 +116,7 @@ public partial class Preview
                 "Native inventory notifications refresh both rendered item views / " + state);
             require(!Field<bool>("InventoryWindow.moveInFlight") && Native.Get<object>(Game.Session.Items, "PendingMove") == null, "Familiar equipment response releases both native pending moves / " + state);
         }
-        var connection = (KoConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
+        var connection = (GameConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
         using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         using var timeout = new CancellationTokenSource(60000);
         try

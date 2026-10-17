@@ -35,7 +35,7 @@ public partial class Preview
         var window = layer.GetChildren().OfType<HudWindow>().Single(); window.Position = new Vector2(240, 70);
         var panel = window.GetChildren().OfType<ClassicPetPanel>().Single();
         var inventory = (Inventory)Game.Session.Self.Inventory;
-        var connection = (KoConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
+        var connection = (GameConn)typeof(Net).GetField("conn", flags)!.GetValue(net)!;
         T Field<T>(object target, string name) => (T)Native.Get<object>(target, name)!;
         object? Pending(string name) => Native.Get<object>(PreviewFixtures.NetOwner(name), name);
         var checks = new List<string>(); var screens = new List<object>();
