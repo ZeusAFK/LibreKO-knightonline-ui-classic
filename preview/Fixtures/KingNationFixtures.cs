@@ -34,7 +34,7 @@ public static partial class PreviewFixtures
     {
         var names = new[] { "Rikka", "Zeus", "Morgana", "Hermes", "Valkyrie", "Sylph", "Ardream", "Krowaz", "Talon", "Longnamedcandidate" };
         var clans = new[] { "Valhalla", "Olympus", "Avalon", "", "Shieldmaidens", "Windwalkers", "Ardream Guard", "Krowaz Legion", "Talons", "Averylongclannamehere" };
-        Call(world, "KingElection.OnCandidates", new KingCandidates(KingElection.Success,
+        Call(world, "KingElection.OnCandidates", new KingCandidates(KingWire.Success,
             names.Select((name, i) => new KingCandidate(i + 1, name, clans[i])).ToList()));
     }
 }

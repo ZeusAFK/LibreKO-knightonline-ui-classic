@@ -210,7 +210,7 @@ public partial class Preview
             foreach (bool on in new[] { false, true })
             {
                 var (world, window, panel) = await Build("Preview.BuildExpSeal");
-                Native.Set(Game.Session.ExpSeal, "ExpSealState", on ? ExpSeal.StateOn : ExpSeal.StateOff);
+                Native.Set(Game.Session.ExpSeal, "ExpSealState", on ? ExpSealState.On : ExpSealState.Off);
                 await Frames(2);
                 await Capture(window, on ? "exp-seal-on" : "exp-seal-off", panel);
                 var onButton = Named<Button>(panel, "exp_seal_on"); var offButton = Named<Button>(panel, "exp_seal_off");

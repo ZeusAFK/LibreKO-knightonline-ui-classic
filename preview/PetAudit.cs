@@ -69,7 +69,7 @@ public partial class Preview
         await Click(Tab("Skills")); await Capture("skills");
         await AuditPetEquipment(world, net, layer, window, panel, Require, Capture);
         await AuditPetSkills(world, net, panel, Require, Capture);
-        var sheet = Game.Session.Pet.Pet!; sheet.Mode = PetSheet.ModeLooting; sheet.Mp = 0; DetailCall(world, "Pet.RefreshUI");
+        var sheet = Game.Session.Pet.Pet!; sheet.Mode = PetMode.Looting; sheet.Mp = 0; DetailCall(world, "Pet.RefreshUI");
         Require(Find<Button>("pet_loot").ButtonPressed && !Find<Button>("pet_attack").ButtonPressed, "Mode switch follows native response");
         await Capture("no-mana");
         Native.Set(world, "Avatar.Dead", true); DetailCall(world, "Pet.RefreshUI");

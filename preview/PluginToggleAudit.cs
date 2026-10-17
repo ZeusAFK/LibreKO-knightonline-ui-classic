@@ -98,7 +98,7 @@ public partial class Preview
 
         // ---- Loopback session and the native World scene (the same fixture as pet-world-reconnect-audit).
         var original = Net.I; var net = new Net(); GetTree().Root.AddChild(net);
-        var originalLogin = LoginNet.I; var loginNet = new LoginNet(); GetTree().Root.AddChild(loginNet);
+        var originalLogin = Game.LoginServer; var loginNet = new LoginNet(); GetTree().Root.AddChild(loginNet);
         loginNet.Login("offline-audit", "offline-audit");
         var project = new ConfigFile(); project.Load(ProjectSettings.GlobalizePath("res://../../LibreKO/Client/project.godot"));
         foreach (string action in project.GetSectionKeys("input")) if (!InputMap.HasAction(action)) InputMap.AddAction(action);
@@ -433,7 +433,7 @@ public partial class Preview
             net.Reconnect.AutoReconnect = false; net.Disconnect(expected: true); peer?.Close();
             if (GetTree().CurrentScene is WorldRoot current) { GetTree().CurrentScene = null; current.QueueFree(); await Frames(); }
             GetTree().CurrentScene = this; net.Free(); loginNet.Free(); typeof(Net).GetProperty("I")!.SetValue(null, original);
-            typeof(LoginNet).GetProperty("I")!.SetValue(null, originalLogin);
+            typeof(Game).GetProperty(nameof(Game.LoginServer))!.SetValue(null, originalLogin);
             OS.RemoveLogger(log);
         }
         File.WriteAllText(System.IO.Path.Combine(output, prefix + "-plugin-toggle.json"), JsonSerializer.Serialize(new { checks, failures, states },

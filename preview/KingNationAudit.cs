@@ -97,7 +97,7 @@ public partial class Preview
                 Require((bool)DetailField(world, "KingElection.busy")!, "Nominate row starts the native schedule request");
                 await Away(); await Capture(window, "kingelection", "pending");
                 Require(Named<Button>(window, "king_option_1").Disabled, "Pending election request disables the option rows");
-                DetailCall(world, "KingElection.OnSchedule", new KingSchedule(0, 0, 0, 0, 0, 0));
+                DetailCall(world, "KingElection.OnSchedule", new KingSchedule(KingScheduleKind.None, 0, 0, 0, 0, 0));
                 await Frames();
                 Require(!Named<Button>(window, "king_option_1").Disabled, "Native reply releases the option rows");
                 var close = Named<Button>(window, "king_close");

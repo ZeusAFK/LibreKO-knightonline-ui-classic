@@ -33,7 +33,7 @@ public partial class Preview
         GetViewport().GuiEmbedSubwindows = true;
         new Plugin().Initialize((PluginContext)Create(typeof(PluginContext), info, new List<PluginInfo> { info }, PluginHost.Ui, PluginHost.Game));
         var original = Net.I; var net = new Net(); GetTree().Root.AddChild(net);
-        var originalLogin = LoginNet.I; var loginNet = new LoginNet(); GetTree().Root.AddChild(loginNet);
+        var originalLogin = Game.LoginServer; var loginNet = new LoginNet(); GetTree().Root.AddChild(loginNet);
         loginNet.Login("offline-audit", "offline-audit");
         var project = new ConfigFile(); project.Load(ProjectSettings.GlobalizePath("res://../../LibreKO/Client/project.godot"));
         foreach (string action in project.GetSectionKeys("input")) if (!InputMap.HasAction(action)) InputMap.AddAction(action);
@@ -435,7 +435,7 @@ public partial class Preview
             net.Reconnect.AutoReconnect = false; net.Disconnect(expected: true);
             if (GetTree().CurrentScene is WorldRoot world) { GetTree().CurrentScene = null; world.QueueFree(); await Frames(); }
             GetTree().CurrentScene = this; net.Free(); loginNet.Free(); typeof(Net).GetProperty("I")!.SetValue(null, original);
-            typeof(LoginNet).GetProperty("I")!.SetValue(null, originalLogin);
+            typeof(Game).GetProperty(nameof(Game.LoginServer))!.SetValue(null, originalLogin);
         }
     }
 }

@@ -75,10 +75,10 @@ public static class NativeChat
 
     private static void RecolourBubble(object chat, ChatLine line)
     {
-        if (line.Type == 2 || line.CharId < 0 && line.Name.Length == 0) return;
+        if (line.Type == ChatType.Private || line.CharId < 0 && line.Name.Length == 0) return;
         if (Native.Get<System.Collections.IDictionary>(chat, "Bubbles.bubbles") is not { } bubbles || !bubbles.Contains(line.CharId)) return;
         if (bubbles[line.CharId] is not { } bubble || Native.Get<Label3D>(bubble, "Label") is not { } label) return;
-        var colour = new Color("#" + ClassicChatFormat.Channel(line.Type, line.Nation).Color);
+        var colour = new Color("#" + ClassicChatFormat.Channel((byte)line.Type, line.Nation).Color);
         colour.A = label.Modulate.A;
         label.Modulate = colour;
     }
@@ -124,7 +124,7 @@ public static class NativeChat
     {
         long seq = Native.Get<long>(raw, "Seq");
         if (_entries.TryGetValue(seq, out var cached)) return cached;
-        var entry = new Entry(seq, (int)Native.Get<ChatCategory>(raw, "Category"), Native.Get<byte>(raw, "Type"),
+        var entry = new Entry(seq, (int)Native.Get<ChatCategory>(raw, "Category"), (byte)Native.Get<ChatType>(raw, "Type"),
             Native.Get<string>(raw, "Name") ?? "", Native.Get<int>(raw, "Nation"), Native.Get<bool>(raw, "Gm"),
             Native.Get<string>(raw, "Text") ?? "", Native.Get<string>(raw, "Bbcode") ?? "", Native.Get<DateTime>(raw, "Time"));
         _entries[seq] = entry;

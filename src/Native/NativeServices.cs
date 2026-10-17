@@ -257,7 +257,7 @@ public static class NativeServices
 
     /// <summary>The redistribution kind being requested, or 0.</summary>
     public static byte RedistributionKind(WorldRoot world) =>
-        Native.Get<object>(world, "ResetConfirm.reset") is { } request ? Native.Get<byte>(request, "Kind") : (byte)0;
+        Native.Get<object>(world, "ResetConfirm.reset") is { } request ? (byte)Native.Get<ResetKind>(request, "Kind") : (byte)0;
 }
 
 /// <summary>

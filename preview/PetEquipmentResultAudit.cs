@@ -101,7 +101,7 @@ public partial class Preview
         void SummonSheet(NativeSlot[] items, int index = 1)
         {
             var sheet = Game.Session.Pet.Pet!;
-            var p = new Packet(GameOpcodes.GS_PET); p.WriteByte(1); p.WriteByte(5); p.WriteByte((byte)PetSheet.ModeSummoned); p.WriteShort(1);
+            var p = new Packet(GameOpcodes.GS_PET); p.WriteByte(1); p.WriteByte(5); p.WriteByte((byte)PetMode.Summoned); p.WriteShort(1);
             p.WriteInt(index); p.WriteString(sheet.Name); p.WriteByte((byte)sheet.Class); p.WriteByte((byte)sheet.Level); p.WriteUShort((ushort)sheet.ExpPercent);
             foreach (int value in new[] { sheet.MaxHp, sheet.Hp, sheet.MaxMp, sheet.Mp, sheet.Satisfaction, sheet.Attack, sheet.Defence }) p.WriteShort((short)value);
             foreach (int resist in sheet.Resists) p.WriteByte((byte)resist);
@@ -148,23 +148,23 @@ public partial class Preview
                 var item = new NativeSlot { ItemId = id, Count = 1, Durability = 123, Flag = 2 };
                 SetBag(bag, item); Refresh(); await Frames();
                 var source = cells.Single(c => c.Slot == bag); var target = Find<ItemSlotView>("pet_item_" + i);
-                await Drag(source, target); await Request(ItemMove.InventoryToPet, id, i, i);
+                await Drag(source, target); await Request((byte)ItemMoveDirection.InventoryToPet, id, i, i);
                 require(inventory[bag].Equals(item) && Game.Session.Pet.Pet!.Items[i].IsEmpty && Game.Session.Self.LastEnter.Inventory[bag].Equals(item), "Familiar equipment remains unchanged until the native acknowledgement / " + kinds[i]);
                 var truncated = new Packet(GameOpcodes.GS_ITEM_MOVE); truncated.WriteByte(1); truncated.ResetOffset(); PreviewPackets.Receive(truncated);
                 require(Field<bool>("InventoryWindow.moveInFlight"), "Truncated familiar equipment acknowledgement keeps the operation pending / " + kinds[i]);
                 Reply(false); await Frames(); CheckSlot(bag, i, item, default, "refused-equip-" + kinds[i]);
                 if (i == 0) await Capture("refused");
-                await Drag(source, target); await Request(ItemMove.InventoryToPet, id, i, i);
+                await Drag(source, target); await Request((byte)ItemMoveDirection.InventoryToPet, id, i, i);
                 if (kinds[i] is 172 or 173) { var next = Game.Session.Pet.Pet!.Items.ToArray(); next[i] = item; SummonSheet(next); await Frames(); }
                 Reply(true); await Frames(); CheckSlot(bag, i, default, item, "accepted-equip-" + kinds[i]);
                 var reloaded = new Inventory(); reloaded.Reset(Game.Session.Self.LastEnter.Inventory);
                 require(reloaded[bag].IsEmpty, "A new domain inventory cannot restore an item already equipped on the familiar / " + kinds[i]);
                 Reply(true); await Frames(); CheckSlot(bag, i, default, item, "duplicate-equip-" + kinds[i]);
                 if (i == 3) await Capture("equipped");
-                await Click(target, MouseButton.Right); await Request(ItemMove.PetToInventory, id, i, 0);
+                await Click(target, MouseButton.Right); await Request((byte)ItemMoveDirection.PetToInventory, id, i, 0);
                 require(inventory[Inventory.GridStart].IsEmpty && Game.Session.Pet.Pet!.Items[i].Equals(item), "Familiar right-click removal waits for native authority / " + kinds[i]);
                 Reply(false); await Frames(); CheckSlot(Inventory.GridStart, i, default, item, "refused-remove-" + kinds[i]);
-                await Click(target, MouseButton.Right); await Request(ItemMove.PetToInventory, id, i, 0);
+                await Click(target, MouseButton.Right); await Request((byte)ItemMoveDirection.PetToInventory, id, i, 0);
                 if (kinds[i] is 172 or 173) { var next = Game.Session.Pet.Pet!.Items.ToArray(); next[i] = default; SummonSheet(next); await Frames(); }
                 Reply(true); await Frames(); CheckSlot(Inventory.GridStart, i, item, default, "accepted-remove-" + kinds[i]);
                 reloaded.Reset(Game.Session.Self.LastEnter.Inventory); require(reloaded[Inventory.GridStart].Equals(item), "A new domain inventory retains exact familiar equipment removed into the bag / " + kinds[i]);
@@ -177,21 +177,21 @@ public partial class Preview
             var oldItem = new NativeSlot { ItemId = attackId, Count = 1, Durability = 99, Flag = 1 };
             var replacement = new NativeSlot { ItemId = attackId, Count = 1, Durability = 321, Flag = 3 };
             Game.Session.Pet.Pet!.Items[1] = oldItem; SetBag(Inventory.GridStart + 3, replacement); Refresh(); await Frames();
-            await Drag(cells.Single(c => c.Slot == Inventory.GridStart + 3), Find<ItemSlotView>("pet_item_1")); await Request(ItemMove.InventoryToPet, attackId, 3, 1);
+            await Drag(cells.Single(c => c.Slot == Inventory.GridStart + 3), Find<ItemSlotView>("pet_item_1")); await Request((byte)ItemMoveDirection.InventoryToPet, attackId, 3, 1);
             var updated = Game.Session.Pet.Pet!.Items.ToArray(); updated[1] = replacement; SummonSheet(updated); Reply(true); await Frames();
             CheckSlot(Inventory.GridStart + 3, 1, oldItem, replacement, "same-kind-replacement-after-stat-sheet"); await Capture("replacement");
-            await Click(Find<ItemSlotView>("pet_item_1"), MouseButton.Right); await Request(ItemMove.PetToInventory, attackId, 1, 0);
+            await Click(Find<ItemSlotView>("pet_item_1"), MouseButton.Right); await Request((byte)ItemMoveDirection.PetToInventory, attackId, 1, 0);
             SummonSheet(new NativeSlot[PetSheet.InventorySize], 99); Reply(true); await Frames();
             // A move for a familiar that is no longer summoned is not half applied: the bag waits for the server's record.
             CheckSlot(Inventory.GridStart, 1, default, default, "different-familiar-after-request");
             require(Game.Session.Pet.Pet!.Index == 99 && Game.Session.Pet.Pet.Items.All(i => i.IsEmpty), "An earlier familiar move cannot equip or remove items from a different summoned familiar");
             SetBag(Inventory.GridStart, replacement); Refresh(); await Frames();
             await Capture("changed-familiar");
-            await Drag(cells.Single(c => c.Slot == Inventory.GridStart), Find<ItemSlotView>("pet_item_1")); await Request(ItemMove.InventoryToPet, attackId, 0, 1);
+            await Drag(cells.Single(c => c.Slot == Inventory.GridStart), Find<ItemSlotView>("pet_item_1")); await Request((byte)ItemMoveDirection.InventoryToPet, attackId, 0, 1);
             Reply(true); await Frames(); CheckSlot(Inventory.GridStart, 1, default, replacement, "new-familiar-equip");
             await AuditPetFood(world, net, panel, actual, stream, timeout.Token, nation, output, require);
-            await Click(Find<ItemSlotView>("pet_item_1"), MouseButton.Right); await Request(ItemMove.PetToInventory, attackId, 1, 0);
-            var gone = new Packet(GameOpcodes.GS_PET); gone.WriteByte(1); gone.WriteByte(5); gone.WriteByte((byte)PetSheet.ModeDied); gone.WriteShort(1); gone.WriteInt(99); gone.ResetOffset();
+            await Click(Find<ItemSlotView>("pet_item_1"), MouseButton.Right); await Request((byte)ItemMoveDirection.PetToInventory, attackId, 1, 0);
+            var gone = new Packet(GameOpcodes.GS_PET); gone.WriteByte(1); gone.WriteByte(5); gone.WriteByte((byte)PetMode.Died); gone.WriteShort(1); gone.WriteInt(99); gone.ResetOffset();
             PreviewPackets.Receive(gone); Reply(true); await Frames();
             require(inventory[Inventory.GridStart].IsEmpty && Game.Session.Self.LastEnter.Inventory[Inventory.GridStart].IsEmpty && Game.Session.Pet.Pet == null,
                 "Accepted familiar removal after dismissal is not half applied and does not resurrect the familiar");

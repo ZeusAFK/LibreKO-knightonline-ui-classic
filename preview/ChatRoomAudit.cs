@@ -745,7 +745,7 @@ public partial class Preview
             Action<ChatLine> chatLine = _ => chatLines++; Action<RoomChatLine> roomLine = _ => roomLines++;
             Game.Session.Chat.ChatEvent += chatLine; Game.Session.NationChat.RoomChatEvent += roomLine;
             var said = new Packet(GameOpcodes.GS_CHAT);
-            said.WriteByte(ChatType.ChatRoom); said.WriteByte((byte)RoomChatKind.Message); said.WriteInt(9101); said.WriteString("Valka"); said.WriteString("Welcome to both nations"); said.WriteUShort(21);
+            said.WriteByte((byte)ChatType.ChatRoom); said.WriteByte((byte)RoomChatKind.Message); said.WriteInt(9101); said.WriteString("Valka"); said.WriteString("Welcome to both nations"); said.WriteUShort(21);
             Handle(said); await Frames(8);
             Game.Session.Chat.ChatEvent -= chatLine; Game.Session.NationChat.RoomChatEvent -= roomLine;
             Require(roomLines == 1 && chatLines == 0, "nations: a room line goes to the room window only, never to the chat (room " + roomLines + ", chat " + chatLines + ")");
@@ -777,9 +777,9 @@ public partial class Preview
                 entryType.GetProperty("Seq")!.SetValue(entry, ++seq);
                 store.GetType().GetMethod("AddLast", new[] { entryType })!.Invoke(store, new[] { entry });
             }
-            Add(ChatType.General, "Canbo", nation, "general line");
-            Add(ChatType.NoahKnights, "Rikka", Nations.ElMorad, "noah line");
-            Add(ChatType.NoahKnights, "Kaito", Nations.Karus, "noah karus");
+            Add((byte)ChatType.General, "Canbo", nation, "general line");
+            Add((byte)ChatType.NoahKnights, "Rikka", Nations.ElMorad, "noah line");
+            Add((byte)ChatType.NoahKnights, "Kaito", Nations.Karus, "noah karus");
             var all = NativeChat.ReadHistory(system, ChatWindow.AllCategories, false, "")!;
             Require(ChatWindow.AllCategories == (int)ChatCategory.All && all.Count == 3, "categories: the full mask shows Noah Knights lines (" + all.Count + ")");
             Require(all.Any(l => l.Contains("noah line") && l.Contains("ffb6c1")) && all.Any(l => l.Contains("noah karus") && l.Contains("87cefa")), "categories: Noah Knights lines keep the nation ink");

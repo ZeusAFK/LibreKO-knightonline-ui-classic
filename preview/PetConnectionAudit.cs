@@ -56,7 +56,7 @@ public partial class Preview
             cell._DropData(Vector2.Zero, new Godot.Collections.Dictionary { { "invFrom", Inventory.GridStart } });
             Require(Field<bool>(world, "InventoryWindow.moveInFlight") && Pending("PendingMove") != null,
                 "Actual familiar drop creates matching World and Net pending operations");
-            DetailCall(world, "InventoryWindow.Enqueue", ItemMove.InventoryToInventory, item, (byte)1, (byte)2,
+            DetailCall(world, "InventoryWindow.Enqueue", ItemMoveDirection.InventoryToInventory, item, (byte)1, (byte)2,
                 Inventory.GridStart + 1, Inventory.GridStart + 2, (ushort)0);
             Require(Field<System.Collections.ICollection>(world, "InventoryWindow.moveQueue").Count == 1, "A queued follow-up waits behind the familiar move");
             Game.Requests.Items.Remove(0, 0, item);
@@ -150,7 +150,7 @@ public partial class Preview
             using (var peer = await Connect(true))
             {
                 Seed();
-                DetailCall(world, "InventoryWindow.EnqueuePetMove", ItemMove.InventoryToPet, item, (byte)0, (byte)1, Inventory.GridStart, 1);
+                DetailCall(world, "InventoryWindow.EnqueuePetMove", ItemMoveDirection.InventoryToPet, item, (byte)0, (byte)1, Inventory.GridStart, 1);
                 await DrainRequests(peer.GetStream(), 1); await SendReply(peer.GetStream());
                 typeof(Net).GetField("connectedFired", flags)!.SetValue(net, true); net._Process(0); await Frames();
                 Require(!Field<bool>(world, "InventoryWindow.moveInFlight") && inventory[Inventory.GridStart].IsEmpty && Game.Session.Self.LastEnter.Inventory[Inventory.GridStart].IsEmpty
@@ -159,7 +159,7 @@ public partial class Preview
                 await Capture("fresh-session-equipped");
             }
             net.Disconnect(expected: true);
-            Seed(); DetailCall(world, "InventoryWindow.EnqueuePetMove", ItemMove.InventoryToPet, item, (byte)0, (byte)1, Inventory.GridStart, 1);
+            Seed(); DetailCall(world, "InventoryWindow.EnqueuePetMove", ItemMoveDirection.InventoryToPet, item, (byte)0, (byte)1, Inventory.GridStart, 1);
             Require(!Field<bool>(world, "InventoryWindow.moveInFlight") && Pending("PendingMove") == null && inventory[Inventory.GridStart].Equals(record),
                 "Disconnected familiar equipment input cannot leave an artificial inventory lock");
         }

@@ -152,7 +152,7 @@ public sealed partial class FamiliarWindow : Node
     private NativeHooks.Hook? _observing;
 
     private void OnSummoned(PetSheet _) => Refresh();
-    private void OnMode(int _) => Refresh();
+    private void OnMode(PetMode _) => Refresh();
     private void OnExp(long _) => Refresh();
 
     /// <summary>A refused or cancelled familiar cast releases its cooldown on the client's familiar timers.</summary>

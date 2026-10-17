@@ -22,7 +22,7 @@ public partial class Preview
         AddChild(new ColorRect {Color=backdrop,Size=new Vector2(620,600),MouseFilter=MouseFilterEnum.Ignore});
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
         // ff78eef: the row meter is off by default (the client keeps it off unless a plugin replaces its party HUD).
-        Config.SetPartyRowMeter(PartyWarBoard.ModeOff);
+        Config.SetPartyRowMeter(PartyBoardMeterMode.Off);
         var world=PreviewFixtures.Prepared(new WorldRoot());
         void Call(string method,params object[] args)=>DetailCall(world,method,args);
         T Field<T>(string name)=>(T)Native.Get<object>(world, name)!;
@@ -128,7 +128,7 @@ public partial class Preview
                 // The selection frame is drawn exactly for the member the client highlights.
                 Check(covered||AnyPixel(image,InRow(row,new Rect2(ClassicPartyHudLayout.Selection.Position.X-1,24,3,8)),SelectionGreen)==member.Picked,state+": "+member.Name+" selection frame "+(member.Picked?"drawn":"not drawn"));
                 // The row meter strip shows only while the client's row meter is on.
-                Check(covered||AnyPixel(image,InRow(row,new Rect2(ClassicPartyHudLayout.Meter.Position,1,ClassicPartyHudLayout.Meter.Size.Y)),c=>Near(c,backdrop,.03f))==(party.RowMeterMode==PartyWarBoard.ModeOff),state+": "+member.Name+" meter strip only with the row meter on");
+                Check(covered||AnyPixel(image,InRow(row,new Rect2(ClassicPartyHudLayout.Meter.Position,1,ClassicPartyHudLayout.Meter.Size.Y)),c=>Near(c,backdrop,.03f))==(party.RowMeterMode==PartyBoardMeterMode.Off),state+": "+member.Name+" meter strip only with the row meter on");
             }
             image.SavePng(output+"/"+prefix+"-"+state+".png");
             captures.Add(new{state,file=prefix+"-"+state+".png",rosterSize=partyPanel.Size.ToString(),boardSize=boardPanel.Size.ToString()});
@@ -260,19 +260,19 @@ public partial class Preview
         // The row meter (kept in the Classic list: the client leaves it to a plugin that replaces its party HUD):
         // Off -> Damage -> Healing -> Off through the client's toggle.
         var meter=PartyTree(partyPanel).OfType<Button>().Single(b=>b.Name=="party_meter");
-        Check(meter.Text=="Meter: Off" && party.RowMeterMode==PartyWarBoard.ModeOff,"row meter starts off");
+        Check(meter.Text=="Meter: Off" && party.RowMeterMode==PartyBoardMeterMode.Off,"row meter starts off");
         void PressMeter(){SetField("WarBoard.meterToggleSentAt",double.NegativeInfinity);meter.EmitSignal(BaseButton.SignalName.Pressed);}
         PressMeter();await Settled();
-        Check(Config.PartyRowMeter==PartyWarBoard.ModeDamage && meter.Text=="Meter: Damage","Meter runs the native row meter toggle: damage dealt");
-        Call("WarBoard.OnWarBoard",new WarBoardReply(PartyWarBoard.TargetRows,PartyWarBoard.ModeDamage,members.Select((m,i)=>new WarBoardShare(m.CharId,(8-i)*60)).ToList()));
+        Check(Config.PartyRowMeter==PartyBoardMeterMode.Damage && meter.Text=="Meter: Damage","Meter runs the native row meter toggle: damage dealt");
+        Call("WarBoard.OnWarBoard",new WarBoardReply(PartyWarBoardTarget.Rows,PartyBoardMeterMode.Damage,members.Select((m,i)=>new WarBoardShare(m.CharId,(8-i)*60)).ToList()));
         await Settled();
         Check(party.RowMeterShare(300)==480,"the client's row shares reach the cells");
         var meterShot=await Capture("meter-damage");
         Check(AnyPixel(meterShot,InRow(firstRow,new Rect2(ClassicPartyHudLayout.Meter.Position+new Vector2(1,1),4,2)),c=>Near(c,ClassicPartyHudLayout.MeterDamage,.08f)),"damage strip in the damage colour");
         PressMeter();await Settled();
-        Check(Config.PartyRowMeter==PartyWarBoard.ModeHealing && meter.Text=="Meter: Healing","Meter: healing next");
+        Check(Config.PartyRowMeter==PartyBoardMeterMode.Healing && meter.Text=="Meter: Healing","Meter: healing next");
         PressMeter();await Settled();
-        Check(Config.PartyRowMeter==PartyWarBoard.ModeOff && meter.Text=="Meter: Off","Meter: off again");
+        Check(Config.PartyRowMeter==PartyBoardMeterMode.Off && meter.Text=="Meter: Off","Meter: off again");
         var statuses=(Dictionary<int,HashSet<byte>>)Native.Get<object>(Game.Session.Party, "status")!;
         statuses[302]=new HashSet<byte>{2,4};Call("Party.RefreshUI");await Settled();
         Check(partyPanel.GetNode<ClassicPartyHudRow>("party_member_2").Member.HpColour!=partyPanel.GetNode<ClassicPartyHudRow>("party_member_1").Member.HpColour,"status members show the native HP look");
@@ -303,7 +303,7 @@ public partial class Preview
         Check(PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Private").Disabled,"empty: stale private message disabled");
         Check(!PartyTree(boardPanel).OfType<Button>().Single(b=>b.Text=="Invite").Disabled,"empty: Invite stays available for invite by name");
         // Full Moon Rift board (3277df5 Auto Entry): the client's actions in the filter panel.
-        SetField("SeekParty.SeekBoardKind",(int)LibreKO.Domain.FullMoon.FullMoonBoard);
+        SetField("SeekParty.SeekBoardKind",PartyBoardType.FullMoon);
         SetField("ZoneId",71);
         Game.Session.Self.Sheet.SeedProgress(80,0,100);
         Call("SeekParty.ApplySeekBoard");
@@ -319,7 +319,7 @@ public partial class Preview
         auto.EmitSignal(BaseButton.SignalName.Pressed);
         Check((bool)Native.Get<object>(world, "SeekParty.fullMoonAutoEntry")!,"full moon: Auto Entry starts the client's automatic entry for a fitting party");
         SetField("SeekParty.fullMoonAutoEntry",false);
-        Config.SetPartyRowMeter(PartyWarBoard.ModeOff);
+        Config.SetPartyRowMeter(PartyBoardMeterMode.Off);
         System.IO.File.WriteAllText(output+"/"+prefix+"-verification.json",JsonSerializer.Serialize(new{nation,checks,captures,pluginHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.IO.File.ReadAllBytes(ProjectSettings.GlobalizePath("res://../bin/KnightOnlineUiClassic.dll"))))},new JsonSerializerOptions{WriteIndented=true}));
         world.Free(); net.Free();
         GD.Print("PARTY_AUDIT_OK "+prefix+" "+checks.Count);

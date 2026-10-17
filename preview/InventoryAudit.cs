@@ -52,17 +52,17 @@ public partial class Preview
         Require(UiIcons.Get("system/move")!=null,"Updated client resource pack contains the upstream chat move icon");
         var moveType=Native.ClientType("LibreKO.Network.PendingItemMove")!;
         var pendingMove=new PreviewFixtures.ClientMember("PendingMove");
-        object PendingMove(byte direction,byte source,byte destination)=>Activator.CreateInstance(moveType,
+        object PendingMove(ItemMoveDirection direction,byte source,byte destination)=>Activator.CreateInstance(moveType,
             new object[]{direction,source,destination,(ushort)0}.Take(moveType.GetConstructors().Max(c=>c.GetParameters().Length)).ToArray())!;
         var snapshot=Game.Session.Self.LastEnter;
         snapshot.Inventory[InventoryConstants.InventoryStart]=new NativeSlot {ItemId=700011001,Count=1};
-        pendingMove.SetValue(Game.Session.Items,PendingMove(ItemMove.InventoryToBagSlot,0,2));
+        pendingMove.SetValue(Game.Session.Items,PendingMove(ItemMoveDirection.InventoryToBagSlot,0,2));
         var accepted=new Packet(GameOpcodes.GS_ITEM_MOVE);accepted.WriteByte(1);accepted.WriteByte(1);PreviewPackets.Receive(accepted);
         inv.Reset(Game.Session.Self.LastEnter.Inventory);
         Require(inv[InventoryConstants.BagSlotFor(2)].ItemId==700011001 && inv[InventoryConstants.InventoryStart].IsEmpty,
             "Network acknowledgement preserves equipped bags when a new world reloads the cached inventory");
         bool refused=false;Game.Session.Items.ItemMoveResultEvent+=ok=>refused=!ok;
-        pendingMove.SetValue(Game.Session.Items,PendingMove(ItemMove.BagSlotToInventory,2,0));
+        pendingMove.SetValue(Game.Session.Items,PendingMove(ItemMoveDirection.BagSlotToInventory,2,0));
         var rejected=new Packet(GameOpcodes.GS_ITEM_MOVE);rejected.WriteByte(1);rejected.WriteByte(0);PreviewPackets.Receive(rejected);
         Require(refused && pendingMove.GetValue(Game.Session.Items)==null && Game.Session.Self.LastEnter.Inventory[InventoryConstants.BagSlotFor(2)].ItemId==700011001,
             "Refused moves release the pending acknowledgement and preserve the zone snapshot");
@@ -351,7 +351,7 @@ public partial class Preview
             var part=new Godot.Collections.Dictionary {{ClassicSlot.DragKeyFrom,InventoryConstants.InventoryStart+1},{ClassicSlot.DragKeyItem,stack},{DragLayer.AmountKey,40}};
             Require(magic._CanDropData(Vector2.Zero,part),"A magic bag cell takes a dragged part");
             magic._DropData(Vector2.Zero,part);
-            Require(!transferPrompt.Visible && (bool)DetailField(world,"InventoryWindow.moveInFlight")! && (ushort)MoveField("Amount")==40 && (byte)MoveField("Dir")==ItemMove.InventoryToMagicBag,
+            Require(!transferPrompt.Visible && (bool)DetailField(world,"InventoryWindow.moveInFlight")! && (ushort)MoveField("Amount")==40 && (ItemMoveDirection)MoveField("Dir")==ItemMoveDirection.InventoryToMagicBag,
                 "A part picked for a magic bag moves at once, without the count prompt");
             DetailCall(world,"InventoryWindow.OnItemMoveResult",false);
             var whole=new Godot.Collections.Dictionary {{ClassicSlot.DragKeyFrom,InventoryConstants.InventoryStart+1},{ClassicSlot.DragKeyItem,stack},{DragLayer.AmountKey,100}};

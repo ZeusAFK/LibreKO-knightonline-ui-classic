@@ -169,7 +169,7 @@ public partial class Preview
         // As the client's HUD seam does in the game: the replaced board's layer stays in the tree, hidden.
         var nativeBoard = Get<PanelContainer>("WarBoard.Panel").GetParent<CanvasLayer>();
         nativeBoard.Reparent(this); nativeBoard.Visible = false;
-        float savedAlpha = PluginHost.Game.Party.WarBoardAlpha; byte savedMode = Config.PartyBoardMode;
+        float savedAlpha = PluginHost.Game.Party.WarBoardAlpha; var savedMode = Config.PartyBoardMode;
         var hud = new CanvasLayer { Layer = 64 }; AddChild(hud);
         var party = new ClassicPartyHud(PluginHost.Game.Party, () => world); hud.AddChild(party);
         var board = new ClassicWarBoard(PluginHost.Game.Party); hud.AddChild(board);
@@ -177,8 +177,8 @@ public partial class Preview
         Require(!board.Visible, "war board: hidden until the client opens it");
         party.GetNode<Control>("party_actions").GetChildren().OfType<Button>().Single(b => b.Text == "War Board").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames(4);
-        byte mode = PluginHost.Game.Party.WarBoardMode;
-        DetailCall(world, "WarBoard.OnWarBoard", new WarBoardReply(PartyWarBoard.TargetBoard, mode,
+        var mode = PluginHost.Game.Party.WarBoardMode;
+        DetailCall(world, "WarBoard.OnWarBoard", new WarBoardReply(PartyWarBoardTarget.Board, mode,
             new List<WarBoardShare> { new(300, 312), new(301, 241), new(302, 168), new(303, 0) }));
         await Frames(4);
         Require(board.Visible && PluginHost.Game.Party.WarBoardOpen, "war board: War Board on the party list opens the client's board in the Classic frame");
@@ -192,7 +192,7 @@ public partial class Preview
             Require(control.GetRect() == control.GetMeta("war_board_expected_rect").AsRect2(), "war board: actual bounds of " + control.Name + " " + control.GetRect());
         Require(GetViewportRect().Encloses(board.GetGlobalRect()) && !board.GetGlobalRect().Intersects(party.GetGlobalRect()), "war board: inside the viewport, beside the party list");
         var damage = board.GetNode<Button>("war_board_damage"); var healing = board.GetNode<Button>("war_board_healing");
-        Require(damage.ButtonPressed == (mode == PartyWarBoard.ModeDamage) && healing.ButtonPressed == (mode == PartyWarBoard.ModeHealing), "war board: the tab of the client's mode is selected");
+        Require(damage.ButtonPressed == (mode == PartyBoardMeterMode.Damage) && healing.ButtonPressed == (mode == PartyBoardMeterMode.Healing), "war board: the tab of the client's mode is selected");
         await Shot("war-board");
         // The board's tooltips use the original tooltip look (co_tooltip_us), as the party list's do.
         {
@@ -222,7 +222,7 @@ public partial class Preview
         }
         healing.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames(4);
-        Require(PluginHost.Game.Party.WarBoardMode == PartyWarBoard.ModeHealing && healing.ButtonPressed && !damage.ButtonPressed, "war board: Healing switches the client's board mode");
+        Require(PluginHost.Game.Party.WarBoardMode == PartyBoardMeterMode.Healing && healing.ButtonPressed && !damage.ButtonPressed, "war board: Healing switches the client's board mode");
         // The tab changed within five seconds of the last request: the client holds it and counts down. The board
         // reads the seconds from the party API (ff78eef) when the client raises Changed, without polling.
         var cooldown = board.GetNode<Label>("war_board_cooldown");
@@ -248,7 +248,7 @@ public partial class Preview
         alpha.Value = .5;
         await Frames(4);
         Require(Mathf.IsEqualApprox(PluginHost.Game.Party.WarBoardAlpha, .5f) && Mathf.IsEqualApprox(board.GetNode<ClassicFrame>("war_board_frame").BackgroundAlpha, .5f), "war board: the transparency slider sets the client's board alpha (" + PluginHost.Game.Party.WarBoardAlpha + ", " + board.GetNode<ClassicFrame>("war_board_frame").BackgroundAlpha + ", " + alpha.Value + ", " + Config.PartyBoardAlpha + ")");
-        DetailCall(world, "WarBoard.OnWarBoard", new WarBoardReply(PartyWarBoard.TargetBoard, PartyWarBoard.ModeHealing,
+        DetailCall(world, "WarBoard.OnWarBoard", new WarBoardReply(PartyWarBoardTarget.Board, PartyBoardMeterMode.Healing,
             new List<WarBoardShare> { new(303, 655), new(300, 120) }));
         await Frames(4);
         Require(board.GetChildren().OfType<ClassicWarBoardRow>().Count(r => r.Visible) == 2, "war board: rows follow the client's reply");

@@ -140,7 +140,7 @@ public partial class Preview
         Live(rows).First().EmitSignal(Control.SignalName.GuiInput, new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, DoubleClick = true }); await Frames(4);
         Require(password.Visible && password.GetChildren().OfType<ClassicSocialFrame>().Count() == 1, "A double-click on a locked room asks for its password in the Classic frame");
         Require(((LineEdit)DetailField(world, "NationChannels.ncPasswordEdit")!).Text == "", "Password prompt opens empty");
-        Require(KnightOnlineUiClassic.ClassicChatFormat.Channel(LibreKO.Domain.ChatType.ChatRoom).Tag == "room", "Room lines carry the Classic room channel tag");
+        Require(KnightOnlineUiClassic.ClassicChatFormat.Channel((byte)ChatType.ChatRoom).Tag == "room", "Room lines carry the Classic room channel tag");
         DetailCall(world, "NationChannels.Dispose"); layer.QueueFree(); world.QueueFree(); await Frames(2);
     }
 }

@@ -66,7 +66,7 @@ public static partial class PreviewFixtures
         world.RemoveChild(tooltip); layer.AddChild(tooltip);
         var sheet = new PetSheet { Index = 1, Name = "Kauly", Class = 101, Level = 12,
             Hp = 131, MaxHp = 168, Mp = 170, MaxMp = 190, ExpPercent = 4375,
-            Satisfaction = 7240, Attack = 51, Defence = 110, Mode = PetSheet.ModeAttack };
+            Satisfaction = 7240, Attack = 51, Defence = 110, Mode = PetMode.Attack };
         for (int i = 0; i < sheet.Resists.Length; i++) sheet.Resists[i] = 20 + i * 5;
         sheet.Items[0] = new ItemSlot { ItemId = PreviewAutomaticLooting, Count = 1, Durability = 1 };
         Native.Set(Game.Session.Pet, "Pet", sheet); Call(world, "Pet.Open");

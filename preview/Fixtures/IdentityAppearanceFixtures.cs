@@ -26,13 +26,13 @@ public static partial class PreviewFixtures
         if (view == "nation")
         {
             var king = new CanvasLayer(); world.AddChild(king); SetField(world, "KingTreasury.layer", king);
-            Call(world, "KingTreasury.BuildNationTaxRate"); Call(world, "KingTreasury.OnTariffRead", new KingTariff(KingElection.Success, 3));
+            Call(world, "KingTreasury.BuildNationTaxRate"); Call(world, "KingTreasury.OnTariffRead", new KingTariff(KingWire.Success, 3));
             var nation = Detach<HudWindow>(world, "KingTreasury.NationTaxRatePanel");
             NativeIdentity.Prepare(nation, world);
             return nation;
         }
         var siege = new CanvasLayer(); world.AddChild(siege); SetField(world, "Siege.layer", siege);
-        Call(world, "Siege.BuildTaxRate"); SetField(world, "Siege.rates", new SiegeTaxRates(SiegeWarfare.Success, 3, 4, SiegeWarfare.FeeLimit));
+        Call(world, "Siege.BuildTaxRate"); SetField(world, "Siege.rates", new SiegeTaxRates(SiegeWire.Success, 3, 4, SiegeWarfare.FeeLimit));
         Call(world, "Siege.OpenTaxRate", view == "fee" ? SiegeRateKind.DungeonFee : SiegeRateKind.Moradon);
         var window = Detach<HudWindow>(world, "Siege.TaxRatePanel");
         NativeIdentity.Prepare(window, world);

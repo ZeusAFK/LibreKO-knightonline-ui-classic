@@ -1,6 +1,7 @@
 using Godot;
 using LibreKO;
 using LibreKO.Domain;
+using LibreKO.Network;
 
 namespace KnightOnlineUiClassic.Native;
 
@@ -35,7 +36,7 @@ public static class NativeInventory
         single.Count = 1;
         int countable = ItemData.Get(single.ItemId)?.Countable ?? 0;
         for (int slot = Inventory.GridStart; slot < Inventory.GridStart + Inventory.GridCount && slot < inventory.Length; slot++)
-            if (ItemMove.Merges(ItemMove.MagicBagToInventory, single, inventory[slot], countable)) return slot;
+            if (ItemMove.Merges(ItemMoveDirection.MagicBagToInventory, single, inventory[slot], countable)) return slot;
         return inventory.FirstFreeGridSlot();
     }
 

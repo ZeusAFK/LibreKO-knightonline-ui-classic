@@ -26,14 +26,14 @@ public static partial class PreviewFixtures
                 Field<LineEdit>(world, "NationChannels.ncPasswordEdit").Text = "1234";
                 Field<HudWindow>(world, "NationChannels.ncPassword").Visible = true;
                 return Detached(Field<HudWindow>(world, "NationChannels.ncPassword"));
-            case "commander": return (HudWindow)Call(world, "Preview.BuildCommander", (byte)0)!;
+            case "commander": return (HudWindow)Call(world, "Preview.BuildCommander", CommanderOrder.None)!;
             case "clan-board": return (HudWindow)Call(world, "Preview.BuildClanBoards", "clan-board")!;
             case "clan-message": return (HudWindow)Call(world, "Preview.BuildClanBoards", "clan-message")!;
             case "wish-board": return (HudWindow)Call(world, "Preview.BuildClanBoards", "wish-board")!;
             case "wish-message": return (HudWindow)Call(world, "Preview.BuildClanBoards", "wish-message")!;
             case "clan-join-list":
                 Call(world, "ClanBoard.Build");
-                Call(world, "ClanBoard.OnStatus", new ClanBoardStatus(ClanBoards.StateStaff, new List<ClanApplicant>
+                Call(world, "ClanBoard.OnStatus", new ClanBoardStatus(ClanBoardState.Staff, new List<ClanApplicant>
                 {
                     new(72, 112, "Rin", "Priest, online most evenings."),
                     new(68, 107, "Kaito", "Archer looking for a Lunar War clan."),

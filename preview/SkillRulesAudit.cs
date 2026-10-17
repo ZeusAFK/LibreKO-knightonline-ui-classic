@@ -81,7 +81,7 @@ public partial class Preview
         void Require(bool valid, string text) { if (!valid) throw new Exception("SKILL_RULES_AUDIT: " + text); checks.Add(text); }
 
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
-        var login = new LoginNet(); typeof(LoginNet).GetProperty("I")!.SetValue(null, login);
+        var login = new LoginNet(); typeof(Game).GetProperty(nameof(Game.LoginServer))!.SetValue(null, login);
         Game.Session.Self.Sheet.SeedProgress(83, 0, 100);
         Game.Session.Self.Vitals.Seed(3000, 3000, 2000, 2000);
         Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation * 100 + 6, Race = nation == 1 ? 1 : 11,

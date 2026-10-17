@@ -132,7 +132,7 @@ public partial class Preview
             GetViewport().PushInput(new InputEventMouseButton { Position = p, GlobalPosition = p, ButtonIndex = MouseButton.WheelDown, Pressed = true }, true); await Frames();
             Require(scheduleScroll.ScrollVertical > 0, "Actual wheel input scrolls native schedule");
             scheduleScroll.ScrollVertical = 1000; await Capture("schedule-scrolled"); scheduleScroll.ScrollVertical = 0;
-            var rows = Enumerable.Range(0, 12).Select(i => new AuctionBidRow(1, 2, (byte)i, 1310610106, 1, 9779 + i, 0, 25_000_000 + i * 1_000_000, i % 2 == 0 ? SpecialAuction.Outbid : SpecialAuction.TopBidder)).Concat(Enumerable.Range(0, 4).Select(i => new AuctionBidRow(1, 1, (byte)(20 + i), 1310610106, 1, 9750 + i, 0, 6_000_000, SpecialAuction.Won))).ToArray();
+            var rows = Enumerable.Range(0, 12).Select(i => new AuctionBidRow(1, 2, (byte)i, 1310610106, 1, 9779 + i, 0, 25_000_000 + i * 1_000_000, i % 2 == 0 ? AuctionBidStatus.Outbid : AuctionBidStatus.Top)).Concat(Enumerable.Range(0, 4).Select(i => new AuctionBidRow(1, 1, (byte)(20 + i), 1310610106, 1, 9750 + i, 0, 6_000_000, AuctionBidStatus.Won))).ToArray();
             Cooldown(); await Click(Find<Button>("tab_MyInfo")); DetailCall(world, "SpecialAuctionWindow.OnAuctionMyInfo", (short)1, rows); await Capture("my-auction-status");
             Require(bids.Count == 12 && wins.Count == 4 && Descendants(bidList).OfType<Button>().Count() == 6, "Only eligible outbid rows offer refunds; won rows retain receipt actions");
             var bidScroll = (ScrollContainer)bidList.GetParent(); bidScroll.ScrollVertical = 1000; await Capture("my-status-scrolled"); bidScroll.ScrollVertical = 0; await Frames();
@@ -145,7 +145,7 @@ public partial class Preview
             DetailCall(world, "SpecialAuctionWindow.OnAuctionCollect", (short)1); Require(tracker.Busy && wins.Contains(won), "Wrong refund reply cannot complete receipt");
             DetailCall(world, "SpecialAuctionWindow.OnAuctionClaim", (short)1); AttachNotices(); Require(wins.Count == 3 && !wins.Contains(won), "Successful receive removes exact won row"); await Capture("receive-success"); await Dismiss();
             DetailCall(world, "SpecialAuctionWindow.OnAuctionClaim", (short)1); Require(Notices().Length == 0, "Duplicate receipt result is ignored");
-            var log = Enumerable.Range(0, 14).Select(day => (IReadOnlyList<AuctionResultLine>)Enumerable.Range(0, 4).Select(i => new AuctionResultLine(1310610106, 1_234_000_000, i == 0 ? SpecialAuction.Cancelled : SpecialAuction.Won)).ToArray()).ToArray();
+            var log = Enumerable.Range(0, 14).Select(day => (IReadOnlyList<AuctionResultLine>)Enumerable.Range(0, 4).Select(i => new AuctionResultLine(1310610106, 1_234_000_000, i == 0 ? AuctionBidStatus.Cancelled : AuctionBidStatus.Won)).ToArray()).ToArray();
             Cooldown(); await Click(Find<Button>("tab_Log")); DetailCall(world, "SpecialAuctionWindow.OnAuctionLog", (object)log); await Capture("history-long");
             var logScroll = (ScrollContainer)Find<VBoxContainer>("log").GetParent(); Require(logScroll.GetVScrollBar().MaxValue > logScroll.GetVScrollBar().Page, "History scrolls within fixed bounds"); logScroll.ScrollVertical = 1000; await Capture("history-scrolled");
             DetailCall(world, "SpecialAuctionWindow.OnAuctionLog", (object)Array.Empty<IReadOnlyList<AuctionResultLine>>()); await Capture("history-empty");

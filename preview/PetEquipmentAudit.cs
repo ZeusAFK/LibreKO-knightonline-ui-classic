@@ -70,7 +70,7 @@ public partial class Preview
         require(Field<bool>("InventoryWindow.moveInFlight") && sheet.Items[0].ItemId == gear[0].Id && inventory[Inventory.GridStart].IsEmpty,
             "Pet equipment right-click queues native removal without optimistic item mutation");
         var move = Field<object>("InventoryWindow.moveCur"); var moveType = move.GetType();
-        require((byte)moveType.GetField("Dir")!.GetValue(move)! == ItemMove.PetToInventory
+        require((ItemMoveDirection)moveType.GetField("Dir")!.GetValue(move)! == ItemMoveDirection.PetToInventory
             && (byte)moveType.GetField("Src")!.GetValue(move)! == 0 && (byte)moveType.GetField("Dst")!.GetValue(move)! == 0,
             "Familiar removal uses original PetToInventory slot encoding");
         SetField("InventoryWindow.moveInFlight", false);
@@ -100,7 +100,7 @@ public partial class Preview
         GetViewport().PushInput(new InputEventMouseButton { Position = to, GlobalPosition = to, ButtonIndex = MouseButton.Left, Pressed = false }); await Frames();
         require(Field<bool>("InventoryWindow.moveInFlight"), "Pointer drop queues the existing familiar equipment move");
         move = Field<object>("InventoryWindow.moveCur");
-        require((byte)moveType.GetField("Dir")!.GetValue(move)! == ItemMove.InventoryToPet, "Familiar pointer drop uses original InventoryToPet encoding");
+        require((ItemMoveDirection)moveType.GetField("Dir")!.GetValue(move)! == ItemMoveDirection.InventoryToPet, "Familiar pointer drop uses original InventoryToPet encoding");
         SetField("InventoryWindow.moveInFlight", false); source.Free();
 
         DetailCall(world, "Pet.SetStatus", "", false);
