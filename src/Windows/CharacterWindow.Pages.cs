@@ -339,7 +339,7 @@ public partial class CharacterWindow
             if (_extras.TryGetValue(key + ":points", out var points)) points.Disabled = !clan.InClan;
             if (_extras.TryGetValue(key + ":leave", out var leave)) { leave.Disabled = section == "union" ? !clan.IsChief || clan.AllianceId == 0 : !clan.InClan; if (section == "clan") leave.Text = clan.IsChief ? "Disband" : "Leave"; }
             UpdateGrade(page, clan);
-            if (page.GetNodeOrNull<Label>("clan_bonus") is { } bonus)
+            if (page.GetNodeOrNull<Label>(HotNames.ClanBonusPath) is { } bonus)
             {
                 string marks = clan.InClan ? panel.Status("clan_bonus") : "";
                 bonus.Visible = marks.Length > 0;
@@ -392,7 +392,7 @@ public partial class CharacterWindow
             button.Visible = id == "btn_knights" ? knights : id != "btn_clan" || !knights;
             button.SetPressedNoSignal(_activePage == page);
             foreach (var label in button.GetChildren().OfType<Label>())
-                label.AddThemeColorOverride("font_color", Plugin.Kit.Nation == 1 ? new Color("ece6d6") : new Color("f7de88"));
+                ThemeNames.SetColor(label, HotNames.FontColor, Plugin.Kit.Nation == 1 ? new Color("ece6d6") : new Color("f7de88"));
         }
     }
 
@@ -466,4 +466,11 @@ public partial class CharacterWindow
         menu.AddThemeFontOverride("font", Plugin.Kit.Regular); menu.AddThemeFontSizeOverride("font_size", ClassicDesign.FontSize);
         menu.AddThemeColorOverride("font_color", ClassicDesign.Text);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly NodePath ClanBonusPath = "clan_bonus";
+    internal static readonly StringName FontColor = "font_color";
 }

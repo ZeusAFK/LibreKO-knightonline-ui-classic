@@ -61,6 +61,7 @@ public partial class ClassicEquipViewPanel : Control
             label.ClipText = true; label.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         }
         SetProcessUnhandledKeyInput(true);
+        ShownOnly.Gate(this, Sync);
     }
     private void Place(Control c, Rect2 rect)
     {
@@ -88,11 +89,15 @@ public partial class ClassicEquipViewPanel : Control
         labels[1].CustomMinimumSize = new Vector2(114, 23); labels[1].HorizontalAlignment = HorizontalAlignment.Right;
         if (labels[0].Text is "Max HP" or "Max MP") labels[1].AddThemeColorOverride("font_color", semantic);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         foreach (var socket in _sockets) socket.UpdateFrame();
-        foreach (var label in GetChildren().OfType<Label>().Where(l => l.Name.ToString() is "inspect_summary" or "inspect_status")) label.TooltipText = label.Text;
+        // The summary and status labels, found once (reading Node.Name allocates a Godot wrapper).
+        _tipLabels ??= GetChildren().OfType<Label>().Where(l => l.Name.ToString() is "inspect_summary" or "inspect_status").ToArray();
+        foreach (var label in _tipLabels) if (IsInstanceValid(label)) label.TooltipText = label.Text;
     }
+    private Label[]? _tipLabels;
     public override void _UnhandledKeyInput(InputEvent ev)
     {
         if (IsVisibleInTree() && ev is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
@@ -125,7 +130,7 @@ public partial class ClassicInspectSocket : Control
     }
     public void UpdateFrame()
     {
-        if (_cell.GetThemeStylebox("panel") != _inside) _cell.AddThemeStyleboxOverride("panel", _inside);
+        if (_cell.GetThemeStylebox(HotNames.Panel) != _inside) _cell.AddThemeStyleboxOverride(HotNames.Panel, _inside);
         Position = new Vector2(-4, -3); Size = new Vector2(51, 52);
         _empty.Position = new Vector2(5, 5); _empty.Size = new Vector2(35, 35); _empty.Visible = _cell.Item.IsEmpty;
         _count.Position = Vector2.Zero; _count.Size = _cell.Size;
@@ -136,4 +141,10 @@ public partial class ClassicInspectSocket : Control
         DrawTextureRectRegion(Plugin.Kit.Texture(karus ? "ui_ka_inven_us.png" : "ui_el_inven_us.png"), new Rect2(Vector2.Zero, Size), karus ? new Rect2(159, 326, 51, 52) : new Rect2(157, 333, 51, 52));
         if (_hover) DrawRect(new Rect2(4, 3, 45, 45), new Color(1, .85f, .45f, .12f));
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName Panel = "panel";
 }

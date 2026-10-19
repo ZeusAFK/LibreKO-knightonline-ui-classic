@@ -634,6 +634,7 @@ public partial class ClassicWhisperAttention : Node
     private readonly Label _title;
     private readonly Texture2D? _normal;
     private readonly Texture2D? _highlight;
+    private static readonly Color LitInk=new("ffff00"),PlainInk=new("00ffff");
     private bool _unread;
     private bool _lit;
     private double _elapsed;
@@ -670,6 +671,12 @@ public partial class ClassicWhisperAttention : Node
     private void Refresh()
     {
         _bar.TextureNormal=_lit ? _highlight:_normal;
-        _title.AddThemeColorOverride("font_color",new Color(_lit ? "ffff00":"00ffff"));
+        _title.AddThemeColorOverride(HotNames.FontColor,_lit ? LitInk:PlainInk);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
 }

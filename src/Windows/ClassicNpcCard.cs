@@ -31,6 +31,7 @@ public partial class ClassicNpcCard : Control
         MouseEntered+=()=> { if(IsInstanceValid(Source)) Source.EmitSignal(Control.SignalName.MouseEntered); };
         MouseExited+=()=> { if(IsInstanceValid(Source)) Source.EmitSignal(Control.SignalName.MouseExited); };
         UpdateSource();
+        ShownOnly.Gate(this,UpdateSource);
     }
     private void Arrange()
     {
@@ -42,11 +43,11 @@ public partial class ClassicNpcCard : Control
         if(!IsInstanceValid(Source)) return;
         string name=_sourceName?.Text??"";
         string amount=(_sourceAmount?.Text??"").TrimEnd('○','●',' ');
-        bool selected=_choice && Source.HasMeta("quest_reward_selected") && Source.GetMeta("quest_reward_selected").AsBool();
-        var originalInk=_sourceAmount?.GetThemeColor("font_color")??new Color("dfc184");
+        bool selected=_choice && Source.HasMeta(HotNames.QuestRewardSelected) && Source.GetMeta(HotNames.QuestRewardSelected).AsBool();
+        var originalInk=_sourceAmount?.GetThemeColor(HotNames.FontColor)??new Color("dfc184");
         var ink=originalInk.G>originalInk.R*1.1f && originalInk.G>originalInk.B*1.1f?originalInk:new Color("dfc184");
         if(name==_lastName && amount==_lastAmount && ink==_lastInk && selected==_selected) return;
-        _lastName=name;_lastAmount=amount;_lastInk=ink;_amount.AddThemeColorOverride("font_color",ink);
+        _lastName=name;_lastAmount=amount;_lastInk=ink;_amount.AddThemeColorOverride(HotNames.FontColor,ink);
         var upgrade=Regex.Match(name,@"^(.*?)\s*\(\+(\d+)\)$");
         _name.Text=upgrade.Success?upgrade.Groups[1].Value.Trim():name;
         _amount.Text=upgrade.Success?$"+{upgrade.Groups[2].Value} · {amount}":amount;
@@ -88,4 +89,11 @@ public partial class ClassicNpcCardGrid : Control
             ClassicNpcLayout.Place(card,new Rect2(index%2*(column+6),index/2*48,width,42));
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName QuestRewardSelected = "quest_reward_selected";
 }

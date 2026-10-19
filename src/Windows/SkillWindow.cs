@@ -335,7 +335,7 @@ public partial class SkillWindow : Control
             var name=_view.Get<Label>($"string_list_{i}")!;
             _view.SetText($"string_list_{i}", skill?.Name ?? "");
             // The client's three learn states: learned, learnable with more points (gold), locked (grey).
-            name.AddThemeColorOverride("font_color",learn.State==SkillLearnState.Learnable ? UiTheme.Neutral : ClassicReportDesign.Value);
+            ThemeNames.SetColor(name, HotNames.FontColor, learn.State==SkillLearnState.Learnable ? UiTheme.Neutral : ClassicReportDesign.Value);
             name.Modulate=skill!=null && learn.State==SkillLearnState.Locked?LockedTint:Colors.White;
             name.TooltipText=skill is { } tip ? tip.Tooltip+(why.Length>0?"\n"+why:"") : "";
             if (skill != null) { _pageSkills.Add(skill.Value); _learn[skill.Value.Id]=learn; }
@@ -375,7 +375,7 @@ public partial class SkillWindow : Control
         // A skill that is not learned yet shows its requirement in the state colour, with the reason as its tooltip.
         var learn=has && _learn.TryGetValue(shown,out var state) ? state : new SkillLearnInfo(SkillLearnState.Learned,0,0,false);
         var point=_view.Get<Label>("string_skill_point")!;
-        point.AddThemeColorOverride("font_color",learn.State switch
+        ThemeNames.SetColor(point, HotNames.FontColor, learn.State switch
         {
             SkillLearnState.Learnable => UiTheme.Neutral,
             SkillLearnState.Locked => UiTheme.Bad,
@@ -496,4 +496,10 @@ public partial class SkillCell : Control
         LibreKO.DragLayer.Show(this,IconDragPreview.Create(_icon,_grabPoint));
         return new Godot.Collections.Dictionary { { DragKeyItem, skill.Id } };
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
 }

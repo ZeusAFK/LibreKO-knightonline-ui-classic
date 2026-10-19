@@ -44,9 +44,21 @@ This page covers:
 - **`NativeWindows.Sync(window, action)`** adds a `native_sync` node. The node runs the action every frame while the
   window is visible. It uses the lowest process priority, so it runs before the skin draws. It mirrors busy, pending,
   selected and page state, and repairs text the client rewrites.
+- **Closed windows do not tick.** The client builds every window when the World starts, so a skin that processed
+  while its window was closed worked every frame for the whole session. Skins and syncs use `Layout/ShownOnly.Gate`:
+  the node processes only while its window (or the node itself) is visible in the tree, and when the window opens its
+  sync runs once more as a deferred call, which Godot flushes before it draws that frame. The window's own signal fires
+  before its children's, so `native_sync` catches up before the skins. A `_Process` that acts on the game (sends,
+  cancels, lets a timer expire) keeps ticking instead: the roulette landing, the anvil scan clock, the trade tick,
+  the repair sync, the transaction hide edge, the trade approval cancel and the repair hammer.
+- **Per-frame code creates no Godot names.** A string passed to a meta, theme, node-path or group API creates a
+  finalizable `StringName`/`NodePath` per call, which made every .NET GC pause long. Per-frame methods use cached names
+  (`Layout/ThemeNames`, per-file `HotNames`), resolve named controls once (`Layout/ControlIndex`) and apply theme
+  overrides only on change (`ThemeNames.SetColor`/`SetConstant`). `tools/check-hot-literals.ps1` reports a literal in
+  per-frame code.
 - **`NativeWindows.OnDescendantAdded(root, action)`** listens to `SceneTree.NodeAdded`. It describes rows, cards and
   cells the client adds later (mail rows, store cards, trade rows, recipe rows, merchant signs, whisper rows). It runs
-  before the skin's deferred styling.
+  before the skin's deferred styling. All scene-tree watchers share one `node_added` connection (`NativeHooks.WatchTree`).
 - **HUD and layout.** `NativeHud` hides or extends HUD elements that have no public `HudPart` (the mail,
   achievements, attendance and Power-Up Store icons, and the familiar bar). It also carries the whisper styler.
   `NativeLayout` recreates three things the fork had: the legacy resize grip, chat/Info seam snapping and

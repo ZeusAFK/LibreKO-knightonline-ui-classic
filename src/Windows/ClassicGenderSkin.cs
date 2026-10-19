@@ -33,6 +33,7 @@ public partial class ClassicGenderPanel : Control
         _transfer = window.Id == "nationtransfer";
         Name = _transfer ? "classic_nationtransfer" : _beauty ? "classic_beauty" : "classic_gender";
         Size = CustomMinimumSize = _transfer ? ClassicNationTransferLayout.Size : ClassicGenderLayout.Size; TextureFilter = TextureFilterEnum.Nearest;
+        ShownOnly.Gate(this, Sync);
         var native = CharacterDetailsSkin.Tree(body).OfType<Control>().ToArray();
         T Find<T>(string name) where T : Control => native.OfType<T>().Single(c => c.Name == name);
         var bar = window.Header!.GetChildren().OfType<HBoxContainer>().Single();
@@ -162,7 +163,8 @@ public partial class ClassicGenderPanel : Control
         button.ClipText = true;
         button.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (_swatch == null || _palette == null || _editor == null) return;
         _swatch.Color = _editor.HairColour;

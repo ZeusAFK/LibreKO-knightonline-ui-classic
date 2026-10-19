@@ -215,6 +215,7 @@ public static class CharacterDetailsSkin
 public partial class ClassicDetailInset : ClassicReportSection
 {
     private readonly Control _owner;
-    public ClassicDetailInset(Control owner) { _owner=owner;ShowBehindParent=true; }
-    public override void _Process(double delta) { Position=Vector2.Zero;Size=_owner.Size; }
+    public ClassicDetailInset(Control owner) { _owner=owner;ShowBehindParent=true;KnightOnlineUiClassic.Layout.ShownOnly.Gate(this,Sync); }
+    public override void _Process(double delta)=>Sync();
+    private void Sync() { Position=Vector2.Zero;Size=_owner.Size; }
 }

@@ -395,7 +395,9 @@ public partial class Preview
         await Status(1, goldPremium, 52);
         await Move(chip.GetGlobalRect().GetCenter());
         PopupPanel? tip = null;
-        for (int i = 0; i < 90 && tip == null; i++)
+        // Godot opens a tooltip after its delay in seconds; at a high frame rate 90 frames pass sooner.
+        ulong until = Time.GetTicksMsec() + 3000;
+        for (int i = 0; (i < 90 || Time.GetTicksMsec() < until) && tip == null; i++)
         {
             await Frames(1);
             tip = Everything(GetTree().Root).OfType<PopupPanel>().FirstOrDefault(p => p.Visible);

@@ -266,6 +266,7 @@ public partial class ClassicNpcAction : Button
         Pressed+=()=> { if(IsInstanceValid(Source) && !Source!.Disabled) Source.EmitSignal(BaseButton.SignalName.Pressed); };
         Resized+=()=>_lastText=null;
         UpdateSource();
+        ShownOnly.Gate(this,UpdateSource);
     }
     private void UpdateSource()
     {
@@ -285,7 +286,7 @@ public partial class ClassicNpcAction : Button
         if(navigation) { _topic.Size=new Vector2(Math.Max(1,Size.X-36),24);_state.Text="";Text="";return; }
         _state.Text=StateOf(Source)??"Available";
         var state=_state.Text.ToLowerInvariant() switch { "in progress"=>LibreKO.Network.QuestViewState.InProgress,"ready"=>LibreKO.Network.QuestViewState.Claimable,"completed"=>LibreKO.Network.QuestViewState.Completed,_=>LibreKO.Network.QuestViewState.Available };
-        _state.AddThemeColorOverride("font_color",ClassicQuestStatus.Ink(state));Text="";
+        _state.AddThemeColorOverride(HotNames.FontColor,ClassicQuestStatus.Ink(state));Text="";
     }
     public override void _Process(double delta) => UpdateSource();
 
@@ -308,4 +309,10 @@ public partial class ClassicNpcAction : Button
         if(bracket.Success) return bracket.Groups[1].Value;
         return choice.HasThemeColorOverride("font_color") && choice.GetThemeColor("font_color")==UiTheme.Good?"Ready":null;
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
 }

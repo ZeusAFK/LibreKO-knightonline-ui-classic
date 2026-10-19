@@ -85,6 +85,7 @@ public partial class ClassicAuctionPanel : Control
         Find<HBoxContainer>("auction_tabs").CustomMinimumSize = new Vector2(0, 28);
         foreach (var tab in native.OfType<Button>().Where(c => c.HasMeta("auction_tab_selected")))
             tab.AddThemeStyleboxOverride("normal", tab.GetThemeStylebox(tab.GetMeta("auction_tab_selected").AsBool() ? "auction_tab_selected" : "auction_tab_normal"));
+        ShownOnly.Gate(this, Sync);
     }
     private static StyleBoxFlat Box(int inset)
     {
@@ -136,13 +137,14 @@ public partial class ClassicAuctionPanel : Control
         node.ChildEnteredTree += Watch;
     }
     private void Close() => _close.EmitSignal(BaseButton.SignalName.Pressed);
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         _selected.TooltipText = _selected.Text;
         _frames.RemoveAll(f => !IsInstanceValid(f));
         foreach (var frame in _frames)
         {
-            frame.UpdateFrame(); var count = frame.OwnerCell.GetNode<Control>("auction_count_overlay");
+            frame.UpdateFrame(); var count = frame.OwnerCell.GetNode<Control>(HotNames.AuctionCountOverlayPath);
             count.Position = Vector2.Zero; count.Size = frame.OwnerCell.Size;
         }
     }
@@ -151,4 +153,10 @@ public partial class ClassicAuctionPanel : Control
         if (!Window.IsVisibleInTree() || ev is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }) return;
         Close(); GetViewport().SetInputAsHandled();
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly NodePath AuctionCountOverlayPath = "auction_count_overlay";
 }

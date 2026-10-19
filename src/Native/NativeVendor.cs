@@ -90,7 +90,7 @@ public static class NativeVendor
 
     private static void Sync(HudWindow window, WorldRoot world)
     {
-        window.SetMeta("vendor_group", Native.Get<int>(world, "Vendor.group"));
+        window.SetMeta(HotNames.VendorGroup, Native.Get<int>(world, "Vendor.group"));
         CompactCatalogue(world);
         RouteCompanion(world);
         if (Native.Get<ItemSlotView[]>(world, "Vendor.Cells") is { } cells)
@@ -357,4 +357,10 @@ public static class NativeGoldLog
         Native.Call(world, "PluginBridge.LogAdd", GameLogKind.Item,
             change.Delta > 0 ? $"You received +{change.Delta:n0} gold." : $"You spent −{-change.Delta:n0} gold.", change.Delta > 0 ? Income : Expense);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName VendorGroup = "vendor_group";
 }

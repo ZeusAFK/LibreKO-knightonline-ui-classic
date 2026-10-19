@@ -438,7 +438,7 @@ public partial class ClassicChatRoomFrame : Container
         bool minimized = Minimized;
         foreach (var part in new Control[] { _art, _grip, _title, _minimize, _close }) part.Visible = !minimized;
         _compact.Visible = minimized;
-        if (!minimized) { _attention.SetUnread(false); _attention.SetMeta("unread", false); }
+        if (!minimized) { _attention.SetUnread(false); _attention.SetMeta(HotNames.Unread, false); }
         UpdateMinimumSize();
         QueueSort();
         if (_window != null) Callable.From(() => { if (IsInstanceValid(_window)) _window.ResetSize(); }).CallDeferred();
@@ -645,7 +645,7 @@ public partial class ClassicChatRoomFrame : Container
         foreach (var panel in rows.GetChildren().OfType<PanelContainer>())
         {
             if (!panel.HasMeta(ClassicChatRoomSkin.RosterMeta) || panel.GetMeta(ClassicChatRoomSkin.RosterMeta).AsGodotObject() is not StyleBoxFlat native
-                || panel.GetMeta("classic_room_box").AsGodotObject() is not StyleBoxFlat box) continue;
+                || panel.GetMeta(HotNames.ClassicRoomBox).AsGodotObject() is not StyleBoxFlat box) continue;
             bool selected = native.BgColor == UiTheme.RowHover;
             bool speaking = native.BorderColor == ClassicChatRoomSkin.Speaking;
             box.BgColor = selected ? new Color("26251f") : Colors.Transparent;
@@ -653,8 +653,8 @@ public partial class ClassicChatRoomFrame : Container
             int edge = selected || speaking ? 1 : 0;
             box.BorderWidthLeft = box.BorderWidthTop = box.BorderWidthRight = edge;
             box.BorderWidthBottom = 1;
-            panel.SetMeta("room_selected", selected);
-            panel.SetMeta("room_speaking", speaking);
+            panel.SetMeta(HotNames.RoomSelected, selected);
+            panel.SetMeta(HotNames.RoomSpeaking, speaking);
         }
     }
 }
@@ -900,4 +900,13 @@ public static class ClassicReactionStyle
         box.ContentMarginTop = box.ContentMarginBottom = 0;
         return Classic(box);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicRoomBox = "classic_room_box";
+    internal static readonly StringName RoomSelected = "room_selected";
+    internal static readonly StringName RoomSpeaking = "room_speaking";
+    internal static readonly StringName Unread = "unread";
 }

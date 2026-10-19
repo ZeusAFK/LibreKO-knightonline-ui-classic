@@ -46,8 +46,14 @@ public partial class ClassicContentScrollRail : Control
         _down.SelfModulate=_down.Disabled?new Color(1,1,1,.7f):Colors.White;
         _track.QueueRedraw();
     }
-    public override void _Ready() => Arrange();
-    public override void _Process(double delta)
+    public override void _Ready()
+    {
+        Arrange();
+        // The rail hides itself when nothing scrolls, so it follows the window it sits in, not its own visibility.
+        if(GetParent() is CanvasItem parent) ShownOnly.Gate(this,parent,Sync);
+    }
+    public override void _Process(double delta)=>Sync();
+    private void Sync()
     {
         if(Size!=_arrangedSize) Arrange();
         Refresh();

@@ -37,8 +37,11 @@ public partial class ClassicKingPanel : Control
 
     public HudWindow Window { get; }
     public int SelectedCandidate { get; private set; } = -1;
+    private static readonly StringName PendingMeta = "king_pending", CandidateClanMeta = "king_candidate_clan", ExpectedRectMeta = "king_expected_rect";
+    private static readonly string[] TaxOptions = { "nation_tax_treasury", "nation_tax_rate", "nation_tax_fund", "nation_tax_item", "nation_tax_intro" };
+
     private readonly LayoutNode _art;
-    private readonly Control[] _native;
+    private readonly ControlIndex _native;
     private readonly Button _close;
     private readonly List<Button> _pendingButtons = new(), _artButtons = new();
     private readonly Button[] _choices = new Button[ClassicKingLayout.VoteRows];
@@ -53,7 +56,7 @@ public partial class ClassicKingPanel : Control
         Window = window; Name = "classic_king"; Size = CustomMinimumSize = ClassicKingLayout.Size(window.Id);
         TextureFilter = TextureFilterEnum.Nearest;
         _art = Plugin.Kit.Layout(ClassicKingLayout.Art(window.Id));
-        _native = CharacterDetailsSkin.Tree(body).OfType<Control>().ToArray();
+        _native = new ControlIndex(CharacterDetailsSkin.Tree(body).OfType<Control>().ToArray());
         _close = NativeKing.Close(window)!;
         var bar = window.Header!.GetChildren().OfType<HBoxContainer>().First();
         var title = bar.GetChildren().OfType<Label>().LastOrDefault();
@@ -71,16 +74,17 @@ public partial class ClassicKingPanel : Control
             case "nationtax": Treasury(bar); break;
         }
         VisibilityChanged += () => { if (!IsVisibleInTree()) SelectedCandidate = -1; };
+        ShownOnly.Gate(this, Sync);
     }
 
-    private T Find<T>(string name) where T : Control => _native.OfType<T>().Single(c => c.Name == name);
+    private T Find<T>(string name) where T : Control => _native.Single<T>(name);
 
     private void Place(Control control, Rect2 rect)
     {
         bool visible = control.Visible;
         ClassicVendorSkin.Move(control, this, rect);
         control.Visible = visible;
-        control.SetMeta("king_expected_rect", rect);
+        control.SetMeta(ExpectedRectMeta, rect);
     }
 
     private static void Ink(Control control, int size, bool bold, Color color)
@@ -137,7 +141,7 @@ public partial class ClassicKingPanel : Control
             if (!GodotObject.IsInstanceValid(button)) continue;
             var mode = button.GetDrawMode();
             var shadow = !button.Disabled && mode is BaseButton.DrawMode.Hover or BaseButton.DrawMode.Pressed or BaseButton.DrawMode.HoverPressed ? Colors.Black : Emboss;
-            if (button.GetThemeColor("font_shadow_color") != shadow) button.AddThemeColorOverride("font_shadow_color", shadow);
+            if (button.GetThemeColor(ThemeNames.FontShadowColor) != shadow) button.AddThemeColorOverride(ThemeNames.FontShadowColor, shadow);
         }
     }
 
@@ -300,7 +304,7 @@ public partial class ClassicKingPanel : Control
         Drag(bar, ClassicKingLayout.TreasuryDrag);
         Text(Find<Label>("nation_tax_heading"), ClassicKingLayout.TreasuryHeading, 13, true, Parchment, HorizontalAlignment.Center);
         Text(Find<Label>("nation_tax_notice"), ClassicKingLayout.TreasuryNotice, 13, true, Parchment, HorizontalAlignment.Center, true);
-        string[] options = { "nation_tax_treasury", "nation_tax_rate", "nation_tax_fund", "nation_tax_item", "nation_tax_intro" };
+        string[] options = TaxOptions;
         for (int i = 0; i < options.Length; i++)
         {
             var option = Find<Button>(options[i]); TextOption(option, ClassicKingLayout.TreasuryOption(i));
@@ -330,12 +334,15 @@ public partial class ClassicKingPanel : Control
     {
         if (control.Position != rect.Position) control.Position = rect.Position;
         if (control.Size != rect.Size) control.Size = rect.Size;
-        control.SetMeta("king_expected_rect", rect);
+        control.SetMeta(ExpectedRectMeta, rect);
     }
 
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+
+    /// <summary>Mirrors the native window into the Classic composition; runs every frame while shown.</summary>
+    private void Sync()
     {
-        bool pending = Window.GetMeta("king_pending", false).AsBool();
+        bool pending = Window.GetMeta(PendingMeta, false).AsBool();
         foreach (var button in _pendingButtons) Disable(button, pending);
         switch (Window.Id)
         {
@@ -355,11 +362,11 @@ public partial class ClassicKingPanel : Control
                     _choices[i].Disabled = !filled;
                     _choices[i].SelfModulate = filled ? Colors.White : new Color(.55f, .55f, .55f);
                     _choices[i].SetPressedNoSignal(SelectedCandidate == i);
-                    _clans[i].Text = filled ? Find<PanelContainer>("king_vote_row_" + i).GetMeta("king_candidate_clan", "").AsString() : "";
+                    _clans[i].Text = filled ? Find<PanelContainer>("king_vote_row_" + i).GetMeta(CandidateClanMeta, "").AsString() : "";
                     var ink = SelectedCandidate == i ? Colors.White : Yellow;
                     foreach (var label in new[] { Find<Label>("king_vote_number_" + i), Find<Label>("king_vote_name_" + i), _clans[i] })
                     {
-                        label.AddThemeColorOverride("font_color", ink);
+                        ThemeNames.SetColor(label, HotNames.FontColor, ink);
                         // Long names and clans are trimmed to the original columns; the full text stays on hover.
                         label.TooltipText = label.Text; label.MouseFilter = label.Text.Length > 0 ? MouseFilterEnum.Pass : MouseFilterEnum.Ignore;
                     }
@@ -369,7 +376,7 @@ public partial class ClassicKingPanel : Control
             case "nationtax":
             {
                 bool king = Find<VBoxContainer>("nation_tax_options").Visible;
-                foreach (var name in new[] { "nation_tax_treasury", "nation_tax_rate", "nation_tax_fund", "nation_tax_item", "nation_tax_intro" }) Find<Button>(name).Visible = king;
+                foreach (var name in TaxOptions) Find<Button>(name).Visible = king;
                 Move(Find<Label>("nation_tax_notice"), king ? ClassicKingLayout.TreasuryNotice : ClassicKingLayout.TreasuryCitizenNotice);
                 break;
             }
@@ -379,7 +386,7 @@ public partial class ClassicKingPanel : Control
         {
             int length = _counted.Text.Length;
             if (Window.Id == "nationintro") _count.Text = $"{length} / {_limit}";
-            _count.AddThemeColorOverride("font_color", length > _limit ? Refused : Plain);
+            ThemeNames.SetColor(_count, HotNames.FontColor, length > _limit ? Refused : Plain);
         }
     }
 
@@ -450,4 +457,10 @@ public partial class ClassicKingPanel : Control
             else if (child.Type == "edit") foreach (var image in child.Images.Where(n => n.Texture != null)) yield return image;
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
 }

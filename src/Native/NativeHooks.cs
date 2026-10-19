@@ -75,12 +75,48 @@ public static class NativeHooks
         return Hold(kind, remove, owner);
     }
 
-    /// <summary>Calls <paramref name="added"/> for every node that enters the scene tree.</summary>
+    /// <summary>
+    /// Calls <paramref name="added"/> for every node that enters the scene tree. The watchers share one connection to
+    /// the tree's <c>node_added</c>, so a node entering the tree (every NPC part, effect and UI row) crosses into C#
+    /// once instead of once per watcher; they are called in the order they were added, as separate connections were.
+    /// </summary>
     public static Hook? WatchTree(string kind, SceneTree.NodeAddedEventHandler added, Node? owner = null)
     {
         if (Engine.GetMainLoop() is not SceneTree tree) return null;
-        tree.NodeAdded += added;
-        return Hold(kind, () => { if (GodotObject.IsInstanceValid(tree)) tree.NodeAdded -= added; }, owner);
+        if (_watchers.Length == 0 || !ReferenceEquals(_watched, tree))
+        {
+            if (_watched != null && GodotObject.IsInstanceValid(_watched)) _watched.NodeAdded -= _dispatch;
+            _watchers = Array.Empty<SceneTree.NodeAddedEventHandler>();
+            _watched = tree;
+            tree.NodeAdded += _dispatch;
+        }
+        // Copy on write: a dispatch in progress keeps the list it started with, as a signal emission does.
+        _watchers = [.. _watchers, added];
+        return Hold(kind, () => Unwatch(added), owner);
+    }
+
+    private static SceneTree? _watched;
+    private static SceneTree.NodeAddedEventHandler[] _watchers = Array.Empty<SceneTree.NodeAddedEventHandler>();
+    private static readonly SceneTree.NodeAddedEventHandler _dispatch = Dispatch;
+
+    private static void Dispatch(Node node)
+    {
+        foreach (var watcher in _watchers)
+        {
+            // Each watcher was its own connection: one that throws must not keep the others from the node.
+            try { watcher(node); }
+            catch (Exception e) { GD.PushError($"[plugin:knightonline-ui-classic] scene-tree watcher: {e}"); }
+        }
+    }
+
+    private static void Unwatch(SceneTree.NodeAddedEventHandler added)
+    {
+        int index = Array.IndexOf(_watchers, added);
+        if (index < 0) return;
+        _watchers = [.. _watchers[..index], .. _watchers[(index + 1)..]];
+        if (_watchers.Length > 0) return;
+        if (_watched != null && GodotObject.IsInstanceValid(_watched)) _watched.NodeAdded -= _dispatch;
+        _watched = null;
     }
 
     /// <summary>

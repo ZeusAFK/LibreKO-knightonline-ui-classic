@@ -105,6 +105,8 @@ public static class NativeTrade
         window.VisibilityChanged += () =>
         {
             if (window.Visible) Callable.From(() => { if (GodotObject.IsInstanceValid(world)) KeepInventoryClosed(world); }).CallDeferred();
+            // The per-frame tick mirrors the window metas only while the window is shown; catch up before it draws.
+            if (window.IsVisibleInTree()) Callable.From(() => { if (GodotObject.IsInstanceValid(world)) Sync(world); }).CallDeferred();
         };
         if (Native.Get<CanvasLayer>(world, "Exchange.waitLayer") is { } wait) { wait.Name = "exchange_wait"; wait.SetMeta("exchange_wait", true); }
         if (Native.Get<CanvasLayer>(world, "Exchange.amountLayer") is { } amount)
@@ -167,8 +169,12 @@ public static class NativeTrade
         return canvas;
     }
 
-    /// <summary>Mirrors the trade state into the window metas and keeps the Classic modals in step.</summary>
-    internal static void Sync(WorldRoot world)
+    /// <summary>
+    /// Mirrors the trade state into the window metas and keeps the Classic modals in step. The per-frame
+    /// <paramref name="tick"/> skips the window metas and the status wording while the trade window is hidden: only
+    /// the window reads them, and the window's show catches up before it draws.
+    /// </summary>
+    internal static void Sync(WorldRoot world, bool tick = false)
     {
         var state = StateOf(world);
         if (Native.Get<HudWindow>(world, "Exchange.Panel") is not { } panel) return;
@@ -176,16 +182,35 @@ public static class NativeTrade
         if (state.FinalPending && (!shown || Native.Get<bool>(world, "Exchange.ConfirmedByMe") || Offers(world) != state.Offers)) CloseFinal(world);
         if (!amountShown) state.Gold = false;
 
-        panel.SetMeta("ex_locked", Native.Get<bool>(world, "Exchange.ConfirmedByMe"));
-        panel.SetMeta("ex_partner_locked", Native.Get<bool>(world, "Exchange.ConfirmedByPartner"));
-        panel.SetMeta("ex_pending", Native.Get<bool>(world, "Exchange.addInFlight"));
-        panel.SetMeta("ex_modal", amountShown || state.FinalPending);
-        panel.SetMeta("ex_wallet", Game.Session.Self.Sheet.Gold);
-        panel.SetMeta("ex_my_gold", Native.Get<int>(world, "Exchange.MyGoldOffer"));
-        panel.SetMeta("ex_other_gold", Native.Get<int>(world, "Exchange.TheirGoldOffer"));
-        panel.SetMeta("ex_partner", Native.Get<string>(world, "Exchange.PartnerName") ?? "Player");
-        panel.SetMeta("ex_self", Game.Session.Self.LastEnter.Name ?? "You");
-        Native.Get<CanvasLayer>(world, "Exchange.amountLayer")?.SetMeta("ex_gold", state.Gold);
+        if (!tick || panel.IsVisibleInTree()) Mirror(world, panel, state, amountShown);
+        else Native.Get<CanvasLayer>(world, "Exchange.amountLayer")?.SetMeta(HotNames.ExGold, state.Gold);
+
+        bool pending = Native.Get<bool>(world, "Exchange.requestPending");
+        if (state.Request is { } request && panel.HasMeta(HotNames.ClassicExchange))
+        {
+            if (pending && !request.Visible)
+            {
+                state.RequestLabel!.Text = $"{Native.Get<string>(world, "Exchange.PartnerName")} wants to trade with you.\nDo you agree?";
+                request.Visible = true;
+            }
+            else if (!pending && request.Visible) request.Visible = false;
+            // The Classic request replaces the desktop dialog; hiding it does not answer the request.
+            if (Native.Get<Window>(world, "Exchange.askDialog") is { Visible: true } dialog) dialog.Hide();
+        }
+    }
+
+    private static void Mirror(WorldRoot world, HudWindow panel, State state, bool amountShown)
+    {
+        panel.SetMeta(HotNames.ExLocked, Native.Get<bool>(world, "Exchange.ConfirmedByMe"));
+        panel.SetMeta(HotNames.ExPartnerLocked, Native.Get<bool>(world, "Exchange.ConfirmedByPartner"));
+        panel.SetMeta(HotNames.ExPending, Native.Get<bool>(world, "Exchange.addInFlight"));
+        panel.SetMeta(HotNames.ExModal, amountShown || state.FinalPending);
+        panel.SetMeta(HotNames.ExWallet, Game.Session.Self.Sheet.Gold);
+        panel.SetMeta(HotNames.ExMyGold, Native.Get<int>(world, "Exchange.MyGoldOffer"));
+        panel.SetMeta(HotNames.ExOtherGold, Native.Get<int>(world, "Exchange.TheirGoldOffer"));
+        panel.SetMeta(HotNames.ExPartner, Native.Get<string>(world, "Exchange.PartnerName") ?? "Player");
+        panel.SetMeta(HotNames.ExSelf, Game.Session.Self.LastEnter.Name ?? "You");
+        Native.Get<CanvasLayer>(world, "Exchange.amountLayer")?.SetMeta(HotNames.ExGold, state.Gold);
 
         if (Native.Get<Label>(world, "Exchange.status") is { } status)
         {
@@ -197,19 +222,6 @@ public static class NativeTrade
                 var other => other,
             };
             if (text != status.Text) status.Text = text;
-        }
-
-        bool pending = Native.Get<bool>(world, "Exchange.requestPending");
-        if (state.Request is { } request && panel.HasMeta("classic_exchange"))
-        {
-            if (pending && !request.Visible)
-            {
-                state.RequestLabel!.Text = $"{Native.Get<string>(world, "Exchange.PartnerName")} wants to trade with you.\nDo you agree?";
-                request.Visible = true;
-            }
-            else if (!pending && request.Visible) request.Visible = false;
-            // The Classic request replaces the desktop dialog; hiding it does not answer the request.
-            if (Native.Get<Window>(world, "Exchange.askDialog") is { Visible: true } dialog) dialog.Hide();
         }
     }
 
@@ -332,7 +344,10 @@ public static class NativeTrade
     }
 }
 
-/// <summary>Runs the trade synchronisation every frame, including while the trade window is hidden.</summary>
+/// <summary>
+/// Runs the trade synchronisation every frame, including while the trade window is hidden: a request, a closed trade
+/// or a changed offer must reach the Classic modals at once. The window metas follow only while the window is shown.
+/// </summary>
 public partial class NativeTradeSync : Node
 {
     private readonly WorldRoot? _world;
@@ -347,6 +362,22 @@ public partial class NativeTradeSync : Node
 
     public override void _Process(double delta)
     {
-        if (_world != null && IsInstanceValid(_world)) NativeTrade.Sync(_world);
+        if (_world != null && IsInstanceValid(_world)) NativeTrade.Sync(_world, tick: true);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicExchange = "classic_exchange";
+    internal static readonly StringName ExGold = "ex_gold";
+    internal static readonly StringName ExLocked = "ex_locked";
+    internal static readonly StringName ExModal = "ex_modal";
+    internal static readonly StringName ExMyGold = "ex_my_gold";
+    internal static readonly StringName ExOtherGold = "ex_other_gold";
+    internal static readonly StringName ExPartner = "ex_partner";
+    internal static readonly StringName ExPartnerLocked = "ex_partner_locked";
+    internal static readonly StringName ExPending = "ex_pending";
+    internal static readonly StringName ExSelf = "ex_self";
+    internal static readonly StringName ExWallet = "ex_wallet";
 }

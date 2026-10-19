@@ -92,6 +92,8 @@ public partial class ClassicPremiumInk : Node
         _chip = chip; _labels = labels; _kind = kind;
         ProcessPriority = int.MaxValue - 1;
         Sync();
+        // The chip's ink only shows with the chip (the Classic HUD hides the client's chips).
+        if (chip != null) Layout.ShownOnly.Gate(this, chip, Sync);
     }
     public override void _Process(double delta) => Sync();
 
@@ -110,16 +112,24 @@ public partial class ClassicPremiumInk : Node
             string tooltip = state.Active ? NativePremium.Details(state) : "";
             if (_chip.TooltipText != tooltip) _chip.TooltipText = tooltip;
         }
+        string? caption = account is { } named ? Caption(named) : null;
         foreach (var label in _labels)
         {
             if (!GodotObject.IsInstanceValid(label)) continue;
-            if (account is { } current && label.Text != Caption(current)) label.Text = Caption(current);
-            var shown = label.GetThemeColor("font_color");
+            if (caption != null && label.Text != caption) label.Text = caption;
+            var shown = label.GetThemeColor(HotNames.FontColor);
             if (shown == ClassicWorldOverlays.PlaqueInk || shown == Layout.ClassicQuestHudLayout.PlaqueMuted) continue;
             // The bonus chip's "Clan" title is the client's dim text; on the plaque both labels keep the plaque ink.
             bool active = _kind == ClassicPremiumChipKind.ClanBonus || (account?.Active ?? Active(shown));
-            label.SetMeta("premium_active", active);
-            label.AddThemeColorOverride("font_color", active ? ClassicWorldOverlays.PlaqueInk : Layout.ClassicQuestHudLayout.PlaqueMuted);
+            label.SetMeta(HotNames.PremiumActive, active);
+            label.AddThemeColorOverride(HotNames.FontColor, active ? ClassicWorldOverlays.PlaqueInk : Layout.ClassicQuestHudLayout.PlaqueMuted);
         }
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName PremiumActive = "premium_active";
 }

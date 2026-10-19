@@ -105,6 +105,7 @@ public partial class ClassicServicePanel : Control
                 Texture = ClassicChatControls.Atlas(coin), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore });
         }
+        ShownOnly.Gate(this, Sync);
     }
     /// <summary>
     /// The redistribution menu on the original co_change_us window: the client's description as the white greeting,
@@ -404,19 +405,21 @@ public partial class ClassicServicePanel : Control
         }
         Visit(root);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    /// <summary>Keeps the Classic rows, cells and actions on the native state; runs every frame while shown.</summary>
+    private void Sync()
     {
         if (_warpList != null)
             foreach (var row in CharacterDetailsSkin.Tree(_warpList).OfType<PanelContainer>())
             {
-                if (row.GetThemeStylebox("panel") != _warpEmpty) row.AddThemeStyleboxOverride("panel", _warpEmpty);
+                if (row.GetThemeStylebox(HotNames.Panel) != _warpEmpty) row.AddThemeStyleboxOverride(HotNames.Panel, _warpEmpty);
             }
-        foreach (var slot in _slots) if (slot.GetThemeStylebox("panel") != _cell) slot.AddThemeStyleboxOverride("panel", _cell);
+        foreach (var slot in _slots) if (slot.GetThemeStylebox(HotNames.Panel) != _cell) slot.AddThemeStyleboxOverride(HotNames.Panel, _cell);
         if (_secretField != null && _secretRow != null) _secretField.Visible = _secretRow.Visible;
         if (_secretCaption != null && _secretRow != null) _secretCaption.Visible = _secretRow.Visible;
         if (Window.Id == "class_change")
             foreach (var button in _native.OfType<Button>().Where(b => b.Text.StartsWith("Redistribute ")))
-                button.Disabled = Window.GetMeta("redistribution_pending", false).AsBool();
+                button.Disabled = Window.GetMeta(HotNames.RedistributionPending, false).AsBool();
     }
     public override void _UnhandledKeyInput(InputEvent ev)
     {
@@ -440,10 +443,11 @@ public partial class ClassicWarpSelection : Control
 {
     private readonly PanelContainer _row;
     private bool _selected;
-    public ClassicWarpSelection(PanelContainer row) { _row = row; MouseFilter = MouseFilterEnum.Ignore; }
-    public override void _Process(double delta)
+    public ClassicWarpSelection(PanelContainer row) { _row = row; MouseFilter = MouseFilterEnum.Ignore; ShownOnly.Gate(this, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
-        bool selected = _row.GetMeta("service_selected", false).AsBool();
+        bool selected = _row.GetMeta(HotNames.ServiceSelected, false).AsBool();
         if (_selected != selected) { _selected = selected; QueueRedraw(); }
     }
     public override void _Draw()
@@ -456,8 +460,9 @@ public partial class ClassicServiceSelection : Control
 {
     private readonly ItemSlotView _cell;
     private SlotLook _look;
-    public ClassicServiceSelection(ItemSlotView cell) { _cell = cell; MouseFilter = MouseFilterEnum.Ignore; }
-    public override void _Process(double delta)
+    public ClassicServiceSelection(ItemSlotView cell) { _cell = cell; MouseFilter = MouseFilterEnum.Ignore; ShownOnly.Gate(this, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (Size != _cell.Size) { Size = _cell.Size; QueueRedraw(); }
         if (_look != _cell.Look) { _look = _cell.Look; QueueRedraw(); }
@@ -466,4 +471,12 @@ public partial class ClassicServiceSelection : Control
     {
         if (_cell.Look == SlotLook.Selected) DrawRect(new Rect2(Vector2.One, Size - Vector2.One * 2), new Color("ffe094"), false, 1);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName Panel = "panel";
+    internal static readonly StringName RedistributionPending = "redistribution_pending";
+    internal static readonly StringName ServiceSelected = "service_selected";
 }

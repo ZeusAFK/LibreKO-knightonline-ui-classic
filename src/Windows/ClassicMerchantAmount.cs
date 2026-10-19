@@ -86,7 +86,7 @@ public partial class ClassicMerchantAmountPanel : Control
     public override void _Process(double delta)
     {
         if(!IsVisibleInTree())return;
-        if(_stage==0 && _marketVisible!=(_layer.GetMeta("merchant_market_available",false).AsBool() && _marketHint!=null && _marketButton!=null))Build();
+        if(_stage==0 && _marketVisible!=(_layer.GetMeta(HotNames.MerchantMarketAvailable,false).AsBool() && _marketHint!=null && _marketButton!=null))Build();
         var owner=_owners.Where(w=>IsInstanceValid(w) && w.IsVisibleInTree()).OrderByDescending(w=>w.Id=="wishfind").FirstOrDefault();
         var center=owner?.GetGlobalRect().GetCenter() ?? GetViewportRect().Size/2;
         Position=(center-Size/2).Round().Clamp(Vector2.Zero,(GetViewportRect().Size-Size).Max(Vector2.Zero));
@@ -105,4 +105,10 @@ public partial class ClassicMerchantAmountPanel : Control
         }
     }
     public override void _Input(InputEvent ev){if(!IsVisibleInTree() || _layer.GetMeta("merchant_market_open",false).AsBool() || ev is not InputEventKey {Pressed:true,Echo:false} key)return;if(key.Keycode==Key.Escape)_cancel.EmitSignal(BaseButton.SignalName.Pressed);else if(key.Keycode is Key.Enter or Key.KpEnter){if(_stage!=2)Advance();}else return;GetViewport().SetInputAsHandled();}
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName MerchantMarketAvailable = "merchant_market_available";
 }

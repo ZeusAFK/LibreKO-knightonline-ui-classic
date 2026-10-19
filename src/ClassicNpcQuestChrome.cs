@@ -110,8 +110,10 @@ public partial class ClassicNpcOptionPlate : Control
         button.Resized+=()=> { Size=button.Size;QueueRedraw(); };
         button.MouseEntered+=()=> { _hover=true;QueueRedraw(); };
         button.MouseExited+=()=> { _hover=false;QueueRedraw(); };
+        Layout.ShownOnly.Gate(this,Sync);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta)=>Sync();
+    private void Sync()
     {
         if(Size!=_button.Size) { Size=_button.Size;QueueRedraw(); }
         int state=_button.Disabled?3:_button.IsPressed()?1:_hover?2:0;
@@ -151,10 +153,12 @@ public partial class ClassicRewardSelection : Control
         {
             CustomMinimumSize=new Vector2(18,32);SizeFlagsVertical=SizeFlags.Fill;
         }
+        Layout.ShownOnly.Gate(this,Sync);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta)=>Sync();
+    private void Sync()
     {
-        bool selected=_row.GetMeta("quest_reward_selected").AsBool();
+        bool selected=_row.GetMeta(HotNames.QuestRewardSelected).AsBool();
         if(_row.GetChildren().OfType<Label>().LastOrDefault() is {} count && (count.Text.EndsWith("○") || count.Text.EndsWith("●")))
             count.Text=count.Text[..^1].TrimEnd();
         if(_selected!=selected) { _selected=selected;QueueRedraw(); }
@@ -168,4 +172,10 @@ public partial class ClassicRewardSelection : Control
         if(_selected==true)
             DrawRect(new Rect2(-Position,_row.Size).Grow(-.5f),new Color("e4c174"),false,1);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName QuestRewardSelected = "quest_reward_selected";
 }

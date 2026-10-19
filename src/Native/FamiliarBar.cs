@@ -103,6 +103,7 @@ public static class FamiliarBar
 /// <summary>Keeps each familiar skill cell's extender frame after the client restyles the cell.</summary>
 public partial class FamiliarBarFrames : Node
 {
+    private static readonly StringName SlotFrame = "slot_frame";
     private readonly PanelContainer[] _cells;
 
     public FamiliarBarFrames() { _cells = Array.Empty<PanelContainer>(); }
@@ -113,7 +114,11 @@ public partial class FamiliarBarFrames : Node
         ProcessPriority = int.MaxValue;
     }
 
-    public override void _Ready() => Apply();
+    public override void _Ready()
+    {
+        Apply();
+        if (GetParent() is CanvasItem bar) KnightOnlineUiClassic.Layout.ShownOnly.Gate(this, bar, Apply);
+    }
 
     public override void _Process(double delta) => Apply();
 
@@ -121,8 +126,8 @@ public partial class FamiliarBarFrames : Node
     {
         foreach (var cell in _cells)
         {
-            if (!GodotObject.IsInstanceValid(cell) || !cell.HasMeta("slot_frame") || cell.GetMeta("slot_frame").AsGodotObject() is not StyleBox frame) continue;
-            if (cell.GetThemeStylebox("panel") != frame) cell.AddThemeStyleboxOverride("panel", frame);
+            if (!GodotObject.IsInstanceValid(cell) || !cell.HasMeta(SlotFrame) || cell.GetMeta(SlotFrame).AsGodotObject() is not StyleBox frame) continue;
+            if (cell.GetThemeStylebox(KnightOnlineUiClassic.Layout.ThemeNames.Panel) != frame) cell.AddThemeStyleboxOverride(KnightOnlineUiClassic.Layout.ThemeNames.Panel, frame);
         }
     }
 }

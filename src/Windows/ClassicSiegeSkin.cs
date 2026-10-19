@@ -45,6 +45,7 @@ public partial class ClassicSiegePanel : Control
         ClassicPartySkin.Drag(this, bar, speech?.Drag ?? ClassicSiegeLayout.Table.Drag);
         if (speech != null) BuildSpeech(speech);
         else BuildTable(_table!, out _rows);
+        ShownOnly.Gate(this, StyleRows);
     }
 
     private T Find<T>(string name) where T : Control => _controls.OfType<T>().Single(c => c.Name == name);
@@ -193,25 +194,25 @@ public partial class ClassicSiegePanel : Control
     {
         if (_table == null || _rows == null) return;
         var rows = _rows.GetChildren().OfType<PanelContainer>().ToArray();
-        if (rows.All(r => r.HasMeta("siege_row"))) return;
+        if (rows.All(r => r.HasMeta(HotNames.SiegeRow))) return;
         foreach (var row in rows)
         {
-            if (row.HasMeta("siege_row")) continue;
-            row.SetMeta("siege_row", true);
+            if (row.HasMeta(HotNames.SiegeRow)) continue;
+            row.SetMeta(HotNames.SiegeRow, true);
             row.MouseFilter = MouseFilterEnum.Pass;
-            row.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+            row.AddThemeStyleboxOverride(HotNames.Panel, new StyleBoxEmpty());
             row.CustomMinimumSize = new Vector2(0, ClassicSiegeLayout.Table.RowHeight);
             if (row.GetChildren().OfType<HBoxContainer>().FirstOrDefault() is not { } line) continue;
-            line.AddThemeConstantOverride("separation", (int)_table.Gap);
+            line.AddThemeConstantOverride(HotNames.Separation, (int)_table.Gap);
             var cells = line.GetChildren().OfType<Label>().ToArray();
             for (int i = 0; i < cells.Length && i < _table.Columns.Length; i++)
             {
                 var cell = cells[i];
                 cell.CustomMinimumSize = new Vector2(_table.Columns[i], ClassicSiegeLayout.Table.RowHeight);
                 cell.SizeFlagsHorizontal = i == 0 ? SizeFlags.ExpandFill : SizeFlags.ShrinkBegin;
-                cell.AddThemeFontOverride("font", Plugin.Kit.Regular); cell.AddThemeFontSizeOverride("font_size", 13);
-                cell.AddThemeColorOverride("font_color", Colors.White); cell.AddThemeConstantOverride("outline_size", 0);
-                var inset = new StyleBoxEmpty(); inset.ContentMarginLeft = i == 0 ? 3 : 0; cell.AddThemeStyleboxOverride("normal", inset);
+                cell.AddThemeFontOverride(HotNames.Font, Plugin.Kit.Regular); cell.AddThemeFontSizeOverride(HotNames.FontSize, 13);
+                cell.AddThemeColorOverride(HotNames.FontColor, Colors.White); cell.AddThemeConstantOverride(HotNames.OutlineSize, 0);
+                var inset = new StyleBoxEmpty(); inset.ContentMarginLeft = i == 0 ? 3 : 0; cell.AddThemeStyleboxOverride(HotNames.Normal, inset);
                 cell.HorizontalAlignment = i == 0 ? HorizontalAlignment.Left : HorizontalAlignment.Center;
                 cell.ClipText = true; cell.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
                 cell.TooltipText = i == 0 ? cell.Text : ""; cell.MouseFilter = i == 0 ? MouseFilterEnum.Pass : MouseFilterEnum.Ignore;
@@ -231,7 +232,7 @@ public partial class ClassicSiegePanel : Control
                 { cell.TooltipText = cell.Text; cell.Text = cell.Text[..3]; cell.MouseFilter = MouseFilterEnum.Pass; }
                 size = cells.Min(c => Fitting(c, 13, 10, _table.Columns[i] - 2));
             }
-            foreach (var cell in cells) cell.AddThemeFontSizeOverride("font_size", size);
+            foreach (var cell in cells) cell.AddThemeFontSizeOverride(HotNames.FontSize, size);
         }
     }
 
@@ -289,8 +290,9 @@ public partial class ClassicSiegeScrollRail : Control
         _down.Position = new Vector2(0, Size.Y - _downSize.Y); _down.Size = _downSize;
         _track.Position = new Vector2(0, _upSize.Y); _track.Size = new Vector2(Size.X, Size.Y - _upSize.Y - _downSize.Y);
     }
-    public override void _Ready() => Arrange();
-    public override void _Process(double delta)
+    public override void _Ready() { Arrange(); ShownOnly.Gate(this, Sync); }
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (_track.Size.Y != Size.Y - _upSize.Y - _downSize.Y) Arrange();
         // Keep whole rows at the top of the list; the list height is a whole number of rows.
@@ -302,4 +304,17 @@ public partial class ClassicSiegeScrollRail : Control
         _down.SelfModulate = _down.Disabled ? new Color(1, 1, 1, .7f) : Colors.White;
         _track.QueueRedraw();
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName Font = "font";
+    internal static readonly StringName FontColor = "font_color";
+    internal static readonly StringName FontSize = "font_size";
+    internal static readonly StringName Normal = "normal";
+    internal static readonly StringName OutlineSize = "outline_size";
+    internal static readonly StringName Panel = "panel";
+    internal static readonly StringName Separation = "separation";
+    internal static readonly StringName SiegeRow = "siege_row";
 }

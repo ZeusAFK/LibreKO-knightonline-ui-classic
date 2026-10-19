@@ -176,21 +176,22 @@ public partial class ClassicPartyBoard : Control
         _heading = nodes.OfType<Label>().SingleOrDefault(n => n.Name == "seek_heading");
         Resized += () => Size = CustomMinimumSize;
     }
-    public override void _Ready() => Refresh();
+    public override void _Ready() { Refresh(); ShownOnly.Gate(this, Sync); }
     private bool Selected => _selected != null && GodotObject.IsInstanceValid(_selected) && _selected.IsInsideTree();
     /// <summary>Shows one lower panel (recruit or filter) instead of the selected player's details, or the details again.</summary>
     private void Lower(Control? panel)
     {
         _recruit.Visible = panel == _recruit; _filters.Visible = panel == _filters; _details.Visible = panel == null;
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         // The Full Moon Rift board names itself; the normal board keeps the original title.
         string heading = _heading != null && _heading.Visible && _heading.Text.Length > 0 ? _heading.Text : "Party Window";
         if (_title.Text != heading) _title.Text = heading;
-        bool seeking = _register.HasMeta("seeking") && _register.GetMeta("seeking").AsBool();
+        bool seeking = _register.HasMeta(HotNames.Seeking) && _register.GetMeta(HotNames.Seeking).AsBool();
         _register.Text = "Register"; _register.Disabled = seeking; _remove.Disabled = !seeking;
-        if (_page.HasMeta("page_caption")) _page.Text = _page.GetMeta("page_caption").AsString();
+        if (_page.HasMeta(HotNames.PageCaption)) _page.Text = _page.GetMeta(HotNames.PageCaption).AsString();
         // The Full Moon Rift board has no filters: its actions (Enter, Party Board, Auto Entry) take the first row.
         bool moon = _moonRow.Visible && !_filterRow.Visible;
         float y = moon ? 23 : 50;
@@ -209,28 +210,28 @@ public partial class ClassicPartyBoard : Control
         if (_selected != null && (!GodotObject.IsInstanceValid(_selected) || _selected.GetParent() != _list))
         { _selected = null; _private.Disabled = true; _details.Text = "Select a player to invite or send a private message."; }
         // An empty page keeps the client's own reason (nobody listed, or nobody matching the filters).
-        if (_selected == null) _details.Text = _list.GetChildren().OfType<Control>().Any(c=>c.HasMeta("seek_name"))
+        if (_selected == null) _details.Text = _list.GetChildren().OfType<Control>().Any(c=>c.HasMeta(HotNames.SeekName))
             ? "Select a player to invite or send a private message."
             : _list.GetChildren().OfType<Label>().FirstOrDefault(l => !l.IsQueuedForDeletion())?.Text ?? "Nobody is seeking a party right now.";
         foreach (var row in _list.GetChildren().OfType<Control>())
         {
-            if (!row.HasMeta("seek_name"))
+            if (!row.HasMeta(HotNames.SeekName))
             {
                 if (row is Label empty) empty.Visible = false;
                 continue;
             }
-            if (row.HasMeta("classic_seek_row")) continue;
-            row.SetMeta("classic_seek_row",true);
+            if (row.HasMeta(HotNames.ClassicSeekRow)) continue;
+            row.SetMeta(HotNames.ClassicSeekRow,true);
             foreach (var child in row.GetChildren().OfType<Control>()) child.Visible = false;
-            if(row is PanelContainer panel) panel.AddThemeStyleboxOverride("panel",new StyleBoxEmpty());
+            if(row is PanelContainer panel) panel.AddThemeStyleboxOverride(HotNames.Panel,new StyleBoxEmpty());
             var content = new Control { CustomMinimumSize = new Vector2(292,18), MouseFilter = MouseFilterEnum.Ignore };
             row.AddChild(content); row.CustomMinimumSize = new Vector2(292,18);
             // Cells keep the same 4px inset from the column rules as the header captions' table.
-            var name = ClassicPartySkin.Caption(content,row.GetMeta("seek_name").AsString(),new Rect2(4,0,111,18),Colors.White,10);
+            var name = ClassicPartySkin.Caption(content,row.GetMeta(HotNames.SeekName).AsString(),new Rect2(4,0,111,18),Colors.White,10);
             name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-            ClassicPartySkin.Caption(content,row.GetMeta("seek_level").AsString(),new Rect2(118,0,60,18),Colors.White,10).HorizontalAlignment=HorizontalAlignment.Center;
-            ClassicPartySkin.Caption(content,row.GetMeta("seek_class").AsString(),new Rect2(186,0,106,18),Colors.White,10);
-            row.TooltipText=row.GetMeta("seek_name").AsString()+"\n"+row.GetMeta("seek_detail").AsString();
+            ClassicPartySkin.Caption(content,row.GetMeta(HotNames.SeekLevel).AsString(),new Rect2(118,0,60,18),Colors.White,10).HorizontalAlignment=HorizontalAlignment.Center;
+            ClassicPartySkin.Caption(content,row.GetMeta(HotNames.SeekClass).AsString(),new Rect2(186,0,106,18),Colors.White,10);
+            row.TooltipText=row.GetMeta(HotNames.SeekName).AsString()+"\n"+row.GetMeta(HotNames.SeekDetail).AsString();
             row.GuiInput += ev => { if(ev is InputEventMouseButton {Pressed:true,ButtonIndex:MouseButton.Left})
             { _selected=row; _private.Disabled=false; _details.Text=row.TooltipText; QueueRedraw(); } };
         }
@@ -249,3 +250,15 @@ public partial class ClassicPartyBoard : Control
     }
 }
 
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName ClassicSeekRow = "classic_seek_row";
+    internal static readonly StringName PageCaption = "page_caption";
+    internal static readonly StringName Panel = "panel";
+    internal static readonly StringName SeekClass = "seek_class";
+    internal static readonly StringName SeekDetail = "seek_detail";
+    internal static readonly StringName SeekLevel = "seek_level";
+    internal static readonly StringName SeekName = "seek_name";
+    internal static readonly StringName Seeking = "seeking";
+}

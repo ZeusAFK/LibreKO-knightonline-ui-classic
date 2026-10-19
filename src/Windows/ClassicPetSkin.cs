@@ -107,8 +107,10 @@ public partial class ClassicPetPanel : Control
         _status = status;
         status.CustomMaximumSize = ClassicPetLayout.Status.Size;
         _tabs.Selected += ShowPage; ShowPage(_tabs.Current);
+        ShownOnly.Gate(this, Sync);
     }
-    public override void _Process(double delta)
+    public override void _Process(double delta) => Sync();
+    private void Sync()
     {
         if (_name.TooltipText != _name.Text) _name.TooltipText = _name.Text;
         bool message = _status.Text.Length > 0;

@@ -111,7 +111,7 @@ public partial class ClassicPartyHud : Control
         // Theme sizes settle in the tree; keep every action at its art size.
         foreach (var button in _actions.GetChildren().OfType<Button>())
         {
-            var rect = button.GetMeta("party_expected_rect").AsRect2();
+            var rect = button.GetMeta(HotNames.PartyExpectedRect).AsRect2();
             if (button.GetRect() != rect) { button.Position = rect.Position; button.Size = rect.Size; }
         }
         _leave.Text = _party.IsLeader ? "Disband" : "Leave";
@@ -371,4 +371,10 @@ public partial class ClassicPartySignal : Control
         DrawLine(new Vector2(1, 1), Size - Vector2.One, Shadow, 2.8f, true);
         DrawLine(new Vector2(1, 1), Size - Vector2.One, tint, 1.4f, true);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName PartyExpectedRect = "party_expected_rect";
 }

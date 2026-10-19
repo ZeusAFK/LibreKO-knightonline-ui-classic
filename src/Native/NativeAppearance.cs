@@ -160,7 +160,7 @@ public static class NativeAppearance
         NativeIdentity.Rewire(accept, () => TransferPressed(world));
         ReplaceOpen(world, net);
         window.VisibilityChanged += () => { if (!window.Visible) NativeLookEditor.CloseColourPicker(editor); };
-        layer.AddChild(new NativeProcess(() => AdoptNotices(world, layer)) { Name = "transfer_notices" });
+        WatchNotices(world, layer);
         NativeWindows.Sync(window, () => SyncTransfer(world, editor, status));
         window.SetMeta("classic_appearance_controls", 1);
     }
@@ -287,12 +287,37 @@ public static class NativeAppearance
             status.Text = status.Text.Replace(CertificateTypo, CertificateText, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Transfer messages belong to the transfer layer, not the world behind it.</summary>
-    private static void AdoptNotices(WorldRoot world, CanvasLayer layer)
+    /// <summary>
+    /// Transfer messages belong to the transfer layer, not the world behind it. The World's children are checked when
+    /// they change (once per change burst, before the frame draws, when the notice's request is set) instead of every
+    /// frame; one check covers the notices that are already there. The World's child list signal also fires while the
+    /// World is outside the scene tree, as in the preview fixtures.
+    /// </summary>
+    private static void WatchNotices(WorldRoot world, CanvasLayer layer)
     {
-        foreach (var notice in world.GetChildren().OfType<Notice>())
-            if (!notice.IsQueuedForDeletion() && Native.Get<DialogRequest>(notice, "request")?.Title == TransferTitle)
-                notice.Reparent(layer, false);
+        bool queued = false;
+        Action changed = () =>
+        {
+            if (queued) return;
+            queued = true;
+            Callable.From(() => { queued = false; Adopt(world, layer); }).CallDeferred();
+        };
+        NativeHooks.Listen("World.ChildOrderChanged(transfer notices)", () => world.ChildOrderChanged += changed,
+            () => { if (GodotObject.IsInstanceValid(world)) world.ChildOrderChanged -= changed; }, world);
+        Adopt(world, layer);
+    }
+
+    private static void Adopt(WorldRoot world, CanvasLayer layer)
+    {
+        if (!Plugin.Active || !GodotObject.IsInstanceValid(world)) return;
+        foreach (var notice in world.GetChildren().OfType<Notice>()) Adopt(notice, layer);
+    }
+
+    private static void Adopt(Notice notice, CanvasLayer layer)
+    {
+        if (!Plugin.Active || !GodotObject.IsInstanceValid(notice) || !GodotObject.IsInstanceValid(layer)) return;
+        if (notice.IsQueuedForDeletion() || notice.GetParent() == layer || notice.GetParent() is not WorldRoot) return;
+        if (Native.Get<DialogRequest>(notice, "request")?.Title == TransferTitle) notice.Reparent(layer, false);
     }
 
     private static bool NameCommon(LookPreview preview, LookEditor editor, Label status, Button accept)

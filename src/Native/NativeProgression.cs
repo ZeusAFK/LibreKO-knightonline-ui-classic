@@ -79,16 +79,16 @@ public static class NativeProgression
     {
         bool summary = Native.Get<bool>(world, "Achievement.ViewingSummary");
         int selected = summary ? -1 : Convert.ToInt32(Native.Get<object>(world, "Achievement.Tab") ?? 0);
-        window.SetMeta("ach_selected", selected);
+        window.SetMeta(HotNames.AchSelected, selected);
         var waiting = Native.Get<IDictionary>(world, "Achievement.achClaimablePerTab");
         foreach (DictionaryEntry tab in tabs)
             if (tab.Value is Button button)
             {
                 int key = Convert.ToInt32(tab.Key);
-                button.SetMeta("progression_selected", key == selected);
-                button.SetMeta("progression_waiting", waiting != null && waiting.Contains(tab.Key) ? Convert.ToInt32(waiting[tab.Key]) : 0);
+                button.SetMeta(HotNames.ProgressionSelected, key == selected);
+                button.SetMeta(HotNames.ProgressionWaiting, waiting != null && waiting.Contains(tab.Key) ? Convert.ToInt32(waiting[tab.Key]) : 0);
             }
-        Native.Get<Button>(world, "Achievement.achSummaryTabButton")?.SetMeta("progression_selected", summary);
+        Native.Get<Button>(world, "Achievement.achSummaryTabButton")?.SetMeta(HotNames.ProgressionSelected, summary);
         // Rows follow the native visible order; mirror each entry's claim state onto its row.
         if (Native.Get<IList>(world, "Achievement.achVisible") is not { } visible) return;
         int index = 0;
@@ -97,9 +97,9 @@ public static class NativeProgression
             if (row.IsQueuedForDeletion()) continue;
             if (index >= visible.Count) break;
             var entry = (AchievementEntry)visible[index++]!;
-            row.SetMeta("ach_row", entry.Id);
-            row.SetMeta("ach_claimed", entry.Claimed);
-            row.SetMeta("ach_claimable", entry.Claimable);
+            row.SetMeta(HotNames.AchRow, entry.Id);
+            row.SetMeta(HotNames.AchClaimed, entry.Claimed);
+            row.SetMeta(HotNames.AchClaimable, entry.Claimable);
         }
     }
 
@@ -143,10 +143,10 @@ public static class NativeProgression
                 if (cell.IsQueuedForDeletion()) continue;
                 if (index >= states.Length) break;
                 byte state = states[index];
-                cell.SetMeta("attendance_slot", slots[index++]);
-                cell.SetMeta("attendance_state", (int)state);
-                cell.SetMeta("attendance_claimable", state is >= AttendanceSlotState.Claimable and <= AttendanceSlotState.ClaimableExtra);
-                cell.SetMeta("attendance_claimed", state is AttendanceSlotState.Claimed or AttendanceSlotState.Expired);
+                cell.SetMeta(HotNames.AttendanceSlot, slots[index++]);
+                cell.SetMeta(HotNames.AttendanceState, (int)state);
+                cell.SetMeta(HotNames.AttendanceClaimable, state is >= AttendanceSlotState.Claimable and <= AttendanceSlotState.ClaimableExtra);
+                cell.SetMeta(HotNames.AttendanceClaimed, state is AttendanceSlotState.Claimed or AttendanceSlotState.Expired);
             }
         }
         Mirror(daily, 0);
@@ -337,4 +337,19 @@ public static class NativeProgression
         foreach (var field in new[] { "Genie.SkillPicker", "GeniePotions.PotionPicker", "GenieScrolls.scrollPicker" })
             if (Native.Get<PopupMenu>(world, field) is { } menu) yield return menu;
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName AchClaimable = "ach_claimable";
+    internal static readonly StringName AchClaimed = "ach_claimed";
+    internal static readonly StringName AchRow = "ach_row";
+    internal static readonly StringName AchSelected = "ach_selected";
+    internal static readonly StringName AttendanceClaimable = "attendance_claimable";
+    internal static readonly StringName AttendanceClaimed = "attendance_claimed";
+    internal static readonly StringName AttendanceSlot = "attendance_slot";
+    internal static readonly StringName AttendanceState = "attendance_state";
+    internal static readonly StringName ProgressionSelected = "progression_selected";
+    internal static readonly StringName ProgressionWaiting = "progression_waiting";
 }

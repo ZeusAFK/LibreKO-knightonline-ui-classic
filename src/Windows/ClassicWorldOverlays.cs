@@ -757,7 +757,7 @@ public partial class ClassicButtonCaption : Label
         if (Text != _button.Text) Text = _button.Text;
         HideNativeText();
         var ink = _button.Disabled ? _disabled : _ink;
-        if (GetThemeColor("font_color") != ink) AddThemeColorOverride("font_color", ink);
+        if (GetThemeColor(HotNames.FontColor) != ink) AddThemeColorOverride(HotNames.FontColor, ink);
     }
 
     // The alpha check ends the theme change that each override raises again.
@@ -920,4 +920,10 @@ public partial class ClassicBannerStack : Node
         }
         if (Math.Abs(_message.Position.Y - top) > .5f) _message.Position = new Vector2(_message.Position.X, top);
     }
+}
+
+/// <summary>Godot names used every frame in this file, created once (a literal creates a finalizable wrapper per call).</summary>
+file static class HotNames
+{
+    internal static readonly StringName FontColor = "font_color";
 }

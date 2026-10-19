@@ -434,9 +434,12 @@ public partial class Preview
             await RenderBadge(inventoryBadge,shell.BagCells[1].Size,text,prefix+"-inventory.png");
             countBadges.Add(new{text,store=prefix+"-store.png",inventory=prefix+"-inventory.png",rightInset=2,bottomInset=2});
         }
+        // A closed Classic inventory refreshes when it opens; check it as the player sees it.
+        invWindow.Visible=true;await Frames(2);
         Require(Descendants(classicInventory).OfType<ClassicSlot>().Where(c=>c.Current.ItemId==entry.Id && c.Current.Count==1).All(c=>CountBadge(c)=="1")
             && Descendants(classicInventory).OfType<ClassicSlot>().Any(c=>c.Current.ItemId==entry.Id && c.Current.Count==1),
             "The same one-unit stack displays 1 in the separate Classic inventory");
+        invWindow.Visible=false;
         var nativeInv=(System.Collections.IList)DetailField(world,"InventoryWindow.InvBagCells")!;
         NativeCountBadge.Apply((Control)nativeInv[1]!);Require(CountBadge(nativeInv[1]!)=="1","The native inventory also displays a one-unit stack badge");
         foreach(string typeName in new[]{"WarehouseCell","MerchantCell"})
