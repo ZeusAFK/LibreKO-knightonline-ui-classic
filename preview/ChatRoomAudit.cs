@@ -38,7 +38,7 @@ public partial class Preview
         if (!ProjectSettings.LoadResourcePack(ProjectSettings.GlobalizePath("res://../../build/client/source-content/knightonline.pck"), false)) throw new Exception("Missing existing content pack");
         var offline = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, offline);
         ItemData.EnsureLoaded();
-        var voice = VoiceChat.Ensure(this);
+        var voice = VoiceChat.Ensure(this, Game.Session.RoomMedia, Game.Session.NationChat, Game.Session.Self, Game.Requests.RoomMedia);
         ClassicChatRoomSkin.Register(PluginHost.Ui);
         var checks = new List<string>(); var screens = new List<object>();
         string prefix = nation == 1 ? "karus" : "human";

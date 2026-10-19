@@ -30,7 +30,7 @@ public partial class Preview
         AddChild(new ColorRect { Color = background, Size = new Vector2(1000, 700), MouseFilter = MouseFilterEnum.Ignore });
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
         Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation == 1 ? 105 : 205, Race = nation == 1 ? 1 : 11,
-            Name = "Repair Preview", Gear = new int[8], Inventory = new ItemSlot[InventoryConstants.InventoryTotal] });
+            Name = "Repair Preview", Gear = new int[8] }); Game.Session.Self.Inventory.Reset(new ItemSlot[InventoryConstants.InventoryTotal]);
         ItemData.EnsureLoaded();
         var checks = new List<string>(); var screens = new List<object>(); var timeline = new List<object>();
         void Require(bool valid, string text) { if (!valid) throw new Exception("REPAIR_AUDIT: " + text); checks.Add(text); }

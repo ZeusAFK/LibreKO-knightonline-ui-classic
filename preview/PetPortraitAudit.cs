@@ -49,7 +49,6 @@ public partial class Preview
         var forms = JsonSerializer.Deserialize<FamiliarForm[]>(File.ReadAllText(source))!.OrderBy(f => f.ModelId).ToArray();
         require(forms.Length == 30 && forms.Select(f => f.ModelId).Distinct().Count() == forms.Length,
             "Familiar portrait audit covers every distinct authoritative transform model");
-        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
         var actors = Native.Get<EntityRegistry>(world, "EntitySystem.Ents")!;
         var actor = actors[1]!; var modelField = actor.GetType().GetField("ModelId")!;
         int originalModel = (int)modelField.GetValue(actor)!;

@@ -67,7 +67,7 @@ public partial class ClassicCollectionRacePanel : ClassicEventPanel
         _complete = new MarginContainer { Name = "cr_complete_row" };
         _stack.AddChild(_complete);
         title.Reparent(_complete, false);
-        Bold(title, Ready);
+        Bold(title, Accepted);
         title.HorizontalAlignment = HorizontalAlignment.Center;
         title.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         title.CustomMinimumSize = new Vector2(1, ClassicEventsLayout.Row);
@@ -113,7 +113,7 @@ public partial class ClassicCollectionRacePanel : ClassicEventPanel
     protected override void Refresh()
     {
         _winnersRow.Visible = _nativeWinnersRow.Visible;
-        _completing.AddThemeColorOverride("font_color", _completing.Text == "0" ? Ink : Ready);
+        _completing.AddThemeColorOverride("font_color", _completing.Text == "0" ? Ink : Accepted);
         _complete.Visible = _nativeComplete.Visible;
         foreach (var section in _sections)
         {

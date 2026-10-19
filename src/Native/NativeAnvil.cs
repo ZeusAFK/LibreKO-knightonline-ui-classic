@@ -33,7 +33,6 @@ public sealed class NativeAnvil
     private const int ChoiceTextWidth = 245;
     private const int ChoiceFontSize = 12;
     private const int ChoiceOutline = 4;
-    private const byte ResultSucceeded = 1;
     private const string ChoiceWindowId = "anvil_choice";
     private const string Title = "Magic Anvil";
     private const string SelectText = "You can upgrade your item at the magic anvil. Please select what you want to upgrade.";
@@ -546,7 +545,7 @@ public sealed class NativeAnvil
         Window.SetMeta("anvil_compound", Compound);
         if (Awaiting) Window.RemoveMeta("anvil_scan_success");
         else if (Native.Get<object>(_world, "Upgrade.pendingResult") is UpgradeResult result)
-            Window.SetMeta("anvil_scan_success", result.ResultCode == ResultSucceeded);
+            Window.SetMeta("anvil_scan_success", result.ResultCode == ItemUpgradeResult.Succeeded);
         if (Window.HasMeta("anvil_error") && !Ids.AsSpan().SequenceEqual(_errorSelection)) Window.RemoveMeta("anvil_error");
         if (Window.HasMeta("embedded_inventory") && Native.Get<Button>(_world, "Upgrade.btn") is { } action && action.Text != "OK")
             action.Text = "OK";

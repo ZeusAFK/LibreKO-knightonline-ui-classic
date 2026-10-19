@@ -120,7 +120,7 @@ public partial class Preview
             if (count) Require(countLabel.GetGlobalRect().End.Y + Spec.Message.ActionGap <= closeButton.GetGlobalRect().Position.Y + .5f, $"{state}: the count line keeps the gap above the buttons");
             Require(timerLabel.GetThemeColor("font_color") == (urgent ? ClassicWorldOverlays.UrgentOnMessage : ClassicWorldOverlays.MessageText), $"{state}: {(urgent ? "urgent" : "calm")} countdown ink");
             Require(((StyleBoxTexture)bar.GetThemeStylebox("fill")).RegionRect.Position.Y == (urgent ? 462 : 389), $"{state}: {(urgent ? "red" : "orange")} original bar fill");
-            var statusInk = registered ? ClassicEventPanel.Ready : elsewhere ? ClassicDesign.Muted : ClassicDesign.Text;
+            var statusInk = registered ? ClassicEventPanel.Accepted : elsewhere ? ClassicDesign.Muted : ClassicDesign.Text;
             Require(statusLabel.GetThemeColor("font_color") == statusInk, $"{state}: {(registered ? "registered" : elsewhere ? "registered elsewhere" : "open")} status ink");
             Plaque(state, urgent);
             await Capture(state);

@@ -48,7 +48,6 @@ public partial class Preview
         foreach (var child in template.GetChildren()) child.Owner = template;
         var worldScene = new PackedScene(); worldScene.Pack(template); template.Free();
         worldScene.TakeOverPath("res://scenes/World.tscn");
-        var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static;
         var checks = new List<string>();
         var findings = new List<object>();
         var bounds = new Dictionary<string, object>();
@@ -153,11 +152,6 @@ public partial class Preview
                 var at = control.GetGlobalRect().GetCenter();
                 Mouse(at); await Frames(1); Mouse(at, true); await Frames(1); Mouse(at, false); await Frames(3);
                 Mouse(new Vector2(5, 5)); await Frames(2);
-            }
-            void Key(Key key)
-            {
-                GetViewport().PushInput(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true }, true);
-                GetViewport().PushInput(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false }, true);
             }
             string R(Rect2 r) => FormattableString.Invariant($"{r.Position.X} {r.Position.Y} {r.Size.X} {r.Size.Y}");
             void Shot(string name, Rect2? crop = null)
@@ -416,7 +410,6 @@ public partial class Preview
             var slots = Game.Session.Self.Mastery.ToArray(); Array.Fill(slots, (byte)80); Game.Session.Self.Mastery.Seed(slots);
             bool approachFixed = typeof(WorldRoot).Assembly.GetType("LibreKO.Domain.GenieApproach") != null;
             int ownClass = (int)Get(world, "Session.Self.Class")!;
-            var cooldowns = Game.Session.Self.SkillCooldowns;
             var vitals = Game.Session.Self.Vitals;
             async Task SkillCase(string label, int classCode, bool ranged, string blocker)
             {
@@ -439,7 +432,7 @@ public partial class Preview
                 bool inSkill = (bool)Native.Call(world, "SkillCastSystem.InSkillRange", (object)mob, skill)!;
                 Require(inSkill && distance > reach, $"{label}: the monster stands inside {skill.Name}'s reach and outside the basic reach ({distance:0.0} m, basic {reach:0.0})");
                 int mana = vitals.Mp;
-                if (blocker == "cooldown") cooldowns[skill.Id] = Time.GetTicksMsec() / 1000.0 + 600;
+                if (blocker == "cooldown") Native.Call(Game.Session.Self, "StartCooldown", skill.Id, Time.GetTicksMsec() / 1000.0 + 600);
                 else typeof(LibreKO.Domain.Vitals).GetProperty("Mp")!.SetValue(vitals, 0);
                 var waiting = await Watch(5);
                 bool waitOk = Count(waiting, RelayMove) > 0 && Count(waiting, RelayAttack) > 0 && Distance(mob) <= BasicReach(mob) + .5f;
@@ -449,7 +442,7 @@ public partial class Preview
                 if (approachFixed) Require(waitOk, waitText);
                 else checks.Add((waitOk ? "" : "KNOWN CORE DEFECT (no GenieApproach in this client): ") + waitText);
                 Shot("genie-world-" + label + "-" + blocker);
-                cooldowns.Remove(skill.Id);
+                Native.Call(Game.Session.Self, "CancelCooldown", skill.Id);
                 if (blocker != "cooldown") typeof(LibreKO.Domain.Vitals).GetProperty("Mp")!.SetValue(vitals, mana);
                 var ready = await Watch(5);
                 bool gear = (bool)Native.Call(world, "SkillCastSystem.CanCastWithGear", skill, false)!;

@@ -16,7 +16,7 @@ public static partial class PreviewFixtures
     {
         var panel = (HudWindow)Call(world, "Preview.BuildUpgrade")!;
         var anvil = NativeAnvil.Prepare(panel, world)!;
-        Native.Call(world, "Upgrade.OnResult", new UpgradeResult(2, 2, 1, new[] { new UpgradeSlotResult(PreviewUpgradedResult, 0) }));
+        Native.Call(world, "Upgrade.OnResult", new UpgradeResult(ItemUpgradeSubOpcode.Upgrade, ItemUpgradeKind.Preview, ItemUpgradeResult.Succeeded, new[] { new UpgradeSlotResult(PreviewUpgradedResult, 0) }));
         anvil.RefreshBag();
         panel.AddChild(new PreviewTweenBinder(world, panel) { Name = "preview_tween_binder" });
         return panel;
@@ -31,8 +31,11 @@ public static partial class PreviewFixtures
     /// <summary>A server item-move acknowledgement, delivered the way <see cref="Net"/> raises it.</summary>
     public static void DeliverItemMoveResult(WorldRoot world, bool ok)
     {
-        Native.Call(world, "InventoryWindow.OnItemMoveResult", ok);
-        RaiseNet("ItemMoveResultEvent", ok);
+        var reply = new Packet(GameOpcodes.GS_ITEM_MOVE);
+        reply.WriteByte((byte)ItemMoveSubOpcode.Move);
+        reply.WriteByte((byte)(ok ? 1 : 0));
+        reply.ResetOffset();
+        PreviewPackets.Receive(reply);
     }
 
     /// <summary>The shared amount prompt, built after the combination window was prepared.</summary>

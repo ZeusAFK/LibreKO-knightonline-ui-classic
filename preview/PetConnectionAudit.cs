@@ -25,8 +25,8 @@ public partial class Preview
         var flags = BindingFlags.Instance | BindingFlags.NonPublic;
         var original = Net.I; var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
         PluginHost.Ui.ExtendWindow("pet", ClassicPetSkin.Extend);
-        typeof(Net).GetMethod("SeedPreviewEnter", flags)!.Invoke(net, new object[] { new MyInfo { Nation = nation, Class = nation * 100 + 6, Race = nation == 1 ? 1 : 11,
-            Name = "FamiliarTester", Inventory = new ItemSlot[InventoryConstants.InventoryTotal], Gear = new int[8] } });
+        Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation * 100 + 6, Race = nation == 1 ? 1 : 11,
+            Name = "FamiliarTester", Gear = new int[8] }); Game.Session.Self.Inventory.Reset(new ItemSlot[InventoryConstants.InventoryTotal]);
         var world = PreviewFixtures.Prepared(new PetAuditWorld { ProcessMode = ProcessModeEnum.Disabled }); AddChild(world);
         var layer = (CanvasLayer)DetailCall(world, "BuildPetEquipmentResponseUiPreview", nation)!;
         layer.ProcessMode = ProcessModeEnum.Always;
@@ -71,10 +71,10 @@ public partial class Preview
             Require(!Field<bool>(world, "InventoryWindow.moveInFlight") && Field<System.Collections.ICollection>(world, "InventoryWindow.moveQueue").Count == 0,
                 "Session reset releases the actual World inventory queue / " + state);
             if (acknowledged)
-                Require(inventory[Inventory.GridStart].IsEmpty && Game.Session.Self.LastEnter.Inventory[Inventory.GridStart].IsEmpty,
+                Require(inventory[Inventory.GridStart].IsEmpty,
                     "Session reset keeps the familiar move acknowledged before the connection loss / " + state);
             else
-                Require(inventory[Inventory.GridStart].Equals(record) && Game.Session.Self.LastEnter.Inventory[Inventory.GridStart].Equals(record),
+                Require(inventory[Inventory.GridStart].Equals(record),
                     "Session reset preserves exact unacknowledged item records / " + state);
         }
         async Task Capture(string state)
@@ -153,7 +153,7 @@ public partial class Preview
                 DetailCall(world, "InventoryWindow.EnqueuePetMove", ItemMoveDirection.InventoryToPet, item, (byte)0, (byte)1, Inventory.GridStart, 1);
                 await DrainRequests(peer.GetStream(), 1); await SendReply(peer.GetStream());
                 typeof(Net).GetField("connectedFired", flags)!.SetValue(net, true); net._Process(0); await Frames();
-                Require(!Field<bool>(world, "InventoryWindow.moveInFlight") && inventory[Inventory.GridStart].IsEmpty && Game.Session.Self.LastEnter.Inventory[Inventory.GridStart].IsEmpty
+                Require(!Field<bool>(world, "InventoryWindow.moveInFlight") && inventory[Inventory.GridStart].IsEmpty
                     && Game.Session.Pet.Pet!.Items[1].Equals(record), "A new session accepts a fresh familiar equipment move without stale locks or item loss");
                 Require(resets >= 5, "Native session entry, exit and loss publish their familiar resets");
                 await Capture("fresh-session-equipped");

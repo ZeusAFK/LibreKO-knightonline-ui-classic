@@ -85,7 +85,7 @@ public partial class Preview
         Game.Session.Self.Sheet.SeedProgress(83, 0, 100);
         Game.Session.Self.Vitals.Seed(3000, 3000, 2000, 2000);
         Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation * 100 + 6, Race = nation == 1 ? 1 : 11,
-            Name = "Skill Rules", Gear = new int[8], Inventory = new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal] });
+            Name = "Skill Rules", Gear = new int[8] }); Game.Session.Self.Inventory.Reset(new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]);
         SkillData.EnsureLoaded(); ItemData.EnsureLoaded();
         byte[] seed = { 4, 0, 0, 0, 0, 60, 20, 23, 10 };
         Game.Session.Self.Mastery.Seed(seed);
@@ -324,7 +324,7 @@ public partial class Preview
             var nameless = SkillData.All.First(s => s.Type1 != MagicType.None && SkillIcons.Get(s.Id) == null && s.Id < SkillPage.UsableItemFirstId);
             bar[0] = usable.Id; bar[1] = costly.Id; bar[2] = usable.Id; bar[3] = potion.Id; bar[4] = nameless.Id; bar[5] = weapon.Id;
             // About half of the recast is still left when the bar is captured (after the 0.3 s settle below).
-            Game.Session.Self.SkillCooldowns[usable.Id] = Time.GetTicksMsec() / 1000.0 + usable.RecastSeconds * 0.5 + 0.4;
+            Native.Call(Game.Session.Self, "StartCooldown", usable.Id, Time.GetTicksMsec() / 1000.0 + usable.RecastSeconds * 0.5 + 0.4);
             Raise();
             game.Hotbar.Select(5); Raise();
             await ToSignal(GetTree().CreateTimer(.3), SceneTreeTimer.SignalName.Timeout);
@@ -337,7 +337,7 @@ public partial class Preview
             var fill = Slot(0).GetNode<ColorRect>("content/cooldown");
             await Capture("hotbar-cooldown", BarRegion(), now: true);
             Require(fill.Visible && fill.Size.Y >= 8f, "The cooldown fill is still running in the cooldown capture (" + fill.GetRect() + ")");
-            Require(Game.Session.Self.SkillCooldowns.Remove(usable.Id), "Cooldown fixture removed");
+            Require((bool)Native.Call(Game.Session.Self, "CancelCooldown", usable.Id)!, "Cooldown fixture removed");
             await ToSignal(GetTree().CreateTimer(.3), SceneTreeTimer.SignalName.Timeout);
             Require(!Dim(0) && NativeUsable(usable.Id), "A usable skill is shown at full colour");
             Require(Slot(3).GetNode<Label>("content/count").Text == "0" && Slot(3).GetNode<Label>("content/count").GetThemeColor("font_color") != Colors.White && Dim(3),
@@ -436,7 +436,7 @@ public partial class Preview
 
                 ClearBar();
                 ClearBag();
-                Game.Session.Self.SkillCooldowns.Clear();
+                foreach (int cooling in Game.Session.Self.SkillCooldowns.Keys.ToArray()) Native.Call(Game.Session.Self, "CancelCooldown", cooling);
                 SetZone(ChaosBattle.Zone);
                 var chaosTree = SkillData.All.Where(s => s.Tree == ChaosBattle.SkillTree).OrderBy(s => s.Id).ToList();
                 // Cube skills: the client's own held-item test refuses them while their item is not in the bag.

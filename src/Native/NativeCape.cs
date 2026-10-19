@@ -134,7 +134,7 @@ public static class NativeCape
         _states.AddOrUpdate(world, state);
         LookFraming.Attach(state.Look, () => Game.Session.Self.LastEnter.Race);
         window.VisibilityChanged += () => VisibilityChanged(world, state);
-        Action<bool, int, int, int, int, int> result = (ok, _, capeId, rr, gg, bb) => Result(world, state, ok, capeId, rr, gg, bb);
+        Action<CapeChangeReply> result = reply => Result(world, state, reply.Succeeded, reply.CapeId, reply.R, reply.G, reply.B);
         NativeHooks.Listen("Net.CapeResultEvent", () => Game.Session.Cape.CapeResultEvent += result, () => Game.Session.Cape.CapeResultEvent -= result, world);
         Action reset = () => Reset(world, state);
         Native.Subscribe(Game.Session.Cape, "CapeResetEvent", reset, world);
@@ -482,7 +482,7 @@ public static class NativeCape
         Gate(world);
         // The fix branch's sender reports a refused send; upstream's returns nothing and always sends.
         if (!Game.Requests.Cape.Buy((byte)op, capeId, r, g, b))
-            Native.Call(world, "CapeWindow.OnResult", false, -1, 0, 0, 0, 0);
+            Native.Call(world, "CapeWindow.OnResult", new CapeChangeReply(Succeeded: false, ClanOrResult: -1, CapeId: 0, R: 0, G: 0, B: 0));
     }
 
     private static void Cancel(WorldRoot world, int revision)

@@ -21,7 +21,7 @@ public partial class Preview
         AddChild(new ColorRect {Color=new Color("252822"),Size=new Vector2(1280,800),MouseFilter=MouseFilterEnum.Ignore});
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
         Game.Session.Self.Sheet.SeedWealth(1_234_567,50_000);
-        Native.Set(Game.Session.Self, "LastEnter",new MyInfo {Nation=nation,Class=nation==1?105:205,Name="Classic Preview",Gear=new int[8],Inventory=new LibreKO.Domain.ItemSlot[LibreKO.Domain.InventoryConstants.InventoryTotal]});
+        Native.Set(Game.Session.Self, "LastEnter",new MyInfo {Nation=nation,Class=nation==1?105:205,Name="Classic Preview",Gear=new int[8]}); Game.Session.Self.Inventory.Reset(new LibreKO.Domain.ItemSlot[LibreKO.Domain.InventoryConstants.InventoryTotal]);
         var screens=new List<object>();var checks=new List<string>();
         void Require(bool value,string text){if(!value)throw new Exception(text);checks.Add(text);}
         async Task Frames(){for(int i=0;i<8;i++)await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);}

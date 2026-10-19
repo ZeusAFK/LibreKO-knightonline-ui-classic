@@ -32,7 +32,6 @@ public partial class Preview
         var singles = catalog.Where(i => i.Countable == 0).DistinctBy(i => i.Icon).Select(i => i.Id).Take(3).ToList();
         singles.Add(catalog.Where(i => i.Countable == 0).OrderByDescending(i => i.Name.Length).First().Id);
         var world = PreviewFixtures.Prepared(new WorldRoot());
-        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
         T Field<T>(string name) => (T)Native.Get<object>(world, name)!;
         void SetField(string name, object? value) => Native.Set(world, name, value == null ? null : Convert.ChangeType(value, Native.MemberType(world, name)!));
         void Call(string method, params object?[] args) => DetailCall(world, method, args);

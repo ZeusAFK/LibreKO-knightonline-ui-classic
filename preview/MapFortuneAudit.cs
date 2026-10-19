@@ -17,7 +17,7 @@ public partial class Preview
         var offline = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, offline);
         var checks = new List<string>(); var screens = new List<object>();
         string prefix = nation == 1 ? "karus" : "human";
-        void Require(bool condition, string text) { if (!condition) throw new Exception("MAP_FORTUNE_AUDIT: " + text); checks.Add(text); }
+        void Require([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string text) { if (!condition) throw new Exception("MAP_FORTUNE_AUDIT: " + text); checks.Add(text); }
         async Task Frames(int count = 8) { for (int i = 0; i < count; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }
         T Named<T>(Node root, string name) where T : Node => Descendants(root).OfType<T>().Single(c => c.Name == name);
         Rect2 Within(Control panel, Control control) => new(control.GetGlobalRect().Position - panel.GetGlobalRect().Position, control.GetGlobalRect().Size);

@@ -84,14 +84,14 @@ public static partial class PreviewFixtures
     /// <summary>The client observes familiar skill refusals once its familiar bar exists; the preview has no bar yet.</summary>
     private static void ObservePetSkills(WorldRoot world)
     {
-        var handler = Delegate.CreateDelegate(typeof(Action<int, int, int, int, short[]>), Native.Get<object>(world, "Hotbar")!, "OnPetSkillMagic");
-        Game.Session.Combat.MagicEvent += (Action<int, int, int, int, short[]>)handler;
+        var handler = Delegate.CreateDelegate(typeof(Action<MagicReply>), Native.Get<object>(world, "PetSkillBar")!, "OnPetSkillMagic");
+        Game.Session.Combat.MagicEvent += (Action<MagicReply>)handler;
         PetSkillObservers[world] = handler;
     }
 
     public static void PetSkillObserveDispose(WorldRoot world)
     {
-        if (PetSkillObservers.Remove(world, out var handler)) Game.Session.Combat.MagicEvent -= (Action<int, int, int, int, short[]>)handler;
+        if (PetSkillObservers.Remove(world, out var handler)) Game.Session.Combat.MagicEvent -= (Action<MagicReply>)handler;
         SetField(world, "PetSkillBar.petSkillGeneration", Field<int>(world, "PetSkillBar.petSkillGeneration") + 1);
         Field<IDictionary>(world, "PetSkillBar.petSkillCasts").Clear();
     }
@@ -137,7 +137,7 @@ public static partial class PreviewFixtures
         inventory.EnsureLength(InventoryConstants.InventoryTotal);
         if (transform)
         {
-            Game.Session.Pet.Items[PreviewPetIndex] = new PetItemInfo(PreviewPetIndex, "Kauly", 101, 12, 4200, 7300);
+            Native.Call(Game.Session.Pet, "Remember", new PetItemInfo(PreviewPetIndex, "Kauly", 101, 12, 4200, 7300));
             inventory.ApplySlotUpdate(Inventory.GridStart + 1, new ItemSlot { ItemId = PreviewKaulItem, Count = 1, Durability = 1, UniqueId = PreviewPetIndex });
             inventory.ApplySlotUpdate(Inventory.GridStart + 4, new ItemSlot { ItemId = PreviewImageChange, Count = 1, Durability = 1 });
             inventory.ApplySlotUpdate(Inventory.GridStart + 9, new ItemSlot { ItemId = PreviewEtarothScroll, Count = 1, Durability = 1 });

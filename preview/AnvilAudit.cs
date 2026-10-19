@@ -19,7 +19,7 @@ public partial class Preview
         GetWindow().ContentScaleMode=Window.ContentScaleModeEnum.Disabled;GetWindow().Size=new Vector2I(800,650);
         AddChild(new ColorRect{Color=new Color("252822"),Size=new Vector2(800,650),MouseFilter=MouseFilterEnum.Ignore});
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
-        Native.Set(Game.Session.Self, "LastEnter",new MyInfo{Nation=nation,Class=nation==1?105:205,Race=nation==1?1:11,Name="Anvil Preview",Gear=new int[8],Inventory=new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]});
+        Native.Set(Game.Session.Self, "LastEnter",new MyInfo{Nation=nation,Class=nation==1?105:205,Race=nation==1?1:11,Name="Anvil Preview",Gear=new int[8]}); Game.Session.Self.Inventory.Reset(new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]);
         var world=PreviewFixtures.Prepared(new WorldRoot());DetailCall(world,"InventoryWindow.BuildPanel");
         var orphan=(Control)DetailField(world,"InventoryWindow.InvContent")!;orphan.Visible=false;world.AddChild(orphan);
         DetailCall(world,"NpcDialogWindow.BuildNpcDialog");
@@ -107,7 +107,7 @@ public partial class Preview
         upper[2]._DropData(Vector2.Zero,FromSocket(6));
         Require(ids[2]==379021000&&ids[6]==700002000,"Compatible material sockets can swap");
         upper[6]._DropData(Vector2.Zero,FromSocket(2));upper[1]._DropData(Vector2.Zero,FromSocket(6));
-        var transferPreview=new UpgradeResult(2,2,1,new[]{new UpgradeSlotResult(156210009,0)});
+        var transferPreview=new UpgradeResult(ItemUpgradeSubOpcode.Upgrade,ItemUpgradeKind.Preview,ItemUpgradeResult.Succeeded,new[]{new UpgradeSlotResult(156210009,0)});
         DetailCall(world,"Upgrade.OnResult",transferPreview);DetailCall(world,"Upgrade.OnResult",transferPreview);
         var potionCell=Descendants(shell).OfType<ItemSlotView>().Single(c=>c.Name=="anvil_bag_5");
         Require(potionCell.Look==SlotLook.Normal,"Unrelated inventory items retain their normal color");
@@ -126,12 +126,12 @@ public partial class Preview
         var cells=Descendants(shell).OfType<ItemSlotView>().ToArray();
         DetailCall(world,"ClassicAnvilTake",Inventory.GridStart+5);await Capture("invalid-material");Require(ids.All(i=>i==0),"Unrelated potion cannot be staged");
         world.StageAnvilUpgrade(156210008,379021000,700002000);
-        var preview=new UpgradeResult(2,2,1,new[]{new UpgradeSlotResult(156210009,0)});
+        var preview=new UpgradeResult(ItemUpgradeSubOpcode.Upgrade,ItemUpgradeKind.Preview,ItemUpgradeResult.Succeeded,new[]{new UpgradeSlotResult(156210009,0)});
         DetailCall(world,"Upgrade.OnResult",preview);DetailCall(world,"Upgrade.OnResult",preview);await Capture("restaged");
         DetailCall(world,"Upgrade.Confirm");((Notice)DetailField(world,"Upgrade.confirm")!).Reparent(this);
         Input.ParseInputEvent(new InputEventKey{Pressed=true,Keycode=Key.Enter});await Frames();Require(Locked(),"Enter approves the modal and locks staging until the server replies");
         DetailCall(world,"Upgrade.ClearSocket",0);Require(ids[0]!=0,"Pending request cannot clear the origin");await Capture("awaiting-result");
-        DetailCall(world,"Upgrade.OnResult",new UpgradeResult(2,1,1,new[]{new UpgradeSlotResult(156210009,0)}));
+        DetailCall(world,"Upgrade.OnResult",new UpgradeResult(ItemUpgradeSubOpcode.Upgrade,ItemUpgradeKind.Normal,ItemUpgradeResult.Succeeded,new[]{new UpgradeSlotResult(156210009,0)}));
         Require(Locked(),"Server reply keeps the bench locked throughout its reveal");
         for(int i=0;i<15;i++){await Capture($"success-frame-{i:00}",0);await ToSignal(GetTree().CreateTimer(.1),SceneTreeTimer.SignalName.Timeout);}
         await ToSignal(GetTree().CreateTimer(3.1),SceneTreeTimer.SignalName.Timeout);Require(!Locked(),"Reveal completion releases the interaction lock");await Capture("success-result");
@@ -141,10 +141,10 @@ public partial class Preview
             DetailCall(world,"Upgrade.OnResult",preview);DetailCall(world,"Upgrade.OnResult",preview);
             DetailCall(world,"Upgrade.Send");
         }
-        Restage();DetailCall(world,"Upgrade.OnResult",new UpgradeResult(2,1,0,new[]{new UpgradeSlotResult(0,0)}));
+        Restage();DetailCall(world,"Upgrade.OnResult",new UpgradeResult(ItemUpgradeSubOpcode.Upgrade,ItemUpgradeKind.Normal,ItemUpgradeResult.Failed,new[]{new UpgradeSlotResult(0,0)}));
         for(int i=0;i<15;i++){await Capture($"failure-frame-{i:00}",0);await ToSignal(GetTree().CreateTimer(.1),SceneTreeTimer.SignalName.Timeout);}
         await ToSignal(GetTree().CreateTimer(3.1),SceneTreeTimer.SignalName.Timeout);await Capture("failure-result");
-        Restage();DetailCall(world,"Upgrade.OnResult",new UpgradeResult(2,1,0,new[]{new UpgradeSlotResult(156210007,0)}));
+        Restage();DetailCall(world,"Upgrade.OnResult",new UpgradeResult(ItemUpgradeSubOpcode.Upgrade,ItemUpgradeKind.Normal,ItemUpgradeResult.Failed,new[]{new UpgradeSlotResult(156210007,0)}));
         await ToSignal(GetTree().CreateTimer(3.1),SceneTreeTimer.SignalName.Timeout);await Capture("logos-retained-result");
         Require(Descendants(shell).OfType<Label>().Any(l=>l.Text.Contains("retained",StringComparison.OrdinalIgnoreCase)),"Logos failure reports retained or downgraded item, never destruction");
         DetailCall(world,"Upgrade.SetAnvilBench",Enum.ToObject(Native.ClientType("LibreKO.Features.Windows.UpgradeFeature+AnvilBench")!,1));DetailCall(world,"Upgrade.RefreshActions");await Capture("compound-empty");
@@ -152,7 +152,7 @@ public partial class Preview
         inventory[Inventory.GridStart+3]=new LibreKO.Domain.ItemSlot{ItemId=379159000,Count=3,Durability=1};
         for(int i=0;i<4;i++)DetailCall(world,"ClassicAnvilTake",Inventory.GridStart+i);
         Require(ids.Take(3).All(i=>i==330620270),"Compound stages three distinct copies of the same accessory");
-        DetailCall(world,"Upgrade.OnResult",new UpgradeResult(2,2,1,new[]{new UpgradeSlotResult(330620431,0)}));
+        DetailCall(world,"Upgrade.OnResult",new UpgradeResult(ItemUpgradeSubOpcode.Upgrade,ItemUpgradeKind.Preview,ItemUpgradeResult.Succeeded,new[]{new UpgradeSlotResult(330620431,0)}));
         await Capture("compound-ready");
         DetailCall(world,"Upgrade.ClearSocket",1);Require(ids[1]==0,"Right-click clearing removes only the chosen accessory");await Capture("compound-two-copies");
         DetailCall(world,"Upgrade.SetAnvilBench",Enum.ToObject(Native.ClientType("LibreKO.Features.Windows.UpgradeFeature+AnvilBench")!,0));
@@ -162,9 +162,9 @@ public partial class Preview
         Restage();DetailCall(world,"Upgrade.Close");Require(Locked(),"Closing a pending request retains its inventory lock");
         DetailCall(world,"Upgrade.OpenAnvilBench",Enum.ToObject(Native.ClientType("LibreKO.Features.Windows.UpgradeFeature+AnvilBench")!,0));
         DetailCall(world,"ClassicAnvilTake",Inventory.GridStart);Require(ids.All(i=>i==0),"Reopening cannot stage items before the earlier acknowledgment");await Capture("reopened-pending");
-        DetailCall(world,"Upgrade.OnResult",new UpgradeResult(2,1,0,new[]{new UpgradeSlotResult(0,0)}));Require(!Locked(),"Quiet acknowledgment releases the retained lock");await Capture("quiet-result");
+        DetailCall(world,"Upgrade.OnResult",new UpgradeResult(ItemUpgradeSubOpcode.Upgrade,ItemUpgradeKind.Normal,ItemUpgradeResult.Failed,new[]{new UpgradeSlotResult(0,0)}));Require(!Locked(),"Quiet acknowledgment releases the retained lock");await Capture("quiet-result");
         world.StageAnvilUpgrade(156210008,379021000,700002000);
-        var refusal=new UpgradeResult(2,2,2,Array.Empty<UpgradeSlotResult>());
+        var refusal=new UpgradeResult(ItemUpgradeSubOpcode.Upgrade,ItemUpgradeKind.Preview,ItemUpgradeResult.Trading,Array.Empty<UpgradeSlotResult>());
         DetailCall(world,"Upgrade.OnResult",refusal);DetailCall(world,"Upgrade.OnResult",refusal);
         Require(!((UpgradePreviewGate)DetailField(world,"Upgrade.previewGate")!).Pending,"Legacy server preview refusal releases the outstanding preview");
         await Capture("preview-refused");

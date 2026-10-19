@@ -49,7 +49,7 @@ public partial class Preview
                 return packet;
             }
             bool Pending() => Native.Get<object>(Game.Session.Pet, "PendingIncubation") != null;
-            ItemSlot Slot(int bag) => Game.Session.Self.LastEnter.Inventory[InventoryConstants.InventoryStart + bag];
+            ItemSlot Slot(int bag) => Game.Session.Self.Inventory[InventoryConstants.InventoryStart + bag];
             int hatched = 0, transformed = 0, refused = 0, mutations = 0;
             Game.Session.Pet.PetHatchedEvent += (_, _) => hatched++;
             Game.Session.Pet.PetTransformedEvent += (_, _) => transformed++;
@@ -127,7 +127,7 @@ public partial class Preview
             Receive(Success(10, 610001000));
             require(transformed == 2 && Slot(4).ItemId == 610001000 && Slot(7).Count == 1, "A later valid transformation applies even when returning to an earlier form");
             require(Game.Requests.Pet.Transform(13016, 610001000, 4, 9, 700019001, 7), "Transformation can begin before a connection reset"); await ReadRequest(10);
-            typeof(Net).GetMethod("ResetPet", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(net, null);
+            Native.Call(Game.Session.Pet, "Reset");
             Receive(Success(10, 610015000));
             require(!Pending() && transformed == 2 && Slot(7).Count == 1 && Game.Session.Pet.Items.Count == 0,
                 "Connection reset discards pending incubation and ignores its delayed reply");

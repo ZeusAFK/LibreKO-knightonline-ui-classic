@@ -20,7 +20,7 @@ public partial class Preview
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(800, 650), MouseFilter = MouseFilterEnum.Ignore });
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
         Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation == 1 ? 105 : 205, Race = nation == 1 ? 1 : 11,
-            Name = "Storage Preview", Gear = new int[8], Inventory = new NativeSlot[InventoryConstants.InventoryTotal] });
+            Name = "Storage Preview", Gear = new int[8] }); Game.Session.Self.Inventory.Reset(new NativeSlot[InventoryConstants.InventoryTotal]);
         Game.Session.Self.Sheet.SeedWealth(1_234_567, 50_000); Game.Session.Self.Sheet.SetMaxWeight(17100);
         ItemData.EnsureLoaded();
         var world = PreviewFixtures.Prepared(new WorldRoot());
@@ -172,7 +172,7 @@ public partial class Preview
         await Capture(0, "warehouse-whole-stacks-only"); whStatus.ResetStatus();
         normalBag[Inventory.GridStart + 3]._DropData(Vector2.Zero, Picked(normalBag[Inventory.GridStart], 4));
         Require((bool)DetailField(world, "InventoryWindow.moveInFlight")!, "A part picked in the embedded bag starts an inventory move");
-        DetailCall(world, "InventoryWindow.OnItemMoveResult", true);
+        DetailCall(world, "DeliverItemMoveResult", true);
         Require(inventory[Inventory.GridStart].Count == 70 && inventory[Inventory.GridStart + 3].ItemId == potion && inventory[Inventory.GridStart + 3].Count == 4,
             "A part picked in the embedded bag splits the stack, as the client's bag does");
         inventory[Inventory.GridStart + 3] = default; changed.Count = 74; inventory[Inventory.GridStart] = changed; DetailCall(world, "Warehouse.Refresh"); await Frames(2);
@@ -341,12 +341,12 @@ public partial class Preview
         Require(carriedCells[Inventory.GridStart + 10]._CanDropData(Vector2.Zero, carriedDrag), "The embedded inventory permits ordinary bag rearrangement");
         carriedCells[Inventory.GridStart + 10]._DropData(Vector2.Zero, carriedDrag);
         Require((bool)DetailField(world, "InventoryWindow.moveInFlight")!, "Bag rearrangement uses the existing inventory move protocol");
-        DetailCall(world, "InventoryWindow.OnItemMoveResult", true);
+        DetailCall(world, "DeliverItemMoveResult", true);
         Require(inventory[Inventory.GridStart + 1].IsEmpty && inventory[Inventory.GridStart + 10].ItemId == weapon, "Inventory acknowledgement refreshes the embedded bag cells");
         await Capture(2, "clan-inventory-rearranged");
         Set("ClanWarehouse.shown", false); Set("VipWarehouse.shown", true);
         var vipStatus = (Label)DetailField(world, "VipWarehouse.Status")!;
-        inventory[Inventory.GridStart + 5] = new NativeSlot { ItemId = WarehouseRules.NoTradeIdFirst, Count = 1, Durability = 1 };
+        inventory[Inventory.GridStart + 5] = new NativeSlot { ItemId = ItemData.NoTradeIdFirst, Count = 1, Durability = 1 };
         DetailCall(world, "VipWarehouse.Refresh"); for (int i = 0; i < 3; i++) windows[i].Visible = i == 1; await Frames(2);
         var vipBag5 = Descendants(panels[1]).OfType<ItemSlotView>().Single(c => c.Name == "storage_bag_5");
         Require(vipBag5.Look == SlotLook.Unfit, "The embedded bag marks items the vault refuses, as the client's bag does");

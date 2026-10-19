@@ -123,8 +123,8 @@ public partial class Preview
             await ClickFeed(); await Request(strongSlot, strong.Id);
             Receive(success); Satisfaction(10000); await Frames();
             var left = strongItem; left.Count = 1;
-            require(results == 1 && mutations == 1 && inventory[strongSlot].Equals(left) && Game.Session.Self.LastEnter.Inventory[strongSlot].Equals(left),
-                "Authoritative familiar feeding preserves remaining item flags and durability in both inventories");
+            require(results == 1 && mutations == 1 && inventory[strongSlot].Equals(left),
+                "Authoritative familiar feeding preserves remaining item flags and durability in the bag");
             require(cells.Single(c => c.Slot == strongSlot).Current.Count == 1 && Find<Label>("pet_satisfaction_value").Text == $"{100f:0.00}%"
                 && status.Text == $"{10f:0.00}% satisfaction rate increase" && status.GetThemeColor("font_color") == UiTheme.TextHi,
                 "Native familiar feeding refreshes the actual count satisfaction value and result text");
@@ -135,7 +135,7 @@ public partial class Preview
             await Capture("full");
             Satisfaction(9900); await Frames(); await ClickFeed(); await Request(strongSlot, strong.Id);
             Receive(Food(1, strongSlot - Inventory.GridStart, strong.Id, 0, 100)); Satisfaction(10000); await Frames();
-            require(inventory[strongSlot].Equals(default(NativeSlot)) && Game.Session.Self.LastEnter.Inventory[strongSlot].Equals(default(NativeSlot)) && cells.Single(c => c.Slot == strongSlot).Current.IsEmpty,
+            require(inventory[strongSlot].Equals(default(NativeSlot)) && cells.Single(c => c.Slot == strongSlot).Current.IsEmpty,
                 "Eating the final familiar food clears its exact native and rendered inventory record");
             await Capture("consumed");
             Native.Set(world, "Avatar.Dead", true); DetailCall(world, "Pet.RefreshUI"); await Frames(); await ClickFeed();

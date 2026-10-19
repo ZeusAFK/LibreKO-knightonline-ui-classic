@@ -43,7 +43,7 @@ public abstract partial class ClassicEventPanel : Control
     public static Color Caption => new("e2c68b");
     public static Color Ink => ClassicDesign.Text;
     public static Color Muted => new("aaa69e");
-    public static Color Ready => new("a0db92");
+    public static Color Accepted => new("a0db92");
     public static Color Refused => new("dd9292");
     public static Color Amount => new("dfc184");
 
@@ -311,6 +311,6 @@ public abstract partial class ClassicEventPanel : Control
 
     /// <summary>Classic ink for a native semantic modulate (good, bad or dim).</summary>
     protected static Color Semantic(Color native, Color fallback) =>
-        native.IsEqualApprox(UiTheme.Good) ? Ready : native.IsEqualApprox(UiTheme.Bad) ? Refused
+        native.IsEqualApprox(UiTheme.Good) ? Accepted : native.IsEqualApprox(UiTheme.Bad) ? Refused
         : native.IsEqualApprox(UiTheme.TextDim) || native.IsEqualApprox(UiTheme.TextLo) ? Muted : fallback;
 }

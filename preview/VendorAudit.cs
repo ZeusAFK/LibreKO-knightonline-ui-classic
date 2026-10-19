@@ -22,7 +22,7 @@ public partial class Preview
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
         Game.Session.Self.Sheet.SeedWealth(1_234_567,50_000);Game.Session.Self.Sheet.SetMaxWeight(10_000);Game.Session.Self.Sheet.SeedProgress(70,0,100);
         Native.Set(Game.Session.Self, "LastEnter",new MyInfo { Nation=nation,Class=nation==1?105:205,Race=nation==1?1:11,
-            Name="Classic Preview",Gear=new int[8],Inventory=new NativeSlot[InventoryConstants.InventoryTotal] });
+            Name="Classic Preview",Gear=new int[8] }); Game.Session.Self.Inventory.Reset(new NativeSlot[InventoryConstants.InventoryTotal]);
         ItemData.EnsureLoaded();
         var groups=(Dictionary<int,List<ItemData.SellEntry>>)typeof(ItemData).GetField("sell",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!;
         var group=groups.Where(g=>g.Key!=249000 && g.Value.Count(e=>ItemData.Get(e.Id)!=null)>24 && g.Value.Any(e=>ItemData.Get(e.Id)?.Countable>0))
@@ -339,7 +339,7 @@ public partial class Preview
             object move=DetailField(world,"InventoryWindow.moveCur")!;
             Require(!GetViewport().GuiIsDragging() && !quantity.Visible && (bool)DetailField(world,"InventoryWindow.moveInFlight")! && (ushort)move.GetType().GetField("Amount")!.GetValue(move)! == part,
                 "Dropping the picked part on another trading-inventory cell moves it at once (the client's bag split)");
-            DetailCall(world,"InventoryWindow.OnItemMoveResult",true);RefreshBag();await Frames();
+            DetailCall(world,"DeliverItemMoveResult",true);RefreshBag();await Frames();
             Require(inventory[Inventory.GridStart].Count==3 && inventory[Inventory.GridStart+2].ItemId==entry.Id && inventory[Inventory.GridStart+2].Count==part
                 && CountBadge(shell.BagCells[0])=="3" && CountBadge(shell.BagCells[2])==part.ToString(),"The acknowledged split leaves the rest of the stack in place");
             await Capture("bag-split-done");
@@ -472,7 +472,7 @@ public partial class Preview
         Require((bool)DetailField(world,"InventoryWindow.moveInFlight")! && inventory[Inventory.GridStart].Count==63,"Moving between embedded bag cells uses native inventory movement");
         Require(shell.TransactionBlocked,"Inventory acknowledgement locks subsequent shop trades");
         DetailCall(world,"AskBuy",entry.Id,-1);Require(!quantity.Visible && !InFlight(),"Native buy handler refuses a purchase while inventory movement is pending");
-        DetailCall(world,"InventoryWindow.OnItemMoveResult",true);RefreshBag();await Capture("inventory-moved");
+        DetailCall(world,"DeliverItemMoveResult",true);RefreshBag();await Capture("inventory-moved");
         Require(inventory[Inventory.GridStart].IsEmpty && inventory[Inventory.GridStart+2].Count==63,"Acknowledged inventory move updates the embedded bag");
         var saved=Enumerable.Range(Inventory.GridStart,Inventory.GridCount).Select(s=>inventory[s]).ToArray();
         for(int i=0;i<Inventory.GridCount;i++) inventory[Inventory.GridStart+i]=new NativeSlot {ItemId=entry.Id,Count=Inventory.StackMax};

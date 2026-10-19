@@ -25,7 +25,7 @@ public partial class Preview
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
         Game.Session.Self.Sheet.SeedProgress(83,0,100);
         Native.Set(Game.Session.Self, "LastEnter",new MyInfo {Nation=nation,Class=nation*100+6,Race=nation==1?1:11,
-            Name="Skill Preview",Gear=new int[8],Inventory=new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]});
+            Name="Skill Preview",Gear=new int[8]}); Game.Session.Self.Inventory.Reset(new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]);
         SkillData.EnsureLoaded();ItemData.EnsureLoaded();
         byte[] seed={4,0,0,0,0,60,20,23,10};
         Game.Session.Self.Mastery.Seed(seed);

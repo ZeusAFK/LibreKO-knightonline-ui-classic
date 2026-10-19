@@ -156,9 +156,9 @@ public sealed partial class FamiliarWindow : Node
     private void OnExp(long _) => Refresh();
 
     /// <summary>A refused or cancelled familiar cast releases its cooldown on the client's familiar timers.</summary>
-    private void OnMagic(int sub, int skillId, int casterId, int targetId, short[] data)
+    private void OnMagic(MagicReply reply)
     {
-        if (sub is MagicSub.Fail or MagicSub.Cancel) RefreshCooldowns(Now());
+        if (reply.Sub is MagicSub.Fail or MagicSub.Cancel) RefreshCooldowns(Now());
     }
 
     private bool SelfDead => Native.Get<bool>(_world, "Avatar.Dead");

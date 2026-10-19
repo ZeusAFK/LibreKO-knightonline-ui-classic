@@ -42,10 +42,9 @@ public partial class Preview
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
         Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation == 1 ? 105 : 205, Race = nation == 1 ? 1 : 11,
-            Name = "Opening Preview", Gear = new int[8], Inventory = new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal] });
+            Name = "Opening Preview", Gear = new int[8] }); Game.Session.Self.Inventory.Reset(new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]);
         Game.Session.Self.Sheet.SeedWealth(12_000_000, 0); Game.Session.Self.Sheet.SeedProgress(60, 0, 1);
         ItemData.EnsureLoaded();
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
         var world = PreviewFixtures.Prepared(new WorldRoot());
         ((Inventory)Game.Session.Self.Inventory).EnsureLength(InventoryConstants.InventoryTotal);
         DetailCall(world, "InventoryWindow.BuildPanel");

@@ -31,12 +31,12 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         {
             var rect = Spec.InfoRow(row);
             Text(captions[row], new Rect2(rect.Position, new Vector2(150, rect.Size.Y)), Caption);
-            Value(Find<Label>(values[row]), new Rect2(rect.Position.X + 150, rect.Position.Y, rect.Size.X - 150, rect.Size.Y), row == 0 ? Ready : Ink);
+            Value(Find<Label>(values[row]), new Rect2(rect.Position.X + 150, rect.Position.Y, rect.Size.X - 150, rect.Size.Y), row == 0 ? Accepted : Ink);
         }
         _time = Find<Label>("lottery_time");
         Inset(Spec.Tickets);
         Text("Your tickets", new Rect2(Spec.TicketsRow.Position, new Vector2(150, Spec.TicketsRow.Size.Y)), Caption);
-        Value(Find<Label>("lottery_tickets"), new Rect2(Spec.TicketsRow.Position.X + 150, Spec.TicketsRow.Position.Y, Spec.TicketsRow.Size.X - 150, Spec.TicketsRow.Size.Y), Ready);
+        Value(Find<Label>("lottery_tickets"), new Rect2(Spec.TicketsRow.Position.X + 150, Spec.TicketsRow.Position.Y, Spec.TicketsRow.Size.X - 150, Spec.TicketsRow.Size.Y), Accepted);
         Value(Find<Label>("lottery_player"), Spec.Player, ClassicReportDesign.Caption, HorizontalAlignment.Center);
 
         var slot = Find<PanelContainer>("lottery_req_slot");
@@ -60,7 +60,7 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         _coin.SetMeta(ExpectedRect, Spec.CostCoin);
         Action(Find<Button>("lottery_buy"), Spec.Buy);
         _status = Find<Label>("lottery_status");
-        Value(_status, Spec.Status, Ready, HorizontalAlignment.Center);
+        Value(_status, Spec.Status, Accepted, HorizontalAlignment.Center);
 
         _prizeCaption = Text("Prize", Spec.PrizeCaption, Caption);
         _prizeCaption.Name = "lottery_prize_caption";
@@ -100,7 +100,7 @@ public partial class ClassicLotteryPanel : ClassicEventPanel
         _coin.Visible = active && state!.ReqItemId is QuestData.CoinItemId or 0;
         // The client tints the timer only while it counts; derive the ink from the draw itself.
         _time.SelfModulate = Colors.White;
-        _time.AddThemeColorOverride("font_color", !active ? Muted : state!.RemainingSeconds <= 60 ? Refused : Ready);
+        _time.AddThemeColorOverride("font_color", !active ? Muted : state!.RemainingSeconds <= 60 ? Refused : Accepted);
         if (_status.SelfModulate != Colors.White)
         {
             _status.AddThemeColorOverride("font_color", Semantic(_status.SelfModulate, Ink));

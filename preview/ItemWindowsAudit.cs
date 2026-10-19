@@ -28,14 +28,13 @@ public partial class Preview
         AddChild(new ColorRect { Color = new Color("252822"), Size = new Vector2(1000, 700), MouseFilter = MouseFilterEnum.Ignore });
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
         Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation == 1 ? 105 : 205, Race = nation == 1 ? 1 : 11,
-            Name = "Item Preview", Gear = new int[8], Inventory = new ItemSlot[InventoryConstants.InventoryTotal] });
+            Name = "Item Preview", Gear = new int[8] }); Game.Session.Self.Inventory.Reset(new ItemSlot[InventoryConstants.InventoryTotal]);
         ItemData.EnsureLoaded();
         PluginHost.Ui.ReplaceDialogs(request => new ClassicServiceNotice(request));
         var checks = new List<string>(); var screens = new List<object>();
         string prefix = nation == 1 ? "karus" : "human";
         void Require(bool valid, string text) { if (!valid) throw new Exception("ITEM_WINDOWS_AUDIT: " + text); checks.Add(text); }
         async Task Frames(int n = 8) { for (int i = 0; i < n; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
         void Set(object owner, string field, object? value) => Native.Set(owner, field, value);
         Inventory InventoryOf(WorldRoot w) => (Inventory)Game.Session.Self.Inventory;
 

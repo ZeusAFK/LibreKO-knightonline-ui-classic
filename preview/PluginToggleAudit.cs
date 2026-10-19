@@ -110,7 +110,6 @@ public partial class Preview
         foreach (var child in template.GetChildren()) child.Owner = template;
         var worldScene = new PackedScene(); worldScene.Pack(template); template.Free();
         worldScene.TakeOverPath("res://scenes/World.tscn");
-        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
         T Field<T>(WorldRoot world, string field) => (T)Native.Get<object>(world, field)!;
         async Task Send(NetworkStream stream, Packet packet)
         {

@@ -150,7 +150,7 @@ public partial class Preview
                 Receive(success); await Frames(); require(mutations == mutationCount && lines.Count == logCount && status.Text.Length > 0, "Duplicate " + service + " success cannot alter the trainer or repeat its Info notification");
                 await Capture("success");
                 if (!transform) { slot = Inventory.GridStart + 6; DetailCall(world, "SelectPetHatchItem", slot); name.Text = "Kauly"; }
-                await Submit(); typeof(Net).GetMethod("ResetPet", flags)!.Invoke(net, null); await Frames();
+                await Submit(); Native.Call(Game.Session.Pet, "Reset"); await Frames();
                 require(!panel.Visible && !Field<bool>("PetHatch.inFlight") && PreviewFixtures.PetHatchNotice(world) == null, "Native connection reset closes and unlocks the actual " + service + " trainer");
                 Receive(success); await Frames(); require(!panel.Visible && mutations == mutationCount && lines.Count == logCount, "Delayed " + service + " success after reset cannot reopen the trainer or mutate inventory");
             }

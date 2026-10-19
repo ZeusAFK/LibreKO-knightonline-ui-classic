@@ -15,12 +15,14 @@ public static partial class PreviewFixtures
     public static void SetField(WorldRoot world, string name, object? value) => Native.Set(Target(world, ref name), name, value);
     public const string PreviewPrefix = "Preview.";
     public const string SessionPrefix = "Session.";
+    public const string ConfigPrefix = "Config.";
     public const string TopIconPrefix = "TopIcons.Icon:";
 
     public static object Target(WorldRoot world, ref string name)
     {
         if (name.StartsWith(PreviewPrefix)) { name = name[PreviewPrefix.Length..]; return ClientPreview(world); }
         if (name.StartsWith(SessionPrefix)) { name = name[SessionPrefix.Length..]; return Game.Session; }
+        if (name.StartsWith(ConfigPrefix)) { name = name[ConfigPrefix.Length..]; return Native.StaticOwner("LibreKO.Config"); }
         return world;
     }
 

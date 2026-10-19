@@ -12,7 +12,6 @@ public partial class Preview
     /// <summary>The familiar plate: Classic party-member composition over the client's plate and its click.</summary>
     private async Task AuditPetPlate(WorldRoot world, Net net, HudWindow petWindow, int nation, string output, Action<bool, string> require)
     {
-        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
         DetailCall(world, "Pet.Close");
         var layer = (CanvasLayer)DetailCall(world, "BuildPetPlateClassicUiPreview")!; AddChild(layer);
         async Task Frames(int count = 4) { for (int i = 0; i < count; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }

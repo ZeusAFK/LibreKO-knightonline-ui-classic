@@ -26,7 +26,7 @@ public partial class Preview
         var net=new Net();typeof(Net).GetProperty("I")!.SetValue(null,net);
         Game.Session.Self.Sheet.SeedWealth(1_786_597_823,50_000);Game.Session.Self.Sheet.SetMaxWeight(17_100);Game.Session.Self.Sheet.SeedProgress(83,0,100);
         Native.Set(Game.Session.Self, "LastEnter",new MyInfo {Nation=nation,Class=nation*100+6,Race=nation==1?1:11,
-            Name="Inventory Preview",Gear=new int[8],Inventory=new NativeSlot[InventoryConstants.InventoryTotal]});
+            Name="Inventory Preview",Gear=new int[8]}); Game.Session.Self.Inventory.Reset(new NativeSlot[InventoryConstants.InventoryTotal]);
         ItemData.EnsureLoaded();
         var world=PreviewFixtures.Prepared(new WorldRoot());
         Native.Set(Game.Session, "Self.Class", nation*100+6);
@@ -54,19 +54,17 @@ public partial class Preview
         var pendingMove=new PreviewFixtures.ClientMember("PendingMove");
         object PendingMove(ItemMoveDirection direction,byte source,byte destination)=>Activator.CreateInstance(moveType,
             new object[]{direction,source,destination,(ushort)0}.Take(moveType.GetConstructors().Max(c=>c.GetParameters().Length)).ToArray())!;
-        var snapshot=Game.Session.Self.LastEnter;
-        snapshot.Inventory[InventoryConstants.InventoryStart]=new NativeSlot {ItemId=700011001,Count=1};
+        inv[InventoryConstants.InventoryStart]=new NativeSlot {ItemId=700011001,Count=1};
         pendingMove.SetValue(Game.Session.Items,PendingMove(ItemMoveDirection.InventoryToBagSlot,0,2));
         var accepted=new Packet(GameOpcodes.GS_ITEM_MOVE);accepted.WriteByte(1);accepted.WriteByte(1);PreviewPackets.Receive(accepted);
-        inv.Reset(Game.Session.Self.LastEnter.Inventory);
         Require(inv[InventoryConstants.BagSlotFor(2)].ItemId==700011001 && inv[InventoryConstants.InventoryStart].IsEmpty,
-            "Network acknowledgement preserves equipped bags when a new world reloads the cached inventory");
+            "Network acknowledgement moves the item into the equipped bag slot");
         bool refused=false;Game.Session.Items.ItemMoveResultEvent+=ok=>refused=!ok;
         pendingMove.SetValue(Game.Session.Items,PendingMove(ItemMoveDirection.BagSlotToInventory,2,0));
         var rejected=new Packet(GameOpcodes.GS_ITEM_MOVE);rejected.WriteByte(1);rejected.WriteByte(0);PreviewPackets.Receive(rejected);
-        Require(refused && pendingMove.GetValue(Game.Session.Items)==null && Game.Session.Self.LastEnter.Inventory[InventoryConstants.BagSlotFor(2)].ItemId==700011001,
-            "Refused moves release the pending acknowledgement and preserve the zone snapshot");
-        Array.Clear(Game.Session.Self.LastEnter.Inventory);inv.Reset(Game.Session.Self.LastEnter.Inventory);
+        Require(refused && pendingMove.GetValue(Game.Session.Items)==null && inv[InventoryConstants.BagSlotFor(2)].ItemId==700011001,
+            "Refused moves release the pending acknowledgement and keep the bag");
+        inv.Reset(new NativeSlot[InventoryConstants.InventoryTotal]);
         void Invoke(string method,params object[] args)=>typeof(InventoryWindow).GetMethod(method,BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(actual,args);
         void Refresh()=>typeof(PluginGame).GetMethod("RaiseInventory",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(game,null);
         int ItemFor(int type)=>ItemData.All().Where(i=>(i.Slot==type || type is 101 or 102 && i.Slot==100 || type==112 && i.Slot==127)
@@ -344,7 +342,7 @@ public partial class Preview
             Input.ParseInputEvent(new InputEventMouseMotion {Position=Vector2.Zero,GlobalPosition=Vector2.Zero});await Frames(2);
             Require(!GetViewport().GuiIsDragging() && !transferPrompt.Visible && (bool)DetailField(world,"InventoryWindow.moveInFlight")! && (ushort)MoveField("Amount")==97,
                 "Dropping the picked part on another bag cell moves it at once (the client's bag split)");
-            DetailCall(world,"InventoryWindow.OnItemMoveResult",true);
+            DetailCall(world,"DeliverItemMoveResult",true);
             Require(inv[InventoryConstants.InventoryStart+1].Count==3 && inv[free].ItemId==stack && inv[free].Count==97,"The acknowledged split leaves the rest of the stack in place");
             inv[free]=freeItem;inv[InventoryConstants.InventoryStart+1]=Item(stack,100);Refresh();await Frames();
             var magic=bags[0];
@@ -353,7 +351,7 @@ public partial class Preview
             magic._DropData(Vector2.Zero,part);
             Require(!transferPrompt.Visible && (bool)DetailField(world,"InventoryWindow.moveInFlight")! && (ushort)MoveField("Amount")==40 && (ItemMoveDirection)MoveField("Dir")==ItemMoveDirection.InventoryToMagicBag,
                 "A part picked for a magic bag moves at once, without the count prompt");
-            DetailCall(world,"InventoryWindow.OnItemMoveResult",false);
+            DetailCall(world,"DeliverItemMoveResult",false);
             var whole=new Godot.Collections.Dictionary {{ClassicSlot.DragKeyFrom,InventoryConstants.InventoryStart+1},{ClassicSlot.DragKeyItem,stack},{DragLayer.AmountKey,100}};
             magic._DropData(Vector2.Zero,whole);await Frames();
             Require(transferPrompt.Visible && amount.Value==100 && !(bool)DetailField(world,"InventoryWindow.moveInFlight")!,"The whole stack dragged to a magic bag still asks the count");

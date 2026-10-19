@@ -104,7 +104,6 @@ public partial class Preview
         PluginHost.Ui.ReplaceDialogs(request => new ClassicServiceNotice(request));
         PluginHost.Ui.ExtendWindow("pethatch", ClassicPetHatchSkin.Extend);
         var screens = new List<object>();
-        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
         async Task Frames(int count = 4) { for (int i = 0; i < count; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }
         void Require(bool value, string message) { if (!value) throw new Exception("PET_HATCH_AUDIT: " + message); checks.Add(message); }
         async Task KeyPress(Key key)

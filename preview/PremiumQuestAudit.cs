@@ -32,7 +32,7 @@ public partial class Preview
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var net = new Net(); typeof(Net).GetProperty("I")!.SetValue(null, net);
         Native.Set(Game.Session.Self, "LastEnter", new MyInfo { Nation = nation, Class = nation == 1 ? 105 : 205, Race = nation == 1 ? 1 : 11,
-            Name = "Quest Preview", Gear = new int[8], Inventory = new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal] });
+            Name = "Quest Preview", Gear = new int[8] }); Game.Session.Self.Inventory.Reset(new LibreKO.Domain.ItemSlot[InventoryConstants.InventoryTotal]);
         ItemData.EnsureLoaded();
         string prefix = nation == 1 ? "karus" : "human";
         var checks = new List<string>(); var screens = new List<object>();

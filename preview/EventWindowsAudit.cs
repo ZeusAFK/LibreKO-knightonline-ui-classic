@@ -49,7 +49,7 @@ public partial class Preview
         }
         float TextWidth(Control control, string text) => control.GetThemeFont("font").GetStringSize(text, HorizontalAlignment.Left, -1, control.GetThemeFontSize("font_size")).X;
         bool Connected(BaseButton button) => button.GetSignalConnectionList(BaseButton.SignalName.Pressed).Count > 0;
-        var palette = new[] { ClassicDesign.FrameTitle, ClassicEventPanel.Caption, ClassicEventPanel.Ink, ClassicEventPanel.Muted, ClassicEventPanel.Ready,
+        var palette = new[] { ClassicDesign.FrameTitle, ClassicEventPanel.Caption, ClassicEventPanel.Ink, ClassicEventPanel.Muted, ClassicEventPanel.Accepted,
             ClassicEventPanel.Refused, new Color("ffe094"), new Color("9cd8f0"), new Color("efd9b4"), ClassicDesign.Muted };
 
         async Task<(WorldRoot World, HudWindow Window)> Open(string fixture, params object?[] args)
@@ -150,7 +150,7 @@ public partial class Preview
             var cellRegion = ClassicProgressionPanel.CellBox().RegionRect;
             bool Lit(Control control) => control.GetThemeStylebox("panel") is StyleBoxTexture { ModulateColor.R: > 1.01f };
             bool OnInset(Control control) => control.GetThemeStylebox("panel") is StyleBoxTexture { DrawCenter: false } box && box.RegionRect == insetRegion;
-            var statusInks = new[] { ClassicEventPanel.Ready, ClassicEventPanel.Caption, ClassicEventFamily.Highlight };
+            var statusInks = new[] { ClassicEventPanel.Accepted, ClassicEventPanel.Caption, ClassicEventFamily.Highlight };
             T Part<T>(WorldRoot world, string field) where T : class => (T)DetailField(world, field)!;
             PanelContainer[] Cards(WorldRoot world) => Part<VBoxContainer>(world, "Events.cards").GetChildren().OfType<PanelContainer>().Where(c => !c.IsQueuedForDeletion()).ToArray();
             Label[] Statuses(WorldRoot world) => Cards(world).Select(c => Descendants(c).OfType<Label>().First(l => l.HorizontalAlignment == HorizontalAlignment.Right)).ToArray();

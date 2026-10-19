@@ -35,7 +35,6 @@ public partial class Preview
         foreach (var child in template.GetChildren()) child.Owner = template;
         var worldScene = new PackedScene(); worldScene.Pack(template); template.Free();
         worldScene.TakeOverPath("res://scenes/World.tscn");
-        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
         var checks = new List<string>();
         void Require(bool ok, string message) { if (!ok) throw new Exception("PET_WORLD_RECONNECT_AUDIT: " + message); checks.Add(message); }
         async Task Frames(int count = 4) { for (int i = 0; i < count; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw); }

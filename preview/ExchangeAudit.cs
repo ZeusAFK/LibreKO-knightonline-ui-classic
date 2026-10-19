@@ -44,7 +44,7 @@ public partial class Preview
 
         Game.Session.Self.Sheet.SeedWealth(1_234_567,50_000);Game.Session.Self.Sheet.SetMaxWeight(10_000);Game.Session.Self.Sheet.SeedProgress(70,0,100);
 
-        Native.Set(Game.Session.Self, "LastEnter",new MyInfo {Nation=nation,Class=nation==1?105:205,Race=nation==1?1:11,Name="Classic Preview",Gear=new int[8],Inventory=new NativeSlot[InventoryConstants.InventoryTotal]});
+        Native.Set(Game.Session.Self, "LastEnter",new MyInfo {Nation=nation,Class=nation==1?105:205,Race=nation==1?1:11,Name="Classic Preview",Gear=new int[8]}); Game.Session.Self.Inventory.Reset(new NativeSlot[InventoryConstants.InventoryTotal]);
 
         ItemData.EnsureLoaded();
 
